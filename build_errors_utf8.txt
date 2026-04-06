@@ -1,0 +1,18 @@
+﻿
+> frontend@0.0.0 build
+> tsc -b && vite build
+
+src/modules/Module1/NuclideTableModule.tsx(31,19): error TS2352: Conversion of type '({ Nuclide: string; Symbol: string; "Half-Life": string; "Half-Life (s)": number; "\u03BB (s\u207B\u00B9)": number; "Decay Mode": string; "E\u03B3 (MeV)": string; "\u0393 (R\u00B7cm\u00B2/mCi\u00B7h)": string; "Sp. Activity (Ci/g)": number; "ALI Inhal. (\u03BCCi)": number; "ALI Ingest. (\u03BCCi)": number; "DAC (\u0...' to type 'NuclideRecord[]' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type '{ Nuclide: string; Symbol: string; "Half-Life": string; "Half-Life (s)": number; "\u03BB (s\u207B\u00B9)": number; "Decay Mode": string; "E\u03B3 (MeV)": string; "\u0393 (R\u00B7cm\u00B2/mCi\u00B7h)": string; "Sp. Activity (Ci/g)": number; "ALI Inhal. (\u03BCCi)": number; "ALI Ingest. (\u03BCCi)": number; "DAC (\u03...' is not comparable to type 'NuclideRecord'.
+    Property ''╬ô (R┬╖cm2/mCi┬╖h)'' is missing in type '{ Nuclide: string; Symbol: string; "Half-Life": string; "Half-Life (s)": number; "\u03BB (s\u207B\u00B9)": number; "Decay Mode": string; "E\u03B3 (MeV)": string; "\u0393 (R\u00B7cm\u00B2/mCi\u00B7h)": number; "Sp. Activity (Ci/g)": number; "ALI Inhal. (\u03BCCi)": number; "ALI Ingest. (\u03BCCi)": number; "DAC (\u03...' but required in type 'NuclideRecord'.
+src/modules/Module3/VisualisationModule.tsx(3,1): error TS6133: 'nuclidesData' is declared but its value is never read.
+src/modules/Module3/VisualisationModule.tsx(4,10): error TS6133: 'InlineMath' is declared but its value is never read.
+src/modules/Module3/VisualisationModule.tsx(4,39): error TS7016: Could not find a declaration file for module 'react-katex'. 'C:/Users/travi/OneDrive/Documents/Antigravity projects/Rad Pro Calc/node_modules/react-katex/dist/react-katex.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react-katex` if it exists or add a new declaration (.d.ts) file containing `declare module 'react-katex';`
+src/modules/Module3/VisualisationModule.tsx(76,12): error TS2769: No overload matches this call.
+  Overload 2 of 2, '(props: PlotParams, context: any): Plot', gave the following error.
+    Type 'string' has no properties in common with type 'Partial<ColorBarTitle>'.
+  Overload 2 of 2, '(props: PlotParams, context: any): Plot', gave the following error.
+    Type 'string' has no properties in common with type 'Partial<DataTitle>'.
+  Overload 2 of 2, '(props: PlotParams, context: any): Plot', gave the following error.
+    Type 'string' has no properties in common with type 'Partial<DataTitle>'.
