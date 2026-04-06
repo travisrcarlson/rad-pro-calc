@@ -54,6 +54,7 @@ const DecayModule: React.FC = () => {
   const [initialActivity, setInitialActivity] = useState<number>(1);
   const [timeValue, setTimeValue] = useState<number>(5);
   const [timeUnit, setTimeUnit] = useState<number>(31557600); // default years
+  const [sliderPct, setSliderPct] = useState<number>(0); // 0 to 100 scale
 
   const getColor = (mode: string, hl: string) => {
     const m = String(mode).toUpperCase();
@@ -226,7 +227,8 @@ const DecayModule: React.FC = () => {
        return T12 === Infinity ? 0 : Math.LN2 / T12;
     });
 
-    const t_sec = timeValue * timeUnit;
+    const t_sec_max = timeValue * timeUnit;
+    const t_sec = t_sec_max * (sliderPct / 100);
     const A0_Bq = initialActivity * 1e6;
     const N1_0 = lambdas[0] > 0 ? A0_Bq / lambdas[0] : A0_Bq; 
 
@@ -271,7 +273,7 @@ const DecayModule: React.FC = () => {
     }
     
     return finalYields;
-  }, [chainData, initialActivity, timeValue, timeUnit]);
+  }, [chainData, initialActivity, timeValue, timeUnit, sliderPct]);
 
   // --- Search Logic ---
   const uniqueSymbols = useMemo(() => Array.from(new Set(allNuclides.map(n => n.Symbol))).sort(), []);
@@ -280,9 +282,14 @@ const DecayModule: React.FC = () => {
 
   // --- Display spectrum data for Quadrant 2 ---
   const spectrumPlotData = useMemo(() => {
-     if (!selectedIsotope) return [];
+     if (!selectedIsotope || chainData.length === 0 || yields.length === 0) return { traces: [], annotations: [] };
      
      const traces: any[] = [];
+     const annotations: any[] = [];
+     
+     // Map instantaneous activities
+     const activities = yields.map(y => (y.current * y.lambda) / 1e6); // MBq
+     const maxActivity = Math.max(0.000001, ...activities);
      
      // 1. Mono-energetic Gaussian Peak Simulator (Alpha, Gammas, EC)
      const makeSpike = (energy: number, height: number, name: string, color: string) => {
@@ -295,12 +302,9 @@ const DecayModule: React.FC = () => {
          }
          return {
              x, y,
-             type: 'scatter',
-             mode: 'lines',
-             fill: 'tozeroy',
-             name: name,
-             line: { color, width: 2 },
-             hoverinfo: 'name+x'
+             type: 'scatter', mode: 'lines', fill: 'tozeroy',
+             name: name, line: { color, width: 2 }, hoverinfo: 'none', // Removed hard-to-read hover
+             opacity: 0.6
          };
      };
 
@@ -310,7 +314,6 @@ const DecayModule: React.FC = () => {
          const y: number[] = [];
          for (let e = 0; e <= qMax; e += qMax / 100) {
              x.push(e);
-             // Standard Beta emission theoretical shape approx: ~ sqrt(E) * (Q - E)^2
              const intensity = Math.sqrt(e) * Math.pow(qMax - e, 2);
              y.push(intensity);
          }
@@ -321,30 +324,73 @@ const DecayModule: React.FC = () => {
          }
          return {
              x, y,
-             type: 'scatter',
-             mode: 'lines',
-             fill: 'tozeroy',
-             name: name,
-             line: { color, width: 2 },
-             hoverinfo: 'name'
+             type: 'scatter', mode: 'lines', fill: 'tozeroy',
+             name: name, line: { color, width: 2 }, hoverinfo: 'none', // Disable hover on beta to favor box annotations
+             opacity: 0.6
          };
      };
 
-     if (selectedIsotope['Q-Alpha']) {
-         const e = parseFloat(selectedIsotope['Q-Alpha']) / 1000;
-         if (e > 0) traces.push(makeSpike(e, 100, `Alpha Peak (${e.toFixed(2)} MeV)`, '#F4D03F'));
-     }
-     
-     if (selectedIsotope['Q-Beta']) {
-         const e = parseFloat(selectedIsotope['Q-Beta']) / 1000;
-         // Beta endpoint energies are technically continuous spectra
-         if (e > 0) traces.push(makeBetaContinuum(e, 80, `Beta⁻ Continuum (Q=${e.toFixed(2)} MeV)`, '#5DADE2'));
-     }
-     
-     if (selectedIsotope['Q-EC']) {
-         const e = parseFloat(selectedIsotope['Q-EC']) / 1000;
-         if (e > 0) traces.push(makeSpike(e, 60, `EC / β⁺ Peak (${e.toFixed(2)} MeV)`, '#E74C3C'));
-     }
+     // Render all descendant peaks
+     chainData.forEach((node, idx) => {
+         const current_MBq = activities[idx];
+         if (node['Half-Life'] === 'STABLE') return;
+
+         let relativeScale = (current_MBq / maxActivity) * 100;
+         let isGhosted = false;
+
+         // If isotope is dead or unborn, keep it visible as a 'ghost' trace 
+         // so users know its characteristic line exists in this chain's potential spectrum
+         if (relativeScale < 2) {
+             relativeScale = 2; // Flat 2% baseline height
+             isGhosted = true;
+         }
+         
+         const addAnnotation = (xId: number, yId: number, title: string, sub: string, color: string, staggerStep: number, ghosted: boolean) => {
+             const yOffset = -30 - ((idx * 3 + staggerStep) % 6) * 18;
+             annotations.push({
+                 x: xId, y: yId,
+                 text: `<b>${title}</b><br>${sub}`,
+                 showarrow: true, arrowhead: 2, arrowcolor: ghosted ? '#444' : color,
+                 ax: 0, ay: yOffset,
+                 bgcolor: ghosted ? 'rgba(10,10,10,0.3)' : 'rgba(10,10,10,0.85)',
+                 bordercolor: ghosted ? '#333' : color, borderwidth: 1, borderpad: 4,
+                 font: { color: ghosted ? '#666' : color, size: 10 }
+             });
+         };
+
+         // Apply ghost transparency mapping to traces
+         const applyGhost = (trace: any) => {
+             if (isGhosted) {
+                 trace.opacity = 0.15;
+                 trace.line.color = '#555';
+             }
+             return trace;
+         };
+
+         if (node['Q-Alpha']) {
+             const e = parseFloat(node['Q-Alpha']) / 1000;
+             if (e > 0) {
+                 traces.push(applyGhost(makeSpike(e, relativeScale, `${node.Nuclide} α`, '#F4D03F')));
+                 addAnnotation(e, relativeScale, `${node.Nuclide} α`, `${e.toFixed(2)} MeV`, '#F4D03F', 0, isGhosted);
+             }
+         }
+         if (node['Q-Beta']) {
+             const e = parseFloat(node['Q-Beta']) / 1000;
+             if (e > 0) {
+                 const height = relativeScale * 0.8;
+                 traces.push(applyGhost(makeBetaContinuum(e, height, `${node.Nuclide} β⁻`, '#5DADE2')));
+                 addAnnotation(e * 0.33, height, `${node.Nuclide} β⁻`, `Q=${e.toFixed(2)} MeV`, '#5DADE2', 1, isGhosted);
+             }
+         }
+         if (node['Q-EC']) {
+             const e = parseFloat(node['Q-EC']) / 1000;
+             if (e > 0) {
+                 const height = relativeScale * 0.6;
+                 traces.push(applyGhost(makeSpike(e, height, `${node.Nuclide} EC/β⁺`, '#E74C3C')));
+                 addAnnotation(e, height, `${node.Nuclide} EC/β⁺`, `${e.toFixed(2)} MeV`, '#E74C3C', 2, isGhosted);
+             }
+         }
+     });
 
      // Add Baseline
      traces.push({
@@ -353,8 +399,8 @@ const DecayModule: React.FC = () => {
          hoverinfo: 'none', showlegend: false
      });
 
-     return traces;
-  }, [selectedIsotope]);
+     return { traces, annotations };
+  }, [selectedIsotope, chainData, yields]);
 
   return (
     <div className="panel" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -382,10 +428,10 @@ const DecayModule: React.FC = () => {
       </div>
       
       {/* FULL VIEWPORT 4-QUADRANT GRID */}
-      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'minmax(50%, 1fr) 1fr', gridTemplateRows: '50% 50%', gap: '15px', paddingBottom: '15px' }}>
+      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr 1fr', gap: '15px', paddingBottom: '15px', minHeight: 0, overflow: 'hidden' }}>
         
         {/* Q1: Top Left - Karlsruhe Chart */}
-        <div style={{ border: '1px solid var(--color-border)', borderRadius: '8px', overflow: 'hidden', backgroundColor: '#0a0a0a' }}>
+        <div style={{ border: '1px solid var(--color-border)', borderRadius: '8px', overflow: 'hidden', backgroundColor: '#0a0a0a', minHeight: 0, display: 'flex' }}>
           <KarlsruheSvgChart 
             onIsotopeClick={handleIsotopeClick} 
             onClearSelection={() => setSelectedIsotope(null)}
@@ -394,7 +440,7 @@ const DecayModule: React.FC = () => {
         </div>
 
         {/* Q2: Top Right - Energy Spectrum Plotly */}
-        <div style={{ border: '1px solid var(--color-border)', borderRadius: '8px', overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.02)', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ border: '1px solid var(--color-border)', borderRadius: '8px', overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.02)', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           <div style={{ padding: '10px 15px', borderBottom: '1px solid #333', backgroundColor: '#0a0a0a' }}>
              <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#E0E1DD' }}>Decay Energy Spectrum (Q-Values)</h3>
              <p style={{ margin: 0, fontSize: '0.8rem', color: '#888' }}>Simulated Detector Output (MeV)</p>
@@ -403,13 +449,14 @@ const DecayModule: React.FC = () => {
           <div style={{ flex: 1, position: 'relative' }}>
             {selectedIsotope ? (
                <Plot
-                 data={spectrumPlotData as any}
+                 data={spectrumPlotData.traces as any}
                  layout={{
-                    autosize: true, margin: { t: 20, l: 60, r: 20, b: 40 },
+                    autosize: true, margin: { t: 40, l: 60, r: 20, b: 40 },
                     paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
                     yaxis: { title: 'Relative Intensity', color: '#aaa', gridcolor: '#333', showticklabels: true, zeroline: false },
                     xaxis: { title: 'Energy (MeV)', color: '#aaa', gridcolor: '#333', zeroline: false, rangemode: 'tozero' }, 
-                    font: { color: '#E0E1DD' }, showlegend: true, legend: { orientation: 'h', y: 1.05, x: 0 }
+                    font: { color: '#E0E1DD' }, showlegend: false,
+                    annotations: spectrumPlotData.annotations
                  }}
                  useResizeHandler style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}
                />
@@ -422,27 +469,29 @@ const DecayModule: React.FC = () => {
         </div>
 
         {/* Q3: Bottom Left - React Flow Pathway */}
-        <div style={{ border: '1px solid var(--color-border)', borderRadius: '8px', position: 'relative', backgroundColor: '#0a0a0a' }}>
+        <div style={{ border: '1px solid var(--color-border)', borderRadius: '8px', position: 'relative', backgroundColor: '#0a0a0a', minHeight: 0, overflow: 'hidden', display: 'flex' }}>
           {selectedIsotope ? (
-             <ReactFlow 
-              nodes={nodes} edges={edges} fitView
-              attributionPosition="bottom-right" key={selectedIsotope.Nuclide}
-            >
-              <Background color="#555" gap={16} />
-              <Controls />
-              <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 10, background: 'rgba(0,0,0,0.7)', padding: '5px 10px', borderRadius: '4px', color: '#fff' }}>
-                <strong>Linear Chain: {selectedIsotope.Nuclide}</strong>
-              </div>
-            </ReactFlow>
+             <div style={{ flex: 1, height: '100%' }}>
+               <ReactFlow 
+                nodes={nodes} edges={edges} fitView
+                attributionPosition="bottom-right" key={selectedIsotope.Nuclide}
+              >
+                <Background color="#555" gap={16} />
+                <Controls />
+                <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 10, background: 'rgba(0,0,0,0.7)', padding: '5px 10px', borderRadius: '4px', color: '#fff' }}>
+                  <strong>Linear Chain: {selectedIsotope.Nuclide}</strong>
+                </div>
+              </ReactFlow>
+             </div>
           ) : (
-            <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)' }}>
+            <div style={{ height: '100%', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)' }}>
               Click ANY isotope box on the chart to generate its strict linear decay kinematics mapping.
             </div>
           )}
         </div>
 
         {/* Q4: Bottom Right - Bateman Yield Calculator (Restoring Original Full Table Detail!) */}
-        <div style={{ border: '1px solid var(--color-border)', borderRadius: '8px', padding: '15px', display: 'flex', flexDirection: 'column', backgroundColor: 'rgba(255,255,255,0.02)', overflowY: 'auto' }}>
+        <div style={{ border: '1px solid var(--color-border)', borderRadius: '8px', padding: '15px', display: 'flex', flexDirection: 'column', backgroundColor: 'rgba(255,255,255,0.02)', minHeight: 0, overflow: 'hidden' }}>
           <h3 style={{ color: 'var(--color-primary)', marginBottom: '15px', marginTop: 0 }}>Bateman Yield Calculator</h3>
           
           <div style={{ display: 'flex', gap: '15px', marginBottom: '15px' }}>
@@ -470,7 +519,7 @@ const DecayModule: React.FC = () => {
              </div>
              
              <div className="form-group" style={{ flex: 1 }}>
-               <label className="form-label">Elapsed Time ($t$)</label>
+               <label className="form-label">Max Analysis Window ($t_{'{'}max{'}'}$)</label>
                <input type="number" className="form-control" value={timeValue} onChange={e => setTimeValue(Number(e.target.value))} />
              </div>
              
@@ -482,6 +531,22 @@ const DecayModule: React.FC = () => {
                  <option value={31557600}>Years</option>
                </select>
               </div>
+          </div>
+
+          {/* New 4D Timeline Scrubber */}
+          <div style={{ padding: '15px', backgroundColor: 'rgba(52, 152, 219, 0.05)', border: '1px solid rgba(52, 152, 219, 0.4)', borderRadius: '6px', marginBottom: '15px' }}>
+             <div style={{ display: 'flex', justifyContent: 'space-between', color: '#3498db', fontWeight: 'bold', marginBottom: '10px' }}>
+                <span>Timeline Scrubber ($t_{'{'}sim{'}'}$)</span>
+                <span style={{ fontSize: '1.1rem', textShadow: '0 0 5px rgba(52, 152, 219, 0.5)' }}>{(() => {
+                   const t = timeValue * (sliderPct / 100);
+                   return t.toFixed(2) + (timeUnit === 31557600 ? ' Years' : timeUnit === 86400 ? ' Days' : ' Secs');
+                })()}</span>
+             </div>
+             <input type="range" className="form-control" style={{ width: '100%', cursor: 'ew-resize' }} min="0" max="100" step="0.1" value={sliderPct} onChange={e => setSliderPct(Number(e.target.value))} />
+             <div style={{ display: 'flex', justifyContent: 'space-between', color: '#888', fontSize: '0.75rem', marginTop: '5px' }}>
+                <span>$t=0$</span>
+                <span>$t={'{'}t_{'{'}max{'}'}{'}'}$</span>
+             </div>
           </div>
 
           <div style={{ flex: 1, overflowY: 'auto', border: '1px solid #444', borderRadius: '6px' }}>

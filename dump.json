@@ -1,0 +1,36 @@
+[
+  {
+    "Z": 84,
+    "N": 130,
+    "Symbol": "Po",
+    "Nuclide": "Po-214",
+    "Half-Life": "163.46 us",
+    "Half-Life (s)": "0.00016346",
+    "Decay Mode": "A",
+    "Decay %": "100",
+    "Decay 2": "",
+    "Decay 2 %": "",
+    "Decay 3": "",
+    "Decay 3 %": "",
+    "Q-Alpha": "7833.5408",
+    "Q-Beta": "-1090.8208",
+    "Q-EC": "-3269.192"
+  },
+  {
+    "Z": 86,
+    "N": 132,
+    "Symbol": "Rn",
+    "Nuclide": "Rn-218",
+    "Half-Life": "33.75 ms",
+    "Half-Life (s)": "0.03375",
+    "Decay Mode": "A",
+    "Decay %": "100",
+    "Decay 2": "",
+    "Decay 2 %": "",
+    "Decay 3": "",
+    "Decay 3 %": "",
+    "Q-Alpha": "7262.4699",
+    "Q-Beta": "-1842.0267",
+    "Q-EC": "-2882.805"
+  }
+]
