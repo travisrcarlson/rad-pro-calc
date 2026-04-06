@@ -1,6 +1,8 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import ReactFlow, { Background, Controls, MarkerType } from 'reactflow';
 import 'reactflow/dist/style.css';
+import PlotComponent from 'react-plotly.js';
+const Plot = (PlotComponent as any).default || PlotComponent;
 import KarlsruheSvgChart from './KarlsruheChart';
 import allNuclides from '../../data/all_nuclides.json';
 
@@ -23,21 +25,19 @@ const ELEMENT_NAMES: Record<string, string> = {
 const parseHalfLifeSeconds = (nuc: any): number => {
   if (!nuc || nuc['Half-Life'] === 'STABLE' || String(nuc['Decay Mode']).toUpperCase() === 'STABLE') return Infinity;
   
-  // Use the pre-calculated seconds column if available
   const secStr = nuc['Half-Life (s)'];
   if (secStr && String(secStr).trim() !== '') {
      const val = parseFloat(secStr);
      if (!isNaN(val) && val > 0) return val;
   }
 
-  // Fallback to text parsing
   const hlStr = nuc['Half-Life'];
   if (!hlStr) return Infinity;
   const parts = String(hlStr).trim().split(' ');
   const val = parseFloat(parts[0]);
   if (isNaN(val)) return Infinity;
   
-  if (parts.length < 2) return val; // Assume seconds if no unit provided
+  if (parts.length < 2) return val;
   const unit = parts[1].toLowerCase();
   if (unit.startsWith('s')) return val;
   if (unit.startsWith('m')) return val * 60;
@@ -71,7 +71,7 @@ const DecayModule: React.FC = () => {
     const ns: any[] = [];
     const es: any[] = [];
     const pathIds: string[] = [];
-    const cData: any[] = []; // Array of nuclides in the sequential chain
+    const cData: any[] = [];
     const visited = new Set<string>();
 
     const buildPath = (currentNuclide: any, step: number) => {
@@ -81,15 +81,13 @@ const DecayModule: React.FC = () => {
       cData.push(currentNuclide);
 
       const color = getColor(currentNuclide['Decay Mode'], currentNuclide['Half-Life']);
-      const isUnknown = color === '#EcF0F1';
-
-      // --- Wrapping Row Layout Logic (Typewriter Style) ---
+      
       const maxPerRow = 5;
       const row = Math.floor(step / maxPerRow);
       const col = step % maxPerRow;
 
-      const currentX = col * 260; // Highly compacted spacing
-      const currentY = row * 240 + 50; // Extra vertical room for tight wrapping
+      const currentX = col * 260; 
+      const currentY = row * 240 + 50; 
 
       let sPos = 'right';
       let tPos = 'left';
@@ -123,7 +121,7 @@ const DecayModule: React.FC = () => {
           borderTop: `8px solid ${color}`, 
           borderRadius: '8px', 
           background: step === 0 ? '#2a2d34' : '#1a1d21', 
-          width: 120, // Narrower isotope cards
+          width: 120,
           boxShadow: step === 0 ? `0 0 15px ${color}66` : 'none',
           padding: 0,
           zIndex: 10
@@ -152,7 +150,6 @@ const DecayModule: React.FC = () => {
 
       const daughter = allNuclides.find(n => n.Z === nextZ && n.N === nextN);
       if (daughter) {
-        // Resolve all possible branches to display in transition box
         const getQValue = (mStr: string) => {
            let qs = '';
            if (mStr.includes('A') && currentNuclide['Q-Alpha']) qs = `${(parseFloat(currentNuclide['Q-Alpha']) / 1000).toFixed(2)} MeV`;
@@ -166,7 +163,7 @@ const DecayModule: React.FC = () => {
            if (!modeRaw || modeRaw.trim() === '') return;
            const perc = String(percRaw).trim() !== '' ? percRaw : '100';
            const mStr = String(modeRaw).toUpperCase();
-           const modeColor = getColor(mStr, '1 s'); // use a dummy short half-life to guarantee color assignment
+           const modeColor = getColor(mStr, '1 s'); 
            const modeLabel = modeRaw.replace('B-', 'β⁻').replace('B+', 'β⁺').replace('A', 'α');
            const qv = getQValue(mStr);
            
@@ -184,13 +181,13 @@ const DecayModule: React.FC = () => {
 
         const transId = `t-${currentNuclide.Nuclide}-${daughter.Nuclide}`;
         
-        let transX = currentX + 135; // Centered precisely in the new 140px gap
+        let transX = currentX + 135; 
         let transY = currentY + 15;
         let transTPos = 'left';
         let transSPos = 'right';
 
         if (isWrapEdge) {
-           transX = currentX + 10; // Centered under the 120px Isotope box
+           transX = currentX + 10; 
            transY = currentY + 110;
            transTPos = 'top';
            transSPos = 'left';
@@ -201,41 +198,12 @@ const DecayModule: React.FC = () => {
            position: { x: transX, y: transY },
            sourcePosition: transSPos,
            targetPosition: transTPos,
-           data: {
-             label: (
-               <div style={{ padding: '2px', textAlign: 'center' }}>
-                 {emissionsElements}
-               </div>
-             )
-           },
-           style: {
-             border: '1px solid #333',
-             borderRadius: '6px',
-             background: '#0a0a0a',
-             width: 'auto',
-             maxWidth: 105,
-             whiteSpace: 'normal', // Let text wrap to prevent horizontal collisions
-             padding: '4px',
-             zIndex: 15
-           }
+           data: { label: <div style={{ padding: '2px', textAlign: 'center' }}>{emissionsElements}</div> },
+           style: { border: '1px solid #333', borderRadius: '6px', background: '#0a0a0a', width: 'auto', maxWidth: 105, whiteSpace: 'normal', padding: '4px', zIndex: 15 }
         });
 
-        es.push({
-          id: `e1-${currentNuclide.Nuclide}-${transId}`,
-          source: currentNuclide.Nuclide,
-          target: transId,
-          type: 'default',
-          style: { stroke: '#E0E1DD', strokeWidth: 2 }
-        });
-
-        es.push({
-          id: `e2-${transId}-${daughter.Nuclide}`,
-          source: transId,
-          target: daughter.Nuclide,
-          type: isWrapEdge ? 'smoothstep' : 'default',
-          markerEnd: { type: MarkerType.ArrowClosed, color: '#E0E1DD' },
-          style: { stroke: '#E0E1DD', strokeWidth: 2 }
-        });
+        es.push({ id: `e1-${currentNuclide.Nuclide}-${transId}`, source: currentNuclide.Nuclide, target: transId, type: 'default', style: { stroke: '#E0E1DD', strokeWidth: 2 } });
+        es.push({ id: `e2-${transId}-${daughter.Nuclide}`, source: transId, target: daughter.Nuclide, type: isWrapEdge ? 'smoothstep' : 'default', markerEnd: { type: MarkerType.ArrowClosed, color: '#E0E1DD' }, style: { stroke: '#E0E1DD', strokeWidth: 2 } });
         
         buildPath(daughter, step + 1);
       }
@@ -247,13 +215,12 @@ const DecayModule: React.FC = () => {
 
   const handleIsotopeClick = (isotopeData: any) => {
     setSelectedIsotope(isotopeData);
+    if (isotopeData) setSearchSymbol(isotopeData.Symbol);
   };
 
-  // --- Bateman Equation Solver ---
-  const calculateYields = () => {
+  // --- Bateman Solver ---
+  const yields = useMemo(() => {
     if (chainData.length === 0) return [];
-    
-    // 1. Calculate decay constants (lambda) in s^-1
     const lambdas = chainData.map(n => {
        const T12 = parseHalfLifeSeconds(n);
        return T12 === Infinity ? 0 : Math.LN2 / T12;
@@ -261,7 +228,7 @@ const DecayModule: React.FC = () => {
 
     const t_sec = timeValue * timeUnit;
     const A0_Bq = initialActivity * 1e6;
-    const N1_0 = lambdas[0] > 0 ? A0_Bq / lambdas[0] : A0_Bq; // Base atoms pool
+    const N1_0 = lambdas[0] > 0 ? A0_Bq / lambdas[0] : A0_Bq; 
 
     const yieldsData = chainData.map((_n, i) => {
        let currentAtoms = 0;
@@ -276,86 +243,136 @@ const DecayModule: React.FC = () => {
             for (let p = 0; p <= i; p++) {
                if (p !== j) {
                  let diff = lambdas[p] - lambdas[j];
-                 if (Math.abs(diff) < 1e-35) diff = 1e-25; // Anti-zero epsilon
+                 if (Math.abs(diff) < 1e-35) diff = 1e-25; 
                  denoms.push(diff);
                }
             }
-            // Sequentially multiply fractions to avoid overflow limits!
             let C_j = 1.0;
             for (let c = 0; c < i; c++) {
                C_j *= (factors[c] / denoms[c]);
             }
             N_t += C_j * Math.exp(-lambdas[j] * t_sec);
          }
-         currentAtoms = Math.max(0, N1_0 * N_t); // Wipe out tiny negative floats
+         currentAtoms = Math.max(0, N1_0 * N_t); 
        }
        return currentAtoms;
     });
 
-    // Integrated Mass-Conservation Tracking
     const finalYields = [];
     let prevConsumed = 0;
 
     for (let i = 0; i < chainData.length; i++) {
-        let arrived = (i === 0) ? N1_0 : prevConsumed;
-        let current = yieldsData[i];
-        let consumed = Math.max(0, arrived - current);
+        const arrived = (i === 0) ? N1_0 : prevConsumed;
+        const current = yieldsData[i];
+        const consumed = Math.max(0, arrived - current);
 
-        finalYields.push({
-           arrived,
-           current,
-           consumed,
-           lambda: lambdas[i]
-        });
+        finalYields.push({ arrived, current, consumed, lambda: lambdas[i] });
         prevConsumed = consumed;
     }
     
     return finalYields;
-  };
+  }, [chainData, initialActivity, timeValue, timeUnit]);
 
-  const yields = useMemo(() => calculateYields(), [chainData, initialActivity, timeValue, timeUnit]);
-
-  // --- Search Tool Logic ---
+  // --- Search Logic ---
   const uniqueSymbols = useMemo(() => Array.from(new Set(allNuclides.map(n => n.Symbol))).sort(), []);
-  
-  // Keep dropdowns synced with chart clicks
   const [searchSymbol, setSearchSymbol] = useState<string>('U');
   const availableIsotopes = useMemo(() => allNuclides.filter(n => n.Symbol === searchSymbol).sort((a,b) => (a.Z+a.N) - (b.Z+b.N)), [searchSymbol]);
 
-  useEffect(() => {
-     if (selectedIsotope) {
-        setSearchSymbol(selectedIsotope.Symbol);
+  // --- Display spectrum data for Quadrant 2 ---
+  const spectrumPlotData = useMemo(() => {
+     if (!selectedIsotope) return [];
+     
+     const traces: any[] = [];
+     
+     // 1. Mono-energetic Gaussian Peak Simulator (Alpha, Gammas, EC)
+     const makeSpike = (energy: number, height: number, name: string, color: string) => {
+         const x: number[] = [];
+         const y: number[] = [];
+         const sigma = 0.02; // 20 keV simulated detector resolution
+         for (let e = Math.max(0, energy - 0.15); e <= energy + 0.15; e += 0.002) {
+             x.push(e);
+             y.push(height * Math.exp(-Math.pow(e - energy, 2) / (2 * sigma * sigma)));
+         }
+         return {
+             x, y,
+             type: 'scatter',
+             mode: 'lines',
+             fill: 'tozeroy',
+             name: name,
+             line: { color, width: 2 },
+             hoverinfo: 'name+x'
+         };
+     };
+
+     // 2. Continuous Beta Fermi Distribution Simulator
+     const makeBetaContinuum = (qMax: number, height: number, name: string, color: string) => {
+         const x: number[] = [];
+         const y: number[] = [];
+         for (let e = 0; e <= qMax; e += qMax / 100) {
+             x.push(e);
+             // Standard Beta emission theoretical shape approx: ~ sqrt(E) * (Q - E)^2
+             const intensity = Math.sqrt(e) * Math.pow(qMax - e, 2);
+             y.push(intensity);
+         }
+         // Normalize amplitude
+         const maxY = Math.max(...y);
+         if (maxY > 0) {
+            for(let i=0; i<y.length; i++) y[i] = (y[i] / maxY) * height;
+         }
+         return {
+             x, y,
+             type: 'scatter',
+             mode: 'lines',
+             fill: 'tozeroy',
+             name: name,
+             line: { color, width: 2 },
+             hoverinfo: 'name'
+         };
+     };
+
+     if (selectedIsotope['Q-Alpha']) {
+         const e = parseFloat(selectedIsotope['Q-Alpha']) / 1000;
+         if (e > 0) traces.push(makeSpike(e, 100, `Alpha Peak (${e.toFixed(2)} MeV)`, '#F4D03F'));
      }
+     
+     if (selectedIsotope['Q-Beta']) {
+         const e = parseFloat(selectedIsotope['Q-Beta']) / 1000;
+         // Beta endpoint energies are technically continuous spectra
+         if (e > 0) traces.push(makeBetaContinuum(e, 80, `Beta⁻ Continuum (Q=${e.toFixed(2)} MeV)`, '#5DADE2'));
+     }
+     
+     if (selectedIsotope['Q-EC']) {
+         const e = parseFloat(selectedIsotope['Q-EC']) / 1000;
+         if (e > 0) traces.push(makeSpike(e, 60, `EC / β⁺ Peak (${e.toFixed(2)} MeV)`, '#E74C3C'));
+     }
+
+     // Add Baseline
+     traces.push({
+         x: [0, 10], y: [0, 0],
+         mode: 'lines', line: { color: '#444', width: 1 },
+         hoverinfo: 'none', showlegend: false
+     });
+
+     return traces;
   }, [selectedIsotope]);
-
-  const handleSymbolChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSearchSymbol(e.target.value);
-  };
-
-  const handleIsotopeSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const nucLabel = e.target.value;
-    if (!nucLabel) return;
-    const nuc = allNuclides.find(n => n.Nuclide === nucLabel);
-    if (nuc) {
-       setSelectedIsotope(nuc);
-    }
-  };
 
   return (
     <div className="panel" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h2>Module 6 — Decay Kinematics & Yield Solver</h2>
         
-        {/* Search Searchbar */}
+        {/* Search Searchbar - Back to the Header! */}
         <div style={{ display: 'flex', gap: '15px', alignItems: 'center', background: 'rgba(255,255,255,0.05)', padding: '5px 15px', borderRadius: '8px' }}>
            <span style={{ fontSize: '0.9rem', color: '#ccc' }}>🔍 Search Isotope:</span>
-           <select className="form-control" style={{ width: '160px' }} value={searchSymbol} onChange={handleSymbolChange}>
+           <select className="form-control" style={{ width: '160px' }} value={searchSymbol} onChange={e => setSearchSymbol(e.target.value)}>
              {uniqueSymbols.map(sym => (
                <option key={sym} value={sym}>{sym} - {ELEMENT_NAMES[sym] || 'Unknown'}</option>
              ))}
            </select>
-           
-           <select className="form-control" style={{ width: '150px' }} value={selectedIsotope ? selectedIsotope.Nuclide : ''} onChange={handleIsotopeSelect}>
+           <select className="form-control" style={{ width: '150px' }} value={selectedIsotope ? selectedIsotope.Nuclide : ''} onChange={e => {
+              const nuc = allNuclides.find(n => n.Nuclide === e.target.value);
+              if (nuc) handleIsotopeClick(nuc);
+           }}>
              <option value="" disabled>Select Isotope...</option>
              {availableIsotopes.map(iso => (
                <option key={iso.Nuclide} value={iso.Nuclide}>{iso.Nuclide}</option>
@@ -364,27 +381,52 @@ const DecayModule: React.FC = () => {
         </div>
       </div>
       
-      {/* Top Half: Karlsruhe Chart */}
-      <div style={{ height: '50%', border: '1px solid var(--color-border)', borderRadius: '8px', overflow: 'hidden', marginBottom: '15px' }}>
-        <KarlsruheSvgChart 
-          onIsotopeClick={handleIsotopeClick} 
-          onClearSelection={() => setSelectedIsotope(null)}
-          activePathIds={activePathIds} 
-        />
-      </div>
-
-      {/* Bottom Half: Linear Graph & Bateman Tool split */}
-      <div style={{ flex: 1, display: 'flex', gap: '15px' }}>
+      {/* FULL VIEWPORT 4-QUADRANT GRID */}
+      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'minmax(50%, 1fr) 1fr', gridTemplateRows: '50% 50%', gap: '15px', paddingBottom: '15px' }}>
         
-        {/* React Flow Linear Graph */}
-        <div style={{ flex: 1, border: '1px solid var(--color-border)', borderRadius: '8px', position: 'relative' }}>
+        {/* Q1: Top Left - Karlsruhe Chart */}
+        <div style={{ border: '1px solid var(--color-border)', borderRadius: '8px', overflow: 'hidden', backgroundColor: '#0a0a0a' }}>
+          <KarlsruheSvgChart 
+            onIsotopeClick={handleIsotopeClick} 
+            onClearSelection={() => setSelectedIsotope(null)}
+            activePathIds={activePathIds} 
+          />
+        </div>
+
+        {/* Q2: Top Right - Energy Spectrum Plotly */}
+        <div style={{ border: '1px solid var(--color-border)', borderRadius: '8px', overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.02)', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ padding: '10px 15px', borderBottom: '1px solid #333', backgroundColor: '#0a0a0a' }}>
+             <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#E0E1DD' }}>Decay Energy Spectrum (Q-Values)</h3>
+             <p style={{ margin: 0, fontSize: '0.8rem', color: '#888' }}>Simulated Detector Output (MeV)</p>
+          </div>
+
+          <div style={{ flex: 1, position: 'relative' }}>
+            {selectedIsotope ? (
+               <Plot
+                 data={spectrumPlotData as any}
+                 layout={{
+                    autosize: true, margin: { t: 20, l: 60, r: 20, b: 40 },
+                    paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
+                    yaxis: { title: 'Relative Intensity', color: '#aaa', gridcolor: '#333', showticklabels: true, zeroline: false },
+                    xaxis: { title: 'Energy (MeV)', color: '#aaa', gridcolor: '#333', zeroline: false, rangemode: 'tozero' }, 
+                    font: { color: '#E0E1DD' }, showlegend: true, legend: { orientation: 'h', y: 1.05, x: 0 }
+                 }}
+                 useResizeHandler style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}
+               />
+            ) : (
+               <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555' }}>
+                 No isotope loaded for spectral analysis.
+               </div>
+            )}
+          </div>
+        </div>
+
+        {/* Q3: Bottom Left - React Flow Pathway */}
+        <div style={{ border: '1px solid var(--color-border)', borderRadius: '8px', position: 'relative', backgroundColor: '#0a0a0a' }}>
           {selectedIsotope ? (
              <ReactFlow 
-              nodes={nodes} 
-              edges={edges}
-              fitView
-              attributionPosition="bottom-right"
-              key={selectedIsotope.Nuclide}
+              nodes={nodes} edges={edges} fitView
+              attributionPosition="bottom-right" key={selectedIsotope.Nuclide}
             >
               <Background color="#555" gap={16} />
               <Controls />
@@ -393,19 +435,16 @@ const DecayModule: React.FC = () => {
               </div>
             </ReactFlow>
           ) : (
-            <div style={{ flex: 1, height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)' }}>
+            <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)' }}>
               Click ANY isotope box on the chart to generate its strict linear decay kinematics mapping.
             </div>
           )}
         </div>
 
-        {/* Bateman Yield Calculator */}
-        <div style={{ flex: 1, border: '1px solid var(--color-border)', borderRadius: '8px', padding: '15px', display: 'flex', flexDirection: 'column', backgroundColor: 'rgba(255,255,255,0.02)', overflowY: 'auto' }}>
-          <h3 style={{ color: 'var(--color-primary)', marginBottom: '15px' }}>Bateman Yield Calculator</h3>
-          <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginBottom: '15px' }}>
-             Input an initial source activity and elapsed time. The engine uses analytical Bateman differential calculus to project the exact sequential quantities (100% principal branch approximation).
-          </p>
-
+        {/* Q4: Bottom Right - Bateman Yield Calculator (Restoring Original Full Table Detail!) */}
+        <div style={{ border: '1px solid var(--color-border)', borderRadius: '8px', padding: '15px', display: 'flex', flexDirection: 'column', backgroundColor: 'rgba(255,255,255,0.02)', overflowY: 'auto' }}>
+          <h3 style={{ color: 'var(--color-primary)', marginBottom: '15px', marginTop: 0 }}>Bateman Yield Calculator</h3>
+          
           <div style={{ display: 'flex', gap: '15px', marginBottom: '15px' }}>
              <div className="form-group" style={{ flex: 1 }}>
                <label className="form-label">Initial Parent Activity (MBq)</label>
@@ -419,7 +458,6 @@ const DecayModule: React.FC = () => {
                          if (lambda === 0) return '~0 g';
                          const N0_Atoms = (initialActivity * 1e6) / lambda;
                          const mGrams = (N0_Atoms * (parent.Z + parent.N)) / 6.022e23;
-                         
                          if (mGrams === 0 || mGrams < 1e-15) return '~0 g';
                          if (mGrams < 1e-6) return `${(mGrams * 1e9).toFixed(4)} ng`;
                          if (mGrams < 1e-3) return `${(mGrams * 1e6).toFixed(4)} µg`;
@@ -446,15 +484,15 @@ const DecayModule: React.FC = () => {
               </div>
           </div>
 
-          <div style={{ flex: 1, overflowY: 'auto' }}>
-             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-               <thead>
+          <div style={{ flex: 1, overflowY: 'auto', border: '1px solid #444', borderRadius: '6px' }}>
+             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+               <thead style={{ position: 'sticky', top: 0, backgroundColor: '#1a1d21', zIndex: 5 }}>
                  <tr style={{ borderBottom: '1px solid #444', textAlign: 'left' }}>
-                   <th style={{ padding: '8px' }}>Gen</th>
-                   <th style={{ padding: '8px' }}>Isotope</th>
-                   <th style={{ padding: '8px' }}>$T_{'{'}1/2{'}'}$</th>
-                   <th style={{ padding: '8px', textAlign: 'right' }}>Active Yield</th>
-                   <th style={{ padding: '8px', textAlign: 'right', borderLeft: '1px solid #444' }}>Consumed Yield</th>
+                   <th style={{ padding: '10px' }}>Gen</th>
+                   <th style={{ padding: '10px' }}>Isotope</th>
+                   <th style={{ padding: '10px' }}>$T_{'{'}1/2{'}'}$</th>
+                   <th style={{ padding: '10px', textAlign: 'right' }}>Active Yield</th>
+                   <th style={{ padding: '10px', textAlign: 'right', borderLeft: '1px solid #444' }}>Consumed Yield</th>
                  </tr>
                </thead>
                <tbody>
@@ -472,7 +510,7 @@ const DecayModule: React.FC = () => {
                      const consumedStr = y.consumed < 1 ? '~0 Atoms' : `${y.consumed.toExponential(3)} Atoms`;
 
                      const N_A = 6.022e23;
-                     const massA = node.Z + node.N; // Atomic mass approx
+                     const massA = node.Z + node.N;
                      
                      const formatMass = (mGrams: number) => {
                          if (mGrams === 0 || mGrams < 1e-15) return '~0 g';
@@ -488,14 +526,14 @@ const DecayModule: React.FC = () => {
 
                      return (
                        <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                         <td style={{ padding: '8px', color: '#888' }}>{idx}</td>
-                         <td style={{ padding: '8px', fontWeight: 'bold' }}>{node.Nuclide}</td>
-                         <td style={{ padding: '8px' }}>{node['Half-Life'] === 'STABLE' ? '∞' : node['Half-Life']}</td>
-                         <td style={{ padding: '8px', textAlign: 'right', color: 'var(--color-success)' }}>
+                         <td style={{ padding: '10px', color: '#888' }}>{idx}</td>
+                         <td style={{ padding: '10px', fontWeight: 'bold' }}>{node.Nuclide}</td>
+                         <td style={{ padding: '10px' }}>{node['Half-Life'] === 'STABLE' ? '∞' : node['Half-Life']}</td>
+                         <td style={{ padding: '10px', textAlign: 'right', color: 'var(--color-success)' }}>
                             <div>{activeStr}</div>
                             <div style={{ fontSize: '0.75rem', color: '#888' }}>{formatMass(activeMassGrams)}</div>
                          </td>
-                         <td style={{ padding: '8px', textAlign: 'right', color: '#e67e22', borderLeft: '1px solid #444' }}>
+                         <td style={{ padding: '10px', textAlign: 'right', color: '#e67e22', borderLeft: '1px solid #444' }}>
                             <div>{consumedStr}</div>
                             <div style={{ fontSize: '0.75rem', color: '#888' }}>{formatMass(consumedMassGrams)}</div>
                          </td>

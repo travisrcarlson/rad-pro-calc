@@ -174,8 +174,7 @@ const NuclideTableModule: React.FC = () => {
                         <tr>
                           <th>Isotope</th>
                           <th>Half-Life</th>
-                          <th>Primary Decay Mode</th>
-                          <th>Probability %</th>
+                          <th>Decay Emission Profiles</th>
                           <th>Q-Value Energy Profile</th>
                           <th style={{ color: '#f1c40f' }}>Best Detection Method</th>
                         </tr>
@@ -183,18 +182,35 @@ const NuclideTableModule: React.FC = () => {
                       <tbody>
                         {isotopes.map((n, idx) => {
                           const modes = n['Decay Mode'] || 'Stable';
+                          
+                          // Consolidate all decay paths available in the IAEA trace
+                          const decayPaths = [];
+                          if (n['Decay Mode']) decayPaths.push({ mode: n['Decay Mode'], perc: n['Decay %'] });
+                          if (n['Decay 2']) decayPaths.push({ mode: n['Decay 2'], perc: n['Decay 2 %'] });
+                          if (n['Decay 3']) decayPaths.push({ mode: n['Decay 3'], perc: n['Decay 3 %'] });
+
                           return (
                             <tr key={idx}>
                               <td style={{ fontWeight: 'bold', color: '#E0E1DD' }}>{n.Nuclide}</td>
                               <td>{n['Half-Life'] || 'Stable'}</td>
                               <td>
-                                {modes.split(',').map((mode: string, i: number) => (
-                                  <span key={i} className="decay-badge" style={{ backgroundColor: getDecayBadgeColor(mode) }}>
-                                    {mode.trim()}
-                                  </span>
-                                ))}
+                                {decayPaths.length > 0 ? (
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                    {decayPaths.map((dp, i) => (
+                                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <span className="decay-badge" style={{ backgroundColor: getDecayBadgeColor(dp.mode), minWidth: '40px', textAlign: 'center' }}>
+                                          {dp.mode.trim()}
+                                        </span>
+                                        <span style={{ fontSize: '0.85rem', color: '#ccc' }}>
+                                          {dp.perc ? `${dp.perc}%` : (dp.mode ? '100%' : '')}
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <span style={{ color: '#888' }}>Stable</span>
+                                )}
                               </td>
-                              <td style={{ color: '#aaa' }}>{n['Decay %'] ? `${n['Decay %']} %` : '-'}</td>
                               <td style={{ fontFamily: 'monospace', color: '#999' }}>{formatQValue(n)}</td>
                               <td style={{ color: '#27ae60', fontFamily: 'monospace', fontWeight: 600 }}>{n.Z > 0 && modes !== 'Stable' ? getDetectionMethod(modes) : '-'}</td>
                             </tr>
