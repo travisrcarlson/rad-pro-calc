@@ -15,6 +15,7 @@ import Spatial3DModule from './modules/Module8/Spatial3DModule';
 import WorkerDosimetryModule from './modules/Module9/WorkerDosimetryModule';
 import PulsedXRayModule from './modules/Module10/PulsedXRayModule';
 import EquipmentLibraryModule from './modules/Module11/EquipmentLibraryModule';
+import ReverseResponderModule from './modules/Module12/ReverseResponderModule';
 import ErrorBoundary from './ErrorBoundary';
 
 const Sidebar = () => {
@@ -58,6 +59,9 @@ const Sidebar = () => {
         <NavLink to="/equipment" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
           11. Equipment Catalog
         </NavLink>
+        <NavLink to="/responder" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+          12. Reverse Responder
+        </NavLink>
       </div>
     </div>
   );
@@ -83,6 +87,7 @@ const App: React.FC = () => {
               <Route path="/worker" element={<WorkerDosimetryModule />} />
               <Route path="/xray" element={<PulsedXRayModule />} />
               <Route path="/equipment" element={<EquipmentLibraryModule />} />
+              <Route path="/responder" element={<ReverseResponderModule />} />
             </Routes>
           </ErrorBoundary>
         </main>

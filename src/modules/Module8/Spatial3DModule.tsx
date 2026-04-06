@@ -26,8 +26,20 @@ interface ShieldBlock {
   name: string;
   x: number; y: number; z: number; // Center
   w: number; l: number; h: number; // Dimensions
+  material: string;
   tvl_cm: number; // Tenth Value Layer equivalent Shielding
 }
+
+const SHIELDING_MATERIALS: Record<string, { name: string, tvl_cm: number }> = {
+  'LEAD': { name: 'Lead', tvl_cm: 3.8 },
+  'TUNGSTEN': { name: 'Tungsten', tvl_cm: 1.3 },
+  'IRON': { name: 'Iron / Steel', tvl_cm: 4.5 },
+  'CONCRETE': { name: 'Concrete', tvl_cm: 14.7 },
+  'BRICK': { name: 'Brick', tvl_cm: 18.0 },
+  'ALUMINUM': { name: 'Aluminum', tvl_cm: 16.5 },
+  'WATER': { name: 'Water', tvl_cm: 35.8 },
+  'CUSTOM': { name: 'Custom Material', tvl_cm: 10.0 }
+};
 
 const Spatial3DModule: React.FC = () => {
   // Room dimensions (meters)
@@ -50,7 +62,7 @@ const Spatial3DModule: React.FC = () => {
   ]);
 
   const [shields, setShields] = useState<ShieldBlock[]>([
-    { id: 1, name: 'Concrete Wall', x: 5, y: 6.5, z: 1.5, w: 4, l: 0.5, h: 3, tvl_cm: 14.7 }
+    { id: 1, name: 'Concrete Wall', x: 5, y: 6.5, z: 1.5, w: 4, l: 0.5, h: 3, material: 'CONCRETE', tvl_cm: 14.7 }
   ]);
 
   // Fast math intersection for Ray-AABB volumetric slices
@@ -328,7 +340,7 @@ const Spatial3DModule: React.FC = () => {
         <div style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.02)', padding: '15px', borderRadius: '8px', border: '1px solid var(--color-border)', overflowY: 'auto' }}>
            <h3 style={{ marginBottom: '10px', color: '#3498db' }}>4. Structure Shields</h3>
            <button style={{ marginBottom: '10px', padding: '5px 10px', background: '#2980b9', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-             onClick={() => setShields([...shields, { id: Date.now(), name: 'Wall', x: 5, y: 5, z: 2.5, w: 2, l: 0.5, h: 5, tvl_cm: 14.7 }])}>
+             onClick={() => setShields([...shields, { id: Date.now(), name: 'Wall', x: 5, y: 5, z: 2.5, w: 2, l: 0.5, h: 5, material: 'CONCRETE', tvl_cm: 14.7 }])}>
              ➕ Add Shield Block
            </button>
            {shields.map((sh, idx) => (
@@ -347,8 +359,26 @@ const Spatial3DModule: React.FC = () => {
                  L<input type="number" step="0.1" className="form-control" value={sh.l} onChange={e => { const a=[...shields]; a[idx].l=Number(e.target.value); setShields(a); }} style={{ width: '50px' }} />
                  H<input type="number" step="0.1" className="form-control" value={sh.h} onChange={e => { const a=[...shields]; a[idx].h=Number(e.target.value); setShields(a); }} style={{ width: '50px' }} />
                </div>
-               <div style={{ display: 'flex', gap: '5px', fontSize: '0.8rem', color: '#aaa', alignItems: 'center' }}>
-                 Tenth Value Layer (cm):<input type="number" className="form-control" value={sh.tvl_cm} onChange={e => { const a=[...shields]; a[idx].tvl_cm=Number(e.target.value); setShields(a); }} style={{ width: '60px' }} title="Concrete ~14.7cm, Lead ~3.8cm" />
+               <div style={{ display: 'flex', gap: '5px', fontSize: '0.8rem', color: '#aaa', alignItems: 'center', flexWrap: 'wrap' }}>
+                 <select 
+                   className="form-control" 
+                   value={sh.material || 'CUSTOM'}
+                   onChange={e => { 
+                     const matKey = e.target.value;
+                     const a = [...shields]; 
+                     a[idx].material = matKey;
+                     if (SHIELDING_MATERIALS[matKey]) {
+                        a[idx].tvl_cm = SHIELDING_MATERIALS[matKey].tvl_cm;
+                     }
+                     setShields(a); 
+                   }}
+                   style={{ flex: 1, minWidth: '100px' }}
+                 >
+                   {Object.keys(SHIELDING_MATERIALS).map(key => (
+                     <option key={key} value={key}>{SHIELDING_MATERIALS[key].name}</option>
+                   ))}
+                 </select>
+                 TVL (cm):<input type="number" className="form-control" value={sh.tvl_cm} onChange={e => { const a=[...shields]; a[idx].tvl_cm=Number(e.target.value); a[idx].material='CUSTOM'; setShields(a); }} style={{ width: '60px' }} />
                </div>
              </div>
            ))}

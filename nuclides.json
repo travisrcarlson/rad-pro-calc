@@ -275,50 +275,8 @@
     "E\u03b3 (MeV)": 0.0595,
     "\u0393 (R\u00b7cm\u00b2/mCi\u00b7h)": 0.14,
     "Sp. Activity (Ci/g)": 3.43,
-    "ALI Inhal. (μCi)": 0.006,
-    "ALI Ingest. (μCi)": 0.04,
-    "DAC (μCi/mL)": 312.0
-  },
-  {
-    "Nuclide": "Californium-252",
-    "Symbol": "Cf-252",
-    "Half-Life": "2.645 y",
-    "Half-Life (s)": 83450000.0,
-    "λ (s⁻¹)": 8.30e-09,
-    "Decay Mode": "α, SF",
-    "Eγ (MeV)": "Multiple",
-    "Γ (R·cm²/mCi·h)": 1.4,
-    "Sp. Activity (Ci/g)": 536,
-    "ALI Inhal. (μCi)": 0.02,
-    "ALI Ingest. (μCi)": 5.0,
-    "DAC (μCi/mL)": 0.00001
-  },
-  {
-    "Nuclide": "Uranium-235",
-    "Symbol": "U-235",
-    "Half-Life": "7.04e8 y",
-    "Half-Life (s)": 2.22e16,
-    "λ (s⁻¹)": 3.12e-17,
-    "Decay Mode": "α",
-    "Eγ (MeV)": "0.186",
-    "Γ (R·cm²/mCi·h)": 0.27,
-    "Sp. Activity (Ci/g)": 0.00000216,
-    "ALI Inhal. (μCi)": 0.04,
-    "ALI Ingest. (μCi)": 0.2,
-    "DAC (μCi/mL)": 0.00001
-  },
-  {
-    "Nuclide": "Plutonium-241",
-    "Symbol": "Pu-241",
-    "Half-Life": "14.329 y",
-    "Half-Life (s)": 452100000.0,
-    "λ (s⁻¹)": 1.53e-09,
-    "Decay Mode": "β⁻",
-    "Eγ (MeV)": "—",
-    "Γ (R·cm²/mCi·h)": "—",
-    "Sp. Activity (Ci/g)": 103,
-    "ALI Inhal. (μCi)": 0.3,
-    "ALI Ingest. (μCi)": 40,
-    "DAC (μCi/mL)": 0.00001
+    "ALI Inhal. (\u03bcCi)": 0.006,
+    "ALI Ingest. (\u03bcCi)": 0.04,
+    "DAC (\u03bcCi/mL)": 312.0
   }
 ]

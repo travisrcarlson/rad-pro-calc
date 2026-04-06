@@ -56,6 +56,9 @@ const DecayModule: React.FC = () => {
   const [timeUnit, setTimeUnit] = useState<number>(31557600); // default years
   const [sliderPct, setSliderPct] = useState<number>(0); // 0 to 100 scale
 
+  const [startDate, setStartDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
+  const [endDate, setEndDate] = useState<string>(() => new Date(Date.now() + 5*31557600*1000).toISOString().split('T')[0]);
+
   const getColor = (mode: string, hl: string) => {
     const m = String(mode).toUpperCase();
     if (hl === 'STABLE' || m === 'STABLE') return '#2C3E50';
@@ -492,50 +495,11 @@ const DecayModule: React.FC = () => {
 
         {/* Q4: Bottom Right - Bateman Yield Calculator (Restoring Original Full Table Detail!) */}
         <div style={{ border: '1px solid var(--color-border)', borderRadius: '8px', padding: '15px', display: 'flex', flexDirection: 'column', backgroundColor: 'rgba(255,255,255,0.02)', minHeight: 0, overflow: 'hidden' }}>
-          <h3 style={{ color: 'var(--color-primary)', marginBottom: '15px', marginTop: 0 }}>Bateman Yield Calculator</h3>
+          <h3 style={{ color: 'var(--color-primary)', marginBottom: '10px', marginTop: 0 }}>Bateman Yield Calculator</h3>
           
-          <div style={{ display: 'flex', gap: '15px', marginBottom: '15px' }}>
-             <div className="form-group" style={{ flex: 1 }}>
-               <label className="form-label">Initial Parent Activity (MBq)</label>
-               <input type="number" className="form-control" value={initialActivity} onChange={e => setInitialActivity(Number(e.target.value))} />
-               {chainData.length > 0 && (
-                  <div style={{ marginTop: '5px', fontSize: '0.8rem', color: 'var(--color-success)' }}>
-                     Initial Mass: {(() => {
-                         const parent = chainData[0];
-                         const T12 = parseHalfLifeSeconds(parent);
-                         const lambda = T12 === Infinity ? 0 : Math.LN2 / T12;
-                         if (lambda === 0) return '~0 g';
-                         const N0_Atoms = (initialActivity * 1e6) / lambda;
-                         const mGrams = (N0_Atoms * (parent.Z + parent.N)) / 6.022e23;
-                         if (mGrams === 0 || mGrams < 1e-15) return '~0 g';
-                         if (mGrams < 1e-6) return `${(mGrams * 1e9).toFixed(4)} ng`;
-                         if (mGrams < 1e-3) return `${(mGrams * 1e6).toFixed(4)} µg`;
-                         if (mGrams < 1) return `${(mGrams * 1e3).toFixed(4)} mg`;
-                         if (mGrams < 1e3) return `${mGrams.toFixed(4)} g`;
-                         return `${(mGrams / 1e3).toFixed(4)} kg`;
-                     })()}
-                  </div>
-               )}
-             </div>
-             
-             <div className="form-group" style={{ flex: 1 }}>
-               <label className="form-label">Max Analysis Window ($t_{'{'}max{'}'}$)</label>
-               <input type="number" className="form-control" value={timeValue} onChange={e => setTimeValue(Number(e.target.value))} />
-             </div>
-             
-             <div className="form-group" style={{ flex: 1 }}>
-               <label className="form-label">Time Unit</label>
-               <select className="form-control" value={timeUnit} onChange={e => setTimeUnit(Number(e.target.value))}>
-                 <option value={1}>Seconds</option>
-                 <option value={86400}>Days</option>
-                 <option value={31557600}>Years</option>
-               </select>
-              </div>
-          </div>
-
-          {/* New 4D Timeline Scrubber */}
-          <div style={{ padding: '15px', backgroundColor: 'rgba(52, 152, 219, 0.05)', border: '1px solid rgba(52, 152, 219, 0.4)', borderRadius: '6px', marginBottom: '15px' }}>
-             <div style={{ display: 'flex', justifyContent: 'space-between', color: '#3498db', fontWeight: 'bold', marginBottom: '10px' }}>
+          {/* New 4D Timeline Scrubber (Moved Up) */}
+          <div style={{ padding: '10px 15px', backgroundColor: 'rgba(52, 152, 219, 0.05)', border: '1px solid rgba(52, 152, 219, 0.4)', borderRadius: '6px', marginBottom: '15px' }}>
+             <div style={{ display: 'flex', justifyContent: 'space-between', color: '#3498db', fontWeight: 'bold', marginBottom: '5px' }}>
                 <span>Timeline Scrubber ($t_{'{'}sim{'}'}$)</span>
                 <span style={{ fontSize: '1.1rem', textShadow: '0 0 5px rgba(52, 152, 219, 0.5)' }}>{(() => {
                    const t = timeValue * (sliderPct / 100);
@@ -543,73 +507,149 @@ const DecayModule: React.FC = () => {
                 })()}</span>
              </div>
              <input type="range" className="form-control" style={{ width: '100%', cursor: 'ew-resize' }} min="0" max="100" step="0.1" value={sliderPct} onChange={e => setSliderPct(Number(e.target.value))} />
-             <div style={{ display: 'flex', justifyContent: 'space-between', color: '#888', fontSize: '0.75rem', marginTop: '5px' }}>
-                <span>$t=0$</span>
-                <span>$t={'{'}t_{'{'}max{'}'}{'}'}$</span>
-             </div>
           </div>
 
-          <div style={{ flex: 1, overflowY: 'auto', border: '1px solid #444', borderRadius: '6px' }}>
-             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
-               <thead style={{ position: 'sticky', top: 0, backgroundColor: '#1a1d21', zIndex: 5 }}>
-                 <tr style={{ borderBottom: '1px solid #444', textAlign: 'left' }}>
-                   <th style={{ padding: '10px' }}>Gen</th>
-                   <th style={{ padding: '10px' }}>Isotope</th>
-                   <th style={{ padding: '10px' }}>$T_{'{'}1/2{'}'}$</th>
-                   <th style={{ padding: '10px', textAlign: 'right' }}>Active Yield</th>
-                   <th style={{ padding: '10px', textAlign: 'right', borderLeft: '1px solid #444' }}>Consumed Yield</th>
-                 </tr>
-               </thead>
-               <tbody>
-                  {chainData.map((node, idx) => {
-                     const y = yields[idx];
-                     if (!y) return null;
-                     
-                     const isStable = y.lambda === 0;
-                     const activityMBq = (y.current * y.lambda) / 1e6;
-                     
-                     const activeStr = isStable 
-                        ? (y.current < 1 ? '~0 Atoms' : `${y.current.toExponential(3)} Atoms`) 
-                        : (activityMBq < 1e-6 && activityMBq > 0 ? `${y.current.toExponential(3)} Atoms` : `${activityMBq.toFixed(6)} MBq`);
-                     
-                     const consumedStr = y.consumed < 1 ? '~0 Atoms' : `${y.consumed.toExponential(3)} Atoms`;
+          <div style={{ display: 'flex', flex: 1, gap: '15px', minHeight: 0 }}>
+             
+             {/* Left Side: Entry Data */}
+             <div style={{ width: '250px', display: 'flex', flexDirection: 'column', gap: '10px', overflowY: 'auto', paddingRight: '5px' }}>
+                 <div className="form-group" style={{ backgroundColor: 'rgba(255,255,255,0.02)', padding: '10px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                   <label className="form-label" style={{ color: '#fff' }}>Initial Parent Activity</label>
+                   <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                     <input type="number" className="form-control" value={initialActivity} onChange={e => setInitialActivity(Number(e.target.value))} />
+                     <span style={{ fontSize: '0.8rem', color: '#888' }}>MBq</span>
+                   </div>
+                   {chainData.length > 0 && (
+                      <div style={{ marginTop: '5px', fontSize: '0.75rem', color: 'var(--color-success)' }}>
+                         Mass: {(() => {
+                             const parent = chainData[0];
+                             const T12 = parseHalfLifeSeconds(parent);
+                             const lambda = T12 === Infinity ? 0 : Math.LN2 / T12;
+                             if (lambda === 0) return '~0 g';
+                             const N0_Atoms = (initialActivity * 1e6) / lambda;
+                             const mGrams = (N0_Atoms * (parent.Z + parent.N)) / 6.022e23;
+                             if (mGrams === 0 || mGrams < 1e-15) return '~0 g';
+                             if (mGrams < 1e-6) return `${(mGrams * 1e9).toFixed(4)} ng`;
+                             if (mGrams < 1e-3) return `${(mGrams * 1e6).toFixed(4)} µg`;
+                             if (mGrams < 1) return `${(mGrams * 1e3).toFixed(4)} mg`;
+                             if (mGrams < 1e3) return `${mGrams.toFixed(4)} g`;
+                             return `${(mGrams / 1e3).toFixed(4)} kg`;
+                         })()}
+                      </div>
+                   )}
+                 </div>
 
-                     const N_A = 6.022e23;
-                     const massA = node.Z + node.N;
-                     
-                     const formatMass = (mGrams: number) => {
-                         if (mGrams === 0 || mGrams < 1e-15) return '~0 g';
-                         if (mGrams < 1e-6) return `${(mGrams * 1e9).toFixed(4)} ng`;
-                         if (mGrams < 1e-3) return `${(mGrams * 1e6).toFixed(4)} µg`;
-                         if (mGrams < 1) return `${(mGrams * 1e3).toFixed(4)} mg`;
-                         if (mGrams < 1e3) return `${mGrams.toFixed(4)} g`;
-                         return `${(mGrams / 1e3).toFixed(4)} kg`;
-                     };
+                 <div className="form-group" style={{ backgroundColor: 'rgba(255,255,255,0.02)', padding: '10px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                     <label className="form-label" style={{ color: '#66AAFF', fontSize: '0.8rem' }}>Start Date</label>
+                     <input type="date" className="form-control" value={startDate} onChange={e => {
+                         setStartDate(e.target.value);
+                         const d1 = new Date(e.target.value);
+                         const d2 = new Date(endDate);
+                         if (!isNaN(d1.getTime()) && !isNaN(d2.getTime())) {
+                             const diff = (d2.getTime() - d1.getTime()) / 1000;
+                             if (diff > 0) { setTimeUnit(86400); setTimeValue(parseFloat((diff / 86400).toFixed(2))); }
+                         }
+                     }} />
+                 </div>
 
-                     const activeMassGrams = (y.current * massA) / N_A;
-                     const consumedMassGrams = (y.consumed * massA) / N_A;
+                 <div className="form-group" style={{ backgroundColor: 'rgba(255,255,255,0.02)', padding: '10px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                     <label className="form-label" style={{ color: '#66AAFF', fontSize: '0.8rem' }}>End Date</label>
+                     <input type="date" className="form-control" value={endDate} onChange={e => {
+                         setEndDate(e.target.value);
+                         const d1 = new Date(startDate);
+                         const d2 = new Date(e.target.value);
+                         if (!isNaN(d1.getTime()) && !isNaN(d2.getTime())) {
+                             const diff = (d2.getTime() - d1.getTime()) / 1000;
+                             if (diff > 0) { setTimeUnit(86400); setTimeValue(parseFloat((diff / 86400).toFixed(2))); }
+                         }
+                     }} />
+                 </div>
 
-                     return (
-                       <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                         <td style={{ padding: '10px', color: '#888' }}>{idx}</td>
-                         <td style={{ padding: '10px', fontWeight: 'bold' }}>{node.Nuclide}</td>
-                         <td style={{ padding: '10px' }}>{node['Half-Life'] === 'STABLE' ? '∞' : node['Half-Life']}</td>
-                         <td style={{ padding: '10px', textAlign: 'right', color: 'var(--color-success)' }}>
-                            <div>{activeStr}</div>
-                            <div style={{ fontSize: '0.75rem', color: '#888' }}>{formatMass(activeMassGrams)}</div>
-                         </td>
-                         <td style={{ padding: '10px', textAlign: 'right', color: '#e67e22', borderLeft: '1px solid #444' }}>
-                            <div>{consumedStr}</div>
-                            <div style={{ fontSize: '0.75rem', color: '#888' }}>{formatMass(consumedMassGrams)}</div>
-                         </td>
-                       </tr>
-                     );
-                  })}
-               </tbody>
-             </table>
-             {chainData.length === 0 && (
-               <div style={{ textAlign: 'center', marginTop: '20px', color: '#666' }}>Select an isotope to begin tracking yields.</div>
-             )}
+                 <div className="form-group" style={{ backgroundColor: 'rgba(255,255,255,0.02)', padding: '10px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                   <label className="form-label" style={{ fontSize: '0.8rem' }}>Max Analysis Time</label>
+                   <div style={{ display: 'flex', gap: '5px' }}>
+                     <input type="number" className="form-control" style={{ flex: 1 }} value={timeValue} onChange={e => {
+                         const v = Number(e.target.value); setTimeValue(v);
+                         const d1 = new Date(startDate);
+                         if (!isNaN(d1.getTime())) setEndDate(new Date(d1.getTime() + (v * timeUnit * 1000)).toISOString().split('T')[0]);
+                     }} />
+                     <select className="form-control" style={{ width: '80px' }} value={timeUnit} onChange={e => {
+                         const u = Number(e.target.value); setTimeUnit(u);
+                         const d1 = new Date(startDate);
+                         if (!isNaN(d1.getTime())) setEndDate(new Date(d1.getTime() + (timeValue * u * 1000)).toISOString().split('T')[0]);
+                     }}>
+                       <option value={1}>Secs</option>
+                       <option value={86400}>Days</option>
+                       <option value={31557600}>Yrs</option>
+                     </select>
+                   </div>
+                 </div>
+             </div>
+
+             {/* Right Side: Generated Isotopes Table */}
+             <div style={{ flex: 1, overflowY: 'auto', border: '1px solid #444', borderRadius: '6px' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.80rem' }}>
+                  <thead style={{ position: 'sticky', top: 0, backgroundColor: '#1a1d21', zIndex: 5 }}>
+                    <tr style={{ borderBottom: '1px solid #444', textAlign: 'left' }}>
+                      <th style={{ padding: '8px' }}>Gen</th>
+                      <th style={{ padding: '8px' }}>Isotope</th>
+                      <th style={{ padding: '8px' }}>$T_{'{'}1/2{'}'}$</th>
+                      <th style={{ padding: '8px', textAlign: 'right' }}>Active Yield</th>
+                      <th style={{ padding: '8px', textAlign: 'right', borderLeft: '1px solid #444' }}>Consumed Yield</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                     {chainData.map((node, idx) => {
+                        const y = yields[idx];
+                        if (!y) return null;
+                        
+                        const isStable = y.lambda === 0;
+                        const activityMBq = (y.current * y.lambda) / 1e6;
+                        
+                        const activeStr = isStable 
+                           ? (y.current < 1 ? '~0 Atoms' : `${y.current.toExponential(3)} Atoms`) 
+                           : (activityMBq < 1e-6 && activityMBq > 0 ? `${y.current.toExponential(3)} Atoms` : `${activityMBq.toFixed(6)} MBq`);
+                        
+                        const consumedStr = y.consumed < 1 ? '~0 Atoms' : `${y.consumed.toExponential(3)} Atoms`;
+
+                        const N_A = 6.022e23;
+                        const massA = node.Z + node.N;
+                        
+                        const formatMass = (mGrams: number) => {
+                            if (mGrams === 0 || mGrams < 1e-15) return '~0 g';
+                            if (mGrams < 1e-6) return `${(mGrams * 1e9).toFixed(4)} ng`;
+                            if (mGrams < 1e-3) return `${(mGrams * 1e6).toFixed(4)} µg`;
+                            if (mGrams < 1) return `${(mGrams * 1e3).toFixed(4)} mg`;
+                            if (mGrams < 1e3) return `${mGrams.toFixed(4)} g`;
+                            return `${(mGrams / 1e3).toFixed(4)} kg`;
+                        };
+
+                        const activeMassGrams = (y.current * massA) / N_A;
+                        const consumedMassGrams = (y.consumed * massA) / N_A;
+
+                        return (
+                          <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                            <td style={{ padding: '8px', color: '#888' }}>{idx}</td>
+                            <td style={{ padding: '8px', fontWeight: 'bold' }}>{node.Nuclide}</td>
+                            <td style={{ padding: '8px' }}>{node['Half-Life'] === 'STABLE' ? '∞' : node['Half-Life']}</td>
+                            <td style={{ padding: '8px', textAlign: 'right', color: 'var(--color-success)' }}>
+                               <div>{activeStr}</div>
+                               <div style={{ fontSize: '0.70rem', color: '#888' }}>{formatMass(activeMassGrams)}</div>
+                            </td>
+                            <td style={{ padding: '8px', textAlign: 'right', color: '#e67e22', borderLeft: '1px solid #444' }}>
+                               <div>{consumedStr}</div>
+                               <div style={{ fontSize: '0.70rem', color: '#888' }}>{formatMass(consumedMassGrams)}</div>
+                            </td>
+                          </tr>
+                        );
+                     })}
+                  </tbody>
+                </table>
+                {chainData.length === 0 && (
+                  <div style={{ textAlign: 'center', marginTop: '30px', color: '#666' }}>Select an isotope to begin tracking yields.</div>
+                )}
+             </div>
+
           </div>
         </div>
 

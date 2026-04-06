@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { BlockMath } from 'react-katex';
-// No Lucide
+import PlotComponent from 'react-plotly.js';
+const Plot = (PlotComponent as any).default || PlotComponent;
 import nuclidesData from '../../data/nuclides.json'; // Contains generic Gamma constants
 
 const MATERIALS = [
@@ -30,18 +31,36 @@ const A_BOUNDS: Record<string, { A1: number, A2: number }> = {
 };
 
 const TransportModule: React.FC = () => {
-  const [nuclideSym, setNuclideSym] = useState('Cs-137');
+  const [selectedElement, setSelectedElement] = useState('Cs');
+  const [selectedMass, setSelectedMass] = useState('137');
+  const nuclideSym = `${selectedElement}-${selectedMass}`;
   const [activity, setActivity] = useState(1);
   const [activityUnit, setActivityUnit] = useState(1); // 1 = TBq, 1e-3 = GBq, 1e-6 = MBq, 3.7e-2 = Ci
   const [form, setForm] = useState<'special'|'normal'>('normal');
 
   const [innerRadius, setInnerRadius] = useState<number>(5); // cm
+  const [cavityWidth, setCavityWidth] = useState<number>(10); // cm, assumed cubic cavity for mass optimization
+
   const [layers, setLayers] = useState<{ id: number, matIdx: number, thickness: number }[]>([
     { id: 1, matIdx: 0, thickness: 1 } // 1 cm of Lead
   ]);
 
+  // Derived unique elements
+  const elementsMap = React.useMemo(() => {
+    const map: Record<string, {name: string, masses: string[]}> = {};
+    nuclidesData.forEach(n => {
+       const [sym, mass] = n.Symbol.split('-');
+       const elName = n.Nuclide.split('-')[0];
+       if (!map[sym]) map[sym] = { name: elName, masses: [] };
+       if (!map[sym].masses.includes(mass)) {
+           map[sym].masses.push(mass);
+       }
+    });
+    return map;
+  }, []);
+
   // Derived properties
-  const nucData = nuclidesData.find(n => n.Symbol === nuclideSym);
+  const nucData = nuclidesData.find(n => n.Symbol === nuclideSym) || nuclidesData[0];
   const actTBq = activity * activityUnit;
   const actMBq = actTBq * 1000000;
   
@@ -96,24 +115,132 @@ const TransportModule: React.FC = () => {
     }
   }
 
-  // Label Category
-  let labelCategory = 'I-WHITE';
-  let labelColor = '#ffffff';
-  let labelTextColor = '#000000';
-  
-  if (doseSurf <= 5 && TI === 0) {
-    labelCategory = 'I-WHITE';
-  } else if ((doseSurf > 5 && doseSurf <= 500) || (TI > 0 && TI <= 1)) {
-    labelCategory = 'II-YELLOW';
-    labelColor = '#FFF176';
+  // Transportation Category Matrix
+  let activeCatId = 'I-WHITE';
+  if (doseSurf > 10000) {
+    activeCatId = 'OVER-LIMIT';
+  } else if ((doseSurf > 2000) || (TI > 10)) {
+    activeCatId = 'EXCLUSIVE';
   } else if ((doseSurf > 500 && doseSurf <= 2000) || (TI > 1 && TI <= 10)) {
-    labelCategory = 'III-YELLOW';
-    labelColor = '#FBC02D';
-  } else {
-    labelCategory = 'EXCLUSIVE USE (Overrides Cat III)';
-    labelColor = '#e74c3c';
-    labelTextColor = '#fff';
+    activeCatId = 'III-YELLOW';
+  } else if ((doseSurf > 5 && doseSurf <= 500) || (TI > 0 && TI <= 1)) {
+    activeCatId = 'II-YELLOW';
   }
+
+  const transportCategories = [
+    { id: 'I-WHITE', name: 'WHITE I', bg: '#fff', text: '#000', reqs: ['No external placards', 'General commercial logistics', 'Permitted on Passenger Aircraft'] },
+    { id: 'II-YELLOW', name: 'YELLOW II', bg: '#FFF176', text: '#000', reqs: ['Vehicle must carry placards', 'Total TI per vehicle ≤ 50', 'Maintains basic segregation'] },
+    { id: 'III-YELLOW', name: 'YELLOW III', bg: '#FBC02D', text: '#000', reqs: ['Banned from Passenger Aircraft', 'Strict highway segregation enforced', 'Carrier pre-authorization required'] },
+    { id: 'EXCLUSIVE', name: 'EXCLUSIVE', bg: '#e74c3c', text: '#fff', reqs: ['Requires dedicated privately-chartered truck', 'Package must be structurally braced', 'Driver requires written radiation logs'] },
+    { id: 'OVER-LIMIT', name: 'OVER LIMIT', bg: '#000', text: '#e74c3c', border: '#e74c3c', reqs: ['ILLEGAL FOR HIGHWAY TRANSIT', 'Requires massive Type B(U) / C shielding upgrades', 'Extreme external operator risk'] }
+  ];
+
+  const activeCategoryData = transportCategories.find(c => c.id === activeCatId) || transportCategories[0];
+
+  // --- Shielding Optimization Engine ---
+  
+  const optimizationMaterials = [
+    MATERIALS[3], // Steel
+    MATERIALS[4], // Concrete
+    MATERIALS[0], // Lead
+    MATERIALS[1], // Tungsten
+    MATERIALS[2]  // DU
+  ].sort((a,b) => a.tvl - b.tvl); // Sort by most efficient TVL
+  
+  const stackTargets = [
+    { name: 'Exclusive Use', maxSurf: 10000, max1m: Infinity, color: '#e74c3c' },
+    { name: 'Yellow-III', maxSurf: 2000, max1m: 100, color: '#d35400' },
+    { name: 'Yellow-II', maxSurf: 500, max1m: 10, color: '#f39c12' },
+    { name: 'White-I', maxSurf: 5, max1m: 0.5, color: '#ecf0f1' }
+  ];
+
+  const plotDataList: any[] = stackTargets.map((t, tIdx) => {
+      const xVals = optimizationMaterials.map(m => {
+          let req = 0;
+          while (req < 200) {
+              const currentSurfDist = innerRadius + req;
+              const current1mDist = currentSurfDist + 100;
+              const attF = Math.pow(10, req / m.tvl);
+              
+              const dSurf = ((gamma_uSv * actMBq) / Math.max(1, currentSurfDist * currentSurfDist)) / attF;
+              const d1m = ((gamma_uSv * actMBq) / Math.max(1, current1mDist * current1mDist)) / attF;
+              
+              if (dSurf <= t.maxSurf && d1m <= t.max1m) break;
+              req += 0.1;
+          }
+          
+          let prevReq = 0;
+          if (tIdx > 0) {
+              const prevTarget = stackTargets[tIdx - 1];
+              while (prevReq < 200) {
+                  const pSurfDist = innerRadius + prevReq;
+                  const p1mDist = pSurfDist + 100;
+                  const pAttF = Math.pow(10, prevReq / m.tvl);
+                  const pSurf = ((gamma_uSv * actMBq) / Math.max(1, pSurfDist * pSurfDist)) / pAttF;
+                  const p1m = ((gamma_uSv * actMBq) / Math.max(1, p1mDist * p1mDist)) / pAttF;
+                  if (pSurf <= prevTarget.maxSurf && p1m <= prevTarget.max1m) break;
+                  prevReq += 0.1;
+              }
+          }
+          return Math.max(0, req - prevReq);
+      });
+
+      return {
+          x: xVals,
+          y: optimizationMaterials.map(m => m.name),
+          type: 'bar',
+          orientation: 'h',
+          name: t.name,
+          marker: { color: t.color, line: { color: '#0f0f0f', width: 2 } },
+          text: xVals.map(val => val > 0.1 ? `${val.toFixed(1)} cm` : ''),
+          textposition: 'inside',
+          insidetextanchor: 'middle',
+          hoverinfo: 'name+x+y'
+      };
+  });
+
+  // --- Combinatorial Multi-Layer Solver ---
+  // Calculates required outer shell thickness given a fixed inner core
+  const combinations = [
+      { coreMat: MATERIALS[1], coreIdx: 1, coreThickness: 1, shellMat: MATERIALS[0], shellIdx: 0 }, // Tungsten + Lead
+      { coreMat: MATERIALS[0], coreIdx: 0, coreThickness: 2, shellMat: MATERIALS[3], shellIdx: 3 }, // Lead + Steel
+      { coreMat: MATERIALS[2], coreIdx: 2, coreThickness: 2, shellMat: MATERIALS[3], shellIdx: 3 }, // DU + Steel
+      { coreMat: MATERIALS[0], coreIdx: 0, coreThickness: 1, shellMat: MATERIALS[4], shellIdx: 4 }, // Lead + Concrete
+  ];
+
+  const compositeScenarios = combinations.map(combo => {
+      const massCoreTemplate = ((Math.pow(cavityWidth + 2 * combo.coreThickness, 3) - Math.pow(cavityWidth, 3)) * combo.coreMat.density) / 1000;
+      const targetInnerRadius = cavityWidth / 2;
+
+      const thresholds = stackTargets.map(t => {
+          let reqShell = 0;
+          let massShellKg = 0;
+          
+          while (reqShell < 200) {
+              const currentTotalThick = combo.coreThickness + reqShell;
+              const currentSurfDist = targetInnerRadius + currentTotalThick;
+              const current1mDist = currentSurfDist + 100;
+              
+              const totalDecades = (combo.coreThickness / combo.coreMat.tvl) + (reqShell / combo.shellMat.tvl);
+              const attF = Math.pow(10, totalDecades);
+              
+              const dSurf = ((gamma_uSv * actMBq) / Math.max(1, currentSurfDist * currentSurfDist)) / attF;
+              const d1m = ((gamma_uSv * actMBq) / Math.max(1, current1mDist * current1mDist)) / attF;
+              
+              if (dSurf <= t.maxSurf && d1m <= t.max1m) break;
+              reqShell += 0.1;
+          }
+
+          if (reqShell > 0 && reqShell < 200) {
+              const vMid = Math.pow(cavityWidth + 2 * combo.coreThickness, 3);
+              const vOuter = Math.pow((cavityWidth + 2 * combo.coreThickness) + 2 * reqShell, 3);
+              massShellKg = ((vOuter - vMid) * combo.shellMat.density) / 1000;
+          }
+          return { name: t.name, reqShell, massTotalKg: massCoreTemplate + massShellKg };
+      });
+
+      return { combo, thresholds, massCoreKg: massCoreTemplate };
+  });
 
   const addLayer = () => {
     setLayers([...layers, { id: Date.now(), matIdx: 1, thickness: 1 }]);
@@ -135,14 +262,33 @@ const TransportModule: React.FC = () => {
         <div style={{ flex: '1 1 300px', minWidth: '300px' }}>
           <h3 style={{ marginBottom: '15px', color: 'var(--color-primary)' }}>1. Package Core</h3>
           
-          <div className="form-group">
-            <label className="form-label">Internal Source Nuclide</label>
-            <select className="form-control" value={nuclideSym} onChange={e => setNuclideSym(e.target.value)}>
-              {nuclidesData.map((n, i) => (
-                <option key={i} value={n.Symbol}>{n.Nuclide} ({n.Symbol})</option>
-              ))}
-            </select>
+          <div className="form-group" style={{ display: 'flex', gap: '10px' }}>
+            <div style={{ flex: 1 }}>
+              <label className="form-label">Element</label>
+              <select className="form-control" value={selectedElement} onChange={e => {
+                 setSelectedElement(e.target.value);
+                 setSelectedMass(elementsMap[e.target.value].masses[0]);
+              }}>
+                {Object.keys(elementsMap).sort().map(sym => (
+                  <option key={sym} value={sym}>{elementsMap[sym].name} ({sym})</option>
+                ))}
+              </select>
+            </div>
+            <div style={{ flex: 1 }}>
+              <label className="form-label">Isotope Mass</label>
+              <select className="form-control" value={selectedMass} onChange={e => setSelectedMass(e.target.value)}>
+                {elementsMap[selectedElement]?.masses.map(mass => (
+                  <option key={mass} value={mass}>{mass}</option>
+                ))}
+              </select>
+            </div>
           </div>
+          {['U-235', 'U-233', 'Pu-239', 'Pu-241'].includes(nuclideSym) && (
+             <div style={{ marginTop: '10px', padding: '10px', backgroundColor: 'rgba(231, 76, 60, 0.1)', border: '1px solid #e74c3c', borderRadius: '4px', color: '#e74c3c', fontSize: '0.85rem' }}>
+               <strong>⚠️ FISSILE MATERIAL</strong><br/>
+               This isotope fundamentally supports nuclear fission. Legal transport compliance requires intensive Monte Carlo Criticality Safety Index (CSI) simulations that significantly override foundational attenuation metrics.
+             </div>
+          )}
 
           <div className="form-group" style={{ display: 'flex', gap: '10px' }}>
             <div style={{ flex: 2 }}>
@@ -162,7 +308,7 @@ const TransportModule: React.FC = () => {
 
           <div className="form-group">
             <label className="form-label">Physical Form</label>
-            <select className="form-control" value={form} onChange={e => setForm(e.target.value as any)}>
+            <select className="form-control" value={form} onChange={e => setForm(e.target.value as 'special' | 'normal')}>
               <option value="special">Special Form (Capsule/Solid/Sealed)</option>
               <option value="normal">Normal Form (Liquid/Gas/Powder)</option>
             </select>
@@ -246,24 +392,52 @@ const TransportModule: React.FC = () => {
              <strong>{dose1m < 0.01 ? '<0.01' : dose1m.toFixed(2)} µSv/h</strong>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '20px 0' }}>
-            <div style={{ 
-              width: '140px', height: '140px', 
-              backgroundColor: labelColor, 
-              color: labelTextColor,
-              border: '2px solid #ccc',
-              transform: 'rotate(45deg)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
-              transition: 'background-color 0.3s ease'
-            }}>
-              <div style={{ transform: 'rotate(-45deg)', textAlign: 'center', fontWeight: 'bold' }}>
-                <span style={{ fontSize: '1.2rem', marginBottom: '5px' }}>🛡️</span><br/>
-                RADIOACTIVE<br/>
-                {labelCategory.split('-')[1] || labelCategory}<br/>
-                <span style={{ fontSize: '0.9rem', color: labelTextColor }}>TI: {TI.toFixed(1)}</span>
-              </div>
-            </div>
+          <div style={{ display: 'flex', gap: '5px', alignSelf: 'stretch', margin: '20px 0 15px 0' }}>
+            {transportCategories.map(cat => (
+               <div key={cat.id} style={{ 
+                  flex: 1, 
+                  textAlign: 'center', 
+                  padding: '8px 2px', 
+                  backgroundColor: activeCatId === cat.id ? cat.bg : 'rgba(255,255,255,0.05)', 
+                  color: activeCatId === cat.id ? cat.text : '#555',
+                  border: `1px solid ${activeCatId === cat.id ? (cat.border || cat.bg) : '#333'}`,
+                  borderRadius: '4px',
+                  fontSize: '0.7rem',
+                  fontWeight: activeCatId === cat.id ? 'bold' : 'normal',
+                  transition: 'all 0.3s'
+               }}>
+                  {cat.name}
+               </div>
+            ))}
+          </div>
+
+          <div style={{ backgroundColor: 'rgba(0,0,0,0.3)', padding: '15px', borderRadius: '8px', borderLeft: `4px solid ${activeCategoryData.border || activeCategoryData.bg}`, marginBottom: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '20px' }}>
+             <div style={{ flex: '1 1 200px' }}>
+                 <h4 style={{ margin: '0 0 10px 0', color: (activeCategoryData.bg === '#000' || activeCategoryData.bg === '#fff') ? '#ccc' : activeCategoryData.bg }}>
+                   {activeCategoryData.name} Restrictions
+                 </h4>
+                 <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '0.85rem', color: '#bbb', lineHeight: '1.4' }}>
+                    {activeCategoryData.reqs.map((req, i) => <li key={i}>{req}</li>)}
+                 </ul>
+                 <div style={{ marginTop: '10px', fontSize: '0.9rem', color: '#fff' }}><strong>Calculated TI: {TI.toFixed(1)}</strong></div>
+             </div>
+             
+             <div style={{ 
+               width: '90px', height: '90px', 
+               backgroundColor: activeCategoryData.bg, 
+               color: activeCategoryData.text,
+               border: `2px solid ${activeCategoryData.border || '#ccc'}`,
+               transform: 'rotate(45deg)',
+               display: 'flex', alignItems: 'center', justifyContent: 'center',
+               boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+               margin: '10px 20px', flexShrink: 0
+             }}>
+               <div style={{ transform: 'rotate(-45deg)', textAlign: 'center', fontWeight: 'bold' }}>
+                 <span style={{ fontSize: '1rem', display: 'block', marginBottom: '2px' }}>🛡️</span>
+                 <span style={{ fontSize: '0.6rem', lineHeight: '1' }}>RADIOACTIVE</span><br/>
+                 <span style={{ fontSize: '0.7rem' }}>{activeCategoryData.id.split('-')[1] || activeCategoryData.id}</span>
+               </div>
+             </div>
           </div>
 
           <div style={{ textAlign: 'center' }}>
@@ -277,6 +451,104 @@ const TransportModule: React.FC = () => {
         </div>
 
       </div>
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', marginTop: '30px', alignItems: 'stretch' }}>
+        {/* --- Optimized Shielding Recommendations --- */}
+        <div style={{ flex: '1 1 450px', minWidth: '450px', padding: '20px', borderTop: '1px solid var(--color-border)', backgroundColor: 'rgba(0,0,0,0.2)' }}>
+           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', flexWrap: 'wrap', gap: '15px' }}>
+               <h3 style={{ margin: 0, color: 'var(--color-primary)' }}>Composite Transport Geometries</h3>
+               <div style={{ display: 'flex', alignItems: 'center', gap: '25px', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                     <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>Assumed Cubic Target Cavity Width:</span>
+                     <input type="number" className="form-control" style={{ width: '80px', padding: '5px' }} value={cavityWidth} onChange={e => setCavityWidth(Number(e.target.value))} />
+                     <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>cm</span>
+                  </div>
+               </div>
+           </div>
+           <p style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem', marginBottom: '20px' }}>
+             The stacked lengths dictate the <strong>maximum shielding offsets</strong> required to reach the restrictive White-I limits. Visual hashes delineate the precise offsets achieved when loosening restrictions to Yellow-II, Yellow-III, or Exclusive Use parameters. 
+           </p>
+           
+           <div style={{ height: '350px', width: '100%', border: '1px solid #333', borderRadius: '8px', overflow: 'hidden' }}>
+              <Plot
+                 data={plotDataList}
+                 layout={{
+                    autosize: true,
+                    margin: { t: 20, l: 100, r: 20, b: 40 },
+                    paper_bgcolor: 'transparent',
+                    plot_bgcolor: 'transparent',
+                    font: { color: '#E0E1DD' },
+                    xaxis: { title: 'Required Thickness (cm)' as any, color: '#aaa', gridcolor: '#333' },
+                    barmode: 'stack'
+                 }}
+                 useResizeHandler
+                 style={{ width: '100%', height: '100%' }}
+              />
+           </div>
+           {unshielded1m <= 0.5 && (
+              <div style={{ padding: '15px', marginTop: '15px', backgroundColor: 'rgba(46, 204, 113, 0.1)', color: '#2ecc71', border: '1px solid #2ecc71', borderRadius: '4px', textAlign: 'center' }}>
+                 Current payload naturally satisfies White-I parameters without any additional shielding.
+              </div>
+           )}
+        </div>
+  
+        {/* --- Composite Shielding Combinations --- */}
+        <div style={{ flex: '1 1 500px', minWidth: '500px', padding: '20px', borderTop: '1px solid var(--color-border)', backgroundColor: 'rgba(0,0,0,0.1)', overflowX: 'auto' }}>
+            <h3 style={{ marginBottom: '10px', color: 'var(--color-primary)' }}>Combinatorial Shielding Matrices</h3>
+            <p style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem', marginBottom: '15px' }}>
+              Theoretical dual-layer configurations mapping an extremely dense internal core geometry nested within broader structural packaging forms to achieve the bounds natively.
+            </p>
+  
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', backgroundColor: 'rgba(255,255,255,0.02)' }}>
+              <thead>
+                 <tr style={{ borderBottom: '1px solid #444' }}>
+                   <th style={{ padding: '12px', color: '#ccc' }}>Dense Inner Core Configuration</th>
+                   {stackTargets.map(t => (
+                      <th key={t.name} style={{ padding: '12px', color: t.color }}>{t.name}</th>
+                   ))}
+                 </tr>
+              </thead>
+              <tbody>
+                 {compositeScenarios.map((scen, index) => (
+                    <tr key={index} style={{ borderBottom: '1px solid #333' }}>
+                      <td style={{ padding: '12px', minWidth: '150px' }}>
+                        <strong style={{ color: '#8e44ad' }}>{scen.combo.coreThickness} cm</strong> of {scen.combo.coreMat.name}
+                        <div style={{ fontSize: '0.75rem', color: '#888' }}>Core Mass: {scen.massCoreKg.toFixed(1)} kg</div>
+                      </td>
+                      {scen.thresholds.map((th, i) => (
+                         <td key={i} style={{ padding: '12px', verticalAlign: 'top', minWidth: '130px' }}>
+                            {th.reqShell <= 0 ? (
+                               <span style={{ color: '#2ecc71', fontSize: '0.85rem' }}>Core fully subdues field</span>
+                            ) : (
+                               <>
+                                  <div><strong style={{ color: '#ecf0f1' }}>+{th.reqShell.toFixed(1)} cm</strong> {scen.combo.shellMat.name}</div>
+                                  <div style={{ fontSize: '0.75rem', color: '#aaa', marginTop: '4px' }}>Cask Wt: {th.massTotalKg.toFixed(0)} kg</div>
+                                  <button 
+                                    onClick={() => {
+                                       setInnerRadius(cavityWidth / 2);
+                                       const newLayers = [];
+                                       newLayers.push({ id: Date.now(), matIdx: scen.combo.coreIdx, thickness: scen.combo.coreThickness });
+                                       newLayers.push({ id: Date.now() + 1, matIdx: scen.combo.shellIdx, thickness: Number(th.reqShell.toFixed(2)) });
+                                       setLayers(newLayers);
+                                       
+                                       const panel = document.querySelector('.panel');
+                                       if (panel) panel.scrollTo({ top: 0, behavior: 'smooth' });
+                                    }}
+                                    style={{ marginTop: '8px', padding: '3px 8px', backgroundColor: '#2980b9', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.7rem' }}
+                                  >
+                                     Inject Array
+                                  </button>
+                               </>
+                            )}
+                         </td>
+                      ))}
+                    </tr>
+                 ))}
+              </tbody>
+            </table>
+        </div>
+      </div>
+
     </div>
   );
 };
