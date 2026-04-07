@@ -56,6 +56,10 @@ const DecayModule: React.FC = () => {
   const [timeUnit, setTimeUnit] = useState<number>(31557600); // default years
   const [sliderPct, setSliderPct] = useState<number>(0); // 0 to 100 scale
 
+  // Simulated Detector State
+  const [exposureTime, setExposureTime] = useState<number>(30);
+  const [exposureUnit, setExposureUnit] = useState<number>(60); // 30 mins
+
   const [startDate, setStartDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState<string>(() => new Date(Date.now() + 5*31557600*1000).toISOString().split('T')[0]);
 
@@ -290,9 +294,11 @@ const DecayModule: React.FC = () => {
      const traces: any[] = [];
      const annotations: any[] = [];
      
-     // Map instantaneous activities
-     const activities = yields.map(y => (y.current * y.lambda) / 1e6); // MBq
-     const maxActivity = Math.max(0.000001, ...activities);
+     const exposureTimeSecs = exposureTime * exposureUnit;
+
+     // Map instantaneous activities and total measurement counts
+     const counts = yields.map(y => (y.current * y.lambda) * exposureTimeSecs); // Total Bq * seconds = Counts
+     const maxCounts = Math.max(10, ...counts);
      
      // 1. Mono-energetic Gaussian Peak Simulator (Alpha, Gammas, EC)
      const makeSpike = (energy: number, height: number, name: string, color: string) => {
@@ -306,7 +312,8 @@ const DecayModule: React.FC = () => {
          return {
              x, y,
              type: 'scatter', mode: 'lines', fill: 'tozeroy',
-             name: name, line: { color, width: 2 }, hoverinfo: 'none', // Removed hard-to-read hover
+             name: name, line: { color, width: 2 }, 
+             hovertemplate: name + ' Peak<br>Energy: %{x:.2f} MeV<br>Simulated Counts: %{y:.2f} N<extra></extra>',
              opacity: 0.6
          };
      };
@@ -321,30 +328,29 @@ const DecayModule: React.FC = () => {
              y.push(intensity);
          }
          // Normalize amplitude
-         const maxY = Math.max(...y);
+         const maxY = Math.max(1e-10, ...y);
          if (maxY > 0) {
             for(let i=0; i<y.length; i++) y[i] = (y[i] / maxY) * height;
          }
          return {
              x, y,
              type: 'scatter', mode: 'lines', fill: 'tozeroy',
-             name: name, line: { color, width: 2 }, hoverinfo: 'none', // Disable hover on beta to favor box annotations
+             name: name, line: { color, width: 2 }, hoverinfo: 'none',
              opacity: 0.6
          };
      };
 
      // Render all descendant peaks
      chainData.forEach((node, idx) => {
-         const current_MBq = activities[idx];
+         const current_Counts = counts[idx];
          if (node['Half-Life'] === 'STABLE') return;
 
-         let relativeScale = (current_MBq / maxActivity) * 100;
+         let heightScale = current_Counts;
          let isGhosted = false;
 
          // If isotope is dead or unborn, keep it visible as a 'ghost' trace 
-         // so users know its characteristic line exists in this chain's potential spectrum
-         if (relativeScale < 2) {
-             relativeScale = 2; // Flat 2% baseline height
+         if (current_Counts < maxCounts * 0.01) {
+             heightScale = maxCounts * 0.01; // Flat 1% baseline height
              isGhosted = true;
          }
          
@@ -373,14 +379,14 @@ const DecayModule: React.FC = () => {
          if (node['Q-Alpha']) {
              const e = parseFloat(node['Q-Alpha']) / 1000;
              if (e > 0) {
-                 traces.push(applyGhost(makeSpike(e, relativeScale, `${node.Nuclide} α`, '#F4D03F')));
-                 addAnnotation(e, relativeScale, `${node.Nuclide} α`, `${e.toFixed(2)} MeV`, '#F4D03F', 0, isGhosted);
+                 traces.push(applyGhost(makeSpike(e, heightScale, `${node.Nuclide} α`, '#F4D03F')));
+                 addAnnotation(e, heightScale, `${node.Nuclide} α`, `${e.toFixed(2)} MeV`, '#F4D03F', 0, isGhosted);
              }
          }
          if (node['Q-Beta']) {
              const e = parseFloat(node['Q-Beta']) / 1000;
              if (e > 0) {
-                 const height = relativeScale * 0.8;
+                 const height = heightScale * 0.8;
                  traces.push(applyGhost(makeBetaContinuum(e, height, `${node.Nuclide} β⁻`, '#5DADE2')));
                  addAnnotation(e * 0.33, height, `${node.Nuclide} β⁻`, `Q=${e.toFixed(2)} MeV`, '#5DADE2', 1, isGhosted);
              }
@@ -388,7 +394,7 @@ const DecayModule: React.FC = () => {
          if (node['Q-EC']) {
              const e = parseFloat(node['Q-EC']) / 1000;
              if (e > 0) {
-                 const height = relativeScale * 0.6;
+                 const height = heightScale * 0.6;
                  traces.push(applyGhost(makeSpike(e, height, `${node.Nuclide} EC/β⁺`, '#E74C3C')));
                  addAnnotation(e, height, `${node.Nuclide} EC/β⁺`, `${e.toFixed(2)} MeV`, '#E74C3C', 2, isGhosted);
              }
@@ -403,7 +409,7 @@ const DecayModule: React.FC = () => {
      });
 
      return { traces, annotations };
-  }, [selectedIsotope, chainData, yields]);
+  }, [selectedIsotope, chainData, yields, exposureTime, exposureUnit]);
 
   return (
     <div className="panel" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -444,9 +450,22 @@ const DecayModule: React.FC = () => {
 
         {/* Q2: Top Right - Energy Spectrum Plotly */}
         <div style={{ border: '1px solid var(--color-border)', borderRadius: '8px', overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.02)', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-          <div style={{ padding: '10px 15px', borderBottom: '1px solid #333', backgroundColor: '#0a0a0a' }}>
-             <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#E0E1DD' }}>Decay Energy Spectrum (Q-Values)</h3>
-             <p style={{ margin: 0, fontSize: '0.8rem', color: '#888' }}>Simulated Detector Output (MeV)</p>
+          <div style={{ padding: '10px 15px', borderBottom: '1px solid #333', backgroundColor: '#0a0a0a', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+             <div>
+                <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#E0E1DD' }}>Simulated Detector Spectrum</h3>
+                <p style={{ margin: 0, fontSize: '0.8rem', color: '#888' }}>Cumulative Particle Counts (N)</p>
+             </div>
+             
+             <div style={{ display: 'flex', alignItems: 'center', gap: '5px', backgroundColor: 'rgba(255,255,255,0.05)', padding: '5px 10px', borderRadius: '4px' }}>
+                <span style={{ fontSize: '0.8rem', color: '#aaa' }}>Measurement Time ($\Delta t$):</span>
+                <input type="number" className="form-control" style={{ width: '60px', padding: '2px 5px', fontSize: '0.8rem' }} value={exposureTime} onChange={e => setExposureTime(Number(e.target.value))} />
+                <select className="form-control" style={{ padding: '2px 5px', fontSize: '0.8rem' }} value={exposureUnit} onChange={e => setExposureUnit(Number(e.target.value))}>
+                  <option value={1}>Sec</option>
+                  <option value={60}>Min</option>
+                  <option value={3600}>Hr</option>
+                  <option value={86400}>Days</option>
+                </select>
+             </div>
           </div>
 
           <div style={{ flex: 1, position: 'relative' }}>

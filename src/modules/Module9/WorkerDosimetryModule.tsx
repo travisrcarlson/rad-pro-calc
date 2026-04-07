@@ -22,6 +22,7 @@ interface Worker {
   y: number;
   posture: Posture;
   rotationOffset: number; // For prone orientation 0-360 degrees
+  taskDurationHours: number; // ALARA stay-time
 }
 
 interface ShieldBlock {
@@ -37,7 +38,8 @@ interface WorkerBreakdown {
   chestNode: { x: number, y: number, z: number, dose: number };
   gonadNode: { x: number, y: number, z: number, dose: number };
   extNode: { x: number, y: number, z: number, dose: number };
-  effectiveDose: number;
+  effectiveDoseRate: number;
+  cumulativeEffectiveDose: number; // Rate * duration
 }
 
 const WorkerDosimetryModule: React.FC = () => {
@@ -54,8 +56,8 @@ const WorkerDosimetryModule: React.FC = () => {
   ]);
 
   const [workers, setWorkers] = useState<Worker[]>([
-    { id: 1, name: 'Worker A', x: 4.5, y: 5, posture: 'Standing', rotationOffset: 0 },
-    { id: 2, name: 'Worker B (Clean)', x: 4.5, y: 4, posture: 'Crouching', rotationOffset: 0 }
+    { id: 1, name: 'Worker A', x: 4.5, y: 5, posture: 'Standing', rotationOffset: 0, taskDurationHours: 2 },
+    { id: 2, name: 'Worker B (Clean)', x: 4.5, y: 4, posture: 'Crouching', rotationOffset: 0, taskDurationHours: 4 }
   ]);
 
   const [shields, setShields] = useState<ShieldBlock[]>([
@@ -188,7 +190,8 @@ const WorkerDosimetryModule: React.FC = () => {
       chestNode: { ...c_pos, dose: chestDose },
       gonadNode: { ...g_pos, dose: gonadDose },
       extNode: { ...ex_pos, dose: extDose },
-      effectiveDose: effective
+      effectiveDoseRate: effective,
+      cumulativeEffectiveDose: effective * w.taskDurationHours
     };
   };
 
@@ -251,6 +254,39 @@ const WorkerDosimetryModule: React.FC = () => {
     };
   });
 
+  // Calculate Chart Lines for Dose Accumulation
+  let maxTime = Math.max(...workers.map(w => w.taskDurationHours), 5);
+  const timeArray = Array.from({length: 50}, (_, i) => (i / 49) * maxTime);
+  
+  const chartTraces: any[] = workers.map((w, idx) => {
+     const ext = getWorkerNodes(w);
+     const rate = ext.effectiveDoseRate;
+     const yArr = timeArray.map(t => {
+         if (t <= w.taskDurationHours) return t * rate;
+         return w.taskDurationHours * rate; // Plateaus when task ends
+     });
+     return {
+        x: timeArray, y: yArr,
+        type: 'scatter', mode: 'lines',
+        name: w.name,
+        line: { width: 3 }
+     }
+  });
+
+  // Regulatory limits lines
+  chartTraces.push({
+      x: [0, maxTime], y: [1000, 1000],
+      type: 'scatter', mode: 'lines',
+      name: 'Shift ALARA Limit (1000 µSv)',
+      line: { color: '#f39c12', width: 2, dash: 'dash' }
+  });
+  chartTraces.push({
+      x: [0, maxTime], y: [50000, 50000],
+      type: 'scatter', mode: 'lines',
+      name: 'Annual Admin Limit (50 mSv)',
+      line: { color: '#e74c3c', width: 2, dash: 'dash' }
+  });
+
   return (
     <div className="panel" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <div className="panel-header">
@@ -287,6 +323,22 @@ const WorkerDosimetryModule: React.FC = () => {
             showlegend: false
           }}
           useResizeHandler={true} style={{ width: '100%', height: '100%' }}
+         />
+      </div>
+
+      {/* NEW: ALARA DOSE ACCUMULATION CHART */}
+      <div style={{ height: '250px', border: '1px solid var(--color-border)', borderRadius: '8px', marginTop: '10px', backgroundColor: 'rgba(0,0,0,0.2)' }}>
+         <Plot
+           data={chartTraces}
+           layout={{
+             autosize: true, margin: { l: 60, r: 20, t: 30, b: 40 },
+             title: { text: 'Cumulative ALARA Dose Tracking', font: { color: '#E0E1DD', size: 14 } },
+             paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', font: { color: '#E0E1DD' },
+             xaxis: { title: 'Task Duration (Hours)', gridcolor: '#333' },
+             yaxis: { title: 'Cumulative Dose (µSv)', gridcolor: '#333', type: 'linear' },
+             showlegend: true, legend: { orientation: 'h', y: -0.2 }
+           }}
+           useResizeHandler={true} style={{ width: '100%', height: '100%' }}
          />
       </div>
 
@@ -327,7 +379,7 @@ const WorkerDosimetryModule: React.FC = () => {
         <div style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.02)', padding: '15px', borderRadius: '8px', border: '1px solid var(--color-border)', overflowY: 'auto' }}>
            <h3 style={{ marginBottom: '10px', color: '#e67e22' }}>2. Anatomical Worker Array</h3>
            <button style={{ marginBottom: '10px', padding: '5px 10px', background: '#d35400', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-             onClick={() => setWorkers([...workers, { id: Date.now(), name: 'New Worker', x: 2, y: 2, posture: 'Standing', rotationOffset: 0 }])}>
+             onClick={() => setWorkers([...workers, { id: Date.now(), name: 'New Worker', x: 2, y: 2, posture: 'Standing', rotationOffset: 0, taskDurationHours: 1 }])}>
              ➕ Add Worker Geometry
            </button>
            
@@ -369,6 +421,9 @@ const WorkerDosimetryModule: React.FC = () => {
                           Orientation (deg): <input type="number" className="form-control" value={w.rotationOffset} onChange={e => { const a=[...workers]; a[idx].rotationOffset=Number(e.target.value); setWorkers(a); }} style={{ width:'80px', display:'inline-block' }}/>
                         </div>
                      )}
+                     <div style={{ marginBottom: '10px' }}>
+                       Task Stay-Time (Hrs): <input type="number" step="0.5" className="form-control" value={w.taskDurationHours} onChange={e => { const a=[...workers]; a[idx].taskDurationHours=Number(e.target.value); setWorkers(a); }} style={{ width:'80px', display:'inline-block' }}/>
+                     </div>
 
                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px', fontSize: '0.85rem' }}>
                         <div style={{ padding: '4px', backgroundColor: '#333', borderRadius:'4px' }}>👁️ Head: <span style={{color: '#f1c40f'}}>{e.toFixed(1)} µSv/h</span></div>
@@ -378,7 +433,8 @@ const WorkerDosimetryModule: React.FC = () => {
                      </div>
                      
                      <div style={{ marginTop: '10px', padding: '8px', borderTop: '1px solid #555', textAlign: 'center', fontSize: '1.05rem' }}>
-                        Effective Whole Body: <strong style={{color: '#e67e22'}}>{breakdown.effectiveDose.toFixed(1)} µSv/h</strong>
+                        Dose Rate: <strong style={{color: '#e67e22'}}>{breakdown.effectiveDoseRate.toFixed(1)} µSv/h</strong> <br/>
+                        <span style={{ fontSize: '0.9rem' }}>Task Accumulation: <strong style={{color: (breakdown.cumulativeEffectiveDose > 1000 ? '#e74c3c' : '#3498db')}}>{breakdown.cumulativeEffectiveDose.toFixed(1)} µSv</strong></span>
                      </div>
                      {warning && <div style={{ color: '#e74c3c', fontSize: '0.75rem', marginTop: '5px' }}>{warning}</div>}
                    </div>

@@ -3,6 +3,25 @@ import { BlockMath } from 'react-katex';
 import PlotComponent from 'react-plotly.js';
 const Plot = (PlotComponent as any).default || PlotComponent;
 import nuclidesData from '../../data/nuclides.json'; // Contains generic Gamma constants
+import equipmentDataRaw from '../../data/equipment_database.json';
+import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
+
+const parseActivityMBq = (activityStr: string) => {
+  const str = activityStr.toLowerCase();
+  const matches = str.match(/([0-9.,]+)\s*(tbq|gbq|mbq|kbq|ci|mci|uci|µci)/i);
+  if (!matches) return 100; // default 100 MBq
+  const val = parseFloat(matches[1].replace(/,/g, ''));
+  const unit = matches[2];
+  if (unit === 'tbq') return val * 1000000;
+  if (unit === 'gbq') return val * 1000;
+  if (unit === 'mbq') return val;
+  if (unit === 'kbq') return val / 1000;
+  if (unit === 'ci') return val * 37000;
+  if (unit === 'mci') return val * 37;
+  if (unit === 'uci' || unit === 'µci') return val * 0.037;
+  return val;
+};
 
 const MATERIALS = [
   { name: 'Lead (Pb)', density: 11.34, tvl: 3.8 }, // cm for ~1 MeV
@@ -44,6 +63,45 @@ const TransportModule: React.FC = () => {
   const [layers, setLayers] = useState<{ id: number, matIdx: number, thickness: number }[]>([
     { id: 1, matIdx: 0, thickness: 1 } // 1 cm of Lead
   ]);
+
+  const handleEquipmentImport = (eqName: string) => {
+    const eq: any = equipmentDataRaw.find((e: any) => e['Device Name'] === eqName);
+    if (!eq) return;
+
+    // Isotope
+    const isoStr = eq['Primary Isotope(s) भी'] || eq['Primary Isotope(s)'] || '';
+    const primaryIso = isoStr.split(';')[0].trim();
+    // Element & Mass
+    const [sym, mass] = primaryIso.split('-');
+    if (sym && mass && elementsMap[`${sym}-${mass}`]) {
+      setSelectedElement(sym);
+      setSelectedMass(mass);
+    }
+    
+    // Activity
+    const mbq = parseActivityMBq(eq['Activity (Typical)'] || '');
+    setActivity(mbq);
+    setActivityUnit(1e-6); // set unit to MBq
+  };
+
+  const [pdfGenerating, setPdfGenerating] = useState(false);
+  const handleExportPDF = async () => {
+    const reportElem = document.getElementById('transport-report');
+    if (!reportElem) return;
+    setPdfGenerating(true);
+    try {
+        const canvas = await html2canvas(reportElem, { backgroundColor: '#1a1a1a', scale: 2 });
+        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+        pdf.save(`Transport_Manifest_${nuclideSym}.pdf`);
+    } catch (err) {
+        console.error("PDF generation failed", err);
+    }
+    setPdfGenerating(false);
+  };
 
   // Derived unique elements
   const elementsMap = React.useMemo(() => {
@@ -260,6 +318,21 @@ const TransportModule: React.FC = () => {
         
         {/* Source & Package Geometry Setup */}
         <div style={{ flex: '1 1 300px', minWidth: '300px' }}>
+          
+          <div style={{ backgroundColor: 'rgba(52, 152, 219, 0.1)', padding: '15px', borderRadius: '8px', border: '1px solid #3498db', marginBottom: '20px' }}>
+             <h3 style={{ marginTop: 0, marginBottom: '10px', color: '#3498db', fontSize: '1rem' }}>Import from Catalog</h3>
+             <select 
+               className="form-control" 
+               onChange={e => handleEquipmentImport(e.target.value)}
+               style={{ width: '100%' }}
+             >
+               <option value="">-- Select Equipment Profile --</option>
+               {equipmentDataRaw.map((eq: any, idx) => (
+                  <option key={idx} value={eq['Device Name']}>{eq['Device Name']}</option>
+               ))}
+             </select>
+          </div>
+
           <h3 style={{ marginBottom: '15px', color: 'var(--color-primary)' }}>1. Package Core</h3>
           
           <div className="form-group" style={{ display: 'flex', gap: '10px' }}>
@@ -379,9 +452,21 @@ const TransportModule: React.FC = () => {
           </div>
         </div>
 
-        {/* Output & Labelling */}
-        <div style={{ flex: '1 1 350px', minWidth: '350px', borderLeft: '1px solid var(--color-border)', paddingLeft: '20px' }}>
-          <h3 style={{ marginBottom: '15px', color: 'var(--color-primary)' }}>3. Final Transport Index</h3>
+        {/* Transportation Index & Summary */}
+        <div id="transport-report" style={{ flex: '1 1 300px', minWidth: '300px', backgroundColor: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '8px', border: '1px solid var(--color-border)', height: 'fit-content' }}>
+          
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ margin: 0, color: 'var(--color-primary)' }}>Compliance Manifest</h3>
+            <button 
+               onClick={handleExportPDF} 
+               disabled={pdfGenerating}
+               style={{ background: '#3498db', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9rem' }}
+            >
+              {pdfGenerating ? 'Generating...' : '📄 Export PDF'}
+            </button>
+          </div>
+          
+          <hr style={{ borderColor: 'rgba(255,255,255,0.1)', margin: '15px 0' }}/>
           
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
              <span style={{ color: 'var(--color-text-muted)' }}>Surface Dose Rate:</span>

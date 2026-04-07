@@ -22,45 +22,50 @@ const Sidebar = () => {
   return (
     <div className="sidebar">
       <div className="sidebar-header">
-        <span style={{ fontSize: '1.5rem' }}>☢️</span>
+         <span style={{ fontSize: '1.5rem' }}>☢️</span>
         <h1>RadPro Analyst</h1>
       </div>
       <div className="sidebar-nav">
-        <NavLink to="/nuclides" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-          1. Nuclide Database
-        </NavLink>
+        <div style={{ padding: '10px 20px', fontSize: '0.8rem', color: '#66AAFF', textTransform: 'uppercase', letterSpacing: '1px', marginTop: '10px', fontWeight: 'bold' }}>Analytical Tools</div>
         <NavLink to="/dose" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-          2. Dose Calculator
+          Dose Calculator
         </NavLink>
         <NavLink to="/visualisation" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-          3. Radiation Map
+          Radiation Map
         </NavLink>
         <NavLink to="/transport" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-          4. Transport Eval
-        </NavLink>
-        <NavLink to="/reg" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-          5. Reg Dashboard
+          Transport Eval
         </NavLink>
         <NavLink to="/decay" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-          6. Radiolysis & Decay
-        </NavLink>
-        <NavLink to="/verify" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-          7. Verification Tests
+          Radiolysis & Decay
         </NavLink>
         <NavLink to="/spatial3d" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-          8. 3D Workspace
+          3D Workspace
         </NavLink>
         <NavLink to="/worker" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-          9. Worker Dosimetry
+          Worker Dosimetry
         </NavLink>
         <NavLink to="/xray" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-          10. Pulsed X-Ray Systems
-        </NavLink>
-        <NavLink to="/equipment" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-          11. Equipment Catalog
+          Pulsed X-Ray Systems
         </NavLink>
         <NavLink to="/responder" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-          12. Reverse Responder
+          Reverse Responder
+        </NavLink>
+
+        <div style={{ padding: '10px 20px', fontSize: '0.8rem', color: '#66AAFF', textTransform: 'uppercase', letterSpacing: '1px', marginTop: '15px', fontWeight: 'bold' }}>Databases & References</div>
+        <NavLink to="/nuclides" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+          Nuclide Database
+        </NavLink>
+        <NavLink to="/equipment" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+          Equipment Catalog
+        </NavLink>
+        <NavLink to="/reg" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+          Regulatory Dashboard
+        </NavLink>
+
+        <div style={{ padding: '10px 20px', fontSize: '0.8rem', color: '#8e44ad', textTransform: 'uppercase', letterSpacing: '1px', marginTop: '15px', fontWeight: 'bold' }}>System & Confidence</div>
+        <NavLink to="/verify" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+          Verification Tests
         </NavLink>
       </div>
     </div>

@@ -1,6 +1,23 @@
 import React, { useState } from 'react';
 import nuclidesData from '../../../data/nuclides.json';
 import { BlockMath } from 'react-katex';
+import equipmentDataRaw from '../../../data/equipment_database.json';
+
+const parseActivityMBq = (activityStr: string) => {
+  const str = activityStr.toLowerCase();
+  const matches = str.match(/([0-9.,]+)\s*(tbq|gbq|mbq|kbq|ci|mci|uci|µci)/i);
+  if (!matches) return 100; // default 100 MBq
+  const val = parseFloat(matches[1].replace(/,/g, ''));
+  const unit = matches[2];
+  if (unit === 'tbq') return val * 1000000;
+  if (unit === 'gbq') return val * 1000;
+  if (unit === 'mbq') return val;
+  if (unit === 'kbq') return val / 1000;
+  if (unit === 'ci') return val * 37000;
+  if (unit === 'mci') return val * 37;
+  if (unit === 'uci' || unit === 'µci') return val * 0.037;
+  return val;
+};
 
 const ExternalDoseCalc: React.FC = () => {
   const nuclides = nuclidesData as any[];
@@ -8,6 +25,22 @@ const ExternalDoseCalc: React.FC = () => {
   const [activity, setActivity] = useState<number>(100);
   const [activityUnit, setActivityUnit] = useState<number>(1); // Multiplier to get MBq
   const [distance, setDistance] = useState<number>(1); // meters
+
+  const handleEquipmentImport = (eqName: string) => {
+    const eq: any = equipmentDataRaw.find((e: any) => e['Device Name'] === eqName);
+    if (!eq) return;
+
+    // Isotope
+    const isoStr = eq['Primary Isotope(s) भी'] || eq['Primary Isotope(s)'] || '';
+    const primaryIso = isoStr.split(';')[0].trim();
+    const matchedNuc = nuclides.find((n: any) => n.Symbol === primaryIso || n.Nuclide.startsWith(primaryIso));
+    if (matchedNuc) setSelectedNuclide(matchedNuc);
+    
+    // Activity
+    const mbq = parseActivityMBq(eq['Activity (Typical)'] || '');
+    setActivity(mbq);
+    setActivityUnit(1); // set unit to MBq
+  };
 
   // Gamma is in R·cm2/mCi·h. We will convert it to µSv·m²/h·MBq
   // 1 R = 10 mSv = 10,000 µSv
@@ -24,6 +57,20 @@ const ExternalDoseCalc: React.FC = () => {
   return (
     <div className="panel" style={{ display: 'flex', gap: '20px' }}>
       <div style={{ flex: 1 }}>
+        <div style={{ backgroundColor: 'rgba(52, 152, 219, 0.1)', padding: '15px', borderRadius: '8px', border: '1px solid #3498db', marginBottom: '20px' }}>
+           <h3 style={{ marginTop: 0, marginBottom: '10px', color: '#3498db', fontSize: '1rem' }}>Import from Catalog</h3>
+           <select 
+             className="form-control" 
+             onChange={e => handleEquipmentImport(e.target.value)}
+             style={{ width: '100%' }}
+           >
+             <option value="">-- Select Equipment Profile --</option>
+             {equipmentDataRaw.map((eq: any, idx) => (
+                <option key={idx} value={eq['Device Name']}>{eq['Device Name']}</option>
+             ))}
+           </select>
+        </div>
+
         <h3 style={{ marginBottom: '15px' }}>2A. Point Source Calculator</h3>
         
         <div className="form-group">
