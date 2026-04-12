@@ -43,9 +43,9 @@ const SHIELDING_MATERIALS: Record<string, { name: string, tvl_cm: number }> = {
 
 const Spatial3DModule: React.FC = () => {
   // Room dimensions (meters)
-  const [dimX, setDimX] = useState<number>(10);
-  const [dimY, setDimY] = useState<number>(10);
-  const [dimZ, setDimZ] = useState<number>(5);
+  const [dimX] = useState<number>(10);
+  const [dimY] = useState<number>(10);
+  const [dimZ] = useState<number>(5);
 
   // Visualization Bound Cutoffs
   const [displayMin, setDisplayMin] = useState<number>(10); // uSv/h

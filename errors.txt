@@ -1,0 +1,12 @@
+﻿src/modules/Module12/ReverseResponderModule.tsx(32,6): error TS6196: 'AABB' is declared but never used.
+src/modules/Module12/ReverseResponderModule.tsx(468,40): error TS2339: Property 'probability' does not exist on type '{ nuclide: string; mode: string; halfLife: string; mbq: number; solvedByChain: boolean; chainLength: number; qAlpha: string; qBeta: string; qEC: string; }'.
+src/modules/Module12/ReverseResponderModule.tsx(468,56): error TS2339: Property 'probability' does not exist on type '{ nuclide: string; mode: string; halfLife: string; mbq: number; solvedByChain: boolean; chainLength: number; qAlpha: string; qBeta: string; qEC: string; }'.
+src/modules/Module8/Spatial3DModule.tsx(46,16): error TS6133: 'setDimX' is declared but its value is never read.
+src/modules/Module8/Spatial3DModule.tsx(47,16): error TS6133: 'setDimY' is declared but its value is never read.
+src/modules/Module8/Spatial3DModule.tsx(48,16): error TS6133: 'setDimZ' is declared but its value is never read.
+src/modules/Module9/WorkerDosimetryModule.tsx(36,11): error TS6196: 'WorkerBreakdown' is declared but never used.
+src/modules/Module9/WorkerDosimetryModule.tsx(47,16): error TS6133: 'setDimX' is declared but its value is never read.
+src/modules/Module9/WorkerDosimetryModule.tsx(48,16): error TS6133: 'setDimY' is declared but its value is never read.
+src/modules/Module9/WorkerDosimetryModule.tsx(49,16): error TS6133: 'setDimZ' is declared but its value is never read.
+src/modules/Module9/WorkerDosimetryModule.tsx(51,22): error TS6133: 'setDisplayMin' is declared but its value is never read.
+src/modules/Module9/WorkerDosimetryModule.tsx(261,46): error TS6133: 'idx' is declared but its value is never read.

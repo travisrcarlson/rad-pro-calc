@@ -29,13 +29,7 @@ const SHIELDING_FACTORS: Record<ShieldType, { mu: number; color: string; b: numb
   'Lead Partition': { mu: 80.0, color: '#333333', b: 2.0, name: 'Lead Partition', arch: 'solid' }
 };
 
-type AABB = {
-  id: number;
-  xMin: number; xMax: number;
-  yMin: number; yMax: number;
-  zMin: number; zMax: number;
-  material: ShieldType;
-};
+
 
 type WallSide = 'South' | 'North' | 'West' | 'East';
 type ApertureConfig = {
@@ -465,7 +459,7 @@ const ReverseResponderModule: React.FC = () => {
       }
     }
 
-    return candidates.sort((a, b) => b.probability - a.probability).slice(0, 50);
+    return candidates.sort((a, b) => a.mbq - b.mbq).slice(0, 50);
 
   }, [distance, reading, equipment, efficiency, unit, detectedEnergy, energyUnit, mode, triangulationResult, nuclideDict]);
 

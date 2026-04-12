@@ -33,22 +33,13 @@ interface ShieldBlock {
   tvl_cm: number; // Tenth Value Layer equivalent Shielding
 }
 
-interface WorkerBreakdown {
-  eyeNode: { x: number, y: number, z: number, dose: number };
-  chestNode: { x: number, y: number, z: number, dose: number };
-  gonadNode: { x: number, y: number, z: number, dose: number };
-  extNode: { x: number, y: number, z: number, dose: number };
-  effectiveDoseRate: number;
-  cumulativeEffectiveDose: number; // Rate * duration
-}
-
 const WorkerDosimetryModule: React.FC = () => {
   // Room dimensions
-  const [dimX, setDimX] = useState<number>(10);
-  const [dimY, setDimY] = useState<number>(10);
-  const [dimZ, setDimZ] = useState<number>(5);
+  const [dimX] = useState<number>(10);
+  const [dimY] = useState<number>(10);
+  const [dimZ] = useState<number>(5);
 
-  const [displayMin, setDisplayMin] = useState<number>(10); 
+  const [displayMin] = useState<number>(10); 
   const [displayMax, setDisplayMax] = useState<number>(2000); 
 
   const [sources, setSources] = useState<Source3D[]>([
@@ -258,7 +249,7 @@ const WorkerDosimetryModule: React.FC = () => {
   let maxTime = Math.max(...workers.map(w => w.taskDurationHours), 5);
   const timeArray = Array.from({length: 50}, (_, i) => (i / 49) * maxTime);
   
-  const chartTraces: any[] = workers.map((w, idx) => {
+  const chartTraces: any[] = workers.map(w => {
      const ext = getWorkerNodes(w);
      const rate = ext.effectiveDoseRate;
      const yArr = timeArray.map(t => {
