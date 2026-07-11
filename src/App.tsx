@@ -17,6 +17,11 @@ import WorkerDosimetryModule from './modules/Module9/WorkerDosimetryModule';
 import PulsedXRayModule from './modules/Module10/PulsedXRayModule';
 import EquipmentLibraryModule from './modules/Module11/EquipmentLibraryModule';
 import ReverseResponderModule from './modules/Module12/ReverseResponderModule';
+import PlumeModule from './modules/Module13/PlumeModule';
+import ShieldingModule from './modules/Module14/ShieldingModule';
+import LaserModule from './modules/Module15/LaserModule';
+import XRayTubeModule from './modules/Module16/XRayTubeModule';
+import InternalDosimetryModule from './modules/Module17/InternalDosimetryModule';
 import ErrorBoundary from './ErrorBoundary';
 
 const Sidebar = () => {
@@ -51,6 +56,21 @@ const Sidebar = () => {
         </NavLink>
         <NavLink to="/responder" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
           Reverse Responder
+        </NavLink>
+        <NavLink to="/shielding" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+          Shielding & ALARA
+        </NavLink>
+        <NavLink to="/plume" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+          Plume Modeling
+        </NavLink>
+        <NavLink to="/laser" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+          Laser Safety & NOHD
+        </NavLink>
+        <NavLink to="/xray-tube" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+          X-Ray Tube Simulator
+        </NavLink>
+        <NavLink to="/internal-dose" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+          Internal Dosimetry
         </NavLink>
 
         <div style={{ padding: '10px 20px', fontSize: '0.8rem', color: '#66AAFF', textTransform: 'uppercase', letterSpacing: '1px', marginTop: '15px', fontWeight: 'bold' }}>Databases & References</div>
@@ -113,6 +133,11 @@ const App: React.FC = () => {
               <Route path="/xray" element={<PulsedXRayModule />} />
               <Route path="/equipment" element={<EquipmentLibraryModule />} />
               <Route path="/responder" element={<ReverseResponderModule />} />
+              <Route path="/shielding" element={<ShieldingModule />} />
+              <Route path="/plume" element={<PlumeModule />} />
+              <Route path="/laser" element={<LaserModule />} />
+              <Route path="/xray-tube" element={<XRayTubeModule />} />
+              <Route path="/internal-dose" element={<InternalDosimetryModule />} />
             </Routes>
           </ErrorBoundary>
         </main>
