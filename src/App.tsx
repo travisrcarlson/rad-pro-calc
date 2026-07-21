@@ -23,6 +23,7 @@ import LaserModule from './modules/Module15/LaserModule';
 import XRayTubeModule from './modules/Module16/XRayTubeModule';
 import InternalDosimetryModule from './modules/Module17/InternalDosimetryModule';
 import EMRModule from './modules/Module18/EMRModule';
+import CriticalityModule from './modules/Module19/CriticalityModule';
 import ErrorBoundary from './ErrorBoundary';
 
 const Sidebar = () => {
@@ -75,6 +76,9 @@ const Sidebar = () => {
         </NavLink>
         <NavLink to="/emr-safety" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
           EW EMR & Microwave Safety
+        </NavLink>
+        <NavLink to="/criticality" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+          Criticality & Reactor Core
         </NavLink>
 
         <div style={{ padding: '10px 20px', fontSize: '0.8rem', color: '#66AAFF', textTransform: 'uppercase', letterSpacing: '1px', marginTop: '15px', fontWeight: 'bold' }}>Databases & References</div>
@@ -143,6 +147,7 @@ const App: React.FC = () => {
               <Route path="/xray-tube" element={<XRayTubeModule />} />
               <Route path="/internal-dose" element={<InternalDosimetryModule />} />
               <Route path="/emr-safety" element={<EMRModule />} />
+              <Route path="/criticality" element={<CriticalityModule />} />
             </Routes>
           </ErrorBoundary>
         </main>
