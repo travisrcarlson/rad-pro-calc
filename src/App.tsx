@@ -24,6 +24,8 @@ import XRayTubeModule from './modules/Module16/XRayTubeModule';
 import InternalDosimetryModule from './modules/Module17/InternalDosimetryModule';
 import EMRModule from './modules/Module18/EMRModule';
 import CriticalityModule from './modules/Module19/CriticalityModule';
+import SpectroscopyModule from './modules/Module20/SpectroscopyModule';
+import LiteratureModule from './modules/Module21/LiteratureModule';
 import ErrorBoundary from './ErrorBoundary';
 
 const Sidebar = () => {
@@ -80,6 +82,9 @@ const Sidebar = () => {
         <NavLink to="/criticality" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
           Criticality & Reactor Core
         </NavLink>
+        <NavLink to="/spectroscopy" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+          Gamma Spectroscopy (MCA)
+        </NavLink>
 
         <div style={{ padding: '10px 20px', fontSize: '0.8rem', color: '#66AAFF', textTransform: 'uppercase', letterSpacing: '1px', marginTop: '15px', fontWeight: 'bold' }}>Databases & References</div>
         <NavLink to="/nuclides" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
@@ -95,6 +100,9 @@ const Sidebar = () => {
         <div style={{ padding: '10px 20px', fontSize: '0.8rem', color: '#8e44ad', textTransform: 'uppercase', letterSpacing: '1px', marginTop: '15px', fontWeight: 'bold' }}>System & Confidence</div>
         <NavLink to="/verify" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
           Verification Tests
+        </NavLink>
+        <NavLink to="/literature" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+          Core Literature & Physics Formulations
         </NavLink>
       </div>
     </div>
@@ -148,6 +156,8 @@ const App: React.FC = () => {
               <Route path="/internal-dose" element={<InternalDosimetryModule />} />
               <Route path="/emr-safety" element={<EMRModule />} />
               <Route path="/criticality" element={<CriticalityModule />} />
+              <Route path="/spectroscopy" element={<SpectroscopyModule />} />
+              <Route path="/literature" element={<LiteratureModule />} />
             </Routes>
           </ErrorBoundary>
         </main>
