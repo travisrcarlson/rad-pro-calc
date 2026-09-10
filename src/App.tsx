@@ -26,6 +26,7 @@ import EMRModule from './modules/Module18/EMRModule';
 import CriticalityModule from './modules/Module19/CriticalityModule';
 import SpectroscopyModule from './modules/Module20/SpectroscopyModule';
 import LiteratureModule from './modules/Module21/LiteratureModule';
+import MARSSIMModule from './modules/Module22/MARSSIMModule';
 import ErrorBoundary from './ErrorBoundary';
 
 const Sidebar = () => {
@@ -84,6 +85,9 @@ const Sidebar = () => {
         </NavLink>
         <NavLink to="/spectroscopy" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
           Gamma Spectroscopy (MCA)
+        </NavLink>
+        <NavLink to="/marssim" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+          MARSSIM Decommissioning
         </NavLink>
 
         <div style={{ padding: '10px 20px', fontSize: '0.8rem', color: '#66AAFF', textTransform: 'uppercase', letterSpacing: '1px', marginTop: '15px', fontWeight: 'bold' }}>Databases & References</div>
@@ -157,6 +161,7 @@ const App: React.FC = () => {
               <Route path="/emr-safety" element={<EMRModule />} />
               <Route path="/criticality" element={<CriticalityModule />} />
               <Route path="/spectroscopy" element={<SpectroscopyModule />} />
+              <Route path="/marssim" element={<MARSSIMModule />} />
               <Route path="/literature" element={<LiteratureModule />} />
             </Routes>
           </ErrorBoundary>

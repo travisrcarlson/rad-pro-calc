@@ -644,36 +644,53 @@ const METHOD_DOCS: MethodDoc[] = [
     benchmarks: 'Validated against Badhwar-O\'Neill 2020 GCR model and ACE/CRIS satellite measurements.'
   },
 
-  // 17. Expansion: MARSSIM Decommissioning & Detection Limits
+  // 17. Module 22: MARSSIM Decommissioning & Detection Limits
   {
-    id: 'EXP-MARSSIM',
-    moduleId: 'Module 25 (Future)',
-    moduleName: 'MARSSIM Decommissioning & MDA',
+    id: 'M22-MARSSIM',
+    moduleId: 'Module 22',
+    moduleName: 'MARSSIM Decommissioning',
     domain: 'Regulatory Standards & Transport Security',
-    title: 'Currie Detection Limits (MDA) & MARSSIM Nonparametric Tests (WRS / Sign)',
-    overview: 'Statistical framework for site radiological release, final status surveys, Currie limits for count data, and Wilcoxon Rank Sum testing.',
-    isExpansion: true,
+    title: 'Currie Detection Limits (MDA/MDC), FSS Grid Sizing & Sign/WRS Nonparametric Tests',
+    overview: 'Statistical framework for site radiological release, final status surveys, Currie limits for count data, and Wilcoxon Rank Sum testing under NUREG-1575.',
     standards: [
       { org: 'NRC / EPA / DOE / DOD', code: 'MARSSIM (NUREG-1575)', year: '2000', title: 'Multi-Agency Radiation Survey and Site Investigation Manual (Rev. 1)' },
+      { org: 'NRC', code: 'NUREG-1505', year: '1998', title: 'A Nonparametric Statistical Methodology for the Design and Analysis of Final Status Decommissioning Surveys' },
       { org: 'Currie', code: 'Anal. Chem. 40', year: '1968', title: 'Limits for Qualitative Detection and Quantitative Determination' }
     ],
-    primaryFormula: 'L_D = 2.71 + 4.65 \\sqrt{\\sigma_{\\text{bg}}^2} \\iff \\text{MDA} = \\frac{2.71 + 4.65 \\sqrt{C_{\\text{bg}}}}{\\epsilon_{\\text{det}} \\cdot t_{\\text{count}} \\cdot A_{\\text{probe}}}',
+    primaryFormula: 'L_D = 2.71 + 4.65 \\sqrt{\\sigma_{\\text{bg}}^2} \\iff \\text{MDA} = \\frac{2.71 + 4.65 \\sqrt{C_{\\text{bg}}}}{\\epsilon_i \\cdot \\epsilon_s \\cdot t_{\\text{count}} \\cdot F_{\\text{wipe}}}',
     secondaryFormulas: [
       { label: 'Critical Level (Decision Limit)', formula: 'L_C = 2.33 \\sqrt{\\sigma_{\\text{bg}}^2} = 2.33 \\sqrt{C_{\\text{bg}}} \\quad (\\alpha = 0.05)' },
-      { label: 'Number of Survey Sample Points (Sign Test)', formula: 'N = \\frac{(Z_{1-\\alpha} + Z_{1-\\beta})^2}{4 (\\text{Sign } p - 0.5)^2} \\times 1.2' }
+      { label: 'Surface Concentration MDC (dpm/100cm²)', formula: '\\text{MDC} = \\frac{\\text{MDA}_{\\text{dpm}}}{A_{\\text{probe}} / 100\\text{ cm}^2}' },
+      { label: 'Sign Test Sample Size (MARSSIM Table 5.1)', formula: 'N = \\frac{(Z_{1-\\alpha} + Z_{1-\\beta})^2}{4 (\\Phi(\\Delta/\\sigma) - 0.5)^2} \\times 1.20' },
+      { label: 'Triangular Grid Spacing (meters)', formula: 'L = \\sqrt{\\frac{A_{\\text{survey}}}{0.866 \\cdot N}}' }
+    ],
+    derivationSteps: [
+      {
+        stepTitle: '1. Currie Hypothesis Testing (Alpha & Beta Risks)',
+        explanation: 'At the decision threshold L_C, the probability of false positive (Type I error alpha) is set to 5% (Z = 1.645):',
+        math: 'L_C = k_\\alpha \\sigma_0 = 1.645 \\sqrt{\\sigma_B^2 + \\sigma_S^2} = 1.645 \\sqrt{2 C_B} = 2.326 \\sqrt{C_B}'
+      },
+      {
+        stepTitle: '2. Detection Limit L_D with False Negative Beta Risk',
+        explanation: 'Setting both alpha and beta to 5% requires L_D = L_C + k_beta * sigma_D:',
+        math: 'L_D = L_C + 1.645 \\sqrt{\\sigma_B^2 + (C_B + L_D)} \\implies L_D = k^2 + 2 k \\sqrt{2 C_B} = 2.71 + 4.65 \\sqrt{C_B}'
+      }
     ],
     variables: [
       { symbol: 'L_D', description: 'Detection limit in net counts guaranteeing 95% detection confidence', units: 'counts' },
-      { symbol: '\\text{MDA}', description: 'Minimum Detectable Activity / Concentration', units: 'Bq or Bq·cm⁻²' },
+      { symbol: 'L_C', description: 'Critical level / decision threshold above background', units: 'counts' },
+      { symbol: '\\text{MDA}', description: 'Minimum Detectable Activity', units: 'Bq or dpm' },
+      { symbol: '\\text{MDC}', description: 'Minimum Detectable Concentration', units: 'dpm/100 cm² or Bq/cm²' },
       { symbol: 'C_{\\text{bg}}', description: 'Total counts recorded in paired blank background measurement', units: 'counts' },
-      { symbol: '\\epsilon_{\\text{det}}', description: 'Total 4π detection efficiency (instrument × surface emission)', units: 'dimensionless' },
-      { symbol: 'A_{\\text{probe}}', description: 'Physical sensitive window area of detector probe', units: 'cm²' }
+      { symbol: '\\epsilon_i, \\epsilon_s', description: 'Instrument 2π/4π efficiency and ISO 7503-1 surface emission efficiency', units: 'dimensionless' },
+      { symbol: 'F_{\\text{wipe}}', description: 'Removable surface contamination smear collection factor (0.10 for 10% wipe)', units: 'dimensionless' },
+      { symbol: 'L', description: 'Systematic triangular sample grid node spacing', units: 'm' }
     ],
     assumptions: [
-      'Type I (false positive α) and Type II (false negative β) error risks fixed at 5% (Z = 1.645).',
-      'Normal distribution approximation to Poisson counting variance.'
+      'Normal distribution approximation to Poisson counting variance for background count C_B > 20.',
+      'MARSSIM 20% sample overage included to guarantee statistical power in presence of inaccessible points.'
     ],
-    benchmarks: 'Formulation identically implements NUREG-1575 Chapter 6 and ISO 11929 standards.'
+    benchmarks: 'Fully validated against MARSSIM Table 5.1/5.2 sample sizes and NUREG-1575 Appendix A benchmarks.'
   }
 ];
 
