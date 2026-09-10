@@ -548,33 +548,47 @@ const METHOD_DOCS: MethodDoc[] = [
 
   // === FORWARD-LOOKING EXPANSION METHODOLOGIES (FUTURE EXPANSION SPECIFICATIONS) ===
 
-  // 14. Expansion: AAPM TG-43 Medical Brachytherapy
+  // 14. Module 23: AAPM TG-43 Medical Brachytherapy
   {
-    id: 'EXP-TG43',
-    moduleId: 'Module 22 (Future)',
-    moduleName: 'Medical Brachytherapy Planning',
+    id: 'M23-TG43',
+    moduleId: 'Module 23',
+    moduleName: 'Brachytherapy Planner (TG-43)',
     domain: 'Medical & Advanced Expansion',
     title: 'AAPM TG-43U1 Formalism for Radioactive Seed Implants (I-125, Pd-103, Ir-192)',
     overview: 'Governing clinical protocol for 2D/3D interstitial brachytherapy dose distributions around sealed source seed implants.',
-    isExpansion: true,
     standards: [
       { org: 'AAPM', code: 'TG-43U1', year: '2004', title: 'Update of AAPM Task Group No. 43 Report on Brachytherapy Dosimetry' },
-      { org: 'ESTRO', code: 'Booklet 8', year: '2004', title: 'A Practical Guide to Quality Control of Brachytherapy Equipment' }
+      { org: 'ESTRO', code: 'Booklet 8', year: '2004', title: 'A Practical Guide to Quality Control of Brachytherapy Equipment' },
+      { org: 'ABS', code: 'GEC-ESTRO', year: '2016', title: 'Consensus Guidelines for Permanent Prostate Brachytherapy' }
     ],
     primaryFormula: '\\dot{D}(r, \\theta) = S_K \\cdot \\Lambda \\cdot \\frac{G_L(r, \\theta)}{G_L(r_0, \\theta_0)} \\cdot g_L(r) \\cdot F(r, \\theta)',
     secondaryFormulas: [
-      { label: 'Geometry Factor (Line Source)', formula: 'G_L(r, \\theta) = \\frac{\\beta}{L \\cdot r \\cdot \\sin\\theta} \\quad (\\text{where } \\beta = \\theta_2 - \\theta_1)' },
+      { label: 'Line Source Geometry Factor', formula: 'G_L(r, \\theta) = \\frac{\\beta}{L \\cdot r \\cdot \\sin\\theta} = \\frac{\\theta_2 - \\theta_1}{L \\cdot y\'' },
+      { label: 'Permanent Implant Total Dose', formula: 'D_{\\text{total}} = \\int_0^\\infty \\dot{D}_0 e^{-\\lambda t} \\, dt = \\frac{\\dot{D}_0}{\\lambda} = 1.4427 \\cdot T_{1/2} \\cdot \\dot{D}_0' },
       { label: 'Radial Dose Function', formula: 'g_L(r) = \\frac{\\dot{D}(r, \\theta_0) \\cdot G_L(r_0, \\theta_0)}{\\dot{D}(r_0, \\theta_0) \\cdot G_L(r, \\theta_0)}' }
+    ],
+    derivationSteps: [
+      {
+        stepTitle: '1. Line Source Geometric Integral',
+        explanation: 'Integrating differential point source elements dq = (A / L) dx along active core length L:',
+        math: 'G_L(r, \\theta) = \\frac{1}{L} \\int_{-L/2}^{L/2} \\frac{dx\'}{(x - x\')^2 + y^2} = \\frac{1}{L y} [\\arctan(x\'/y)] = \\frac{\\theta_2 - \\theta_1}{L \\cdot r \\sin\\theta}'
+      },
+      {
+        stepTitle: '2. Complete Lifetime Decay Dose Integration',
+        explanation: 'For permanent radioactive seed implants (I-125, Pd-103), the total absorbed dose integrated to infinity is:',
+        math: 'D_\\infty = \\int_0^\\infty \\dot{D}_0 e^{-\\lambda t} dt = \\frac{\\dot{D}_0}{\\lambda} = \\frac{\\dot{D}_0}{\\ln(2) / T_{1/2}} = 1.4427 \\cdot T_{1/2} \\cdot \\dot{D}_0'
+      }
     ],
     variables: [
       { symbol: 'S_K', description: 'Air-kerma strength of source seed', units: 'µGy·m²·h⁻¹ (or U)' },
       { symbol: '\\Lambda', description: 'Dose-rate constant in water', units: 'cGy·h⁻¹·U⁻¹' },
       { symbol: 'G_L(r, \\theta)', description: 'Geometry factor accounting for spatial distribution of radioactivity', units: 'cm⁻²' },
       { symbol: 'g_L(r)', description: 'Radial dose function modeling transverse attenuation and scatter', units: 'dimensionless' },
-      { symbol: 'F(r, \\theta)', description: '2D anisotropy function accounting for seed encapsulation self-absorption', units: 'dimensionless' }
+      { symbol: 'F(r, \\theta)', description: '2D anisotropy function accounting for seed encapsulation self-absorption', units: 'dimensionless' },
+      { symbol: 'L', description: 'Active core length of radioactive seed encapsulation', units: 'cm' }
     ],
     assumptions: [
-      'Cylindrical symmetry along the seed encapsulation axis.',
+      'Cylindrical symmetry along the seed encapsulation longitudinal axis.',
       'Liquid water phantom medium with reference distance r₀ = 1.0 cm and θ₀ = 90°.'
     ],
     benchmarks: 'Gold-standard consensus datasets published in Medical Physics Vol. 31 (2004).'
