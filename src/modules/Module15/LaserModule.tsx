@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import PlotComponent from 'react-plotly.js';
+import { BlockMath } from 'react-katex';
 
 const Plot = (PlotComponent as any).default || PlotComponent;
 
@@ -11,24 +12,27 @@ interface LaserPreset {
   diameter: number; // mm
   divergence: number; // mrad
   mode: 'CW' | 'Pulsed';
+  description: string;
 }
 
 const PRESETS: LaserPreset[] = [
-  { name: 'Green Laser Pointer', wavelength: 532, power: 5, diameter: 1.5, divergence: 1.2, mode: 'CW' },
-  { name: 'Red Laser Pointer', wavelength: 650, power: 1, diameter: 1.2, divergence: 1.0, mode: 'CW' },
-  { name: 'Medical Nd:YAG', wavelength: 1064, power: 20000, diameter: 2.0, divergence: 2.0, mode: 'CW' },
-  { name: 'Industrial CO₂ Cutter', wavelength: 10600, power: 100000, diameter: 5.0, divergence: 3.0, mode: 'CW' },
-  { name: 'Research Ti:Sapphire', wavelength: 800, power: 500, diameter: 1.0, divergence: 1.0, mode: 'CW' },
-  { name: 'UV Excimer Laser', wavelength: 248, power: 5000, diameter: 3.0, divergence: 1.5, mode: 'CW' }
+  { name: 'Green Pointer (532nm)', wavelength: 532, power: 5, diameter: 1.5, divergence: 1.2, mode: 'CW', description: 'DPSS frequency-doubled Nd:YAG pointer. High retinal hazard.' },
+  { name: 'Red Pointer (650nm)', wavelength: 650, power: 1, diameter: 1.2, divergence: 1.0, mode: 'CW', description: 'Direct diode red laser for presentations. Class 2 eye-safe via blink reflex.' },
+  { name: 'Blu-ray / Violet (405nm)', wavelength: 405, power: 50, diameter: 1.2, divergence: 1.4, mode: 'CW', description: 'GaN near-UV diode laser. Strong photochemical and thermal retinal risk.' },
+  { name: 'He-Ne Gas Lab (632.8nm)', wavelength: 632.8, power: 10, diameter: 1.0, divergence: 1.0, mode: 'CW', description: 'Helium-Neon gas laser commonly used in university alignment optics.' },
+  { name: 'Research Ti:Sapphire (800nm)', wavelength: 800, power: 500, diameter: 1.0, divergence: 1.0, mode: 'CW', description: 'Tunable near-infrared ultrafast laser. Invisible beam hazard.' },
+  { name: 'Medical Nd:YAG (1064nm)', wavelength: 1064, power: 20000, diameter: 2.0, divergence: 2.0, mode: 'CW', description: 'High-power surgical/dermatological laser. Causes deep choroid and retinal lesions.' },
+  { name: 'Industrial CO₂ Cutter (10.6µm)', wavelength: 10600, power: 100000, diameter: 5.0, divergence: 3.0, mode: 'CW', description: 'Far-infrared molecular gas laser. Severe corneal ablation and skin burn hazard.' },
+  { name: 'UV Excimer (248nm KrF)', wavelength: 248, power: 5000, diameter: 3.0, divergence: 1.5, mode: 'CW', description: 'Deep ultraviolet excimer laser. Severe photochemical photokeratitis risk.' }
 ];
 
 // Helper to convert wavelength to RGB/HEX color for beam rendering
 const wavelengthToColor = (nm: number): { hex: string; isVisible: boolean; name: string } => {
   if (nm < 400) {
-    return { hex: '#a855f7', isVisible: false, name: 'Ultraviolet (Invisible)' }; // Ultraviolet (represented as neon purple)
+    return { hex: '#c084fc', isVisible: false, name: 'Ultraviolet (Invisible)' };
   }
   if (nm > 700) {
-    return { hex: '#ef4444', isVisible: false, name: 'Infrared (Invisible)' }; // Infrared (represented as deep red)
+    return { hex: '#f87171', isVisible: false, name: 'Infrared (Invisible)' };
   }
 
   // Linear color interpolation for visible spectrum
@@ -52,7 +56,6 @@ const wavelengthToColor = (nm: number): { hex: string; isVisible: boolean; name:
     r = 1.0;
   }
 
-  // Scale intensity near edges of visibility
   let factor = 1.0;
   if (nm >= 400 && nm < 420) {
     factor = 0.3 + 0.7 * (nm - 400) / (420 - 400);
@@ -73,18 +76,29 @@ const wavelengthToColor = (nm: number): { hex: string; isVisible: boolean; name:
   };
 };
 
+type LaserTab = 'schematic' | 'decay' | 'eyewear' | 'physics';
+
 const LaserModule: React.FC = () => {
   const [wavelength, setWavelength] = useState<number>(532);
   const [power, setPower] = useState<number>(5); // in mW
+  const [powerUnit, setPowerUnit] = useState<'mW' | 'W'>('mW');
   const [diameter, setDiameter] = useState<number>(1.5); // in mm
   const [divergence, setDivergence] = useState<number>(1.2); // in mrad
   const [exposureDuration, setExposureDuration] = useState<number>(0.25); // in seconds
   const [customDuration, setCustomDuration] = useState<string>('0.25');
+  const [activeTab, setActiveTab] = useState<LaserTab>('schematic');
+  const [probeDistance, setProbeDistance] = useState<number>(1.0); // interactive probe distance in meters
 
   // Load a preset
   const applyPreset = (preset: LaserPreset) => {
     setWavelength(preset.wavelength);
-    setPower(preset.power);
+    if (preset.power >= 1000) {
+      setPower(preset.power / 1000);
+      setPowerUnit('W');
+    } else {
+      setPower(preset.power);
+      setPowerUnit('mW');
+    }
     setDiameter(preset.diameter);
     setDivergence(preset.divergence);
     setExposureDuration(0.25);
@@ -94,124 +108,123 @@ const LaserModule: React.FC = () => {
   // Color matching physics
   const beamColor = useMemo(() => wavelengthToColor(wavelength), [wavelength]);
 
-  // ANSI Calculations Engine
+  // Actual power in mW
+  const actualPowerMW = powerUnit === 'W' ? power * 1000 : power;
+
+  // ANSI Z136.1 Calculations Engine
   const calculations = useMemo(() => {
     // 1. Calculate Ocular Maximum Permissible Exposure (MPE) in mW/cm^2
-    let mpe = 1.0; // default standard
+    let mpe = 1.0;
 
     if (wavelength >= 400 && wavelength <= 700) {
-      // Visible region - Eye Blink Reflex (0.25s) vs. Long Term Accidental
       if (exposureDuration <= 0.25) {
-        mpe = 2.5; // mW/cm^2
+        mpe = 2.5; // mW/cm^2 (standard eye blink reflex limit)
       } else if (exposureDuration <= 10) {
-        mpe = 1.0; // mW/cm^2
+        mpe = 1.0;
       } else {
-        // Occupational workday limit (30,000s) -> drops to microWatts/cm^2
-        mpe = 1.0; // simplified visible ocular constant
+        mpe = 1.0;
       }
     } else if (wavelength >= 315 && wavelength < 400) {
-      // UV-A: Eye cornea/lens hazard
-      mpe = 1.0; // mW/cm^2
+      mpe = 1.0;
     } else if (wavelength >= 180 && wavelength < 315) {
-      // UV-B/C: Highly photochemical cornea hazard
-      mpe = 0.003; // mW/cm^2 (3.0 microWatts/cm^2)
+      mpe = 0.003;
     } else if (wavelength > 700 && wavelength <= 1400) {
-      // Near-Infrared: Thermal hazard, eye focus active but no blink reflex
-      // CA correction factor based on retinal absorption
       let ca = 1.0;
       if (wavelength < 1050) {
         ca = Math.pow(10, 0.002 * (wavelength - 700));
       } else {
-        ca = 5.0; // standard at 1064nm and above
+        ca = 5.0;
       }
-      mpe = 1.6 * ca; // mW/cm^2 (e.g. at 1064nm, 8.0 mW/cm^2)
+      mpe = 1.6 * ca;
     } else if (wavelength > 1400) {
-      // Mid/Far-Infrared: Cornea thermal absorption hazard
-      mpe = 100.0; // mW/cm^2 (e.g. 10.6 micron CO2 is safe up to 100 mW/cm^2)
+      mpe = 100.0;
     }
 
-    // 2. Unit Conversions for NOHD
-    const powerW = power / 1000; // mW -> Watts
-    const mpeWcm2 = mpe / 1000; // mW/cm^2 -> W/cm^2
-    const diamCm = diameter / 10; // mm -> cm
-    const divRad = divergence / 1000; // mrad -> rad
+    // 2. Physical Unit Conversions
+    const powerW = actualPowerMW / 1000;
+    const mpeWcm2 = mpe / 1000;
+    const diamCm = diameter / 10;
+    const divRad = divergence / 1000;
 
     // Aperture Area (cm^2)
     const apertureArea = (Math.PI * Math.pow(diamCm, 2)) / 4;
     // Irradiance at Aperture (W/cm^2)
     const irradianceAperture = powerW / apertureArea;
 
-    // 3. Nominal Ocular Hazard Distance (NOHD)
-    // NOHD = (1/div) * [ sqrt( (4*P)/(pi * MPE) ) - diameter ]
+    // 3. Nominal Ocular Hazard Distance (NOHD) in meters
     let nohdMeters = 0;
     if (irradianceAperture > mpeWcm2) {
       const term = Math.sqrt((4 * powerW) / (Math.PI * mpeWcm2));
       const nohdCm = (term - diamCm) / divRad;
       nohdMeters = Math.max(0, nohdCm / 100);
     } else {
-      nohdMeters = 0; // Already eye-safe at the aperture itself
+      nohdMeters = 0;
     }
 
-    // 4. Laser Safety Classification
+    // 4. Rayleigh Range (z_R) & Beam Waist (w_0)
+    const waistRadiusCm = diamCm / 2;
+    const wavelengthCm = (wavelength * 1e-9) * 100;
+    const rayleighRangeM = (Math.PI * Math.pow(waistRadiusCm, 2) / wavelengthCm) / 100;
+
+    // 5. ANSI Z136.1 / IEC 60825-1 Classification
     let laserClass = 'Class 1';
-    let classColor = 'var(--color-success)';
-    let classDescription = 'Safe under all conditions of normal use. Eye-safe.';
-    let glowStyle = '0 0 10px rgba(16, 185, 129, 0.3)';
+    let classColor = '#10B981';
+    let classBadge = 'EYE-SAFE';
+    let classDescription = 'Safe under all foreseeable operating conditions. Inherently eye-safe.';
 
     if (wavelength >= 400 && wavelength <= 700) {
-      // Visible lasers
-      if (power <= 0.39) {
-        laserClass = 'Class 1';
-        classColor = '#10B981'; // Green
-        classDescription = 'Safe under all conditions of normal use.';
-        glowStyle = '0 0 15px rgba(16, 185, 129, 0.4)';
-      } else if (power <= 1.0) {
-        laserClass = 'Class 2';
-        classColor = '#3B82F6'; // Blue
-        classDescription = 'Safe for accidental exposure due to the blink reflex (0.25s). Do not stare.';
-        glowStyle = '0 0 15px rgba(59, 130, 246, 0.4)';
-      } else if (power <= 5.0) {
-        laserClass = 'Class 3R';
-        classColor = '#F59E0B'; // Amber
-        classDescription = 'Marginally hazardous. Direct viewing of beam is hazardous, but risk is low.';
-        glowStyle = '0 0 15px rgba(245, 158, 11, 0.4)';
-      } else if (power <= 500) {
-        laserClass = 'Class 3B';
-        classColor = '#F97316'; // Orange
-        classDescription = 'Hazardous for direct eye viewing. Diffuse reflections are generally safe. Eyewear required.';
-        glowStyle = '0 0 15px rgba(249, 115, 22, 0.4)';
-      } else {
-        laserClass = 'Class 4';
-        classColor = '#EF4444'; // Red
-        classDescription = 'DANGER: Extremely hazardous. Direct beam, specular reflections, and diffuse reflections cause eye and skin burns. Fire hazard.';
-        glowStyle = '0 0 20px rgba(239, 68, 68, 0.6)';
-      }
-    } else {
-      // Invisible lasers (UV / IR) - No blink reflex!
-      if (power <= 0.39) {
+      if (actualPowerMW <= 0.39) {
         laserClass = 'Class 1';
         classColor = '#10B981';
-        classDescription = 'Safe under all conditions of normal use.';
-        glowStyle = '0 0 15px rgba(16, 185, 129, 0.4)';
-      } else if (power <= 5.0) {
+        classBadge = 'CLASS 1';
+        classDescription = 'Safe under all conditions. Radiation emitted is below ocular MPE.';
+      } else if (actualPowerMW <= 1.0) {
+        laserClass = 'Class 2';
+        classColor = '#3B82F6';
+        classBadge = 'CLASS 2';
+        classDescription = 'Safe for accidental exposure due to physiological aversion response (0.25s blink reflex).';
+      } else if (actualPowerMW <= 5.0) {
         laserClass = 'Class 3R';
         classColor = '#F59E0B';
-        classDescription = 'Marginally hazardous for invisible wavelengths. Eyewear highly recommended.';
-        glowStyle = '0 0 15px rgba(245, 158, 11, 0.4)';
-      } else if (power <= 500) {
+        classBadge = 'CLASS 3R';
+        classDescription = 'Low risk of ocular injury. Direct intrabeam viewing is potentially hazardous; low diffuse hazard.';
+      } else if (actualPowerMW <= 500) {
         laserClass = 'Class 3B';
         classColor = '#F97316';
-        classDescription = 'Hazardous to the eye from direct beam. Invisible beam increases risk. Eyewear mandatory.';
-        glowStyle = '0 0 15px rgba(249, 115, 22, 0.4)';
+        classBadge = 'CLASS 3B';
+        classDescription = 'HAZARDOUS: Direct intrabeam and specular reflections cause acute retinal/corneal damage. Eyewear required.';
       } else {
         laserClass = 'Class 4';
         classColor = '#EF4444';
-        classDescription = 'DANGER: Extremely high power invisible laser. Direct and diffuse viewing causes ocular and skin burns. Eyewear mandatory.';
-        glowStyle = '0 0 20px rgba(239, 68, 68, 0.6)';
+        classBadge = 'CLASS 4';
+        classDescription = 'EXTREME DANGER: High-power laser. Direct, specular, and diffuse reflections cause severe eye injury and skin burns. Fire hazard.';
+      }
+    } else {
+      // Invisible spectrum (UV / IR) - No natural aversion response
+      if (actualPowerMW <= 0.39) {
+        laserClass = 'Class 1';
+        classColor = '#10B981';
+        classBadge = 'CLASS 1';
+        classDescription = 'Safe under all conditions. Emission below non-visible MPE threshold.';
+      } else if (actualPowerMW <= 5.0) {
+        laserClass = 'Class 3R';
+        classColor = '#F59E0B';
+        classBadge = 'CLASS 3R';
+        classDescription = 'Invisible beam hazard. Eyewear strongly advised due to lack of human blink reflex.';
+      } else if (actualPowerMW <= 500) {
+        laserClass = 'Class 3B';
+        classColor = '#F97316';
+        classBadge = 'CLASS 3B';
+        classDescription = 'HAZARDOUS: Invisible beam. Severe corneal/retinal injury without visual sensation. Interlocks and eyewear mandatory.';
+      } else {
+        laserClass = 'Class 4';
+        classColor = '#EF4444';
+        classBadge = 'CLASS 4';
+        classDescription = 'CRITICAL DANGER: High-energy invisible beam. Severe tissue destruction, deep retinal photocoagulation, and skin burns.';
       }
     }
 
-    // 5. Eyewear Optical Density (OD) Required at Aperture
+    // 6. Eyewear Optical Density (OD) Required at Source Aperture
     const odRequired = irradianceAperture > mpeWcm2 
       ? Math.max(0, Math.log10(irradianceAperture / mpeWcm2)) 
       : 0;
@@ -223,27 +236,29 @@ const LaserModule: React.FC = () => {
       nohdMeters,
       laserClass,
       classColor,
+      classBadge,
       classDescription,
-      glowStyle,
       odRequired,
       divRad,
       diamCm,
-      powerW
+      powerW,
+      rayleighRangeM,
+      waistRadiusCm
     };
-  }, [wavelength, power, diameter, divergence, exposureDuration]);
+  }, [wavelength, actualPowerMW, diameter, divergence, exposureDuration]);
 
   // Generates dynamic data for the Plotly Irradiance Chart & OD Table
   const distanceData = useMemo(() => {
-    const steps = [0.1, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000];
-    const chartDistances = Array.from({ length: 200 }, (_, i) => 0.1 + (i * Math.max(10, calculations.nohdMeters * 1.5)) / 200);
+    const steps = [0.1, 0.25, 0.5, 1, 2, 5, 10, 20, 50, 100, 250, 500, 1000];
+    const maxGraphRange = Math.max(10, calculations.nohdMeters * 1.5);
+    const chartDistances = Array.from({ length: 150 }, (_, i) => 0.05 + (i * maxGraphRange) / 150);
 
     const calcDetails = (rMeters: number) => {
       const rCm = rMeters * 100;
-      // Beam expands: D(r) = aperture_diameter + divergence * r
       const beamDiamCm = calculations.diamCm + calculations.divRad * rCm;
       const beamArea = (Math.PI * Math.pow(beamDiamCm, 2)) / 4;
-      const irr = calculations.powerW / beamArea; // W/cm^2
-      const irrMW = irr * 1000; // mW/cm^2
+      const irrWcm2 = calculations.powerW / beamArea;
+      const irrMW = irrWcm2 * 1000;
       
       const od = irrMW > calculations.mpe
         ? Math.max(0, Math.log10(irrMW / calculations.mpe))
@@ -253,100 +268,163 @@ const LaserModule: React.FC = () => {
         rMeters,
         beamDiamMm: beamDiamCm * 10,
         irradiance: irrMW,
-        od
+        od,
+        isSafe: irrMW <= calculations.mpe
       };
     };
 
     const tableRows = steps
-      .filter(step => step <= Math.max(100, calculations.nohdMeters * 2))
+      .filter(step => step <= Math.max(50, calculations.nohdMeters * 1.8))
       .map(step => calcDetails(step));
 
     const plotX = chartDistances;
     const plotY = chartDistances.map(r => calcDetails(r).irradiance);
 
-    return { tableRows, plotX, plotY };
-  }, [calculations]);
+    // Interactive probe calculation
+    const probe = calcDetails(probeDistance);
+
+    return { tableRows, plotX, plotY, probe, maxGraphRange };
+  }, [calculations, probeDistance]);
 
   return (
-    <div className="laser-module">
-      <div className="panel-header">
-        <h2>⚡ Laser Radiation Safety & NOHD Calculator</h2>
-        <p style={{ color: 'var(--color-text-muted)' }}>
-          Assess non-ionizing optical hazards, define ocular exclusion zones (NOHD), and calculate protective eyewear requirements (ANSI Z136.1).
-        </p>
-      </div>
-
-      {/* Preset Fast Picker */}
-      <div className="panel" style={{ padding: '15px', marginBottom: '20px' }}>
-        <h4 style={{ fontSize: '0.9rem', color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '10px' }}>
-          Quick Presets
-        </h4>
-        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-          {PRESETS.map((preset) => (
-            <button 
-              key={preset.name}
-              className="btn btn-primary"
-              style={{ fontSize: '0.8rem', padding: '6px 12px', background: 'rgba(22, 36, 56, 0.8)', color: '#fff', border: '1px solid var(--color-border)', boxShadow: 'none' }}
-              onClick={() => applyPreset(preset)}
-            >
-              {preset.name} ({preset.wavelength}nm)
-            </button>
-          ))}
+    <div className="laser-module" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      {/* Header Banner */}
+      <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+        <div>
+          <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: 0 }}>
+            <span>⚡ Laser Radiation Safety & NOHD Analyzer</span>
+            <span style={{ fontSize: '0.75rem', padding: '3px 8px', background: 'rgba(0, 229, 255, 0.1)', color: 'var(--color-primary)', border: '1px solid rgba(0, 229, 255, 0.3)', borderRadius: '4px' }}>
+              ANSI Z136.1-2022 / IEC 60825-1
+            </span>
+          </h2>
+          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
+            High-precision optical engineering engine calculating ocular Maximum Permissible Exposure (MPE), Gaussian beam divergence caustics, Nominal Ocular Hazard Distance (NOHD), and optical density (OD) protection specs.
+          </p>
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', marginBottom: '20px' }}>
-        {/* Input Parameters Panel */}
-        <div className="panel" style={{ flex: '1 1 450px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
-          <h3>Laser System Parameters</h3>
+      {/* Preset Library Toolbar */}
+      <div className="panel" style={{ padding: '14px 20px', marginBottom: 0 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+          <span style={{ fontSize: '0.8rem', color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 'bold' }}>
+            System Quick-Presets
+          </span>
+          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+            Select verified optical hardware
+          </span>
+        </div>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          {PRESETS.map((p) => {
+            const isSelected = wavelength === p.wavelength && actualPowerMW === p.power;
+            const pColor = wavelengthToColor(p.wavelength);
+            return (
+              <button
+                key={p.name}
+                className="btn btn-primary"
+                style={{
+                  fontSize: '0.78rem',
+                  padding: '5px 12px',
+                  background: isSelected ? 'rgba(0, 229, 255, 0.2)' : 'rgba(255, 255, 255, 0.03)',
+                  color: isSelected ? '#00e5ff' : '#cbd5e1',
+                  border: `1px solid ${isSelected ? '#00e5ff' : 'var(--color-border)'}`,
+                  boxShadow: isSelected ? '0 0 8px rgba(0, 229, 255, 0.3)' : 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+                onClick={() => applyPreset(p)}
+              >
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: pColor.hex, display: 'inline-block' }} />
+                <strong>{p.name}</strong>
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
-          <div className="form-group">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <label className="form-label">Laser Wavelength (λ)</label>
-              <span style={{ fontSize: '0.9rem', color: beamColor.hex, fontWeight: 'bold' }}>
-                {wavelength} nm ({beamColor.name})
-              </span>
+      {/* Top Split Dashboard: Left Parameters | Right Hazard Readout */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: '20px' }}>
+        {/* Left Column: Laser Emitter Specifications */}
+        <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: '8px' }}>
+            <h3 style={{ margin: 0, fontSize: '1rem', color: '#fff' }}>Laser Emitter Parameters</h3>
+            <span style={{ fontSize: '0.75rem', color: beamColor.hex, fontWeight: 'bold', padding: '2px 8px', background: `${beamColor.hex}15`, borderRadius: '4px', border: `1px solid ${beamColor.hex}40` }}>
+              {wavelength} nm • {beamColor.name}
+            </span>
+          </div>
+
+          {/* Wavelength Slider & Numeric Input */}
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+              <label className="form-label" style={{ margin: 0 }}>Emission Wavelength (λ)</label>
+              <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                <input
+                  type="number"
+                  className="form-control"
+                  style={{ width: '90px', padding: '3px 8px', fontSize: '0.85rem', textAlign: 'right' }}
+                  value={wavelength}
+                  min="180"
+                  max="11000"
+                  step="1"
+                  onChange={(e) => setWavelength(Math.max(180, Math.min(11000, Number(e.target.value))))}
+                />
+                <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>nm</span>
+              </div>
             </div>
-            <input 
-              type="range" 
-              min="180" 
-              max="11000" 
-              value={wavelength} 
-              className="form-control"
-              style={{ width: '100%', accentColor: beamColor.hex, background: '#111827', margin: '8px 0' }}
-              onChange={(e) => setWavelength(Number(e.target.value))}
-            />
             <input
-              type="number"
-              className="form-control"
+              type="range"
+              min="200"
+              max="10600"
+              step="5"
               value={wavelength}
-              onChange={(e) => setWavelength(Math.max(180, Math.min(100000, Number(e.target.value))))}
+              className="form-control"
+              style={{ width: '100%', accentColor: beamColor.hex, background: '#111827', margin: '4px 0' }}
+              onChange={(e) => setWavelength(Number(e.target.value))}
             />
           </div>
 
-          <div className="form-group">
-            <label className="form-label">Beam Power (P)</label>
+          {/* Optical Beam Power */}
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+              <label className="form-label" style={{ margin: 0 }}>Average Optical Power (P)</label>
+              <div style={{ display: 'flex', gap: '4px' }}>
+                <button
+                  type="button"
+                  style={{ padding: '2px 8px', fontSize: '0.75rem', background: powerUnit === 'mW' ? 'var(--color-primary)' : 'rgba(255,255,255,0.05)', color: powerUnit === 'mW' ? '#000' : '#fff', border: '1px solid var(--color-border)', borderRadius: '3px', cursor: 'pointer' }}
+                  onClick={() => setPowerUnit('mW')}
+                >
+                  mW
+                </button>
+                <button
+                  type="button"
+                  style={{ padding: '2px 8px', fontSize: '0.75rem', background: powerUnit === 'W' ? 'var(--color-primary)' : 'rgba(255,255,255,0.05)', color: powerUnit === 'W' ? '#000' : '#fff', border: '1px solid var(--color-border)', borderRadius: '3px', cursor: 'pointer' }}
+                  onClick={() => setPowerUnit('W')}
+                >
+                  Watts
+                </button>
+              </div>
+            </div>
             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
               <input
                 type="number"
                 className="form-control"
                 style={{ flex: 1 }}
                 value={power}
-                min="0.01"
+                min="0.001"
                 step="any"
-                onChange={(e) => setPower(Math.max(0.01, Number(e.target.value)))}
+                onChange={(e) => setPower(Math.max(0.001, Number(e.target.value)))}
               />
-              <span style={{ color: 'var(--color-text-muted)', width: '40px' }}>mW</span>
+              <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', width: '60px' }}>
+                {actualPowerMW >= 1000 ? `${(actualPowerMW / 1000).toFixed(2)} W` : `${actualPowerMW} mW`}
+              </span>
             </div>
-            <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-              ({power >= 1000 ? `${(power / 1000).toFixed(2)} W` : `${power} mW`})
-            </span>
           </div>
 
-          <div style={{ display: 'flex', gap: '15px' }}>
-            <div className="form-group" style={{ flex: 1 }}>
-              <label className="form-label">Beam Waist Diameter (a)</label>
-              <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
+          {/* Beam Geometry: Diameter & Divergence */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label" style={{ fontSize: '0.82rem', marginBottom: '3px' }}>Aperture Waist (a)</label>
+              <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                 <input
                   type="number"
                   className="form-control"
@@ -355,63 +433,58 @@ const LaserModule: React.FC = () => {
                   step="0.1"
                   onChange={(e) => setDiameter(Math.max(0.1, Number(e.target.value)))}
                 />
-                <span style={{ color: 'var(--color-text-muted)' }}>mm</span>
+                <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>mm</span>
               </div>
             </div>
 
-            <div className="form-group" style={{ flex: 1 }}>
-              <label className="form-label">Beam Divergence (θ)</label>
-              <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label" style={{ fontSize: '0.82rem', marginBottom: '3px' }}>Divergence (θ)</label>
+              <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                 <input
                   type="number"
                   className="form-control"
                   value={divergence}
-                  min="0.1"
-                  step="0.1"
-                  onChange={(e) => setDivergence(Math.max(0.1, Number(e.target.value)))}
+                  min="0.05"
+                  step="0.05"
+                  onChange={(e) => setDivergence(Math.max(0.05, Number(e.target.value)))}
                 />
-                <span style={{ color: 'var(--color-text-muted)' }}>mrad</span>
+                <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>mrad</span>
               </div>
             </div>
           </div>
 
-          <div className="form-group">
-            <label className="form-label">Exposure Duration (T)</label>
-            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '10px' }}>
-              <button 
-                className="btn btn-primary"
-                style={{ fontSize: '0.8rem', padding: '4px 8px', background: exposureDuration === 0.25 ? 'var(--color-primary)' : 'rgba(255,255,255,0.05)', color: exposureDuration === 0.25 ? '#000' : '#fff', border: '1px solid var(--color-border)', boxShadow: 'none' }}
-                onClick={() => { setExposureDuration(0.25); setCustomDuration('0.25'); }}
-              >
-                0.25s (Blink)
-              </button>
-              <button 
-                className="btn btn-primary"
-                style={{ fontSize: '0.8rem', padding: '4px 8px', background: exposureDuration === 10 ? 'var(--color-primary)' : 'rgba(255,255,255,0.05)', color: exposureDuration === 10 ? '#000' : '#fff', border: '1px solid var(--color-border)', boxShadow: 'none' }}
-                onClick={() => { setExposureDuration(10); setCustomDuration('10'); }}
-              >
-                10s (Accidental)
-              </button>
-              <button 
-                className="btn btn-primary"
-                style={{ fontSize: '0.8rem', padding: '4px 8px', background: exposureDuration === 600 ? 'var(--color-primary)' : 'rgba(255,255,255,0.05)', color: exposureDuration === 600 ? '#000' : '#fff', border: '1px solid var(--color-border)', boxShadow: 'none' }}
-                onClick={() => { setExposureDuration(600); setCustomDuration('600'); }}
-              >
-                10m (Extended)
-              </button>
-              <button 
-                className="btn btn-primary"
-                style={{ fontSize: '0.8rem', padding: '4px 8px', background: exposureDuration === 30000 ? 'var(--color-primary)' : 'rgba(255,255,255,0.05)', color: exposureDuration === 30000 ? '#000' : '#fff', border: '1px solid var(--color-border)', boxShadow: 'none' }}
-                onClick={() => { setExposureDuration(30000); setCustomDuration('30000'); }}
-              >
-                8hr (Workday)
-              </button>
+          {/* Exposure Duration Selector */}
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label" style={{ fontSize: '0.82rem', marginBottom: '4px' }}>ANSI Exposure Duration (T)</label>
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '6px' }}>
+              {[
+                { label: '0.25s (Blink)', val: 0.25 },
+                { label: '10s (Accidental)', val: 10 },
+                { label: '600s (Extended)', val: 600 },
+                { label: '30,000s (8h Workday)', val: 30000 }
+              ].map(d => (
+                <button
+                  key={d.val}
+                  type="button"
+                  style={{
+                    padding: '3px 8px',
+                    fontSize: '0.75rem',
+                    background: exposureDuration === d.val ? 'var(--color-primary)' : 'rgba(255,255,255,0.03)',
+                    color: exposureDuration === d.val ? '#000' : 'var(--color-text-muted)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: '4px',
+                    cursor: 'pointer'
+                  }}
+                  onClick={() => { setExposureDuration(d.val); setCustomDuration(String(d.val)); }}
+                >
+                  {d.label}
+                </button>
+              ))}
             </div>
-            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
               <input
                 type="number"
                 className="form-control"
-                style={{ flex: 1 }}
                 value={customDuration}
                 min="0.001"
                 onChange={(e) => {
@@ -420,206 +493,359 @@ const LaserModule: React.FC = () => {
                   if (val > 0) setExposureDuration(val);
                 }}
               />
-              <span style={{ color: 'var(--color-text-muted)' }}>seconds</span>
+              <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>seconds</span>
             </div>
           </div>
         </div>
 
-        {/* Hazard Classification & Assessment Panel */}
-        <div className="panel" style={{ flex: '1 1 450px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-          <div>
-            <h3>Laser Hazard Assessment</h3>
-            
-            {/* Classification Display */}
-            <div 
-              style={{ 
-                marginTop: '15px', 
-                padding: '20px', 
-                borderRadius: '8px', 
-                backgroundColor: 'rgba(5, 10, 18, 0.4)',
-                border: `2px solid ${calculations.classColor}`,
-                boxShadow: calculations.glowStyle,
-                textAlign: 'center',
-                transition: 'all 0.3s ease'
-              }}
-            >
-              <div style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '2px', color: 'var(--color-text-muted)', marginBottom: '5px' }}>
-                ANSI Hazard Classification
+        {/* Right Column: ANSI Hazard Assessment & Primary Instrument Gauge */}
+        <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: 0, justifyContent: 'space-between' }}>
+          {/* Classification Banner */}
+          <div style={{ padding: '16px', background: 'rgba(3, 7, 18, 0.65)', border: `2px solid ${calculations.classColor}`, borderRadius: '8px', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
+            <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: calculations.classColor }} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+              <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '1.5px', color: 'var(--color-text-muted)', fontWeight: 'bold' }}>
+                ANSI Z136.1 / IEC 60825-1 CLASSIFICATION
+              </span>
+              <span style={{ fontSize: '0.7rem', padding: '2px 8px', background: `${calculations.classColor}25`, color: calculations.classColor, borderRadius: '3px', fontWeight: 'bold', border: `1px solid ${calculations.classColor}60` }}>
+                {calculations.classBadge}
+              </span>
+            </div>
+            <div style={{ fontSize: '2.2rem', fontWeight: 800, color: calculations.classColor, letterSpacing: '1px' }}>
+              {calculations.laserClass}
+            </div>
+            <div style={{ fontSize: '0.85rem', color: '#e2e8f0', marginTop: '4px', lineHeight: '1.4' }}>
+              {calculations.classDescription}
+            </div>
+          </div>
+
+          {/* Primary NOHD Readout Box */}
+          <div style={{ padding: '14px 18px', background: 'rgba(0, 229, 255, 0.05)', border: '1px solid rgba(0, 229, 255, 0.3)', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--color-primary)', fontWeight: 'bold', display: 'block' }}>
+                Nominal Ocular Hazard Distance (NOHD)
+              </span>
+              <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#fff', margin: '2px 0' }}>
+                {calculations.nohdMeters > 0 ? `${calculations.nohdMeters.toFixed(2)} m` : '0.00 m (Eye-Safe)'}
               </div>
-              <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: calculations.classColor, textShadow: `0 0 10px ${calculations.classColor}66` }}>
-                {calculations.laserClass}
+              {calculations.nohdMeters > 0 && (
+                <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+                  Exclusion Boundary: {(calculations.nohdMeters * 3.28084).toFixed(1)} feet
+                </span>
+              )}
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', display: 'block' }}>Eyewear Optical Density</span>
+              <div style={{ fontSize: '1.5rem', fontWeight: 700, color: calculations.odRequired > 0 ? 'var(--color-accent)' : 'var(--color-success)' }}>
+                {calculations.odRequired > 0 ? `OD ≥ ${calculations.odRequired.toFixed(2)}` : 'None Required'}
               </div>
-              <p style={{ fontSize: '0.9rem', color: '#fff', marginTop: '10px', lineHeight: '1.4' }}>
-                {calculations.classDescription}
+            </div>
+          </div>
+
+          {/* Critical Physical Quantities Grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+            <div style={{ padding: '8px 10px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--color-border)', borderRadius: '6px', textAlign: 'center' }}>
+              <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', display: 'block' }}>Ocular MPE Limit</span>
+              <strong style={{ fontSize: '0.95rem', color: '#fff' }}>{calculations.mpe.toFixed(3)}</strong>
+              <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', display: 'block' }}>mW/cm²</span>
+            </div>
+            <div style={{ padding: '8px 10px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--color-border)', borderRadius: '6px', textAlign: 'center' }}>
+              <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', display: 'block' }}>Aperture Irradiance E₀</span>
+              <strong style={{ fontSize: '0.95rem', color: calculations.irradianceAperture * 1000 > calculations.mpe ? 'var(--color-danger)' : 'var(--color-success)' }}>
+                {(calculations.irradianceAperture * 1000).toExponential(2)}
+              </strong>
+              <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', display: 'block' }}>mW/cm²</span>
+            </div>
+            <div style={{ padding: '8px 10px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--color-border)', borderRadius: '6px', textAlign: 'center' }}>
+              <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', display: 'block' }}>Rayleigh Range (z_R)</span>
+              <strong style={{ fontSize: '0.95rem', color: '#fff' }}>{calculations.rayleighRangeM.toFixed(2)}</strong>
+              <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', display: 'block' }}>meters</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Workspace Navigation Tabs (Replaces endless vertical stacking) */}
+      <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', gap: '4px', flexWrap: 'wrap' }}>
+        <button
+          className={`nav-link ${activeTab === 'schematic' ? 'active' : ''}`}
+          style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.9rem', padding: '10px 18px', borderBottom: activeTab === 'schematic' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'schematic' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'schematic' ? 'bold' : 'normal' }}
+          onClick={() => setActiveTab('schematic')}
+        >
+          🔬 Optical Bench & Beam Caustic CAD Schematic
+        </button>
+        <button
+          className={`nav-link ${activeTab === 'decay' ? 'active' : ''}`}
+          style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.9rem', padding: '10px 18px', borderBottom: activeTab === 'decay' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'decay' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'decay' ? 'bold' : 'normal' }}
+          onClick={() => setActiveTab('decay')}
+        >
+          📈 Irradiance Decay & Optical Density vs. Distance
+        </button>
+        <button
+          className={`nav-link ${activeTab === 'eyewear' ? 'active' : ''}`}
+          style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.9rem', padding: '10px 18px', borderBottom: activeTab === 'eyewear' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'eyewear' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'eyewear' ? 'bold' : 'normal' }}
+          onClick={() => setActiveTab('eyewear')}
+        >
+          🛡️ Eyewear OD & Workplace Safety Table
+        </button>
+        <button
+          className={`nav-link ${activeTab === 'physics' ? 'active' : ''}`}
+          style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.9rem', padding: '10px 18px', borderBottom: activeTab === 'physics' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'physics' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'physics' ? 'bold' : 'normal' }}
+          onClick={() => setActiveTab('physics')}
+        >
+          📐 ANSI Z136.1 Physics & Derivations
+        </button>
+      </div>
+
+      {/* Tab 1: Professional Engineering CAD Optical Bench */}
+      {activeTab === 'schematic' && (
+        <div className="panel" style={{ padding: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '10px' }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '1rem', color: '#fff' }}>Optical Rail CAD Schematic: Gaussian Caustic Profile & Exclusion Boundary</h3>
+              <p style={{ color: 'var(--color-text-muted)', fontSize: '0.82rem', margin: '2px 0 0 0' }}>
+                Physical Gaussian beam expansion w(z) = w₀ √(1 + (z/z_R)²) rendered with 1/e² and 1/e intensity contours. Drag or click the range probe to inspect spot size and irradiance.
               </p>
             </div>
-          </div>
-
-          <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--color-border)', paddingBottom: '8px' }}>
-              <span style={{ color: 'var(--color-text-muted)' }}>Ocular MPE Limit:</span>
-              <span style={{ fontWeight: 'bold', color: '#fff' }}>
-                {calculations.mpe.toFixed(4)} mW/cm²
-              </span>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--color-border)', paddingBottom: '8px' }}>
-              <span style={{ color: 'var(--color-text-muted)' }}>Aperture Irradiance (E₀):</span>
-              <span style={{ fontWeight: 'bold', color: calculations.irradianceAperture * 1000 > calculations.mpe ? 'var(--color-danger)' : 'var(--color-success)' }}>
-                {(calculations.irradianceAperture * 1000).toExponential(3)} mW/cm²
-              </span>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--color-border)', paddingBottom: '8px', alignItems: 'center' }}>
-              <span style={{ color: 'var(--color-text-muted)' }}>Required Eyewear OD (at source):</span>
-              <span 
-                style={{ 
-                  fontWeight: 'bold', 
-                  fontSize: '1.2rem',
-                  color: calculations.odRequired > 0 ? 'var(--color-accent)' : 'var(--color-success)',
-                  textShadow: calculations.odRequired > 0 ? 'var(--neon-glow-accent)' : 'none'
-                }}
-              >
-                {calculations.odRequired > 0 ? `OD ${calculations.odRequired.toFixed(2)}` : 'No Protection Needed'}
-              </span>
-            </div>
-
-            {/* NOHD Core Result */}
-            <div style={{ marginTop: '10px', padding: '15px', borderRadius: '6px', background: 'rgba(0, 229, 255, 0.05)', border: '1px solid var(--color-primary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <h4 style={{ color: 'var(--color-primary)', margin: 0, fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                  Nominal Ocular Hazard Distance (NOHD)
-                </h4>
-                <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#fff', marginTop: '5px' }}>
-                  {calculations.nohdMeters > 0 
-                    ? `${calculations.nohdMeters.toFixed(2)} meters` 
-                    : '0 meters (Eye-Safe)'}
-                </div>
-                {calculations.nohdMeters > 0 && (
-                  <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-                    ({(calculations.nohdMeters * 3.28084).toFixed(1)} feet ocular exclusion zone)
-                  </span>
-                )}
-              </div>
-              <span style={{ fontSize: '2rem' }}>🔦</span>
+            {/* Range Probe Slider */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.03)', padding: '4px 10px', borderRadius: '6px', border: '1px solid var(--color-border)' }}>
+              <span style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 'bold' }}>PROBE:</span>
+              <input
+                type="range"
+                min="0.1"
+                max={Math.max(10, calculations.nohdMeters * 1.5)}
+                step="0.1"
+                value={probeDistance}
+                style={{ width: '120px', accentColor: 'var(--color-primary)' }}
+                onChange={(e) => setProbeDistance(Number(e.target.value))}
+              />
+              <span style={{ fontSize: '0.8rem', color: '#fff', minWidth: '45px' }}>{probeDistance.toFixed(1)}m</span>
             </div>
           </div>
+
+          <div style={{ width: '100%', overflowX: 'auto', background: '#020617', borderRadius: '8px', border: '1px solid var(--color-border)', padding: '15px 10px' }}>
+            <svg viewBox="0 0 950 260" style={{ width: '100%', minWidth: '850px', height: 'auto', display: 'block' }}>
+              <defs>
+                {/* Optical breadboard hole pattern */}
+                <pattern id="breadboardGrid" width="25" height="25" patternUnits="userSpaceOnUse">
+                  <circle cx="12.5" cy="12.5" r="1.2" fill="rgba(255,255,255,0.08)" />
+                </pattern>
+
+                {/* Laser core glow gradient */}
+                <linearGradient id="causticGlow" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor={beamColor.hex} stopOpacity="0.9" />
+                  <stop offset="40%" stopColor={beamColor.hex} stopOpacity="0.5" />
+                  <stop offset="100%" stopColor={beamColor.hex} stopOpacity="0.1" />
+                </linearGradient>
+
+                <linearGradient id="causticCenter" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#ffffff" stopOpacity="0.95" />
+                  <stop offset="50%" stopColor={beamColor.hex} stopOpacity="0.7" />
+                  <stop offset="100%" stopColor={beamColor.hex} stopOpacity="0.15" />
+                </linearGradient>
+
+                {/* Anodized housing metal gradient */}
+                <linearGradient id="housingGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="#334155" />
+                  <stop offset="50%" stopColor="#1e293b" />
+                  <stop offset="100%" stopColor="#0f172a" />
+                </linearGradient>
+              </defs>
+
+              {/* Background optical table grid */}
+              <rect x="0" y="0" width="950" height="260" fill="#020617" />
+              <rect x="0" y="0" width="950" height="260" fill="url(#breadboardGrid)" />
+
+              {/* Optical Rail Center Axis Datum */}
+              <line x1="120" y1="130" x2="930" y2="130" stroke="rgba(255,255,255,0.12)" strokeDasharray="6 4" strokeWidth="1" />
+
+              {/* Metric Scale Ruler along bottom */}
+              <line x1="120" y1="230" x2="920" y2="230" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" />
+              {[0, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5].map((mult, idx) => {
+                const distM = mult * Math.max(5, calculations.nohdMeters);
+                return (
+                  <g key={idx} transform={`translate(${120 + idx * 130}, 230)`}>
+                    <line x1="0" y1="-8" x2="0" y2="0" stroke="rgba(255,255,255,0.4)" strokeWidth="1.5" />
+                    <text x="0" y="16" fill="var(--color-text-muted)" fontSize="9" textAnchor="middle" fontFamily="monospace">
+                      {distM.toFixed(1)}m
+                    </text>
+                  </g>
+                );
+              })}
+
+              {/* Laser Emitter Assembly */}
+              <g transform="translate(20, 95)">
+                {/* Laser chassis */}
+                <rect x="0" y="0" width="90" height="70" rx="3" fill="url(#housingGrad)" stroke="#475569" strokeWidth="1.5" />
+                {/* Cooling fin slots */}
+                <line x1="18" y1="10" x2="18" y2="60" stroke="#0f172a" strokeWidth="2.5" />
+                <line x1="28" y1="10" x2="28" y2="60" stroke="#0f172a" strokeWidth="2.5" />
+                <line x1="38" y1="10" x2="38" y2="60" stroke="#0f172a" strokeWidth="2.5" />
+                {/* Brass aperture collar */}
+                <rect x="90" y="22" width="12" height="26" rx="2" fill="#ca8a04" stroke="#eab308" strokeWidth="1" />
+                {/* Collimator emission ring */}
+                <ellipse cx="102" cy="35" rx="3" ry="8" fill="#000" stroke="#475569" strokeWidth="1" />
+                {/* Emission glow dot */}
+                <circle cx="102" cy="35" r="4" fill={beamColor.hex} style={{ filter: `drop-shadow(0 0 6px ${beamColor.hex})` }} />
+                {/* Technical label on chassis */}
+                <text x="48" y="24" fill="#94a3b8" fontSize="7" fontWeight="bold" textAnchor="middle" letterSpacing="0.5">
+                  EMISSION APERTURE
+                </text>
+                <text x="48" y="38" fill="#e2e8f0" fontSize="8" fontWeight="bold" textAnchor="middle" letterSpacing="0.5">
+                  {wavelength} nm
+                </text>
+                <text x="48" y="50" fill="var(--color-accent)" fontSize="7" textAnchor="middle">
+                  Ø {diameter}mm • {divergence}mrad
+                </text>
+              </g>
+
+              {/* Gaussian Beam Caustic Rendering */}
+              {(() => {
+                const originX = 122;
+                const nohdPixelDist = calculations.nohdMeters > 0 
+                  ? Math.min(750, Math.max(80, (calculations.nohdMeters / Math.max(5, calculations.nohdMeters * 1.4)) * 680))
+                  : 0;
+
+                const endX = 920;
+                const topDivergeNOHD = calculations.nohdMeters > 0 ? 130 - (10 + (nohdPixelDist / 15)) : 130 - 30;
+                const botDivergeNOHD = calculations.nohdMeters > 0 ? 130 + (10 + (nohdPixelDist / 15)) : 130 + 30;
+                const topDivergeEnd = 130 - (10 + ((endX - originX) / 15));
+                const botDivergeEnd = 130 + (10 + ((endX - originX) / 15));
+
+                return (
+                  <>
+                    {calculations.nohdMeters > 0 ? (
+                      <>
+                        {/* Hazard Zone Beam Envelope (Aperture to NOHD) */}
+                        <polygon
+                          points={`${originX},127 ${originX + nohdPixelDist},${topDivergeNOHD} ${originX + nohdPixelDist},${botDivergeNOHD} ${originX},133`}
+                          fill="url(#causticGlow)"
+                          style={{ filter: `drop-shadow(0 0 10px ${beamColor.hex}80)` }}
+                        />
+                        {/* Core intense center ray */}
+                        <polygon
+                          points={`${originX},129 ${originX + nohdPixelDist},${130 - (topDivergeNOHD - 130) * 0.4} ${originX + nohdPixelDist},${130 + (botDivergeNOHD - 130) * 0.4} ${originX},131`}
+                          fill="url(#causticCenter)"
+                        />
+
+                        {/* Safe Beam Extension Beyond NOHD */}
+                        <polygon
+                          points={`${originX + nohdPixelDist},${topDivergeNOHD} ${endX},${topDivergeEnd} ${endX},${botDivergeEnd} ${originX + nohdPixelDist},${botDivergeNOHD}`}
+                          fill={beamColor.hex}
+                          fillOpacity="0.08"
+                          stroke={beamColor.hex}
+                          strokeWidth="1"
+                          strokeDasharray="4 4"
+                          strokeOpacity="0.4"
+                        />
+
+                        {/* NOHD Boundary Line */}
+                        <line
+                          x1={originX + nohdPixelDist}
+                          y1="35"
+                          x2={originX + nohdPixelDist}
+                          y2="225"
+                          stroke="var(--color-accent)"
+                          strokeWidth="2.5"
+                          strokeDasharray="6 3"
+                        />
+                        {/* Boundary Reticle Crosshair */}
+                        <circle cx={originX + nohdPixelDist} cy="130" r="8" fill="none" stroke="var(--color-accent)" strokeWidth="1.5" />
+                        <circle cx={originX + nohdPixelDist} cy="130" r="3" fill="var(--color-accent)" />
+
+                        {/* NOHD Dimension Caliper Line */}
+                        <line x1={originX} y1="42" x2={originX + nohdPixelDist} y2="42" stroke="var(--color-primary)" strokeWidth="1.5" />
+                        <line x1={originX} y1="36" x2={originX} y2="48" stroke="var(--color-primary)" strokeWidth="1.5" />
+                        <line x1={originX + nohdPixelDist} y1="36" x2={originX + nohdPixelDist} y2="48" stroke="var(--color-primary)" strokeWidth="1.5" />
+                        <text
+                          x={originX + nohdPixelDist / 2}
+                          y="34"
+                          fill="var(--color-primary)"
+                          fontSize="10"
+                          fontWeight="bold"
+                          textAnchor="middle"
+                          fontFamily="monospace"
+                        >
+                          NOHD = {calculations.nohdMeters.toFixed(2)} m ({(calculations.nohdMeters * 3.28084).toFixed(1)} ft)
+                        </text>
+
+                        {/* Exclusion Zone Tag Badge */}
+                        <g transform={`translate(${originX + nohdPixelDist / 2 - 75}, 55)`}>
+                          <rect x="0" y="0" width="150" height="20" rx="3" fill="rgba(239, 68, 68, 0.15)" stroke="#ef4444" strokeWidth="1" />
+                          <text x="75" y="14" fill="#ef4444" fontSize="9" fontWeight="bold" textAnchor="middle" letterSpacing="0.5">
+                            OCULAR HAZARD (E ≥ MPE)
+                          </text>
+                        </g>
+
+                        {/* Eye-Safe Zone Tag Badge */}
+                        <g transform={`translate(${originX + nohdPixelDist + 40}, 55)`}>
+                          <rect x="0" y="0" width="150" height="20" rx="3" fill="rgba(16, 185, 129, 0.12)" stroke="#10b981" strokeWidth="1" />
+                          <text x="75" y="14" fill="#10b981" fontSize="9" fontWeight="bold" textAnchor="middle" letterSpacing="0.5">
+                            EYE-SAFE ZONE (E &lt; MPE)
+                          </text>
+                        </g>
+                      </>
+                    ) : (
+                      /* Eye-Safe Beam across all distances */
+                      <>
+                        <polygon
+                          points={`${originX},127 ${endX},${topDivergeEnd} ${endX},${botDivergeEnd} ${originX},133`}
+                          fill="url(#causticGlow)"
+                          opacity="0.3"
+                          stroke={beamColor.hex}
+                          strokeWidth="1"
+                        />
+                        <g transform="translate(380, 50)">
+                          <rect x="0" y="0" width="260" height="26" rx="4" fill="rgba(16, 185, 129, 0.15)" stroke="#10b981" strokeWidth="1.5" />
+                          <text x="130" y="17" fill="#10b981" fontSize="11" fontWeight="bold" textAnchor="middle" letterSpacing="0.5">
+                            INHERENTLY EYE-SAFE AT APERTURE (NOHD = 0)
+                          </text>
+                        </g>
+                      </>
+                    )}
+
+                    {/* Interactive Probe Position Line */}
+                    {(() => {
+                      const probePixel = originX + (probeDistance / Math.max(5, calculations.nohdMeters * 1.4)) * 680;
+                      if (probePixel >= originX && probePixel <= endX) {
+                        return (
+                          <g transform={`translate(${probePixel}, 0)`}>
+                            <line x1="0" y1="35" x2="0" y2="225" stroke="#38bdf8" strokeWidth="1.5" strokeDasharray="3 3" />
+                            <circle cx="0" cy="130" r="5" fill="#38bdf8" />
+                            {/* Probe Info Tooltip */}
+                            <g transform="translate(-60, 160)">
+                              <rect x="0" y="0" width="120" height="42" rx="4" fill="rgba(15, 23, 42, 0.95)" stroke="#38bdf8" strokeWidth="1" />
+                              <text x="60" y="14" fill="#38bdf8" fontSize="8" fontWeight="bold" textAnchor="middle">
+                                PROBE @ {probeDistance.toFixed(1)}m
+                              </text>
+                              <text x="60" y="26" fill="#fff" fontSize="8" textAnchor="middle">
+                                Beam: Ø {distanceData.probe.beamDiamMm.toFixed(1)} mm
+                              </text>
+                              <text x="60" y="37" fill={distanceData.probe.isSafe ? '#10b981' : '#ef4444'} fontSize="8" fontWeight="bold" textAnchor="middle">
+                                {distanceData.probe.isSafe ? 'EYE SAFE' : `REQ OD ${distanceData.probe.od.toFixed(1)}`}
+                              </text>
+                            </g>
+                          </g>
+                        );
+                      }
+                      return null;
+                    })()}
+                  </>
+                );
+              })()}
+            </svg>
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* SVG Interactive Beam Profile Renderer */}
-      <div className="panel" style={{ overflowX: 'auto' }}>
-        <h3>Interactive Laser Beam & Hazard Exclusion Zone</h3>
-        <p style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem', marginBottom: '15px' }}>
-          Schematic visualization showing optical divergence and spatial hazard boundary. The yellow line represents the NOHD.
-        </p>
-
-        <div style={{ minWidth: '800px', background: '#030712', borderRadius: '8px', padding: '20px', border: '1px solid var(--color-border)', position: 'relative' }}>
-          <svg viewBox="0 0 800 200" style={{ width: '100%', height: 'auto' }}>
-            <defs>
-              {/* Glowing gradients */}
-              <linearGradient id="beamGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor={beamColor.hex} stopOpacity="1" />
-                <stop offset="80%" stopColor={beamColor.hex} stopOpacity="0.4" />
-                <stop offset="100%" stopColor={beamColor.hex} stopOpacity="0" />
-              </linearGradient>
-
-              <radialGradient id="apertureGlow" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stopColor="#fff" stopOpacity="1" />
-                <stop offset="50%" stopColor={beamColor.hex} stopOpacity="0.8" />
-                <stop offset="100%" stopColor={beamColor.hex} stopOpacity="0" />
-              </radialGradient>
-            </defs>
-
-            {/* Grid Lines */}
-            <line x1="100" y1="20" x2="100" y2="180" stroke="rgba(255,255,255,0.05)" strokeDasharray="4 4" />
-            <line x1="300" y1="20" x2="300" y2="180" stroke="rgba(255,255,255,0.05)" strokeDasharray="4 4" />
-            <line x1="500" y1="20" x2="500" y2="180" stroke="rgba(255,255,255,0.05)" strokeDasharray="4 4" />
-            <line x1="700" y1="20" x2="700" y2="180" stroke="rgba(255,255,255,0.05)" strokeDasharray="4 4" />
-
-            {/* Labels */}
-            <text x="100" y="195" fill="var(--color-text-muted)" fontSize="10" textAnchor="middle">0.5 NOHD</text>
-            <text x="300" y="195" fill="var(--color-text-muted)" fontSize="10" textAnchor="middle">NOHD</text>
-            <text x="500" y="195" fill="var(--color-text-muted)" fontSize="10" textAnchor="middle">1.5 NOHD</text>
-            <text x="700" y="195" fill="var(--color-text-muted)" fontSize="10" textAnchor="middle">2.0 NOHD</text>
-
-            {/* Laser Aperture Device */}
-            <rect x="10" y="75" width="40" height="50" rx="4" fill="#1e293b" stroke="#475569" strokeWidth="2" />
-            <rect x="50" y="88" width="10" height="24" rx="2" fill="#334155" />
-            
-            {/* Glowing Aperture Point */}
-            <circle cx="58" cy="100" r="10" fill="url(#apertureGlow)" />
-
-            {calculations.nohdMeters > 0 ? (
-              <>
-                {/* Laser Beam Shape (Hazard Zone) */}
-                <polygon 
-                  points="58,98 300,75 300,125 58,102" 
-                  fill="url(#beamGrad)" 
-                  style={{ filter: 'drop-shadow(0px 0px 8px ' + beamColor.hex + ')' }} 
-                />
-
-                {/* Safe Beam Extension Beyond NOHD */}
-                <polygon 
-                  points="300,75 750,55 750,145 300,125" 
-                  fill={beamColor.hex}
-                  fillOpacity="0.08"
-                  stroke={beamColor.hex}
-                  strokeDasharray="4 4"
-                  strokeOpacity="0.4"
-                />
-
-                {/* Exclusion Zone Box (Red Overlay) */}
-                <rect x="58" y="20" width="242" height="160" fill="rgba(239, 68, 68, 0.08)" stroke="rgba(239, 68, 68, 0.4)" strokeWidth="1" />
-                <text x="179" y="38" fill="#EF4444" fontSize="12" fontWeight="bold" textAnchor="middle">🔴 OCULAR HAZARD ZONE</text>
-
-                {/* Safe Zone Box (Green Overlay) */}
-                <rect x="300" y="20" width="450" height="160" fill="rgba(16, 185, 129, 0.05)" stroke="rgba(16, 185, 129, 0.3)" strokeWidth="1" />
-                <text x="525" y="38" fill="#10B981" fontSize="12" fontWeight="bold" textAnchor="middle">🟢 EYE SAFE ZONE</text>
-
-                {/* NOHD Intersect Boundary line */}
-                <line x1="300" y1="20" x2="300" y2="180" stroke="var(--color-accent)" strokeWidth="3" />
-                <circle cx="300" cy="100" r="6" fill="var(--color-accent)" style={{ filter: 'drop-shadow(0 0 5px var(--color-accent))' }} />
-                
-                {/* Threat Indicators */}
-                {/* Retinal Danger Icon inside Hazard Zone */}
-                <g transform="translate(170, 90)">
-                  <circle cx="10" cy="10" r="14" fill="#EF4444" />
-                  <text x="10" y="14" fill="#000" fontSize="13" fontWeight="bold" textAnchor="middle">⚠️</text>
-                </g>
-                <text x="180" y="125" fill="#EF4444" fontSize="10" textAnchor="middle">Retina Hazard</text>
-
-                {/* Safe Goggles Icon in Safe Zone */}
-                <g transform="translate(515, 90)">
-                  <circle cx="10" cy="10" r="14" fill="#10B981" />
-                  <text x="10" y="14" fill="#000" fontSize="13" textAnchor="middle">👓</text>
-                </g>
-                <text x="525" y="125" fill="#10B981" fontSize="10" textAnchor="middle">Safe to View</text>
-              </>
-            ) : (
-              <>
-                {/* 100% Safe Low Power Beam */}
-                <polygon 
-                  points="58,98 750,75 750,125 58,102" 
-                  fill={beamColor.hex}
-                  fillOpacity="0.15"
-                  stroke={beamColor.hex}
-                  strokeWidth="1"
-                  style={{ filter: 'drop-shadow(0px 0px 4px ' + beamColor.hex + ')' }} 
-                />
-                <rect x="58" y="20" width="692" height="160" fill="rgba(16, 185, 129, 0.05)" stroke="rgba(16, 185, 129, 0.3)" strokeWidth="1" />
-                <text x="404" y="38" fill="#10B981" fontSize="14" fontWeight="bold" textAnchor="middle">🟢 EYE SAFE AT ALL DISTANCES (NOHD = 0)</text>
-              </>
-            )}
-          </svg>
-        </div>
-      </div>
-
-      <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', marginBottom: '20px' }}>
-        {/* Plotly Analytical Chart */}
-        <div className="panel" style={{ flex: '1 1 500px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <h3>Irradiance vs. Range Profile</h3>
-          <div style={{ width: '100%', marginTop: '15px' }}>
+      {/* Tab 2: Plotly Irradiance & Optical Density Decay Profile */}
+      {activeTab === 'decay' && (
+        <div className="panel" style={{ padding: '20px' }}>
+          <h3 style={{ margin: '0 0 4px 0', fontSize: '1rem', color: '#fff' }}>Irradiance vs. Range Profile & MPE Threshold</h3>
+          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.82rem', margin: '0 0 15px 0' }}>
+            Semi-log irradiance curve showing geometric beam dilution. The horizontal dashed red line marks the ANSI Maximum Permissible Exposure (MPE).
+          </p>
+          <div style={{ width: '100%', height: '400px' }}>
             <Plot
               data={[
                 {
@@ -627,119 +853,142 @@ const LaserModule: React.FC = () => {
                   y: distanceData.plotY,
                   type: 'scatter',
                   mode: 'lines',
-                  name: 'Irradiance',
+                  name: 'Beam Irradiance (mW/cm²)',
                   line: { color: beamColor.hex, width: 3 },
                   fill: 'tozeroy',
-                  fillcolor: `${beamColor.hex}15`
+                  fillcolor: `${beamColor.hex}18`
                 },
                 {
-                  x: [0, Math.max(10, calculations.nohdMeters * 1.5)],
+                  x: [0, distanceData.maxGraphRange],
                   y: [calculations.mpe, calculations.mpe],
                   type: 'scatter',
                   mode: 'lines',
-                  name: 'Ocular MPE Limit',
+                  name: `MPE Limit (${calculations.mpe.toFixed(2)} mW/cm²)`,
                   line: { color: '#EF4444', width: 2, dash: 'dash' }
                 }
               ] as any}
               layout={{
                 autosize: true,
-                xaxis: { title: { text: 'Distance from Laser (meters)' }, color: '#94A3B8', gridcolor: 'rgba(255,255,255,0.05)' },
+                xaxis: { title: { text: 'Distance from Laser Aperture (meters)' }, color: '#94A3B8', gridcolor: 'rgba(255,255,255,0.06)' },
                 yaxis: { 
                   title: { text: 'Irradiance (mW/cm²)' }, 
                   type: 'log', 
                   color: '#94A3B8',
-                  gridcolor: 'rgba(255,255,255,0.05)'
+                  gridcolor: 'rgba(255,255,255,0.06)'
                 },
                 paper_bgcolor: 'transparent',
                 plot_bgcolor: 'transparent',
                 font: { color: '#F8FAFC' },
-                margin: { l: 60, r: 20, t: 20, b: 60 },
-                legend: { x: 0.7, y: 0.9, bgcolor: 'rgba(5, 10, 18, 0.8)' }
+                margin: { l: 65, r: 25, t: 25, b: 65 },
+                legend: { x: 0.65, y: 0.95, bgcolor: 'rgba(5, 10, 18, 0.85)', bordercolor: 'var(--color-border)', borderwidth: 1 }
               }}
               useResizeHandler={true}
-              style={{ width: '100%', height: '380px' }}
+              style={{ width: '100%', height: '100%' }}
               config={{ responsive: true, displayModeBar: false }}
             />
           </div>
         </div>
+      )}
 
-        {/* Optical Density Requirements Table */}
-        <div className="panel" style={{ flex: '1 1 400px' }}>
-          <h3>Eyewear OD Requirements</h3>
-          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', marginBottom: '15px' }}>
-            Recommended minimum filter attenuation (Optical Density, OD) required at varying workspace distances.
-          </p>
+      {/* Tab 3: Eyewear OD Requirements Table */}
+      {activeTab === 'eyewear' && (
+        <div className="panel" style={{ padding: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '1rem', color: '#fff' }}>Recommended Eyewear Optical Density (OD) by Distance</h3>
+              <p style={{ color: 'var(--color-text-muted)', fontSize: '0.82rem', margin: '2px 0 0 0' }}>
+                Required attenuation factor for protective safety eyewear conforming to ANSI Z136.1 and EN 207 standards.
+              </p>
+            </div>
+            <span style={{ fontSize: '0.8rem', padding: '4px 10px', background: 'rgba(255, 159, 28, 0.1)', color: 'var(--color-accent)', borderRadius: '4px', border: '1px solid rgba(255, 159, 28, 0.3)', fontWeight: 'bold' }}>
+              Minimum Source OD: {calculations.odRequired.toFixed(2)}
+            </span>
+          </div>
 
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid var(--color-border)', textAlign: 'left' }}>
-                <th style={{ padding: '10px 5px', color: 'var(--color-primary)' }}>Range (m)</th>
-                <th style={{ padding: '10px 5px', color: 'var(--color-primary)' }}>Beam Size (mm)</th>
-                <th style={{ padding: '10px 5px', color: 'var(--color-primary)' }}>Irradiance</th>
-                <th style={{ padding: '10px 5px', color: 'var(--color-primary)' }}>Req. OD</th>
-              </tr>
-            </thead>
-            <tbody>
-              {distanceData.tableRows.map((row, index) => (
-                <tr 
-                  key={index} 
-                  style={{ 
-                    borderBottom: '1px solid rgba(255,255,255,0.02)',
-                    backgroundColor: row.od > 0 ? 'rgba(239, 68, 68, 0.02)' : 'transparent'
-                  }}
-                >
-                  <td style={{ padding: '10px 5px', fontWeight: 'bold' }}>{row.rMeters} m</td>
-                  <td style={{ padding: '10px 5px' }}>{row.beamDiamMm.toFixed(1)} mm</td>
-                  <td style={{ padding: '10px 5px' }}>
-                    {row.irradiance.toExponential(2)} mW/cm²
-                  </td>
-                  <td style={{ padding: '10px 5px' }}>
-                    <span 
-                      style={{ 
-                        padding: '2px 6px', 
-                        borderRadius: '4px',
-                        fontWeight: 'bold',
-                        backgroundColor: row.od > 0 ? 'rgba(255, 159, 28, 0.15)' : 'rgba(16, 185, 129, 0.15)',
-                        color: row.od > 0 ? 'var(--color-accent)' : 'var(--color-success)',
-                        border: `1px solid ${row.od > 0 ? 'rgba(255, 159, 28, 0.3)' : 'rgba(16, 185, 129, 0.3)'}`
-                      }}
-                    >
-                      {row.od > 0 ? `OD ${row.od.toFixed(2)}` : 'Safe'}
-                    </span>
-                  </td>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--color-border)', color: 'var(--color-primary)', textAlign: 'left' }}>
+                  <th style={{ padding: '10px' }}>Range (m)</th>
+                  <th style={{ padding: '10px' }}>Beam Spot Ø (mm)</th>
+                  <th style={{ padding: '10px' }}>Irradiance (mW/cm²)</th>
+                  <th style={{ padding: '10px' }}>Required OD (ANSI)</th>
+                  <th style={{ padding: '10px' }}>EN 207 Rating</th>
+                  <th style={{ padding: '10px' }}>Safety Classification</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Safety Reference & Standards panel */}
-      <div className="panel">
-        <h3>Laser Safety Principles & ANSI Standard Definitions</h3>
-        <div style={{ display: 'grid', gap: '20px', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', marginTop: '15px' }}>
-          <div>
-            <h4 style={{ color: 'var(--color-accent)', marginBottom: '8px' }}>What is the MPE?</h4>
-            <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', lineHeight: '1.5' }}>
-              The <strong>Maximum Permissible Exposure (MPE)</strong> is the level of laser radiation to which a person may be exposed without hazardous effects or biological changes in the eye or skin. It is determined by the laser's wavelength, pulse profile (if any), and duration of exposure.
-            </p>
-          </div>
-          
-          <div>
-            <h4 style={{ color: 'var(--color-accent)', marginBottom: '8px' }}>What is the NOHD?</h4>
-            <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', lineHeight: '1.5' }}>
-              The <strong>Nominal Ocular Hazard Distance (NOHD)</strong> defines the critical boundaries of the ocular exclusion zone. Within this range, direct beam exposure exceeds the ocular MPE, requiring mandatory eye protection (safety glasses). Beyond the NOHD, the beam diameter has diverged sufficiently to dilute irradiance below the hazard threshold.
-            </p>
-          </div>
-
-          <div>
-            <h4 style={{ color: 'var(--color-accent)', marginBottom: '8px' }}>Control Measures & OD Specs</h4>
-            <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', lineHeight: '1.5' }}>
-              For **Class 3B** and **Class 4** lasers, standard safety eyewear must be marked with the correct **Optical Density (OD)** matching the laser wavelength. Safety interlocks, beam dumps, warning lights, and laser warning signs are mandatory engineering controls required under OSHA and ANSI Z136 regulations.
-            </p>
+              </thead>
+              <tbody>
+                {distanceData.tableRows.map((row, idx) => (
+                  <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', background: row.od > 0 ? 'rgba(239, 68, 68, 0.03)' : 'transparent' }}>
+                    <td style={{ padding: '10px', fontWeight: 'bold', color: '#fff' }}>{row.rMeters} m</td>
+                    <td style={{ padding: '10px', color: 'var(--color-text-muted)' }}>{row.beamDiamMm.toFixed(1)} mm</td>
+                    <td style={{ padding: '10px', fontFamily: 'monospace', color: row.isSafe ? 'var(--color-success)' : 'var(--color-danger)' }}>
+                      {row.irradiance.toExponential(3)}
+                    </td>
+                    <td style={{ padding: '10px' }}>
+                      <span style={{ padding: '2px 8px', borderRadius: '4px', fontWeight: 'bold', background: row.od > 0 ? 'rgba(255, 159, 28, 0.15)' : 'rgba(16, 185, 129, 0.15)', color: row.od > 0 ? 'var(--color-accent)' : 'var(--color-success)', border: `1px solid ${row.od > 0 ? 'rgba(255, 159, 28, 0.3)' : 'rgba(16, 185, 129, 0.3)'}` }}>
+                        {row.od > 0 ? `OD ≥ ${row.od.toFixed(2)}` : 'OD 0 (Safe)'}
+                      </span>
+                    </td>
+                    <td style={{ padding: '10px', color: 'var(--color-text-muted)' }}>
+                      {row.od > 0 ? `D ${wavelength} L${Math.ceil(row.od)}` : 'None required'}
+                    </td>
+                    <td style={{ padding: '10px' }}>
+                      <span style={{ color: row.isSafe ? '#10b981' : '#ef4444', fontWeight: 'bold', fontSize: '0.8rem' }}>
+                        {row.isSafe ? '● Eye-Safe' : '▲ Hazardous'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* Tab 4: ANSI Z136.1 Physics & Formulations */}
+      {activeTab === 'physics' && (
+        <div className="panel" style={{ padding: '20px' }}>
+          <h3 style={{ margin: '0 0 15px 0', fontSize: '1rem', color: '#fff' }}>Governing ANSI Z136.1 Mathematical Formulations</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
+            <div style={{ padding: '14px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--color-border)', borderRadius: '6px' }}>
+              <span style={{ fontSize: '0.78rem', color: 'var(--color-primary)', fontWeight: 'bold', textTransform: 'uppercase' }}>
+                1. Nominal Ocular Hazard Distance (NOHD)
+              </span>
+              <div style={{ margin: '10px 0', color: '#fff' }}>
+                <BlockMath math="\text{NOHD} = \frac{1}{\theta} \left[ \sqrt{\frac{4 P}{\pi \cdot \text{MPE}}} - a \right]" />
+              </div>
+              <p style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', margin: 0 }}>
+                Distance along the optical axis at which beam irradiance dilutes below the ocular Maximum Permissible Exposure (MPE).
+              </p>
+            </div>
+
+            <div style={{ padding: '14px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--color-border)', borderRadius: '6px' }}>
+              <span style={{ fontSize: '0.78rem', color: 'var(--color-primary)', fontWeight: 'bold', textTransform: 'uppercase' }}>
+                2. Optical Density (OD) Requirement
+              </span>
+              <div style={{ margin: '10px 0', color: '#fff' }}>
+                <BlockMath math="\text{OD} = \log_{10}\left(\frac{E(r)}{\text{MPE}}\right) = \log_{10}\left(\frac{1}{T}\right)" />
+              </div>
+              <p style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', margin: 0 }}>
+                Logarithmic attenuation factor required of protective filter lenses to reduce transmitted irradiance below MPE.
+              </p>
+            </div>
+
+            <div style={{ padding: '14px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--color-border)', borderRadius: '6px' }}>
+              <span style={{ fontSize: '0.78rem', color: 'var(--color-primary)', fontWeight: 'bold', textTransform: 'uppercase' }}>
+                3. Gaussian Beam Spot Expansion w(z)
+              </span>
+              <div style={{ margin: '10px 0', color: '#fff' }}>
+                <BlockMath math="w(z) = w_0 \sqrt{1 + \left(\frac{z}{z_R}\right)^2}, \quad z_R = \frac{\pi w_0^2}{\lambda}" />
+              </div>
+              <p style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', margin: 0 }}>
+                Hyperbolic caustic envelope where spot radius w(z) expands beyond the Rayleigh diffraction range z_R.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

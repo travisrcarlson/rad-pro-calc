@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import PlotComponent from 'react-plotly.js';
+import { BlockMath } from 'react-katex';
 
 const Plot = (PlotComponent as any).default || PlotComponent;
 
@@ -159,154 +160,52 @@ const BAND_PRESETS: BandPreset[] = [
     name: 'AN/SPY-6(V)1 AMDR AESA Radar',
     category: 'Naval EW & Radars',
     freqMHz: 3100,
-    typicalApp: 'Air and Missile Defense Radar (Flight III)',
+    typicalApp: 'Flight III Destroyer Active Phased Array',
     gainDBi: 45,
-    apertureM: 4.2,
+    apertureM: 4.25,
     isRadar: true,
     pattern: 'Directional',
-    defaultPowerKW: 5000,
+    defaultPowerKW: 2500,
     defaultSignal: 'Pulsed',
-    pulseWidthUs: 40,
-    prfHz: 1500,
-    description: 'Next-generation GaN Radar Building Block (RMA) array providing extreme sensitivity against ballistic missiles.'
+    pulseWidthUs: 30,
+    prfHz: 2000,
+    description: 'Next-generation naval GaN radar delivering +35 dB greater sensitivity than legacy SPY-1 arrays.'
   },
 
   // 4. Air Defense & Fire Control
   {
-    name: 'Patriot AN/MPQ-65 Phased Array',
+    name: 'AN/MPQ-65 Patriot Radar',
     category: 'Air Defense & Fire Control',
-    freqMHz: 5500,
-    typicalApp: 'PAC-3 Air & Missile Defense System',
+    freqMHz: 5400,
+    typicalApp: 'Patriot PAC-3 Missile Defense Array',
     gainDBi: 38,
-    apertureM: 2.4,
+    apertureM: 2.44,
     isRadar: true,
     pattern: 'Directional',
-    defaultPowerKW: 200,
-    defaultSignal: 'Pulsed',
-    pulseWidthUs: 20,
-    prfHz: 2000,
-    description: 'C-band multifunction phased array for search, track, and missile guidance.'
-  },
-  {
-    name: 'THAAD AN/TPY-2 X-Band Radar',
-    category: 'Air Defense & Fire Control',
-    freqMHz: 9500,
-    typicalApp: 'Terminal High Altitude Area Defense',
-    gainDBi: 48,
-    apertureM: 9.2,
-    isRadar: true,
-    pattern: 'Directional',
-    defaultPowerKW: 1200,
-    defaultSignal: 'Pulsed',
-    pulseWidthUs: 100,
-    prfHz: 1000,
-    description: 'Massive transportable X-band phased array with 25,344 T/R modules providing long-range anti-ballistic missile tracking.'
-  },
-  {
-    name: 'F-35 AN/APG-81 AESA Radar',
-    category: 'Air Defense & Fire Control',
-    freqMHz: 9800,
-    typicalApp: 'Lightning II Nose Fire Control Radar',
-    gainDBi: 33,
-    apertureM: 0.7,
-    isRadar: true,
-    pattern: 'Directional',
-    defaultPowerKW: 20,
+    defaultPowerKW: 100,
     defaultSignal: 'Pulsed',
     pulseWidthUs: 15,
     prfHz: 3000,
-    description: 'Advanced active electronically scanned array supporting air-to-air, air-to-surface, and electronic attack modes.'
+    description: 'C-band multifunction phased array supporting surveillance, track, and missile guidance.'
   },
   {
-    name: 'F-22 AN/APG-77 AESA Radar',
+    name: 'AN/TPY-2 THAAD Radar',
     category: 'Air Defense & Fire Control',
-    freqMHz: 9600,
-    typicalApp: 'Raptor Stealth Fighter Fire Control',
-    gainDBi: 34,
-    apertureM: 0.8,
+    freqMHz: 9500,
+    typicalApp: 'THAAD X-Band Ballistic Defense Radar',
+    gainDBi: 48,
+    apertureM: 3.1,
     isRadar: true,
     pattern: 'Directional',
-    defaultPowerKW: 25,
+    defaultPowerKW: 800,
     defaultSignal: 'Pulsed',
-    pulseWidthUs: 12,
-    prfHz: 3500,
-    description: 'Low-probability-of-intercept (LPI) AESA radar optimized for air-dominance engagements.'
-  },
-
-  // 5. Directed Energy & HPM
-  {
-    name: 'Active Denial System (ADS)',
-    category: 'Directed Energy & HPM',
-    freqMHz: 95000,
-    typicalApp: '95 GHz Non-Lethal Millimeter Wave Weapon',
-    gainDBi: 52,
-    apertureM: 2.0,
-    isRadar: false,
-    pattern: 'Directional',
-    defaultPowerKW: 100,
-    defaultSignal: 'CW',
-    description: '95 GHz millimeter-wave directed energy weapon inducing a heat sensation in skin surface water molecules.'
-  },
-  {
-    name: 'CHAMP High-Power Microwave Weapon',
-    category: 'Directed Energy & HPM',
-    freqMHz: 3500,
-    typicalApp: 'Counter-Electronics Missile Payload',
-    gainDBi: 30,
-    apertureM: 1.2,
-    isRadar: true,
-    pattern: 'Directional',
-    defaultPowerKW: 50000,
-    defaultSignal: 'Pulsed',
-    pulseWidthUs: 0.1,
-    prfHz: 100,
-    description: 'Air-launched missile payload delivering intense HPM bursts to fry electronic circuits inside enemy command bunkers.'
-  },
-
-  // 6. SATCOM & Communications
-  {
-    name: 'AEHF EHF SATCOM Terminal',
-    category: 'SATCOM & Communications',
-    freqMHz: 44000,
-    typicalApp: 'Advanced Extremely High Frequency Uplink',
-    gainDBi: 50,
-    apertureM: 1.5,
-    isRadar: false,
-    pattern: 'Directional',
-    defaultPowerKW: 0.5,
-    defaultSignal: 'CW',
-    description: 'Protected, anti-jam EHF satellite uplink terminal for strategic nuclear command and control.'
-  },
-  {
-    name: 'AN/GSC-52B Heavy SATCOM Dish',
-    category: 'SATCOM & Communications',
-    freqMHz: 7900,
-    typicalApp: 'DSCS X-Band Earth Station',
-    gainDBi: 56,
-    apertureM: 11.6,
-    isRadar: false,
-    pattern: 'Directional',
-    defaultPowerKW: 5.0,
-    defaultSignal: 'CW',
-    description: 'Strategic 38-foot X-band parabolic reflector dish communicating with Defense Satellite Communications System (DSCS).'
-  },
-  {
-    name: 'Commercial Ku-Band VSAT Uplink',
-    category: 'SATCOM & Communications',
-    freqMHz: 14250,
-    typicalApp: 'Maritime / Remote Field Earth Station',
-    gainDBi: 43,
-    apertureM: 1.2,
-    isRadar: false,
-    pattern: 'Directional',
-    defaultPowerKW: 0.05,
-    defaultSignal: 'CW',
-    description: 'Standard 1.2-meter Ku-band satellite terminal used for remote commercial broadband and news gathering.'
+    pulseWidthUs: 20,
+    prfHz: 1500,
+    description: 'Truck-mounted high-resolution X-band phased array capable of tracking ballistic missiles thousands of miles away.'
   }
 ];
 
-const CATEGORIES: (PresetCategory | 'All')[] = [
-  'All',
+const CATEGORIES: PresetCategory[] = [
   'C-UAS & Counter-IED',
   'Airborne EW & Jamming',
   'Naval EW & Radars',
@@ -315,74 +214,78 @@ const CATEGORIES: (PresetCategory | 'All')[] = [
   'SATCOM & Communications'
 ];
 
-const EMRModule: React.FC = () => {
-  const [selectedCategory, setSelectedCategory] = useState<PresetCategory | 'All'>('All');
-  const [activePreset, setActivePreset] = useState<BandPreset | null>(BAND_PRESETS[0]);
+type EMRTab = 'tactical' | 'density' | 'radome' | 'standards' | 'physics';
 
+const EMRModule: React.FC = () => {
+  const [selectedCategory, setSelectedCategory] = useState<PresetCategory>('C-UAS & Counter-IED');
+  const [activePreset, setActivePreset] = useState<BandPreset | null>(BAND_PRESETS[0]);
+  const [activeTab, setActiveTab] = useState<EMRTab>('tactical');
+
+  // Input States
   const [freqMHz, setFreqMHz] = useState<number>(900);
   const [antennaPattern, setAntennaPattern] = useState<'Directional' | 'Omnidirectional'>('Omnidirectional');
   const [signalType, setSignalType] = useState<'CW' | 'Pulsed'>('CW');
-  const [peakPowerKW, setPeakPowerKW] = useState<number>(0.2); // kW
-  const [dutyCyclePct, setDutyCyclePct] = useState<number>(2.0); // % for pulsed
-  const [pulseWidthUs, setPulseWidthUs] = useState<number>(10); // microseconds
-  const [prfHz, setPrfHz] = useState<number>(2000); // Hz
+  const [peakPowerKW, setPeakPowerKW] = useState<number>(0.2);
+  const [dutyCyclePct, setDutyCyclePct] = useState<number>(100);
+  const [pulseWidthUs, setPulseWidthUs] = useState<number>(10);
+  const [prfHz, setPrfHz] = useState<number>(1000);
   const [autoDutyCycle, setAutoDutyCycle] = useState<boolean>(true);
-  
   const [gainDBi, setGainDBi] = useState<number>(4);
   const [apertureM, setApertureM] = useState<number>(0.3);
   const [standard, setStandard] = useState<'FCC' | 'ICNIRP'>('FCC');
 
-  // Radar mechanical rotation / scanning parameters
+  // Mechanical Scanning / Rotation
   const [isScanning, setIsScanning] = useState<boolean>(false);
   const [scanAngleDeg, setScanAngleDeg] = useState<number>(360);
-  const [beamwidthHzDeg, setBeamwidthHzDeg] = useState<number>(2.0);
+  const [beamwidthHzDeg, setBeamwidthHzDeg] = useState<number>(3.5);
 
-  // Radome enclosure parameters
+  // Radome Enclosure
   const [hasRadome, setHasRadome] = useState<boolean>(false);
   const [radomeRadiusM, setRadomeRadiusM] = useState<number>(2.0);
   const [radomeLossDb, setRadomeLossDb] = useState<number>(0.5);
   const [radomeReflectionPct, setRadomeReflectionPct] = useState<number>(4.0);
 
-  const [selectedDistance, setSelectedDistance] = useState<number>(10); // distance scrubber
+  // Interactive Distance Inspector
+  const [selectedDistance, setSelectedDistance] = useState<number>(10.0);
 
-  // Filtered preset list based on active category
-  const filteredPresets = useMemo(() => {
-    if (selectedCategory === 'All') return BAND_PRESETS;
-    return BAND_PRESETS.filter(p => p.category === selectedCategory);
-  }, [selectedCategory]);
-
-  // Load a Preset
+  // Apply a Preset
   const applyPreset = (preset: BandPreset) => {
     setActivePreset(preset);
     setFreqMHz(preset.freqMHz);
+    setAntennaPattern(preset.pattern);
     setGainDBi(preset.gainDBi);
     setApertureM(preset.apertureM);
-    setAntennaPattern(preset.pattern);
-    setSignalType(preset.defaultSignal);
     setPeakPowerKW(preset.defaultPowerKW);
-    setIsScanning(preset.isRadar);
-    
-    if (preset.isRadar) {
-      setDutyCyclePct(preset.dutyPct || 2.0);
-      setPulseWidthUs(preset.pulseWidthUs || 10);
-      setPrfHz(preset.prfHz || 2000);
+    setSignalType(preset.defaultSignal);
+
+    if (preset.defaultSignal === 'Pulsed') {
       setAutoDutyCycle(true);
-      setBeamwidthHzDeg(preset.freqMHz >= 10000 ? 1.0 : 2.0);
-      setScanAngleDeg(360);
-      setHasRadome(true);
-      setRadomeRadiusM(preset.apertureM * 1.8);
+      if (preset.pulseWidthUs) setPulseWidthUs(preset.pulseWidthUs);
+      if (preset.prfHz) setPrfHz(preset.prfHz);
     } else {
-      setHasRadome(false);
+      setDutyCyclePct(100);
+      setAutoDutyCycle(false);
+    }
+
+    if (preset.pattern === 'Directional' && preset.isRadar) {
+      setIsScanning(true);
+      setScanAngleDeg(360);
+      setBeamwidthHzDeg(Math.max(1.0, Math.min(10, (70 * (3e8 / (preset.freqMHz * 1e6))) / preset.apertureM)));
+    } else {
+      setIsScanning(false);
     }
   };
 
-  // Intermediate calculations
-  const math = useMemo(() => {
-    const c = 299792458; // m/s
-    const freqHz = freqMHz * 1e6;
-    const wavelength = c / freqHz; // meters
+  const filteredPresets = useMemo(() => {
+    return BAND_PRESETS.filter((p) => p.category === selectedCategory);
+  }, [selectedCategory]);
 
-    // 1. Basic Duty Cycle (Pulse kinetics)
+  // Comprehensive Electromagnetic Math Calculations Engine
+  const math = useMemo(() => {
+    const freqHz = freqMHz * 1e6;
+    const c = 299792458;
+    const wavelength = c / freqHz;
+
     let dutyFraction = 1.0;
     if (signalType === 'Pulsed') {
       if (autoDutyCycle) {
@@ -390,60 +293,55 @@ const EMRModule: React.FC = () => {
       } else {
         dutyFraction = dutyCyclePct / 100;
       }
-      dutyFraction = Math.min(1.0, Math.max(0.0001, dutyFraction));
+      dutyFraction = Math.max(0.000001, Math.min(1.0, dutyFraction));
     }
 
     const peakPowerW = peakPowerKW * 1000;
     const avgPowerW = peakPowerW * dutyFraction;
-    
-    // 2. Rotational Scanning Duty Factor
-    const rotationalDF = (antennaPattern === 'Directional' && isScanning) 
-      ? Math.min(1.0, beamwidthHzDeg / Math.max(beamwidthHzDeg, scanAngleDeg)) 
-      : 1.0;
 
+    let rotationalDF = 1.0;
+    if (antennaPattern === 'Directional' && isScanning && scanAngleDeg > 0) {
+      rotationalDF = Math.min(1.0, beamwidthHzDeg / scanAngleDeg);
+    }
     const scanningAvgPowerW = avgPowerW * rotationalDF;
+
     const linearGain = Math.pow(10, gainDBi / 10);
-    
     const eirpPeakW = peakPowerW * linearGain;
     const eirpStaticAvgW = avgPowerW * linearGain;
     const eirpScanningAvgW = scanningAvgPowerW * linearGain;
 
     const transitionDistM = (2 * Math.pow(apertureM, 2)) / wavelength;
-    const apertureArea = Math.PI * Math.pow(apertureM / 2, 2);
+    const apertureArea = (Math.PI * Math.pow(apertureM, 2)) / 4;
+    const maxNearFieldPowerDensityW = (4 * avgPowerW) / Math.max(0.001, apertureArea);
+    const maxNearFieldPowerDensityScanningW = (4 * scanningAvgPowerW) / Math.max(0.001, apertureArea);
 
-    const maxNearFieldPowerDensityW = (4 * avgPowerW) / Math.max(0.01, apertureArea);
-    const maxNearFieldPowerDensityScanningW = (4 * scanningAvgPowerW) / Math.max(0.01, apertureArea);
-
-    // Exposure Limits (W/m^2)
     let limitControlledW = 50.0;
     let limitUncontrolledW = 10.0;
 
     if (standard === 'FCC') {
-      if (freqMHz >= 300 && freqMHz <= 1500) {
+      if (freqMHz >= 30 && freqMHz < 300) {
+        limitControlledW = 10.0;
+        limitUncontrolledW = 2.0;
+      } else if (freqMHz >= 300 && freqMHz < 1500) {
         limitControlledW = (freqMHz / 300) * 10;
         limitUncontrolledW = (freqMHz / 1500) * 10;
-      } else if (freqMHz > 1500) {
+      } else if (freqMHz >= 1500) {
         limitControlledW = 50.0;
         limitUncontrolledW = 10.0;
-      } else {
-        limitControlledW = 10.0;
-        limitUncontrolledW = 2.0;
       }
     } else {
-      // ICNIRP (2020)
-      if (freqMHz >= 400 && freqMHz <= 2000) {
-        limitControlledW = freqMHz / 40;
-        limitUncontrolledW = freqMHz / 200;
-      } else if (freqMHz > 2000) {
-        limitControlledW = 50.0;
-        limitUncontrolledW = 10.0;
-      } else {
+      if (freqMHz >= 30 && freqMHz < 400) {
         limitControlledW = 10.0;
         limitUncontrolledW = 2.0;
+      } else if (freqMHz >= 400 && freqMHz < 2000) {
+        limitControlledW = (freqMHz / 40) * 1.0;
+        limitUncontrolledW = (freqMHz / 200) * 1.0;
+      } else if (freqMHz >= 2000) {
+        limitControlledW = 50.0;
+        limitUncontrolledW = 10.0;
       }
     }
 
-    // 3. Safe Exclusion distances
     let safeControlledDistStaticM = 0;
     let safeUncontrolledDistStaticM = 0;
     if (limitControlledW < maxNearFieldPowerDensityW) {
@@ -464,7 +362,6 @@ const EMRModule: React.FC = () => {
 
     const beamwidthDeg = Math.min(180, (70 * wavelength) / Math.max(0.01, apertureM));
 
-    // 4. Radome Standing Wave Multiplier
     const reflectionFraction = radomeReflectionPct / 100;
     const standingWaveMultiplier = Math.pow(1 + Math.sqrt(reflectionFraction), 2);
     const radomeTransmissionFraction = Math.pow(10, -radomeLossDb / 10);
@@ -512,7 +409,10 @@ const EMRModule: React.FC = () => {
     };
   }, [freqMHz, antennaPattern, signalType, peakPowerKW, dutyCyclePct, pulseWidthUs, prfHz, autoDutyCycle, gainDBi, apertureM, standard, isScanning, scanAngleDeg, beamwidthHzDeg, hasRadome, radomeRadiusM, radomeLossDb, radomeReflectionPct]);
 
-  // Compute power density at scrubbed distance
+  const activeSafeControlled = (antennaPattern === 'Directional' && isScanning) ? math.safeControlledDistScanningM : math.safeControlledDistStaticM;
+  const activeSafeUncontrolled = (antennaPattern === 'Directional' && isScanning) ? math.safeUncontrolledDistScanningM : math.safeUncontrolledDistStaticM;
+
+  // Compute power density at target distance
   const scrubbedMetrics = useMemo(() => {
     const r = selectedDistance;
     let powerDensityW = 0;
@@ -558,7 +458,7 @@ const EMRModule: React.FC = () => {
     const densityValues: number[] = [];
     
     const maxVal = Math.max(80, Math.max(math.safeUncontrolledDistStaticM, math.safeUncontrolledDistScanningM) * 1.6);
-    const steps = 300;
+    const steps = 250;
     const step = maxVal / steps;
 
     const useScanning = antennaPattern === 'Directional' && isScanning;
@@ -591,154 +491,135 @@ const EMRModule: React.FC = () => {
     return { distances, densityValues };
   }, [math, hasRadome, radomeRadiusM, isScanning, antennaPattern]);
 
-  const activeSafeControlled = (antennaPattern === 'Directional' && isScanning) ? math.safeControlledDistScanningM : math.safeControlledDistStaticM;
-  const activeSafeUncontrolled = (antennaPattern === 'Directional' && isScanning) ? math.safeUncontrolledDistScanningM : math.safeUncontrolledDistStaticM;
-
   return (
-    <div className="emr-module">
-      <div className="panel-header">
-        <h2>📡 Electronic Warfare EMR & Microwave Safety Calculator</h2>
-        <p style={{ color: 'var(--color-text-muted)' }}>
-          Map electromagnetic radiation hazard zones for RF/Microwave jamming transmitters, phased arrays, tactical radar systems, and 360° omnidirectional counter-IED EW systems.
-        </p>
+    <div className="emr-module" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      {/* Header Banner */}
+      <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+        <div>
+          <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: 0 }}>
+            <span>📡 Electronic Warfare EMR & Microwave Radiation Safety</span>
+            <span style={{ fontSize: '0.75rem', padding: '3px 8px', background: 'rgba(0, 229, 255, 0.1)', color: 'var(--color-primary)', border: '1px solid rgba(0, 229, 255, 0.3)', borderRadius: '4px' }}>
+              FCC OET-65 / IEEE C95.1-2019 / DoD MIL-STD-464C
+            </span>
+          </h2>
+          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
+            Military avionics and RF safety engine mapping non-ionizing exclusion boundaries, near-field transitions (2D²/λ), dielectric radome reflection hotspots, and rotational scanning dilution.
+          </p>
+        </div>
       </div>
 
-      {/* Categorized Preset Library */}
-      <div className="panel" style={{ padding: '20px', marginBottom: '20px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-          <h4 style={{ fontSize: '0.95rem', color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '1px', margin: 0 }}>
-            EW & Radar Hardware Library
-          </h4>
-          <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-            Showing {filteredPresets.length} presets
+      {/* Categorized Hardware Preset Bar */}
+      <div className="panel" style={{ padding: '14px 20px', marginBottom: 0 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+            {CATEGORIES.map((cat) => (
+              <button
+                key={cat}
+                type="button"
+                style={{
+                  fontSize: '0.75rem',
+                  padding: '3px 10px',
+                  background: selectedCategory === cat ? 'var(--color-primary)' : 'rgba(255,255,255,0.03)',
+                  color: selectedCategory === cat ? '#000' : 'var(--color-text-muted)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: '4px',
+                  fontWeight: selectedCategory === cat ? 'bold' : 'normal',
+                  cursor: 'pointer'
+                }}
+                onClick={() => setSelectedCategory(cat)}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+            {filteredPresets.length} Systems
           </span>
         </div>
 
-        {/* Category Tabs */}
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '15px', borderBottom: '1px solid var(--color-border)', paddingBottom: '10px' }}>
-          {CATEGORIES.map((cat) => (
-            <button
-              key={cat}
-              className="btn btn-primary"
-              style={{
-                fontSize: '0.78rem',
-                padding: '4px 10px',
-                background: selectedCategory === cat ? 'var(--color-primary)' : 'rgba(255,255,255,0.04)',
-                color: selectedCategory === cat ? '#000' : 'var(--color-text-muted)',
-                border: '1px solid var(--color-border)',
-                boxShadow: 'none',
-                fontWeight: selectedCategory === cat ? 'bold' : 'normal'
-              }}
-              onClick={() => setSelectedCategory(cat)}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
-
-        {/* Preset Buttons Grid */}
-        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-          {filteredPresets.map((preset) => {
-            const isSelected = activePreset?.name === preset.name;
+        {/* Preset Hardware Pills */}
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          {filteredPresets.map((p) => {
+            const isSelected = activePreset?.name === p.name;
             return (
               <button
-                key={preset.name}
+                key={p.name}
+                type="button"
                 className="btn btn-primary"
                 style={{
-                  fontSize: '0.8rem',
-                  padding: '6px 12px',
+                  fontSize: '0.78rem',
+                  padding: '5px 12px',
                   background: isSelected ? 'rgba(0, 229, 255, 0.2)' : 'rgba(22, 36, 56, 0.8)',
-                  color: isSelected ? '#00e5ff' : '#fff',
+                  color: isSelected ? '#00e5ff' : '#cbd5e1',
                   border: `1px solid ${isSelected ? '#00e5ff' : 'var(--color-border)'}`,
-                  boxShadow: isSelected ? '0 0 10px rgba(0, 229, 255, 0.3)' : 'none'
+                  boxShadow: isSelected ? '0 0 8px rgba(0, 229, 255, 0.3)' : 'none'
                 }}
-                onClick={() => applyPreset(preset)}
+                onClick={() => applyPreset(p)}
               >
-                {preset.name} ({preset.freqMHz >= 1000 ? `${(preset.freqMHz / 1000).toFixed(1)} GHz` : `${preset.freqMHz} MHz`})
+                <strong>{p.name}</strong> ({p.freqMHz >= 1000 ? `${(p.freqMHz / 1000).toFixed(1)} GHz` : `${p.freqMHz} MHz`})
               </button>
             );
           })}
         </div>
 
-        {/* Active Preset Operational Context Card */}
+        {/* Selected Preset Mission Brief */}
         {activePreset && (
-          <div style={{ marginTop: '15px', padding: '12px 15px', background: 'rgba(0, 229, 255, 0.04)', border: '1px solid rgba(0, 229, 255, 0.2)', borderRadius: '6px', fontSize: '0.85rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-              <strong style={{ color: 'var(--color-primary)' }}>{activePreset.name}</strong>
-              <span style={{ fontSize: '0.75rem', color: 'var(--color-accent)', padding: '2px 6px', background: 'rgba(255,159,28,0.1)', borderRadius: '4px' }}>
-                {activePreset.category}
-              </span>
+          <div style={{ marginTop: '10px', padding: '8px 12px', background: 'rgba(0, 229, 255, 0.03)', border: '1px solid rgba(0, 229, 255, 0.15)', borderRadius: '4px', fontSize: '0.8rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+            <div>
+              <strong style={{ color: 'var(--color-primary)' }}>{activePreset.typicalApp}: </strong>
+              <span style={{ color: 'var(--color-text-muted)' }}>{activePreset.description}</span>
             </div>
-            <div style={{ color: '#fff', marginBottom: '4px' }}>{activePreset.typicalApp}</div>
-            <p style={{ color: 'var(--color-text-muted)', margin: 0, lineHeight: '1.4' }}>{activePreset.description}</p>
+            <span style={{ color: 'var(--color-accent)', fontWeight: 'bold' }}>
+              Base: {activePreset.defaultPowerKW} kW • {activePreset.pattern} • {activePreset.gainDBi} dBi
+            </span>
           </div>
         )}
       </div>
 
-      <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', marginBottom: '20px' }}>
-        {/* Controls Panel */}
-        <div className="panel" style={{ flex: '1 1 450px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
-          <h3>Transmitter & System Config</h3>
+      {/* Top Split Dashboard: Left Controls | Right Tactical Assessment HUD */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: '20px' }}>
+        {/* Left Column: Transmitter & Antenna Configuration */}
+        <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: '6px' }}>
+            <h3 style={{ margin: 0, fontSize: '1rem', color: '#fff' }}>Transmitter Configuration</h3>
+            <span style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 'bold' }}>
+              λ = {(math.wavelength * 100).toFixed(2)} cm
+            </span>
+          </div>
 
-          <div style={{ display: 'flex', gap: '15px' }}>
-            <div className="form-group" style={{ flex: 1 }}>
-              <label className="form-label">Antenna Pattern</label>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label" style={{ fontSize: '0.8rem', marginBottom: '3px' }}>Antenna Pattern</label>
               <select
                 className="form-control"
                 value={antennaPattern}
                 onChange={(e) => setAntennaPattern(e.target.value as any)}
+                style={{ fontSize: '0.85rem' }}
               >
-                <option value="Directional">Directional (Dish/Phased Array/Pod)</option>
-                <option value="Omnidirectional">Omnidirectional (360° Mast/Whip/Jammer)</option>
+                <option value="Directional">Directional (Dish / AESA)</option>
+                <option value="Omnidirectional">Omnidirectional (360° Mast)</option>
               </select>
             </div>
 
-            <div className="form-group" style={{ flex: 1 }}>
-              <label className="form-label">Signal Waveform</label>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label" style={{ fontSize: '0.8rem', marginBottom: '3px' }}>Signal Waveform</label>
               <select
                 className="form-control"
                 value={signalType}
                 onChange={(e) => setSignalType(e.target.value as any)}
+                style={{ fontSize: '0.85rem' }}
               >
                 <option value="CW">CW (Continuous Jammer)</option>
-                <option value="Pulsed">Pulsed (Radar Waveform)</option>
+                <option value="Pulsed">Pulsed (Radar)</option>
               </select>
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '15px' }}>
-            <div className="form-group" style={{ flex: 1 }}>
-              <label className="form-label">Regulation Standard</label>
-              <select
-                className="form-control"
-                value={standard}
-                onChange={(e) => setStandard(e.target.value as any)}
-              >
-                <option value="FCC">FCC Part 1.1310</option>
-                <option value="ICNIRP">ICNIRP (2020)</option>
-              </select>
-            </div>
-
-            <div className="form-group" style={{ flex: 1 }}>
-              <label className="form-label">Peak Power</label>
-              <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
-                <input
-                  type="number"
-                  className="form-control"
-                  value={peakPowerKW}
-                  min="0.001"
-                  step="any"
-                  onChange={(e) => setPeakPowerKW(Math.max(0.001, Number(e.target.value)))}
-                />
-                <span style={{ color: 'var(--color-text-muted)' }}>kW</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="form-group">
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <label className="form-label">Carrier Frequency</label>
-              <span style={{ fontWeight: 'bold', color: 'var(--color-primary)' }}>
+          {/* Carrier Frequency Slider & Input */}
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
+              <label className="form-label" style={{ margin: 0, fontSize: '0.8rem' }}>Carrier Frequency</label>
+              <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--color-primary)' }}>
                 {freqMHz >= 1000 ? `${(freqMHz / 1000).toFixed(2)} GHz` : `${freqMHz} MHz`}
               </span>
             </div>
@@ -748,56 +629,40 @@ const EMRModule: React.FC = () => {
               max="95000"
               step="100"
               value={freqMHz}
-              className="form-control"
-              style={{ width: '100%', accentColor: 'var(--color-primary)' }}
+              style={{ width: '100%', accentColor: 'var(--color-primary)', background: '#111827' }}
               onChange={(e) => setFreqMHz(Number(e.target.value))}
             />
-            <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-              Wavelength (λ): <strong>{(math.wavelength * 100).toFixed(2)} cm</strong>
-            </span>
           </div>
 
-          {signalType === 'Pulsed' && (
-            <div style={{ display: 'flex', gap: '15px', padding: '10px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--color-border)', borderRadius: '6px' }}>
-              <div className="form-group" style={{ flex: 1 }}>
-                <label className="form-label" style={{ fontSize: '0.8rem' }}>Pulse Width (τ)</label>
-                <input
-                  type="number"
-                  className="form-control"
-                  value={pulseWidthUs}
-                  min="0.1"
-                  onChange={(e) => setPulseWidthUs(Math.max(0.1, Number(e.target.value)))}
-                />
-              </div>
-              <div className="form-group" style={{ flex: 1 }}>
-                <label className="form-label" style={{ fontSize: '0.8rem' }}>Pulse Rep Freq (PRF)</label>
-                <input
-                  type="number"
-                  className="form-control"
-                  value={prfHz}
-                  min="1"
-                  onChange={(e) => setPrfHz(Math.max(1, Number(e.target.value)))}
-                />
-              </div>
+          {/* Transmitter Power & Gain */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label" style={{ fontSize: '0.8rem', marginBottom: '3px' }}>Peak Power (kW)</label>
+              <input
+                type="number"
+                className="form-control"
+                value={peakPowerKW}
+                min="0.001"
+                step="any"
+                onChange={(e) => setPeakPowerKW(Math.max(0.001, Number(e.target.value)))}
+              />
             </div>
-          )}
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label" style={{ fontSize: '0.8rem', marginBottom: '3px' }}>Antenna Gain (dBi)</label>
+              <input
+                type="number"
+                className="form-control"
+                value={gainDBi}
+                onChange={(e) => setGainDBi(Number(e.target.value))}
+              />
+            </div>
+          </div>
 
-          <div style={{ display: 'flex', gap: '15px' }}>
-            <div className="form-group" style={{ flex: 1 }}>
-              <label className="form-label">Antenna Gain</label>
-              <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
-                <input
-                  type="number"
-                  className="form-control"
-                  value={gainDBi}
-                  onChange={(e) => setGainDBi(Number(e.target.value))}
-                />
-                <span style={{ color: 'var(--color-text-muted)' }}>dBi</span>
-              </div>
-            </div>
-            <div className="form-group" style={{ flex: 1 }}>
-              <label className="form-label">Aperture Size (D)</label>
-              <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
+          {/* Directional Aperture Diameter */}
+          {antennaPattern === 'Directional' && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label" style={{ fontSize: '0.8rem', marginBottom: '3px' }}>Aperture Size D (m)</label>
                 <input
                   type="number"
                   className="form-control"
@@ -806,68 +671,47 @@ const EMRModule: React.FC = () => {
                   step="0.05"
                   onChange={(e) => setApertureM(Math.max(0.05, Number(e.target.value)))}
                 />
-                <span style={{ color: 'var(--color-text-muted)' }}>m</span>
               </div>
-            </div>
-          </div>
-
-          {/* Mechanical Rotation / Scanning Inputs */}
-          {antennaPattern === 'Directional' && (
-            <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '15px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 'bold', color: 'var(--color-primary)' }}>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label" style={{ fontSize: '0.8rem', marginBottom: '3px' }}>Beamwidth θ (deg)</label>
                 <input
-                  type="checkbox"
-                  checked={isScanning}
-                  onChange={(e) => setIsScanning(e.target.checked)}
+                  type="text"
+                  className="form-control"
+                  readOnly
+                  value={`${math.beamwidthDeg.toFixed(1)}°`}
+                  style={{ background: 'rgba(255,255,255,0.02)', color: 'var(--color-primary)' }}
                 />
-                Enable Mechanical Scanning / Rotation
-              </label>
-              
-              {isScanning && (
-                <div style={{ display: 'flex', gap: '15px', marginTop: '10px', padding: '10px', background: 'rgba(0, 229, 255, 0.02)', border: '1px solid var(--color-border)', borderRadius: '6px' }}>
-                  <div className="form-group" style={{ flex: 1 }}>
-                    <label className="form-label" style={{ fontSize: '0.8rem' }}>Horizontal Beamwidth</label>
-                    <input
-                      type="number"
-                      className="form-control"
-                      value={beamwidthHzDeg}
-                      step="0.1"
-                      min="0.1"
-                      onChange={(e) => setBeamwidthHzDeg(Math.max(0.1, Number(e.target.value)))}
-                    />
-                  </div>
-                  <div className="form-group" style={{ flex: 1 }}>
-                    <label className="form-label" style={{ fontSize: '0.8rem' }}>Scan Path Angle</label>
-                    <select
-                      className="form-control"
-                      value={scanAngleDeg}
-                      onChange={(e) => setScanAngleDeg(Number(e.target.value))}
-                    >
-                      <option value="360">360° (Full Circle)</option>
-                      <option value="120">120° (Sector Scan)</option>
-                      <option value="60">60° (Target Tracking)</option>
-                    </select>
-                  </div>
-                </div>
-              )}
+              </div>
             </div>
           )}
 
-          {/* Radome Inputs */}
-          <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '15px' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 'bold', color: 'var(--color-primary)' }}>
-              <input
-                type="checkbox"
-                checked={hasRadome}
-                onChange={(e) => setHasRadome(e.target.checked)}
-              />
-              Enable Radome Enclosure Analysis
-            </label>
+          {/* Toggles: Mechanical Scanning & Radome */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid var(--color-border)', paddingTop: '8px' }}>
+            <div style={{ display: 'flex', gap: '15px' }}>
+              {antennaPattern === 'Directional' && (
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: isScanning ? 'var(--color-primary)' : 'var(--color-text-muted)', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={isScanning}
+                    onChange={(e) => setIsScanning(e.target.checked)}
+                  />
+                  Rotational Scanning
+                </label>
+              )}
+              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: hasRadome ? 'var(--color-accent)' : 'var(--color-text-muted)', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={hasRadome}
+                  onChange={(e) => setHasRadome(e.target.checked)}
+                />
+                Radome Enclosure
+              </label>
+            </div>
 
             {hasRadome && (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '10px', padding: '10px', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--color-border)', borderRadius: '6px' }}>
-                <div className="form-group">
-                  <label className="form-label" style={{ fontSize: '0.8rem' }}>Radome Radius (m)</label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', padding: '8px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--color-border)', borderRadius: '4px' }}>
+                <div>
+                  <label className="form-label" style={{ fontSize: '0.72rem', marginBottom: '2px' }}>Radius (m)</label>
                   <input
                     type="number"
                     className="form-control"
@@ -875,32 +719,32 @@ const EMRModule: React.FC = () => {
                     step="0.5"
                     min="0.5"
                     onChange={(e) => setRadomeRadiusM(Math.max(0.5, Number(e.target.value)))}
+                    style={{ fontSize: '0.8rem', padding: '3px 6px' }}
                   />
                 </div>
-                <div className="form-group">
-                  <label className="form-label" style={{ fontSize: '0.8rem' }}>Wall Loss (dB)</label>
+                <div>
+                  <label className="form-label" style={{ fontSize: '0.72rem', marginBottom: '2px' }}>Loss (dB)</label>
                   <input
                     type="number"
                     className="form-control"
                     value={radomeLossDb}
                     step="0.1"
-                    min="0.1"
+                    min="0.01"
                     onChange={(e) => setRadomeLossDb(Math.max(0.01, Number(e.target.value)))}
+                    style={{ fontSize: '0.8rem', padding: '3px 6px' }}
                   />
                 </div>
-                <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <label className="form-label" style={{ fontSize: '0.8rem' }}>Shell Reflection Coefficient</label>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--color-accent)', fontWeight: 'bold' }}>{radomeReflectionPct} %</span>
-                  </div>
+                <div>
+                  <label className="form-label" style={{ fontSize: '0.72rem', marginBottom: '2px' }}>Refl %</label>
                   <input
-                    type="range"
-                    min="0.5"
-                    max="15.0"
-                    step="0.5"
+                    type="number"
+                    className="form-control"
                     value={radomeReflectionPct}
-                    style={{ width: '100%', accentColor: 'var(--color-accent)' }}
-                    onChange={(e) => setRadomeReflectionPct(Number(e.target.value))}
+                    step="0.5"
+                    min="0.5"
+                    max="50"
+                    onChange={(e) => setRadomeReflectionPct(Math.max(0.5, Number(e.target.value)))}
+                    style={{ fontSize: '0.8rem', padding: '3px 6px' }}
                   />
                 </div>
               </div>
@@ -908,280 +752,356 @@ const EMRModule: React.FC = () => {
           </div>
         </div>
 
-        {/* Hazard Output Panel */}
-        <div className="panel" style={{ flex: '1 1 450px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+        {/* Right Column: Tactical Hazard Assessment HUD */}
+        <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: 0, justifyContent: 'space-between' }}>
           <div>
-            <h3>Microwave Safety Mapping Summary</h3>
-            <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', marginBottom: '15px' }}>
-              Calculated boundaries for microwave exclusion zones ({antennaPattern === 'Omnidirectional' ? '360° Omnidirectional Envelope' : 'Directional Sector'}).
-            </p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: '6px', marginBottom: '10px' }}>
+              <h3 style={{ margin: 0, fontSize: '1rem', color: '#fff' }}>Tactical Safety Assessment HUD</h3>
+              <select
+                className="form-control"
+                value={standard}
+                onChange={(e) => setStandard(e.target.value as any)}
+                style={{ width: 'auto', fontSize: '0.75rem', padding: '2px 6px', background: 'rgba(255,255,255,0.05)' }}
+              >
+                <option value="FCC">FCC Part 1.1310</option>
+                <option value="ICNIRP">ICNIRP 2020</option>
+              </select>
+            </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {/* Controlled / Crew Limit */}
-              <div style={{ padding: '12px', borderRadius: '8px', border: '1px solid var(--color-warning)', background: 'rgba(245, 158, 11, 0.05)' }}>
-                <h4 style={{ color: 'var(--color-warning)', margin: 0, fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                  Controlled (Occupational Crew) Zone
-                </h4>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px' }}>
-                  <div>
-                    <div style={{ fontSize: '1.6rem', fontWeight: 'bold', color: '#fff' }}>
-                      {activeSafeControlled.toFixed(1)} meters
-                    </div>
-                    {antennaPattern === 'Directional' && isScanning && (
-                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                        Stopped Lobe Hazard: <strong>{math.safeControlledDistStaticM.toFixed(1)} m</strong>
-                      </span>
-                    )}
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '0.85rem', fontWeight: 'bold' }}>Limit: {(math.limitControlledW / 10).toFixed(2)} mW/cm²</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>({math.limitControlledW.toFixed(0)} W/m²)</div>
-                  </div>
+            {/* Controlled & Uncontrolled Boundary Gauges */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
+              {/* Controlled (Occupational / Crew) */}
+              <div style={{ padding: '12px', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.4)', borderRadius: '6px' }}>
+                <span style={{ fontSize: '0.7rem', color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 'bold', display: 'block' }}>
+                  CONTROLLED (CREW) BOUNDARY
+                </span>
+                <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#fff', margin: '3px 0' }}>
+                  {activeSafeControlled.toFixed(1)} m
                 </div>
+                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                  Limit: {(math.limitControlledW / 10).toFixed(2)} mW/cm²
+                </span>
               </div>
 
-              {/* Uncontrolled / Public Limit */}
-              <div style={{ padding: '12px', borderRadius: '8px', border: '1px solid var(--color-danger)', background: 'rgba(239, 68, 68, 0.05)' }}>
-                <h4 style={{ color: 'var(--color-danger)', margin: 0, fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                  Uncontrolled (General Public) Zone
-                </h4>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px' }}>
-                  <div>
-                    <div style={{ fontSize: '1.6rem', fontWeight: 'bold', color: '#fff' }}>
-                      {activeSafeUncontrolled.toFixed(1)} meters
-                    </div>
-                    {antennaPattern === 'Directional' && isScanning && (
-                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                        Stopped Lobe Hazard: <strong>{math.safeUncontrolledDistStaticM.toFixed(1)} m</strong>
-                      </span>
-                    )}
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '0.85rem', fontWeight: 'bold' }}>Limit: {(math.limitUncontrolledW / 10).toFixed(2)} mW/cm²</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>({math.limitUncontrolledW.toFixed(0)} W/m²)</div>
-                  </div>
+              {/* Uncontrolled (General Public) */}
+              <div style={{ padding: '12px', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.4)', borderRadius: '6px' }}>
+                <span style={{ fontSize: '0.7rem', color: '#ef4444', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 'bold', display: 'block' }}>
+                  UNCONTROLLED (PUBLIC) STANDOFF
+                </span>
+                <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#fff', margin: '3px 0' }}>
+                  {activeSafeUncontrolled.toFixed(1)} m
                 </div>
+                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                  Limit: {(math.limitUncontrolledW / 10).toFixed(2)} mW/cm²
+                </span>
               </div>
+            </div>
 
-              {/* Radome Warnings */}
-              {hasRadome && (
-                <div style={{ padding: '12px', borderRadius: '8px', border: `1px solid ${math.radomeLockoutRequired ? 'var(--color-danger)' : 'var(--color-success)'}`, background: math.radomeLockoutRequired ? 'rgba(239, 68, 68, 0.08)' : 'rgba(16, 185, 129, 0.08)' }}>
-                  <h4 style={{ color: math.radomeLockoutRequired ? 'var(--color-danger)' : 'var(--color-success)', margin: 0, fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                    Radome Internal Exposure Analysis
-                  </h4>
-                  <div style={{ fontSize: '0.85rem', marginTop: '5px', color: '#fff' }}>
-                    Reflection Hotspot Multiplier: <strong style={{ color: 'var(--color-accent)' }}>{math.standingWaveMultiplier.toFixed(2)}x</strong>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginTop: '3px' }}>
-                    <span>Incident Power Density:</span>
-                    <span>{(math.incidentRadomeW / 10).toExponential(2)} mW/cm²</span>
-                  </div>
-
-                  {math.radomeLockoutRequired && (
-                    <div style={{ marginTop: '8px', padding: '6px', background: 'rgba(239,68,68,0.2)', border: '1px solid #EF4444', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 'bold', color: '#fff', textAlign: 'center' }}>
-                      ⚠️ DANGER: LOCK-OUT TAG-OUT (LOTO) REQUIRED FOR RADOME ENTRY
-                    </div>
-                  )}
-                </div>
-              )}
+            {/* Tactical Status Badges */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px', textAlign: 'center' }}>
+              <div style={{ padding: '8px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--color-border)', borderRadius: '4px' }}>
+                <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', display: 'block' }}>Average EIRP</span>
+                <strong style={{ fontSize: '0.9rem', color: '#fff' }}>{(math.eirpStaticAvgW / 1000).toFixed(2)} kW</strong>
+              </div>
+              <div style={{ padding: '8px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--color-border)', borderRadius: '4px' }}>
+                <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', display: 'block' }}>Near-Field (2D²/λ)</span>
+                <strong style={{ fontSize: '0.9rem', color: 'var(--color-primary)' }}>{math.transitionDistM.toFixed(1)} m</strong>
+              </div>
+              <div style={{ padding: '8px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--color-border)', borderRadius: '4px' }}>
+                <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', display: 'block' }}>Radome LOTO</span>
+                <strong style={{ fontSize: '0.85rem', color: math.radomeLockoutRequired ? '#ef4444' : '#10b981' }}>
+                  {hasRadome ? (math.radomeLockoutRequired ? 'LOCKOUT REQ' : 'SECURE') : 'N/A'}
+                </strong>
+              </div>
             </div>
           </div>
 
-          <div style={{ marginTop: '15px', display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.85rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--color-border)', paddingBottom: '4px' }}>
-              <span style={{ color: 'var(--color-text-muted)' }}>Antenna Mode:</span>
-              <span style={{ fontWeight: 'bold', color: 'var(--color-primary)' }}>{antennaPattern} ({antennaPattern === 'Omnidirectional' ? '360° Azimuth' : 'Main Beam Lobe'})</span>
+          {/* Interactive Target Range Probe */}
+          <div style={{ padding: '10px 14px', background: 'rgba(0, 229, 255, 0.03)', border: '1px solid rgba(0, 229, 255, 0.2)', borderRadius: '6px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+              <span style={{ fontSize: '0.78rem', color: 'var(--color-primary)', fontWeight: 'bold' }}>
+                TARGET RANGE PROBE: {selectedDistance} METERS
+              </span>
+              <span style={{ fontSize: '0.78rem', fontWeight: 'bold', color: scrubbedMetrics.exceedsControlled ? '#ef4444' : '#10b981' }}>
+                {scrubbedMetrics.exceedsControlled ? '[EXCEEDS CREW LIMIT]' : '[WITHIN PERMISSIBLE LIMITS]'}
+              </span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--color-border)', paddingBottom: '4px' }}>
-              <span style={{ color: 'var(--color-text-muted)' }}>EIRP (Avg):</span>
-              <span style={{ fontWeight: 'bold', color: '#fff' }}>{(math.eirpStaticAvgW / 1000).toFixed(2)} kW</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--color-border)', paddingBottom: '4px' }}>
-              <span style={{ color: 'var(--color-text-muted)' }}>Near-Field Boundary (2 D² / λ):</span>
-              <span style={{ fontWeight: 'bold', color: '#fff' }}>{math.transitionDistM.toFixed(2)} meters</span>
+            <input
+              type="range"
+              min="1"
+              max={Math.max(100, Math.round(activeSafeUncontrolled * 1.5))}
+              value={selectedDistance}
+              style={{ width: '100%', accentColor: 'var(--color-primary)', margin: '4px 0' }}
+              onChange={(e) => setSelectedDistance(Number(e.target.value))}
+            />
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
+              <span>Power Density: <strong style={{ color: '#fff' }}>{scrubbedMetrics.powerDensityMW.toExponential(2)} mW/cm²</strong></span>
+              <span>E-Field: <strong style={{ color: '#fff' }}>{scrubbedMetrics.eField.toFixed(1)} V/m</strong></span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* SVG Interactive Radiation Lobe / 360° Omnidirectional Visualizer */}
-      <div className="panel" style={{ overflowX: 'auto' }}>
-        <h3>
-          {antennaPattern === 'Omnidirectional'
-            ? '360° Omnidirectional Radiation Map & Exclusion Zones'
-            : 'Radar Beam Profile & Radome Reflection Overlay'}
-        </h3>
-        <p style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem', marginBottom: '15px' }}>
-          {antennaPattern === 'Omnidirectional'
-            ? 'Top-down 360-degree mapping showing concentric circular exclusion zones surrounding the central vehicle/antenna mast.'
-            : 'Visual mapping of directional radar lobes. Concentric arcs represent internal standing wave peaks inside the radome.'}
-        </p>
+      {/* Workspace Tabs (Replaces massive vertical page) */}
+      <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', gap: '4px', flexWrap: 'wrap' }}>
+        <button
+          className={`nav-link ${activeTab === 'tactical' ? 'active' : ''}`}
+          style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.9rem', padding: '10px 18px', borderBottom: activeTab === 'tactical' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'tactical' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'tactical' ? 'bold' : 'normal' }}
+          onClick={() => setActiveTab('tactical')}
+        >
+          📡 Tactical RF Radiation Polar HUD
+        </button>
+        <button
+          className={`nav-link ${activeTab === 'density' ? 'active' : ''}`}
+          style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.9rem', padding: '10px 18px', borderBottom: activeTab === 'density' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'density' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'density' ? 'bold' : 'normal' }}
+          onClick={() => setActiveTab('density')}
+        >
+          📈 Power Density Decay & Distance Profile
+        </button>
+        <button
+          className={`nav-link ${activeTab === 'radome' ? 'active' : ''}`}
+          style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.9rem', padding: '10px 18px', borderBottom: activeTab === 'radome' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'radome' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'radome' ? 'bold' : 'normal' }}
+          onClick={() => setActiveTab('radome')}
+        >
+          ⚠️ Radome Standing Waves & Hotspots
+        </button>
+        <button
+          className={`nav-link ${activeTab === 'standards' ? 'active' : ''}`}
+          style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.9rem', padding: '10px 18px', borderBottom: activeTab === 'standards' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'standards' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'standards' ? 'bold' : 'normal' }}
+          onClick={() => setActiveTab('standards')}
+        >
+          📋 FCC OET-65 & IEEE C95.1 Criteria
+        </button>
+        <button
+          className={`nav-link ${activeTab === 'physics' ? 'active' : ''}`}
+          style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.9rem', padding: '10px 18px', borderBottom: activeTab === 'physics' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'physics' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'physics' ? 'bold' : 'normal' }}
+          onClick={() => setActiveTab('physics')}
+        >
+          📐 Electromagnetic Field Formulations
+        </button>
+      </div>
 
-        <div style={{ minWidth: '800px', background: '#030712', borderRadius: '8px', padding: '20px', border: '1px solid var(--color-border)' }}>
-          <svg viewBox="0 0 800 280" style={{ width: '100%', height: 'auto' }}>
-            <defs>
-              <linearGradient id="mainLobeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#ef4444" stopOpacity="0.45" />
-                <stop offset="60%" stopColor="#f59e0b" stopOpacity="0.25" />
-                <stop offset="100%" stopColor="#10b981" stopOpacity="0.01" />
-              </linearGradient>
-              <radialGradient id="antennaGlow" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stopColor="#fff" stopOpacity="1" />
-                <stop offset="100%" stopColor="var(--color-primary)" stopOpacity="0" />
-              </radialGradient>
-              <radialGradient id="omniPulse" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stopColor="var(--color-primary)" stopOpacity="0.6" />
-                <stop offset="70%" stopColor="var(--color-primary)" stopOpacity="0.15" />
-                <stop offset="100%" stopColor="var(--color-primary)" stopOpacity="0" />
-              </radialGradient>
-            </defs>
+      {/* Tab 1: Tactical RF Radiation Polar HUD Schematic */}
+      {activeTab === 'tactical' && (
+        <div className="panel" style={{ padding: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '1rem', color: '#fff' }}>
+                {antennaPattern === 'Omnidirectional'
+                  ? '360° Tactical Mission Grid: Omnidirectional Jammer Exclusion Envelope'
+                  : 'Radar Boresight Beam Profile & Phased Array Radiation Lobe'}
+              </h3>
+              <p style={{ color: 'var(--color-text-muted)', fontSize: '0.82rem', margin: '2px 0 0 0' }}>
+                Tactical avionics HUD visualization. Concentric reticles indicate Controlled (Amber) and Uncontrolled (Crimson) boundaries.
+              </p>
+            </div>
+            <span style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontFamily: 'monospace' }}>
+              GRID RESOLUTION: 10m/DIV
+            </span>
+          </div>
 
-            {antennaPattern === 'Omnidirectional' ? (
-              /* 360-degree Omnidirectional Top-Down View */
-              (() => {
-                const centerX = 400;
-                const centerY = 140;
+          <div style={{ width: '100%', overflowX: 'auto', background: '#020617', borderRadius: '8px', border: '1px solid var(--color-border)', padding: '15px 10px' }}>
+            <svg viewBox="0 0 900 320" style={{ width: '100%', minWidth: '850px', height: 'auto', display: 'block' }}>
+              <defs>
+                <radialGradient id="tacticalGridGlow" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stopColor="#00e5ff" stopOpacity="0.08" />
+                  <stop offset="100%" stopColor="#00e5ff" stopOpacity="0" />
+                </radialGradient>
+                <linearGradient id="beamGradientHUD" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#ef4444" stopOpacity="0.6" />
+                  <stop offset="50%" stopColor="#f59e0b" stopOpacity="0.3" />
+                  <stop offset="100%" stopColor="#10b981" stopOpacity="0.05" />
+                </linearGradient>
+              </defs>
 
-                const maxDist = Math.max(activeSafeUncontrolled, 15);
-                const scale = 110 / maxDist;
+              {/* Background dark grid */}
+              <rect x="0" y="0" width="900" height="320" fill="#020617" />
+              <circle cx="450" cy="160" r="150" fill="url(#tacticalGridGlow)" />
 
-                const controlledRadius = Math.max(15, activeSafeControlled * scale);
-                const uncontrolledRadius = Math.max(30, activeSafeUncontrolled * scale);
+              {antennaPattern === 'Omnidirectional' ? (
+                /* 360° Tactical Mission Grid (Replaces clip-art car!) */
+                (() => {
+                  const cx = 450;
+                  const cy = 160;
+                  const maxDisplayDist = Math.max(activeSafeUncontrolled * 1.3, 20);
+                  const scale = 140 / maxDisplayDist;
 
-                return (
-                  <>
-                    <circle cx={centerX} cy={centerY} r={uncontrolledRadius * 1.4} fill="none" stroke="rgba(255,255,255,0.04)" strokeDasharray="4 4" />
-                    <circle cx={centerX} cy={centerY} r={uncontrolledRadius * 0.7} fill="none" stroke="rgba(255,255,255,0.04)" strokeDasharray="4 4" />
+                  const rControlled = Math.max(15, activeSafeControlled * scale);
+                  const rUncontrolled = Math.max(30, activeSafeUncontrolled * scale);
 
-                    {/* Uncontrolled (Public) 360° Exclusion Ring */}
-                    <circle cx={centerX} cy={centerY} r={uncontrolledRadius} fill="rgba(239, 68, 68, 0.08)" stroke="#EF4444" strokeWidth="2" strokeDasharray="6 3" />
+                  return (
+                    <>
+                      {/* Range rings */}
+                      {[0.25, 0.5, 0.75, 1.0].map((f, i) => (
+                        <circle key={i} cx={cx} cy={cy} r={140 * f} fill="none" stroke="rgba(255,255,255,0.06)" strokeDasharray="4 4" />
+                      ))}
 
-                    {/* Controlled (Crew) 360° Exclusion Ring */}
-                    <circle cx={centerX} cy={centerY} r={controlledRadius} fill="rgba(245, 158, 11, 0.15)" stroke="#F59E0B" strokeWidth="2" />
+                      {/* Cardinal axes */}
+                      <line x1={cx - 150} y1={cy} x2={cx + 150} y2={cy} stroke="rgba(255,255,255,0.1)" />
+                      <line x1={cx} y1={cy - 150} x2={cx} y2={cy + 150} stroke="rgba(255,255,255,0.1)" />
+                      <text x={cx + 155} y={cy + 4} fill="var(--color-text-muted)" fontSize="9" fontWeight="bold">090°</text>
+                      <text x={cx - 175} y={cy + 4} fill="var(--color-text-muted)" fontSize="9" fontWeight="bold">270°</text>
+                      <text x={cx} y={cy - 155} fill="var(--color-text-muted)" fontSize="9" fontWeight="bold" textAnchor="middle">000°</text>
+                      <text x={cx} y={cy + 165} fill="var(--color-text-muted)" fontSize="9" fontWeight="bold" textAnchor="middle">180°</text>
 
-                    {/* 360 degree RF Radiation Waves Emission */}
-                    <circle cx={centerX} cy={centerY} r={controlledRadius * 0.5} fill="url(#omniPulse)" opacity="0.8" />
-                    <circle cx={centerX} cy={centerY} r={controlledRadius * 0.8} fill="none" stroke="var(--color-primary)" strokeWidth="1" opacity="0.3" />
+                      {/* Uncontrolled Boundary Ring (Crimson) */}
+                      <circle cx={cx} cy={cy} r={rUncontrolled} fill="rgba(239, 68, 68, 0.08)" stroke="#ef4444" strokeWidth="2" strokeDasharray="6 3" />
 
-                    {/* Central Vehicle / Antenna Mast Icon */}
-                    <g transform={`translate(${centerX}, ${centerY})`}>
-                      <rect x="-16" y="-24" width="32" height="48" rx="6" fill="#1e293b" stroke="#64748b" strokeWidth="2" />
-                      <rect x="-12" y="-18" width="24" height="10" rx="2" fill="#334155" />
-                      <circle cx="0" cy="0" r="6" fill="var(--color-primary)" />
-                      <circle cx="0" cy="0" r="10" fill="none" stroke="#fff" strokeWidth="1.5" />
-                    </g>
+                      {/* Controlled Boundary Ring (Amber) */}
+                      <circle cx={cx} cy={cy} r={rControlled} fill="rgba(245, 158, 11, 0.15)" stroke="#f59e0b" strokeWidth="2" />
 
-                    {/* Distance Callout Vectors */}
-                    <line x1={centerX} y1={centerY} x2={centerX + uncontrolledRadius} y2={centerY} stroke="#EF4444" strokeWidth="1.5" />
-                    <text x={centerX + uncontrolledRadius + 8} y={centerY + 4} fill="#EF4444" fontSize="10" fontWeight="bold">
-                      Uncontrolled Public Zone ({activeSafeUncontrolled.toFixed(1)}m)
-                    </text>
-
-                    <line x1={centerX} y1={centerY} x2={centerX} y2={centerY - controlledRadius} stroke="#F59E0B" strokeWidth="1.5" />
-                    <text x={centerX + 6} y={centerY - controlledRadius - 6} fill="#F59E0B" fontSize="10" fontWeight="bold">
-                      Controlled Crew Zone ({activeSafeControlled.toFixed(1)}m)
-                    </text>
-                  </>
-                );
-              })()
-            ) : (
-              /* Directional Beam Mode */
-              (() => {
-                const beamHalfRad = (math.beamwidthDeg / 2) * Math.PI / 180;
-                const referenceDistance = Math.max(math.safeUncontrolledDistStaticM, math.safeUncontrolledDistScanningM);
-                const scale = referenceDistance > 0 ? 280 / referenceDistance : 280;
-
-                const controlledSVGWidth = Math.max(20, activeSafeControlled * scale);
-                const uncontrolledSVGWidth = Math.max(40, activeSafeUncontrolled * scale);
-
-                const cX = Math.min(680, 80 + controlledSVGWidth);
-                const uX = Math.min(740, 80 + uncontrolledSVGWidth);
-
-                const spreadControlledY = Math.max(10, controlledSVGWidth * Math.tan(beamHalfRad));
-                const spreadUncontrolledY = Math.max(20, uncontrolledSVGWidth * Math.tan(beamHalfRad));
-
-                const radomeSVGRadius = hasRadome ? radomeRadiusM * scale : 0;
-
-                return (
-                  <>
-                    <circle cx="80" cy="140" r="140" fill="none" stroke="rgba(255,255,255,0.05)" strokeDasharray="3 3" />
-                    <circle cx="80" cy="140" r="280" fill="none" stroke="rgba(255,255,255,0.03)" strokeDasharray="3 3" />
-
-                    {/* Outer Uncontrolled Zone */}
-                    <path 
-                      d={`M 80,140 
-                         Q ${80 + uncontrolledSVGWidth * 0.4},${140 - spreadUncontrolledY * 1.2} ${uX},140
-                         Q ${80 + uncontrolledSVGWidth * 0.4},${140 + spreadUncontrolledY * 1.2} 80,140`}
-                      fill="rgba(239, 68, 68, 0.06)"
-                      stroke="#EF4444"
-                      strokeWidth="1.5"
-                      strokeDasharray="4 2"
-                    />
-
-                    {/* Inner Controlled Zone */}
-                    <path 
-                      d={`M 80,140 
-                         Q ${80 + controlledSVGWidth * 0.4},${140 - spreadControlledY * 1.2} ${cX},140
-                         Q ${80 + controlledSVGWidth * 0.4},${140 + spreadControlledY * 1.2} 80,140`}
-                      fill="rgba(245, 158, 11, 0.1)"
-                      stroke="#F59E0B"
-                      strokeWidth="2"
-                    />
-
-                    {/* Main Beam Lobe */}
-                    <polygon
-                      points={`80,138 720,${140 - Math.max(40, 600 * Math.tan(beamHalfRad))} 720,${140 + Math.max(40, 600 * Math.tan(beamHalfRad))} 80,142`}
-                      fill="url(#mainLobeGrad)"
-                      opacity="0.65"
-                    />
-
-                    {/* Boundary Markers */}
-                    {activeSafeControlled > 0 && (
-                      <g transform={`translate(${cX}, 140)`}>
-                        <line x1="0" y1="-30" x2="0" y2="30" stroke="#F59E0B" strokeWidth="1.5" />
-                        <text x="5" y="-12" fill="#F59E0B" fontSize="8" fontWeight="bold">Controlled Zone ({activeSafeControlled.toFixed(1)}m)</text>
+                      {/* Engineering RF Antenna Mast Schematic (Technical vector CAD) */}
+                      <g transform={`translate(${cx}, ${cy})`}>
+                        {/* Ground plane radials */}
+                        <line x1="-15" y1="-15" x2="15" y2="15" stroke="#64748b" strokeWidth="1" />
+                        <line x1="-15" y1="15" x2="15" y2="-15" stroke="#64748b" strokeWidth="1" />
+                        {/* Coaxial mast base */}
+                        <circle cx="0" cy="0" r="10" fill="#0f172a" stroke="#475569" strokeWidth="2" />
+                        {/* Dipole sleeve array core */}
+                        <circle cx="0" cy="0" r="5" fill="var(--color-primary)" />
+                        <circle cx="0" cy="0" r="2" fill="#fff" />
+                        {/* Radiating pulse ripples */}
+                        <circle cx="0" cy="0" r="22" fill="none" stroke="var(--color-primary)" strokeWidth="1" strokeOpacity="0.4" strokeDasharray="3 3" />
+                        <circle cx="0" cy="0" r="35" fill="none" stroke="var(--color-primary)" strokeWidth="1" strokeOpacity="0.2" strokeDasharray="4 4" />
                       </g>
-                    )}
 
-                    {activeSafeUncontrolled > 0 && (
-                      <g transform={`translate(${uX}, 140)`}>
-                        <line x1="0" y1="-55" x2="0" y2="55" stroke="#EF4444" strokeWidth="1.5" strokeDasharray="3 3" />
-                        <text x="5" y="38" fill="#EF4444" fontSize="8" fontWeight="bold">Uncontrolled Zone ({activeSafeUncontrolled.toFixed(1)}m)</text>
-                      </g>
-                    )}
-
-                    {/* Radome Shell */}
-                    {hasRadome && radomeSVGRadius > 0 && (
-                      <>
-                        <circle cx="80" cy="140" r={radomeSVGRadius} fill="none" stroke="#94a3b8" strokeWidth="3" strokeDasharray="6 3" />
-                        <text x={80} y={140 - radomeSVGRadius - 8} fill="#94a3b8" fontSize="9" fontWeight="bold" textAnchor="middle">
-                          Radome Wall ({radomeRadiusM}m)
+                      {/* Tactical HUD Boundary Labels */}
+                      <g transform={`translate(${cx + rUncontrolled}, ${cy})`}>
+                        <line x1="0" y1="0" x2="25" y2="-15" stroke="#ef4444" strokeWidth="1" />
+                        <rect x="25" y="-25" width="160" height="20" rx="3" fill="rgba(239, 68, 68, 0.15)" stroke="#ef4444" strokeWidth="1" />
+                        <text x="32" y="-11" fill="#ef4444" fontSize="9" fontWeight="bold">
+                          UNCONTROLLED: {activeSafeUncontrolled.toFixed(1)}m
                         </text>
-                      </>
-                    )}
+                      </g>
 
-                    {/* Antenna Dish */}
-                    <path d="M 60,115 C 72,115 72,165 60,165 Z" fill="#1e293b" stroke="#64748b" strokeWidth="2" />
-                    <rect x="38" y="132" width="22" height="16" fill="#334155" />
-                    <circle cx="68" cy="140" r="6" fill="url(#antennaGlow)" />
+                      <g transform={`translate(${cx}, ${cy - rControlled})`}>
+                        <line x1="0" y1="0" x2="25" y2="-15" stroke="#f59e0b" strokeWidth="1" />
+                        <rect x="25" y="-25" width="150" height="20" rx="3" fill="rgba(245, 158, 11, 0.15)" stroke="#f59e0b" strokeWidth="1" />
+                        <text x="32" y="-11" fill="#f59e0b" fontSize="9" fontWeight="bold">
+                          CONTROLLED: {activeSafeControlled.toFixed(1)}m
+                        </text>
+                      </g>
+                    </>
+                  );
+                })()
+              ) : (
+                /* Directional Radar Beam Profile (Replaces toy dish!) */
+                (() => {
+                  const ox = 90;
+                  const oy = 160;
+                  const maxRange = Math.max(activeSafeUncontrolled * 1.3, 30);
+                  const scale = 720 / maxRange;
 
-                    <text x="45" y="185" fill="#fff" fontSize="8" fontWeight="bold" textAnchor="middle">ANTENNA</text>
-                  </>
-                );
-              })()
-            )}
-          </svg>
+                  const cDistPix = Math.min(680, Math.max(30, activeSafeControlled * scale));
+                  const uDistPix = Math.min(760, Math.max(50, activeSafeUncontrolled * scale));
+                  const nfDistPix = Math.min(760, math.transitionDistM * scale);
+
+                  const halfBeamRad = (math.beamwidthDeg / 2) * (Math.PI / 180);
+                  const spreadControlled = Math.max(12, cDistPix * Math.tan(halfBeamRad));
+                  const spreadUncontrolled = Math.max(22, uDistPix * Math.tan(halfBeamRad));
+
+                  return (
+                    <>
+                      {/* Boresight datum axis */}
+                      <line x1={ox} y1={oy} x2="880" y2={oy} stroke="rgba(255,255,255,0.15)" strokeDasharray="6 4" strokeWidth="1" />
+
+                      {/* Main Radiation Lobe with Sidelobes */}
+                      <path
+                        d={`M ${ox},${oy} 
+                            Q ${ox + uDistPix * 0.45},${oy - spreadUncontrolled * 1.3} ${ox + uDistPix},${oy} 
+                            Q ${ox + uDistPix * 0.45},${oy + spreadUncontrolled * 1.3} ${ox},${oy}`}
+                        fill="url(#beamGradientHUD)"
+                        stroke="#ef4444"
+                        strokeWidth="1.5"
+                        strokeDasharray="5 3"
+                      />
+
+                      {/* Inner Controlled Hazard Lobe */}
+                      <path
+                        d={`M ${ox},${oy} 
+                            Q ${ox + cDistPix * 0.45},${oy - spreadControlled * 1.3} ${ox + cDistPix},${oy} 
+                            Q ${ox + cDistPix * 0.45},${oy + spreadControlled * 1.3} ${ox},${oy}`}
+                        fill="rgba(245, 158, 11, 0.15)"
+                        stroke="#f59e0b"
+                        strokeWidth="2"
+                      />
+
+                      {/* First Sidelobes (realistic -13 dB antenna pattern) */}
+                      <ellipse cx={ox + 50} cy={oy - 45} rx="35" ry="14" fill="rgba(245, 158, 11, 0.08)" stroke="#f59e0b" strokeWidth="1" strokeDasharray="3 2" transform={`rotate(-35 ${ox + 50} ${oy - 45})`} />
+                      <ellipse cx={ox + 50} cy={oy + 45} rx="35" ry="14" fill="rgba(245, 158, 11, 0.08)" stroke="#f59e0b" strokeWidth="1" strokeDasharray="3 2" transform={`rotate(35 ${ox + 50} ${oy + 45})`} />
+
+                      {/* Near-Field Rayleigh Datum Line */}
+                      {nfDistPix > 10 && nfDistPix < 780 && (
+                        <g transform={`translate(${ox + nfDistPix}, 0)`}>
+                          <line x1="0" y1="40" x2="0" y2="280" stroke="#00e5ff" strokeWidth="1" strokeDasharray="3 3" />
+                          <text x="4" y="52" fill="#00e5ff" fontSize="8" fontWeight="bold">
+                            RAYLEIGH BOUNDARY (2D²/λ = {math.transitionDistM.toFixed(1)}m)
+                          </text>
+                        </g>
+                      )}
+
+                      {/* Controlled Boundary Caliper */}
+                      <line x1={ox + cDistPix} y1="70" x2={ox + cDistPix} y2="250" stroke="#f59e0b" strokeWidth="2" strokeDasharray="4 2" />
+                      <g transform={`translate(${ox + cDistPix + 6}, 80)`}>
+                        <rect x="0" y="0" width="150" height="20" rx="3" fill="rgba(245, 158, 11, 0.2)" stroke="#f59e0b" strokeWidth="1" />
+                        <text x="8" y="14" fill="#f59e0b" fontSize="8" fontWeight="bold">
+                          CONTROLLED: {activeSafeControlled.toFixed(1)}m
+                        </text>
+                      </g>
+
+                      {/* Uncontrolled Boundary Caliper */}
+                      <line x1={ox + uDistPix} y1="50" x2={ox + uDistPix} y2="270" stroke="#ef4444" strokeWidth="2" strokeDasharray="6 3" />
+                      <g transform={`translate(${ox + uDistPix + 6}, 60)`}>
+                        <rect x="0" y="0" width="165" height="20" rx="3" fill="rgba(239, 68, 68, 0.2)" stroke="#ef4444" strokeWidth="1" />
+                        <text x="8" y="14" fill="#ef4444" fontSize="8" fontWeight="bold">
+                          UNCONTROLLED: {activeSafeUncontrolled.toFixed(1)}m
+                        </text>
+                      </g>
+
+                      {/* Radome Wall Overlay */}
+                      {hasRadome && (
+                        <g transform={`translate(${ox}, ${oy})`}>
+                          <circle cx="0" cy="0" r={Math.max(25, radomeRadiusM * scale)} fill="none" stroke="#94a3b8" strokeWidth="2" strokeDasharray="6 4" />
+                          <text x="0" y={-(Math.max(25, radomeRadiusM * scale) + 6)} fill="#94a3b8" fontSize="8" fontWeight="bold" textAnchor="middle">
+                            RADOME WALL ({radomeRadiusM}m)
+                          </text>
+                        </g>
+                      )}
+
+                      {/* Phased Array / Aperture CAD Assembly */}
+                      <g transform={`translate(${ox - 65}, ${oy - 45})`}>
+                        {/* Antenna backframe */}
+                        <rect x="0" y="10" width="50" height="70" rx="4" fill="#1e293b" stroke="#475569" strokeWidth="1.5" />
+                        {/* Waveguide feed horn */}
+                        <polygon points="50,30 65,20 65,70 50,60" fill="#334155" stroke="#64748b" strokeWidth="1" />
+                        {/* AESA array element grid */}
+                        <circle cx="20" cy="25" r="2" fill="#00e5ff" />
+                        <circle cx="30" cy="25" r="2" fill="#00e5ff" />
+                        <circle cx="20" cy="45" r="2" fill="#00e5ff" />
+                        <circle cx="30" cy="45" r="2" fill="#00e5ff" />
+                        <circle cx="20" cy="65" r="2" fill="#00e5ff" />
+                        <circle cx="30" cy="65" r="2" fill="#00e5ff" />
+                        <text x="25" y="88" fill="#94a3b8" fontSize="7" fontWeight="bold" textAnchor="middle">
+                          AESA Ø {apertureM}m
+                        </text>
+                      </g>
+                    </>
+                  );
+                })()
+              )}
+            </svg>
+          </div>
         </div>
-      </div>
+      )}
 
-      <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', marginBottom: '20px' }}>
-        {/* Plotly Power Density Chart */}
-        <div className="panel" style={{ flex: '2 1 600px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <h3>Power Density Decay Profile</h3>
-          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', marginBottom: '10px', alignSelf: 'flex-start' }}>
-            Power density ($mW/cm^2$) vs distance from transmitter.
+      {/* Tab 2: Plotly Power Density vs. Distance Logarithmic Profile */}
+      {activeTab === 'density' && (
+        <div className="panel" style={{ padding: '20px' }}>
+          <h3 style={{ margin: '0 0 4px 0', fontSize: '1rem', color: '#fff' }}>Power Density Decay Profile vs. Distance</h3>
+          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.82rem', margin: '0 0 15px 0' }}>
+            Semi-log attenuation curve illustrating near-field saturation ($R \le 2D^2/\lambda$) transitioning to inverse-square far-field decay ($1/R^2$).
           </p>
-          <div style={{ width: '100%' }}>
+          <div style={{ width: '100%', height: '400px' }}>
             <Plot
               data={[
                 {
@@ -1189,17 +1109,17 @@ const EMRModule: React.FC = () => {
                   y: chartData.densityValues,
                   type: 'scatter',
                   mode: 'lines',
-                  name: 'Power Density (Avg)',
+                  name: 'Power Density S (mW/cm²)',
                   line: { color: 'var(--color-primary)', width: 3 },
                   fill: 'tozeroy',
-                  fillcolor: 'rgba(0, 229, 255, 0.05)'
+                  fillcolor: 'rgba(0, 229, 255, 0.08)'
                 },
                 {
                   x: [0, Math.max(...chartData.distances)],
                   y: [math.limitControlledW / 10, math.limitControlledW / 10],
                   type: 'scatter',
                   mode: 'lines',
-                  name: 'Controlled Limit (Crew)',
+                  name: `Controlled Limit (${(math.limitControlledW / 10).toFixed(2)} mW/cm²)`,
                   line: { color: '#F59E0B', width: 2, dash: 'dash' }
                 },
                 {
@@ -1207,84 +1127,172 @@ const EMRModule: React.FC = () => {
                   y: [math.limitUncontrolledW / 10, math.limitUncontrolledW / 10],
                   type: 'scatter',
                   mode: 'lines',
-                  name: 'Uncontrolled Limit (Public)',
+                  name: `Uncontrolled Limit (${(math.limitUncontrolledW / 10).toFixed(2)} mW/cm²)`,
                   line: { color: '#EF4444', width: 2, dash: 'dash' }
                 }
               ] as any}
               layout={{
                 autosize: true,
-                xaxis: { title: { text: 'Distance from Antenna (meters)' }, color: '#94A3B8', gridcolor: 'rgba(255,255,255,0.05)' },
+                xaxis: { title: { text: 'Distance from Antenna (meters)' }, color: '#94A3B8', gridcolor: 'rgba(255,255,255,0.06)' },
                 yaxis: { 
                   title: { text: 'Power Density (mW/cm²)' }, 
                   type: 'log', 
                   color: '#94A3B8',
-                  gridcolor: 'rgba(255,255,255,0.05)'
+                  gridcolor: 'rgba(255,255,255,0.06)'
                 },
                 paper_bgcolor: 'transparent',
                 plot_bgcolor: 'transparent',
                 font: { color: '#F8FAFC' },
-                margin: { l: 60, r: 20, t: 20, b: 60 },
-                legend: { x: 0.5, y: 0.9, bgcolor: 'rgba(5, 10, 18, 0.8)' }
+                margin: { l: 65, r: 25, t: 25, b: 65 },
+                legend: { x: 0.6, y: 0.95, bgcolor: 'rgba(5, 10, 18, 0.85)', bordercolor: 'var(--color-border)', borderwidth: 1 }
               }}
               useResizeHandler={true}
-              style={{ width: '100%', height: '380px' }}
+              style={{ width: '100%', height: '100%' }}
               config={{ responsive: true, displayModeBar: false }}
             />
           </div>
         </div>
+      )}
 
-        {/* Distance inspector */}
-        <div className="panel" style={{ flex: '1 1 300px', display: 'flex', flexDirection: 'column', justifySelf: 'stretch' }}>
-          <h3>Distance Safety Inspector</h3>
+      {/* Tab 3: Radome Standing Waves & Near-Field Hotspots */}
+      {activeTab === 'radome' && (
+        <div className="panel" style={{ padding: '20px' }}>
+          <h3 style={{ margin: '0 0 10px 0', fontSize: '1rem', color: '#fff' }}>Radome Dielectric Enclosure & Internal Hotspot Analysis</h3>
           <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', marginBottom: '15px' }}>
-            Inspect local power density values and biological compliance metrics at varying distances.
+            Dielectric radome walls create partial internal boundary reflections. Constructive interference forms severe standing wave peaks (S_internal = S_incident × (1 + √Γ)²) that endanger personnel entering an energized radome.
           </p>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', flex: 1 }}>
-            <div style={{ padding: '10px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--color-border)', borderRadius: '6px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>Target Range:</span>
-                <strong style={{ color: 'var(--color-accent)' }}>{selectedDistance} meters</strong>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '15px' }}>
+            <div style={{ padding: '14px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--color-border)', borderRadius: '6px' }}>
+              <span style={{ fontSize: '0.75rem', color: 'var(--color-accent)', fontWeight: 'bold' }}>REFLECTION MULTIPLIER</span>
+              <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#fff', margin: '4px 0' }}>
+                {math.standingWaveMultiplier.toFixed(2)}×
               </div>
-              <input
-                type="range"
-                min="1"
-                max={Math.max(100, Math.round(activeSafeUncontrolled * 1.5))}
-                value={selectedDistance}
-                style={{ width: '100%', accentColor: 'var(--color-accent)' }}
-                onChange={(e) => setSelectedDistance(Number(e.target.value))}
-              />
+              <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0 }}>
+                Peak internal constructive standing wave intensification based on {radomeReflectionPct}% power reflection.
+              </p>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.9rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--color-border)', paddingBottom: '6px' }}>
-                <span style={{ color: 'var(--color-text-muted)' }}>Power Density:</span>
-                <span style={{ fontWeight: 'bold', color: scrubbedMetrics.exceedsUncontrolled ? 'var(--color-danger)' : 'var(--color-success)' }}>
-                  {scrubbedMetrics.powerDensityMW.toExponential(3)} mW/cm²
-                </span>
+            <div style={{ padding: '14px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--color-border)', borderRadius: '6px' }}>
+              <span style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 'bold' }}>INTERNAL INCIDENT DENSITY</span>
+              <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#fff', margin: '4px 0' }}>
+                {(math.incidentRadomeW / 10).toExponential(2)} mW/cm²
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--color-border)', paddingBottom: '6px' }}>
-                <span style={{ color: 'var(--color-text-muted)' }}>Electric Field Intensity:</span>
-                <span style={{ fontWeight: 'bold', color: '#fff' }}>
-                  {scrubbedMetrics.eField.toFixed(1)} V/m
-                </span>
+              <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0 }}>
+                Unattenuated power density striking the inner radome wall at radius R = {radomeRadiusM}m.
+              </p>
+            </div>
+
+            <div style={{ padding: '14px', background: math.radomeLockoutRequired ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.15)', border: `1px solid ${math.radomeLockoutRequired ? '#ef4444' : '#10b981'}`, borderRadius: '6px' }}>
+              <span style={{ fontSize: '0.75rem', color: math.radomeLockoutRequired ? '#ef4444' : '#10b981', fontWeight: 'bold' }}>
+                PERSONNEL ENTRY PROTOCOL
+              </span>
+              <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#fff', margin: '6px 0' }}>
+                {math.radomeLockoutRequired ? '[LOTO INTERLOCK MANDATORY]' : '[ENTRY PERMITTED]'}
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--color-border)', paddingBottom: '6px' }}>
-                <span style={{ color: 'var(--color-text-muted)' }}>Crew Safe?</span>
-                <span style={{ fontWeight: 'bold', color: scrubbedMetrics.exceedsControlled ? '#EF4444' : '#10B981' }}>
-                  {scrubbedMetrics.exceedsControlled ? '⚠️ NO (Exceeds Limit)' : '✅ YES'}
-                </span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--color-border)', paddingBottom: '6px' }}>
-                <span style={{ color: 'var(--color-text-muted)' }}>Public Safe?</span>
-                <span style={{ fontWeight: 'bold', color: scrubbedMetrics.exceedsUncontrolled ? '#EF4444' : '#10B981' }}>
-                  {scrubbedMetrics.exceedsUncontrolled ? '⚠️ NO (Exceeds Limit)' : '✅ YES'}
-                </span>
-              </div>
+              <p style={{ fontSize: '0.8rem', color: '#e2e8f0', margin: 0 }}>
+                {math.radomeLockoutRequired
+                  ? 'Transmitter must be de-energized and locked out prior to personnel entering radome enclosure.'
+                  : 'Internal radiation fields do not exceed occupational limits at operating power.'}
+              </p>
             </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* Tab 4: FCC & IEEE Standards Matrix */}
+      {activeTab === 'standards' && (
+        <div className="panel" style={{ padding: '20px' }}>
+          <h3 style={{ margin: '0 0 12px 0', fontSize: '1rem', color: '#fff' }}>Regulatory Exposure Limits & Frequency Bands</h3>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--color-border)', color: 'var(--color-primary)', textAlign: 'left' }}>
+                  <th style={{ padding: '10px' }}>Frequency Range</th>
+                  <th style={{ padding: '10px' }}>Controlled (Occupational)</th>
+                  <th style={{ padding: '10px' }}>Uncontrolled (Public)</th>
+                  <th style={{ padding: '10px' }}>Averaging Time</th>
+                  <th style={{ padding: '10px' }}>Governing Body</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                  <td style={{ padding: '10px', fontWeight: 'bold', color: '#fff' }}>0.3 – 3.0 MHz</td>
+                  <td style={{ padding: '10px' }}>100 mW/cm² (614 V/m)</td>
+                  <td style={{ padding: '10px' }}>100 mW/cm² (614 V/m)</td>
+                  <td style={{ padding: '10px' }}>6 min / 30 min</td>
+                  <td style={{ padding: '10px', color: 'var(--color-text-muted)' }}>FCC Part 1.1310</td>
+                </tr>
+                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                  <td style={{ padding: '10px', fontWeight: 'bold', color: '#fff' }}>30 – 300 MHz</td>
+                  <td style={{ padding: '10px' }}>1.0 mW/cm² (61.4 V/m)</td>
+                  <td style={{ padding: '10px' }}>0.2 mW/cm² (27.5 V/m)</td>
+                  <td style={{ padding: '10px' }}>6 min / 30 min</td>
+                  <td style={{ padding: '10px', color: 'var(--color-text-muted)' }}>FCC Part 1.1310</td>
+                </tr>
+                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                  <td style={{ padding: '10px', fontWeight: 'bold', color: '#fff' }}>300 – 1,500 MHz</td>
+                  <td style={{ padding: '10px' }}>f / 300 mW/cm²</td>
+                  <td style={{ padding: '10px' }}>f / 1500 mW/cm²</td>
+                  <td style={{ padding: '10px' }}>6 min / 30 min</td>
+                  <td style={{ padding: '10px', color: 'var(--color-text-muted)' }}>FCC Part 1.1310</td>
+                </tr>
+                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                  <td style={{ padding: '10px', fontWeight: 'bold', color: '#fff' }}>1,500 – 100,000 MHz</td>
+                  <td style={{ padding: '10px' }}>5.0 mW/cm² (137 V/m)</td>
+                  <td style={{ padding: '10px' }}>1.0 mW/cm² (61.4 V/m)</td>
+                  <td style={{ padding: '10px' }}>6 min / 30 min</td>
+                  <td style={{ padding: '10px', color: 'var(--color-text-muted)' }}>FCC / IEEE C95.1</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Tab 5: KaTeX Formulations */}
+      {activeTab === 'physics' && (
+        <div className="panel" style={{ padding: '20px' }}>
+          <h3 style={{ margin: '0 0 15px 0', fontSize: '1rem', color: '#fff' }}>Governing Electromagnetic Radiation Formulations</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
+            <div style={{ padding: '14px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--color-border)', borderRadius: '6px' }}>
+              <span style={{ fontSize: '0.78rem', color: 'var(--color-primary)', fontWeight: 'bold', textTransform: 'uppercase' }}>
+                1. Far-Field Power Density S(R)
+              </span>
+              <div style={{ margin: '10px 0', color: '#fff' }}>
+                <BlockMath math="S(R) = \frac{\text{EIRP}_{\text{avg}}}{4\pi R^2} = \frac{P_{\text{peak}} \cdot \text{DF} \cdot G}{4\pi R^2}" />
+              </div>
+              <p style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', margin: 0 }}>
+                Inverse-square dispersion valid in the Fraunhofer zone beyond R &gt; 2D²/λ.
+              </p>
+            </div>
+
+            <div style={{ padding: '14px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--color-border)', borderRadius: '6px' }}>
+              <span style={{ fontSize: '0.78rem', color: 'var(--color-primary)', fontWeight: 'bold', textTransform: 'uppercase' }}>
+                2. Near-Field Rayleigh Transition & Peak Density
+              </span>
+              <div style={{ margin: '10px 0', color: '#fff' }}>
+                <BlockMath math="R_{\text{nf}} = \frac{2 D^2}{\lambda}, \quad S_{\text{nf, max}} = \frac{4 P_{\text{avg}}}{A_{\text{aperture}}} = \frac{16 P_{\text{avg}}}{\pi D^2}" />
+              </div>
+              <p style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', margin: 0 }}>
+                Rayleigh near-field boundary distance and maximum collimated power density at antenna aperture.
+              </p>
+            </div>
+
+            <div style={{ padding: '14px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--color-border)', borderRadius: '6px' }}>
+              <span style={{ fontSize: '0.78rem', color: 'var(--color-primary)', fontWeight: 'bold', textTransform: 'uppercase' }}>
+                3. Radome Standing Wave Multiplier
+              </span>
+              <div style={{ margin: '10px 0', color: '#fff' }}>
+                <BlockMath math="S_{\text{int}} = S_{\text{incident}} \cdot \left(1 + \sqrt{\Gamma_{\text{refl}}}\right)^2" />
+              </div>
+              <p style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', margin: 0 }}>
+                Constructive interference factor caused by partial dielectric reflections inside a closed radome shell.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
