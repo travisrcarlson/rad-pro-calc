@@ -737,7 +737,7 @@ const VerificationModule: React.FC = () => {
   const [tests, setTests] = useState<VerificationTest[]>(() => runAllVerificationTests());
   const [selectedCategory, setSelectedCategory] = useState<TestCategory>('All');
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [expandedTestId, setExpandedTestId] = useState<string | null>(null);
+  const [expandedTestIds, setExpandedTestIds] = useState<Set<string>>(new Set());
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [lastRunTimestamp, setLastRunTimestamp] = useState<string>(() => new Date().toISOString());
 
@@ -751,11 +751,24 @@ const VerificationModule: React.FC = () => {
     }, 250);
   };
 
+  const toggleExpand = (id: string) => {
+    setExpandedTestIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
   const filteredTests = useMemo(() => {
-    const q = searchQuery.toLowerCase();
+    const q = searchQuery.toLowerCase().trim();
     return tests.filter(t => {
       const matchesCategory = selectedCategory === 'All' || t.category === selectedCategory;
       const matchesSearch =
+        !q ||
         t.id.toLowerCase().includes(q) ||
         t.name.toLowerCase().includes(q) ||
         t.standard.toLowerCase().includes(q) ||
@@ -763,6 +776,14 @@ const VerificationModule: React.FC = () => {
       return matchesCategory && matchesSearch;
     });
   }, [tests, selectedCategory, searchQuery]);
+
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = { All: tests.length };
+    tests.forEach(t => {
+      counts[t.category] = (counts[t.category] || 0) + 1;
+    });
+    return counts;
+  }, [tests]);
 
   // Overall Suite Analytics
   const analytics = useMemo(() => {
@@ -780,7 +801,7 @@ const VerificationModule: React.FC = () => {
   const handleExportJSON = () => {
     const cert = {
       verificationTitle: 'RadPro Calc Scientific Verification & Validation Suite',
-      standardCompliance: ['IEEE 730-2014 Software Quality Assurance', 'IAEA TRS-398', 'NCRP Report 151', 'ICRP 107', 'NUREG-1575', 'AAPM TG-43U1'],
+      standardCompliance: ['IEEE 730-2014 Software Quality Assurance', 'IAEA TRS-398', 'NCRP Report 151', 'ICRP 107', 'ICRP 119', 'NUREG-1575', 'AAPM TG-43U1'],
       executionTimestamp: lastRunTimestamp,
       totalTestVectors: analytics.total,
       passed: analytics.passed,
@@ -834,10 +855,10 @@ const VerificationModule: React.FC = () => {
   };
 
   return (
-    <div className="panel" style={{ height: '100%', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+    <div className="panel" style={{ height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column', gap: '16px', overflow: 'hidden' }}>
       
       {/* Header */}
-      <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
+      <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', flexShrink: 0 }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <span className="hud-badge hud-badge-primary">IEEE 730-2014 SQA</span>
@@ -878,14 +899,14 @@ const VerificationModule: React.FC = () => {
       </div>
 
       {/* Top Verification HUD */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '12px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '12px', flexShrink: 0 }}>
         <div className="hud-card">
           <span className="hud-metric-label">TEST SUITE COVERAGE</span>
           <span className="hud-metric-value" style={{ color: 'var(--color-primary)' }}>
             {analytics.total} <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>BENCHMARKS</span>
           </span>
           <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
-            Covering Modules 1 through 23
+            Covering Modules 1 through 24 (Complete Suite Coverage)
           </span>
         </div>
 
@@ -925,12 +946,12 @@ const VerificationModule: React.FC = () => {
       </div>
 
       {/* Filter Bar & Search */}
-      <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center', background: 'rgba(0,0,0,0.3)', padding: '12px 16px', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
+      <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center', background: 'rgba(0,0,0,0.35)', padding: '12px 16px', borderRadius: '8px', border: '1px solid var(--color-border)', flexShrink: 0 }}>
         <input
           type="text"
           className="form-control"
           placeholder="Filter tests by ID, name, standard, or target module (e.g. 'Co-60', 'Z136', 'Bateman', 'Plume')..."
-          style={{ flex: '1 1 280px', padding: '8px 12px', fontSize: '0.85rem' }}
+          style={{ flex: '1 1 260px', padding: '8px 12px', fontSize: '0.85rem' }}
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
         />
@@ -940,87 +961,108 @@ const VerificationModule: React.FC = () => {
             <button
               key={cat}
               className={`btn btn-sm ${selectedCategory === cat ? 'btn-primary' : 'btn-outline-secondary'}`}
-              style={{ fontSize: '0.78rem', padding: '4px 10px' }}
+              style={{ fontSize: '0.78rem', padding: '4px 10px', display: 'flex', alignItems: 'center', gap: '4px' }}
               onClick={() => setSelectedCategory(cat)}
             >
-              {cat}
+              <span>{cat}</span>
+              <span style={{ opacity: 0.75, fontSize: '0.72rem' }}>({categoryCounts[cat] || 0})</span>
             </button>
           ))}
         </div>
 
-        <span style={{ fontSize: '0.8rem', color: '#94a3b8', marginLeft: 'auto' }}>
-          Displaying <strong>{filteredTests.length}</strong> of {tests.length} tests
-        </span>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginLeft: 'auto' }}>
+          <button
+            className="btn btn-sm btn-outline-secondary"
+            style={{ fontSize: '0.76rem', padding: '4px 10px' }}
+            onClick={() => {
+              if (expandedTestIds.size === filteredTests.length) {
+                setExpandedTestIds(new Set());
+              } else {
+                setExpandedTestIds(new Set(filteredTests.map(t => t.id)));
+              }
+            }}
+          >
+            {expandedTestIds.size === filteredTests.length && filteredTests.length > 0 ? 'Collapse All' : 'Expand All'}
+          </button>
+          <span style={{ fontSize: '0.8rem', color: '#94a3b8', whiteSpace: 'nowrap' }}>
+            Displaying <strong>{filteredTests.length}</strong> of {tests.length} tests
+          </span>
+        </div>
       </div>
 
-      {/* Tests List Grid */}
-      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', paddingRight: '4px' }}>
+      {/* Tests List Grid with flexShrink: 0 and smooth scroll */}
+      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', paddingRight: '6px' }}>
         {filteredTests.map(t => {
-          const isExpanded = expandedTestId === t.id;
+          const isExpanded = expandedTestIds.has(t.id);
 
           return (
             <div
               key={t.id}
               style={{
-                backgroundColor: 'rgba(5, 10, 18, 0.7)',
-                border: t.passed ? '1px solid var(--color-border)' : '1px solid #ef4444',
+                flexShrink: 0,
+                backgroundColor: 'rgba(5, 10, 18, 0.75)',
+                border: t.passed ? (isExpanded ? '1px solid var(--color-primary)' : '1px solid var(--color-border)') : '1px solid #ef4444',
                 borderRadius: '8px',
                 overflow: 'hidden',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.25)'
+                boxShadow: isExpanded ? '0 4px 16px rgba(0, 229, 255, 0.15)' : '0 2px 8px rgba(0,0,0,0.3)',
+                transition: 'border-color 0.2s ease, box-shadow 0.2s ease'
               }}
             >
               {/* Card Summary Header */}
               <div
                 style={{
-                  padding: '14px 16px',
+                  padding: '12px 18px',
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
-                  background: 'rgba(0,0,0,0.3)',
+                  background: isExpanded ? 'rgba(0, 229, 255, 0.06)' : 'rgba(0,0,0,0.3)',
                   cursor: 'pointer',
                   userSelect: 'none',
-                  flexWrap: 'wrap',
-                  gap: '12px'
+                  flexWrap: 'nowrap',
+                  gap: '16px',
+                  transition: 'background-color 0.2s ease'
                 }}
-                onClick={() => setExpandedTestId(isExpanded ? null : t.id)}
+                onClick={() => toggleExpand(t.id)}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: '1 1 300px' }}>
-                  <span className="hud-badge hud-badge-primary" style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>
+                {/* Left: Test ID + Title + Metadata */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, flex: '1 1 auto' }}>
+                  <span className="hud-badge hud-badge-primary" style={{ fontFamily: 'monospace', fontWeight: 'bold', flexShrink: 0 }}>
                     {t.id}
                   </span>
-                  <div>
-                    <h3 style={{ margin: 0, fontSize: '1.05rem', color: '#fff' }}>
+                  <div style={{ minWidth: 0 }}>
+                    <h3 style={{ margin: 0, fontSize: '0.98rem', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {t.name}
                     </h3>
-                    <span style={{ color: '#94a3b8', fontSize: '0.78rem' }}>
+                    <div style={{ color: '#94a3b8', fontSize: '0.76rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: '2px' }}>
                       Target: <strong style={{ color: 'var(--color-primary)' }}>{t.module}</strong> &nbsp;|&nbsp; Standard: <span style={{ color: '#cbd5e1' }}>{t.standard}</span>
-                    </span>
+                    </div>
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
-                  <div style={{ textAlign: 'right' }}>
-                    <span style={{ fontSize: '0.72rem', color: '#94a3b8', display: 'block' }}>REFERENCE VALUE</span>
-                    <strong style={{ fontSize: '0.85rem', color: '#cbd5e1' }}>{t.expectedDisplay}</strong>
+                {/* Right: Metrics + Pass/Fail Badge + Chevron */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexShrink: 0 }}>
+                  <div style={{ textAlign: 'right', minWidth: '130px' }}>
+                    <span style={{ fontSize: '0.70rem', color: '#94a3b8', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Reference</span>
+                    <strong style={{ fontSize: '0.84rem', color: '#cbd5e1' }}>{t.expectedDisplay}</strong>
                   </div>
 
-                  <div style={{ textAlign: 'right' }}>
-                    <span style={{ fontSize: '0.72rem', color: '#94a3b8', display: 'block' }}>COMPUTED BY ENGINE</span>
-                    <strong style={{ fontSize: '0.85rem', color: 'var(--color-primary)' }}>{t.computedDisplay}</strong>
+                  <div style={{ textAlign: 'right', minWidth: '130px' }}>
+                    <span style={{ fontSize: '0.70rem', color: '#94a3b8', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Computed</span>
+                    <strong style={{ fontSize: '0.84rem', color: 'var(--color-primary)' }}>{t.computedDisplay}</strong>
                   </div>
 
-                  <div style={{ textAlign: 'right' }}>
-                    <span style={{ fontSize: '0.72rem', color: '#94a3b8', display: 'block' }}>RELATIVE ERROR (δ)</span>
-                    <strong style={{ fontSize: '0.85rem', color: t.errorPct <= t.tolerancePct ? '#10b981' : '#ef4444' }}>
+                  <div style={{ textAlign: 'right', minWidth: '90px' }}>
+                    <span style={{ fontSize: '0.70rem', color: '#94a3b8', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Relative Err</span>
+                    <strong style={{ fontSize: '0.84rem', color: t.errorPct <= t.tolerancePct ? '#10b981' : '#ef4444' }}>
                       {t.errorPct.toFixed(4)}%
                     </strong>
                   </div>
 
-                  <span className={`hud-badge ${t.passed ? 'hud-badge-success' : 'hud-badge-danger'}`} style={{ fontSize: '0.8rem', padding: '4px 10px' }}>
+                  <span className={`hud-badge ${t.passed ? 'hud-badge-success' : 'hud-badge-danger'}`} style={{ fontSize: '0.78rem', padding: '4px 10px', minWidth: '55px', textAlign: 'center' }}>
                     {t.passed ? 'PASS' : 'FAIL'}
                   </span>
 
-                  <span style={{ color: 'var(--color-primary)', fontSize: '0.9rem', transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease' }}>
+                  <span style={{ color: 'var(--color-primary)', fontSize: '0.85rem', transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease', userSelect: 'none' }}>
                     ▼
                   </span>
                 </div>
@@ -1031,27 +1073,27 @@ const VerificationModule: React.FC = () => {
                 <div style={{ padding: '16px 20px', borderTop: '1px solid #1e293b', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', gap: '14px' }}>
                   
                   <div>
-                    <h4 style={{ margin: '0 0 6px 0', color: 'var(--color-accent)', fontSize: '0.9rem' }}>
+                    <h4 style={{ margin: '0 0 6px 0', color: 'var(--color-accent)', fontSize: '0.88rem' }}>
                       Governing Formulation &amp; Analytical Proof
                     </h4>
-                    <div style={{ background: 'rgba(5, 10, 18, 0.8)', padding: '12px', borderRadius: '6px', border: '1px solid #334155' }}>
+                    <div style={{ background: 'rgba(5, 10, 18, 0.8)', padding: '12px', borderRadius: '6px', border: '1px solid #334155', overflowX: 'auto' }}>
                       <BlockMath math={t.formulaKatex} />
                     </div>
                   </div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px' }}>
                     <div style={{ background: 'rgba(0,0,0,0.3)', padding: '10px 14px', borderRadius: '6px', border: '1px solid #1e293b' }}>
-                      <span style={{ fontSize: '0.72rem', color: '#94a3b8', display: 'block' }}>TEST INPUTS &amp; PARAMETERS</span>
+                      <span style={{ fontSize: '0.70rem', color: '#94a3b8', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' }}>TEST INPUTS &amp; PARAMETERS</span>
                       <span style={{ fontSize: '0.82rem', color: '#cbd5e1', lineHeight: '1.4' }}>{t.inputsDesc}</span>
                     </div>
 
                     <div style={{ background: 'rgba(0,0,0,0.3)', padding: '10px 14px', borderRadius: '6px', border: '1px solid #1e293b' }}>
-                      <span style={{ fontSize: '0.72rem', color: '#94a3b8', display: 'block' }}>FORMAL REGULATORY CITATION</span>
+                      <span style={{ fontSize: '0.70rem', color: '#94a3b8', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' }}>FORMAL REGULATORY CITATION</span>
                       <span style={{ fontSize: '0.82rem', color: '#cbd5e1', lineHeight: '1.4' }}>{t.standardDoc}</span>
                     </div>
 
                     <div style={{ background: 'rgba(0,0,0,0.3)', padding: '10px 14px', borderRadius: '6px', border: '1px solid #1e293b' }}>
-                      <span style={{ fontSize: '0.72rem', color: '#94a3b8', display: 'block' }}>TOLERANCE BOUNDARY &amp; MARGIN</span>
+                      <span style={{ fontSize: '0.70rem', color: '#94a3b8', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' }}>TOLERANCE BOUNDARY &amp; MARGIN</span>
                       <span style={{ fontSize: '0.82rem', color: '#10b981', fontWeight: 600 }}>
                         Maximum Allowed: ±{t.tolerancePct.toFixed(2)}% | Observed: {t.errorPct.toFixed(4)}%
                       </span>
@@ -1080,3 +1122,4 @@ const VerificationModule: React.FC = () => {
 };
 
 export default VerificationModule;
+
