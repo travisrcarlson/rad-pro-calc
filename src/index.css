@@ -81,8 +81,8 @@ a:hover {
 }
 
 .sidebar {
-  width: 250px;
-  background-color: rgba(5, 10, 18, 0.7);
+  width: 275px;
+  background-color: rgba(5, 10, 18, 0.85);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   border-right: 1px solid var(--color-border);
@@ -92,7 +92,7 @@ a:hover {
 }
 
 .sidebar-header {
-  padding: 20px;
+  padding: 16px 18px;
   border-bottom: 1px solid var(--color-border);
   display: flex;
   align-items: center;
@@ -100,17 +100,174 @@ a:hover {
 }
 
 .sidebar-header h1 {
-  font-size: 1.25rem;
+  font-size: 1.18rem;
   color: var(--color-primary);
   text-shadow: 0 0 10px rgba(0, 229, 255, 0.4);
-  letter-spacing: 1px;
+  letter-spacing: 0.8px;
+}
+
+.sidebar-search-container {
+  padding: 10px 14px 8px 14px;
+  border-bottom: 1px solid rgba(65, 90, 119, 0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.sidebar-search-input {
+  width: 100%;
+  padding: 6px 10px;
+  font-size: 0.80rem;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  color: #fff;
+  transition: all 0.2s ease;
+}
+
+.sidebar-search-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 8px rgba(0, 229, 255, 0.3);
+}
+
+.sidebar-search-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.sidebar-search-clear {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 0.75rem;
+  padding: 2px 5px;
+  border-radius: 3px;
+}
+.sidebar-search-clear:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.sidebar-search-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.68rem;
+  color: var(--color-text-muted);
+  padding: 0 2px;
+}
+
+.sidebar-toggle-all-btn {
+  background: transparent;
+  border: none;
+  color: var(--color-primary);
+  font-size: 0.68rem;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+  opacity: 0.85;
+}
+.sidebar-toggle-all-btn:hover {
+  opacity: 1;
+}
+
+.sidebar-module-badge {
+  font-size: 0.65rem;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+}
+
+.sidebar-nav-link.active .sidebar-module-badge {
+  background: rgba(0, 229, 255, 0.15);
+  color: var(--color-primary);
+}
+
+.sidebar-category-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.15s ease;
+  border-radius: 4px;
+  margin: 3px 0 1px 0;
+}
+
+.sidebar-category-header:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.sidebar-category-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.sidebar-category-badge {
+  font-size: 0.68rem;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--color-text-muted);
+  font-weight: 600;
 }
 
 .sidebar-nav {
   display: flex;
   flex-direction: column;
-  padding: 10px 0;
+  padding: 6px 0 20px 0;
   overflow-y: auto;
+  flex: 1;
+}
+
+.sidebar-nav-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 14px 7px 28px;
+  color: var(--color-text-muted);
+  font-size: 0.81rem;
+  font-weight: 500;
+  transition: all 0.15s ease;
+  border-left: 3px solid transparent;
+  text-decoration: none;
+}
+
+.sidebar-nav-link:hover {
+  background-color: rgba(0, 229, 255, 0.05);
+  color: var(--color-text-main);
+  text-decoration: none;
+}
+
+.sidebar-nav-link.active {
+  background-color: rgba(0, 229, 255, 0.1);
+  color: #fff;
+  border-left-color: var(--color-primary);
+  box-shadow: inset 3px 0 8px -3px rgba(0, 229, 255, 0.4);
+  font-weight: 600;
+  text-decoration: none;
 }
 
 .nav-link {
