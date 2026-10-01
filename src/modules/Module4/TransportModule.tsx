@@ -357,8 +357,8 @@ const TransportModule: React.FC = () => {
             </div>
           </div>
           {['U-235', 'U-233', 'Pu-239', 'Pu-241'].includes(nuclideSym) && (
-             <div style={{ marginTop: '10px', padding: '10px', backgroundColor: 'rgba(231, 76, 60, 0.1)', border: '1px solid #e74c3c', borderRadius: '4px', color: '#e74c3c', fontSize: '0.85rem' }}>
-               <strong>⚠️ FISSILE MATERIAL</strong><br/>
+             <div style={{ marginTop: '10px', padding: '10px', backgroundColor: 'rgba(231, 76, 60, 0.12)', border: '1px solid #ef4444', borderRadius: '4px', color: '#fca5a5', fontSize: '0.85rem' }}>
+               <strong style={{ color: '#ef4444', letterSpacing: '0.04em' }}>[CRITICALITY HAZARD — FISSILE MATERIAL]</strong><br/>
                This isotope fundamentally supports nuclear fission. Legal transport compliance requires intensive Monte Carlo Criticality Safety Index (CSI) simulations that significantly override foundational attenuation metrics.
              </div>
           )}
@@ -409,8 +409,8 @@ const TransportModule: React.FC = () => {
         <div style={{ flex: '1 1 350px', minWidth: '350px', borderLeft: '1px solid var(--color-border)', paddingLeft: '20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h3 style={{ marginBottom: '15px', color: 'var(--color-primary)' }}>2. Shielding Layers</h3>
-            <button onClick={addLayer} style={{ background: 'var(--color-primary)', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-              ➕ Add Layer
+            <button onClick={addLayer} style={{ background: 'var(--color-primary)', color: 'white', border: 'none', padding: '5px 12px', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', fontSize: '0.85rem' }}>
+              + Add Layer
             </button>
           </div>
           
@@ -434,8 +434,8 @@ const TransportModule: React.FC = () => {
                      const nw = [...layers]; nw[index].thickness = Number(e.target.value); setLayers(nw);
                    }} />
                  </div>
-                 <button onClick={() => removeLayer(layer.id)} style={{ padding: '8px', background: 'transparent', border: 'none', color: '#e74c3c', cursor: 'pointer', fontSize: '1.2rem' }}>
-                   ❌
+                 <button onClick={() => removeLayer(layer.id)} style={{ padding: '6px 10px', background: 'rgba(239, 68, 68, 0.15)', border: '1px solid #ef4444', borderRadius: '4px', color: '#ef4444', cursor: 'pointer', fontSize: '0.75rem' }}>
+                   Remove
                  </button>
               </div>
             ))}
@@ -462,7 +462,7 @@ const TransportModule: React.FC = () => {
                disabled={pdfGenerating}
                style={{ background: '#3498db', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9rem' }}
             >
-              {pdfGenerating ? 'Generating...' : '📄 Export PDF'}
+              {pdfGenerating ? 'Generating...' : 'Export PDF Manifest'}
             </button>
           </div>
           
@@ -518,7 +518,12 @@ const TransportModule: React.FC = () => {
                margin: '10px 20px', flexShrink: 0
              }}>
                <div style={{ transform: 'rotate(-45deg)', textAlign: 'center', fontWeight: 'bold' }}>
-                 <span style={{ fontSize: '1rem', display: 'block', marginBottom: '2px' }}>🛡️</span>
+                 <svg width="24" height="24" viewBox="0 0 100 100" style={{ display: 'block', margin: '0 auto 3px auto' }}>
+                  <circle cx="50" cy="50" r="10" fill={activeCategoryData.text === '#fff' ? '#ffffff' : '#000000'} />
+                  <path d="M 50 50 L 32.68 20 A 35 35 0 0 1 67.32 20 Z" fill={activeCategoryData.text === '#fff' ? '#ffffff' : '#000000'} />
+                  <path d="M 50 50 L 67.32 80 A 35 35 0 0 1 32.68 80 Z" fill={activeCategoryData.text === '#fff' ? '#ffffff' : '#000000'} transform="rotate(120, 50, 50)" />
+                  <path d="M 50 50 L 67.32 80 A 35 35 0 0 1 32.68 80 Z" fill={activeCategoryData.text === '#fff' ? '#ffffff' : '#000000'} transform="rotate(240, 50, 50)" />
+                </svg>
                  <span style={{ fontSize: '0.6rem', lineHeight: '1' }}>RADIOACTIVE</span><br/>
                  <span style={{ fontSize: '0.7rem' }}>{activeCategoryData.id.split('-')[1] || activeCategoryData.id}</span>
                </div>
