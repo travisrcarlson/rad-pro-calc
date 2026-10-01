@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import VerificationBadge from '../../components/VerificationBadge';
 import ExternalDoseCalc from './submodules/ExternalDoseCalc';
 import ShieldingCalc from './submodules/ShieldingCalc';
 import InternalDoseCalc from './submodules/InternalDoseCalc';
@@ -9,8 +10,14 @@ const DoseCalculatorModule: React.FC = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div className="panel-header" style={{ marginBottom: '0' }}>
-        <h2>Module 2 — Dose Calculation Engine</h2>
+      <div className="panel-header" style={{ marginBottom: '0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+        <div>
+          <h2>Module 2 — Dose Calculation Engine</h2>
+          <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+            Multi-pathway external, shielding, biokinetic internal, and neutron activation dosimetry
+          </span>
+        </div>
+        <VerificationBadge testId="VTEST-01 / 02" primaryTestId="VTEST-01" standard="ICRP 107" />
       </div>
 
       <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', marginBottom: '20px' }}>

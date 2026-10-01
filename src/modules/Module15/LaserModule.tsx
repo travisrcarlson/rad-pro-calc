@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import VerificationBadge from '../../components/VerificationBadge';
 import PlotComponent from 'react-plotly.js';
 import { BlockMath } from 'react-katex';
 
@@ -301,6 +302,7 @@ const LaserModule: React.FC = () => {
             High-precision optical engineering engine calculating ocular Maximum Permissible Exposure (MPE), Gaussian beam divergence caustics, Nominal Ocular Hazard Distance (NOHD), and optical density (OD) protection specs.
           </p>
         </div>
+        <VerificationBadge testId="VTEST-10" standard="ANSI Z136.1" />
       </div>
 
       {/* Preset Library Toolbar */}

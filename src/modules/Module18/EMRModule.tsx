@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import VerificationBadge from '../../components/VerificationBadge';
 import PlotComponent from 'react-plotly.js';
 import { BlockMath } from 'react-katex';
 
@@ -506,6 +507,7 @@ const EMRModule: React.FC = () => {
             Military avionics and RF safety engine mapping non-ionizing exclusion boundaries, near-field transitions (2D²/λ), dielectric radome reflection hotspots, and rotational scanning dilution.
           </p>
         </div>
+        <VerificationBadge testId="VTEST-12" standard="FCC OET-65" />
       </div>
 
       {/* Categorized Hardware Preset Bar */}

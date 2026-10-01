@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import VerificationBadge from '../../components/VerificationBadge';
 import { BlockMath } from 'react-katex';
 import PlotComponent from 'react-plotly.js';
 const Plot = (PlotComponent as any).default || PlotComponent;
@@ -310,8 +311,14 @@ const TransportModule: React.FC = () => {
 
   return (
     <div className="panel" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto' }}>
-      <div className="panel-header">
-        <h2>Module 4 — Shielding & Transport Eval (IAEA SSR-6)</h2>
+      <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+        <div>
+          <h2>Module 4 — Shielding & Transport Eval (IAEA SSR-6)</h2>
+          <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+            IAEA SSR-6 Rev. 1 transport packaging, Transport Index (TI), and multilayer attenuation optimization
+          </span>
+        </div>
+        <VerificationBadge testId="VTEST-05" standard="IAEA SSR-6" />
       </div>
 
       <div style={{ display: 'flex', gap: '30px', flexWrap: 'wrap' }}>

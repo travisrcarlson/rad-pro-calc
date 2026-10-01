@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import VerificationBadge from '../../components/VerificationBadge';
 import ReactFlow, { Background, Controls, MarkerType } from 'reactflow';
 import 'reactflow/dist/style.css';
 import PlotComponent from 'react-plotly.js';
@@ -413,8 +414,16 @@ const DecayModule: React.FC = () => {
 
   return (
     <div className="panel" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2>Module 6 — Decay Kinematics & Yield Solver</h2>
+      <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+          <div>
+            <h2 style={{ margin: 0 }}>Module 6 — Decay Kinematics & Yield Solver</h2>
+            <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+              Generalized Bateman differential chains, secular/transient equilibria, and spectral yields
+            </span>
+          </div>
+          <VerificationBadge testId="VTEST-06" standard="Bateman / Knoll" />
+        </div>
         
         {/* Search Searchbar - Back to the Header! */}
         <div style={{ display: 'flex', gap: '15px', alignItems: 'center', background: 'rgba(255,255,255,0.05)', padding: '5px 15px', borderRadius: '8px' }}>

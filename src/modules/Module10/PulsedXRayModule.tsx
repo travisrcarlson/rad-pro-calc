@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import VerificationBadge from '../../components/VerificationBadge';
 import PlotComponent from 'react-plotly.js';
 import { BlockMath, InlineMath } from 'react-katex';
 
@@ -162,6 +163,7 @@ const PulsedXRayModule: React.FC = () => {
             Model nanosecond pulsed flash radiography (Golden Engineering XR series) vs. continuous medical beam physics, evaluate detector paralyzation, and plot OSHA exclusion zones.
           </p>
         </div>
+        <VerificationBadge testId="VTEST-08" standard="ANSI N43.3" />
       </div>
 
       {/* Top Tactical HUD */}

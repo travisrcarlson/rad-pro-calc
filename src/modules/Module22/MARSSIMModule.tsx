@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import VerificationBadge from '../../components/VerificationBadge';
 import PlotComponent from 'react-plotly.js';
 import { BlockMath } from 'react-katex';
 
@@ -504,11 +505,14 @@ const MARSSIMModule: React.FC = () => {
 
   return (
     <div className="marssim-module">
-      <div className="panel-header">
-        <h2>🏗️ MARSSIM Decommissioning & Statistical Site Release (NUREG-1575)</h2>
-        <p style={{ color: 'var(--color-text-muted)' }}>
-          Design and analyze radiological Final Status Surveys (FSS), calculate Currie detection limits (MDA/MDC), plan triangular sample grids, and evaluate Sign/WRS hypothesis tests for license termination.
-        </p>
+      <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+        <div>
+          <h2 style={{ margin: 0 }}>🏗️ MARSSIM Decommissioning & Statistical Site Release (NUREG-1575)</h2>
+          <p style={{ color: 'var(--color-text-muted)', margin: '4px 0 0 0', fontSize: '0.85rem' }}>
+            Design and analyze radiological Final Status Surveys (FSS), calculate Currie detection limits (MDA/MDC), plan triangular sample grids, and evaluate Sign/WRS hypothesis tests for license termination.
+          </p>
+        </div>
+        <VerificationBadge testId="VTEST-15" standard="NUREG-1575" />
       </div>
 
       {/* Main Tabs Header */}

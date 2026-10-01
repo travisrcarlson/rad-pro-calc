@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import VerificationBadge from '../../components/VerificationBadge';
 import PlotComponent from 'react-plotly.js';
 
 const Plot = (PlotComponent as any).default || PlotComponent;
@@ -647,11 +648,14 @@ const CriticalityModule: React.FC = () => {
 
   return (
     <div className="criticality-module">
-      <div className="panel-header">
-        <h2>⚛️ Criticality Safety & Reactor Core Simulator (Multi-Variable Engine)</h2>
-        <p style={{ color: 'var(--color-text-muted)' }}>
-          Model nuclear criticality, four-factor neutron economy, heterogeneous pin-by-pin variables (burnable poisons, steam voids, enrichment grading), and 2D finite-difference spatial diffusion.
-        </p>
+      <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+        <div>
+          <h2 style={{ margin: 0 }}>⚛️ Criticality Safety & Reactor Core Simulator (Multi-Variable Engine)</h2>
+          <p style={{ color: 'var(--color-text-muted)', margin: '4px 0 0 0', fontSize: '0.85rem' }}>
+            Model nuclear criticality, four-factor neutron economy, heterogeneous pin-by-pin variables (burnable poisons, steam voids, enrichment grading), and 2D finite-difference spatial diffusion.
+          </p>
+        </div>
+        <VerificationBadge testId="VTEST-13" standard="Lamarsh / IAEA" />
       </div>
 
       {/* Preset Library Category Tabs */}

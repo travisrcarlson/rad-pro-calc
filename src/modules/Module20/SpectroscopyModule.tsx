@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import VerificationBadge from '../../components/VerificationBadge';
 import PlotComponent from 'react-plotly.js';
 
 const Plot = (PlotComponent as any).default || PlotComponent;
@@ -333,11 +334,14 @@ const SpectroscopyModule: React.FC = () => {
 
   return (
     <div className="spectroscopy-module">
-      <div className="panel-header">
-        <h2>🔬 Gamma Spectroscopy & MCA Spectrum Analyzer</h2>
-        <p style={{ color: 'var(--color-text-muted)' }}>
-          Simulate pulse-height energy spectra for NaI(Tl), HPGe, LaBr₃(Ce), and CZT detectors. Analyze photopeaks, Compton continuum, backscatter, escape peaks, and run automated isotopic identification.
-        </p>
+      <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+        <div>
+          <h2 style={{ margin: 0 }}>🔬 Gamma Spectroscopy & MCA Spectrum Analyzer</h2>
+          <p style={{ color: 'var(--color-text-muted)', margin: '4px 0 0 0', fontSize: '0.85rem' }}>
+            Simulate pulse-height energy spectra for NaI(Tl), HPGe, LaBr₃(Ce), and CZT detectors. Analyze photopeaks, Compton continuum, backscatter, escape peaks, and run automated isotopic identification.
+          </p>
+        </div>
+        <VerificationBadge testId="VTEST-14" standard="IEEE Std 325" />
       </div>
 
       {/* Isotope Standard Presets */}

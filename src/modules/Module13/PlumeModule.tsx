@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import VerificationBadge from '../../components/VerificationBadge';
 import PlotComponent from 'react-plotly.js';
 import { BlockMath, InlineMath } from 'react-katex';
 
@@ -146,6 +147,7 @@ const PlumeModule: React.FC = () => {
             Estimate downwind radioactive plume concentration, ground touch-down peak distances, and crosswind isopleths using standard Briggs dispersion coefficients.
           </p>
         </div>
+        <VerificationBadge testId="VTEST-09" standard="EPA AERMOD" />
       </div>
 
       {/* Top HUD Cards */}

@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import VerificationBadge from '../../components/VerificationBadge';
 import PlotComponent from 'react-plotly.js';
 
 const Plot = (PlotComponent as any).default || PlotComponent;
@@ -151,11 +152,14 @@ const XRayTubeModule: React.FC = () => {
 
   return (
     <div className="xray-tube-module">
-      <div className="panel-header">
-        <h2>⚡ X-Ray Tube Physics & Spectrum Generator</h2>
-        <p style={{ color: 'var(--color-text-muted)' }}>
-          Model Bremsstrahlung continuum production, characteristic line peaks, filtration attenuation (beam hardening), and measure X-ray dose outputs.
-        </p>
+      <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+        <div>
+          <h2 style={{ margin: 0 }}>⚡ X-Ray Tube Physics & Spectrum Generator</h2>
+          <p style={{ color: 'var(--color-text-muted)', margin: '4px 0 0 0', fontSize: '0.85rem' }}>
+            Model Bremsstrahlung continuum production, characteristic line peaks, filtration attenuation (beam hardening), and measure X-ray dose outputs.
+          </p>
+        </div>
+        <VerificationBadge testId="VTEST-11" standard="Duane-Hunt Law" />
       </div>
 
       <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', marginBottom: '20px' }}>

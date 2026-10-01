@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import VerificationBadge from '../../components/VerificationBadge';
 import PlotComponent from 'react-plotly.js';
 import { BlockMath } from 'react-katex';
 
@@ -451,11 +452,14 @@ const BrachytherapyModule: React.FC = () => {
 
   return (
     <div className="brachytherapy-module">
-      <div className="panel-header">
-        <h2>🏥 Medical Physics & AAPM TG-43 Brachytherapy Planner</h2>
-        <p style={{ color: 'var(--color-text-muted)' }}>
-          Clinical interstitial radioactive seed implant planning and High Dose Rate (HDR) afterloading using the gold-standard <strong>AAPM TG-43U1</strong> formalism with real-time isodose contours and Dose-Volume Histograms (DVH).
-        </p>
+      <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+        <div>
+          <h2 style={{ margin: 0 }}>🏥 Medical Physics & AAPM TG-43 Brachytherapy Planner</h2>
+          <p style={{ color: 'var(--color-text-muted)', margin: '4px 0 0 0', fontSize: '0.85rem' }}>
+            Clinical interstitial radioactive seed implant planning and High Dose Rate (HDR) afterloading using the gold-standard <strong>AAPM TG-43U1</strong> formalism with real-time isodose contours and Dose-Volume Histograms (DVH).
+          </p>
+        </div>
+        <VerificationBadge testId="VTEST-16" standard="AAPM TG-43U1" />
       </div>
 
       {/* Main Tabs Header */}
