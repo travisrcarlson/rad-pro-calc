@@ -1,40 +1,104 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom';
 import Login from './Login';
 import 'katex/dist/katex.min.css';
 import './index.css';
 
-// Lazy load modules to improve performance if needed later, but standard imports for now
-import NuclideTableModule from './modules/Module1/NuclideTableModule';
-import VisualisationModule from './modules/Module3/VisualisationModule';
-import DoseCalculatorModule from './modules/Module2/DoseCalculatorModule';
-import TransportModule from './modules/Module4/TransportModule';
-import RegModule from './modules/Module5/RegModule';
-import DecayModule from './modules/Module6/DecayModule';
-import VerificationModule from './modules/Module7/VerificationModule';
-import Spatial3DModule from './modules/Module8/Spatial3DModule';
-import WorkerDosimetryModule from './modules/Module9/WorkerDosimetryModule';
-import PulsedXRayModule from './modules/Module10/PulsedXRayModule';
-import EquipmentLibraryModule from './modules/Module11/EquipmentLibraryModule';
-import ReverseResponderModule from './modules/Module12/ReverseResponderModule';
-import PlumeModule from './modules/Module13/PlumeModule';
-import ShieldingModule from './modules/Module14/ShieldingModule';
-import LaserModule from './modules/Module15/LaserModule';
-import XRayTubeModule from './modules/Module16/XRayTubeModule';
-import InternalDosimetryModule from './modules/Module17/InternalDosimetryModule';
-import EMRModule from './modules/Module18/EMRModule';
-import CriticalityModule from './modules/Module19/CriticalityModule';
-import SpectroscopyModule from './modules/Module20/SpectroscopyModule';
-import LiteratureModule from './modules/Module21/LiteratureModule';
-import MARSSIMModule from './modules/Module22/MARSSIMModule';
-import BrachytherapyModule from './modules/Module23/BrachytherapyModule';
-import FirstResponderModule from './modules/Module24/FirstResponderModule';
-import MonteCarloModule from './modules/MonteCarlo/MonteCarloModule';
-import DetectorHardwareModule from './modules/Hardware/DetectorHardwareModule';
-import ScenarioBuilderModule from './modules/Scenarios/ScenarioBuilderModule';
+// Lazy-loaded computational micro-kernels & modules for high-performance code splitting
+const NuclideTableModule = lazy(() => import('./modules/Module1/NuclideTableModule'));
+const DoseCalculatorModule = lazy(() => import('./modules/Module2/DoseCalculatorModule'));
+const VisualisationModule = lazy(() => import('./modules/Module3/VisualisationModule'));
+const TransportModule = lazy(() => import('./modules/Module4/TransportModule'));
+const RegModule = lazy(() => import('./modules/Module5/RegModule'));
+const DecayModule = lazy(() => import('./modules/Module6/DecayModule'));
+const VerificationModule = lazy(() => import('./modules/Module7/VerificationModule'));
+const Spatial3DModule = lazy(() => import('./modules/Module8/Spatial3DModule'));
+const WorkerDosimetryModule = lazy(() => import('./modules/Module9/WorkerDosimetryModule'));
+const PulsedXRayModule = lazy(() => import('./modules/Module10/PulsedXRayModule'));
+const EquipmentLibraryModule = lazy(() => import('./modules/Module11/EquipmentLibraryModule'));
+const ReverseResponderModule = lazy(() => import('./modules/Module12/ReverseResponderModule'));
+const PlumeModule = lazy(() => import('./modules/Module13/PlumeModule'));
+const ShieldingModule = lazy(() => import('./modules/Module14/ShieldingModule'));
+const LaserModule = lazy(() => import('./modules/Module15/LaserModule'));
+const XRayTubeModule = lazy(() => import('./modules/Module16/XRayTubeModule'));
+const InternalDosimetryModule = lazy(() => import('./modules/Module17/InternalDosimetryModule'));
+const EMRModule = lazy(() => import('./modules/Module18/EMRModule'));
+const CriticalityModule = lazy(() => import('./modules/Module19/CriticalityModule'));
+const SpectroscopyModule = lazy(() => import('./modules/Module20/SpectroscopyModule'));
+const LiteratureModule = lazy(() => import('./modules/Module21/LiteratureModule'));
+const MARSSIMModule = lazy(() => import('./modules/Module22/MARSSIMModule'));
+const BrachytherapyModule = lazy(() => import('./modules/Module23/BrachytherapyModule'));
+const FirstResponderModule = lazy(() => import('./modules/Module24/FirstResponderModule'));
+const MonteCarloModule = lazy(() => import('./modules/MonteCarlo/MonteCarloModule'));
+const DetectorHardwareModule = lazy(() => import('./modules/Hardware/DetectorHardwareModule'));
+const ScenarioBuilderModule = lazy(() => import('./modules/Scenarios/ScenarioBuilderModule'));
+
 import { RegulatoryProvider } from './context/RegulatoryContext';
 import { RegulatorySelectorBar } from './components/RegulatorySelectorBar';
 import ErrorBoundary from './ErrorBoundary';
+
+const ModuleLoadingSkeleton: React.FC = () => (
+  <div style={{
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '20px',
+    height: '100%',
+    padding: '24px',
+    background: 'rgba(5, 10, 18, 0.4)',
+    borderRadius: '12px',
+    border: '1px solid rgba(0, 229, 255, 0.15)',
+    animation: 'pulse 1.8s ease-in-out infinite'
+  }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <div style={{ width: '180px', height: '18px', background: 'rgba(0, 229, 255, 0.15)', borderRadius: '4px' }} />
+        <div style={{ width: '320px', height: '28px', background: 'rgba(255, 255, 255, 0.08)', borderRadius: '6px' }} />
+        <div style={{ width: '450px', height: '14px', background: 'rgba(255, 255, 255, 0.04)', borderRadius: '4px' }} />
+      </div>
+      <div style={{ width: '140px', height: '36px', background: 'rgba(0, 229, 255, 0.12)', borderRadius: '6px' }} />
+    </div>
+
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
+      {[1, 2, 3, 4].map(i => (
+        <div key={i} style={{
+          height: '90px',
+          background: 'rgba(0, 0, 0, 0.35)',
+          border: '1px solid rgba(0, 229, 255, 0.1)',
+          borderRadius: '8px',
+          padding: '14px'
+        }}>
+          <div style={{ width: '80px', height: '12px', background: 'rgba(255, 255, 255, 0.06)', borderRadius: '3px', marginBottom: '8px' }} />
+          <div style={{ width: '110px', height: '24px', background: 'rgba(0, 229, 255, 0.2)', borderRadius: '4px' }} />
+        </div>
+      ))}
+    </div>
+
+    <div style={{
+      flex: 1,
+      minHeight: '280px',
+      background: 'rgba(0, 0, 0, 0.25)',
+      border: '1px solid rgba(0, 229, 255, 0.08)',
+      borderRadius: '8px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexDirection: 'column',
+      gap: '12px'
+    }}>
+      <div style={{
+        width: '36px',
+        height: '36px',
+        border: '3px solid rgba(0, 229, 255, 0.2)',
+        borderTopColor: 'var(--color-primary)',
+        borderRadius: '50%',
+        animation: 'spin 0.8s linear infinite'
+      }} />
+      <span style={{ fontSize: '0.80rem', color: 'var(--color-text-muted)', letterSpacing: '0.8px', fontFamily: 'var(--font-mono)' }}>
+        HYDRATING COMPUTATIONAL MICRO-KERNEL...
+      </span>
+    </div>
+  </div>
+);
 
 interface NavItem {
   path: string;
@@ -339,36 +403,38 @@ const App: React.FC = () => {
             <RegulatorySelectorBar />
             <div style={{ flex: 1, padding: '20px 30px', overflowY: 'auto' }}>
               <ErrorBoundary>
-                <Routes>
-                  <Route path="/" element={<Navigate to="/nuclides" replace />} />
-                  <Route path="/nuclides" element={<NuclideTableModule />} />
-                  <Route path="/dose" element={<DoseCalculatorModule />} />
-                  <Route path="/visualisation" element={<VisualisationModule />} />
-                  <Route path="/transport" element={<TransportModule />} />
-                  <Route path="/reg" element={<RegModule />} />
-                  <Route path="/decay" element={<DecayModule />} />
-                  <Route path="/verify" element={<VerificationModule />} />
-                  <Route path="/spatial3d" element={<Spatial3DModule />} />
-                  <Route path="/worker" element={<WorkerDosimetryModule />} />
-                  <Route path="/xray" element={<PulsedXRayModule />} />
-                  <Route path="/equipment" element={<EquipmentLibraryModule />} />
-                  <Route path="/responder" element={<ReverseResponderModule />} />
-                  <Route path="/shielding" element={<ShieldingModule />} />
-                  <Route path="/plume" element={<PlumeModule />} />
-                  <Route path="/laser" element={<LaserModule />} />
-                  <Route path="/xray-tube" element={<XRayTubeModule />} />
-                  <Route path="/internal-dose" element={<InternalDosimetryModule />} />
-                  <Route path="/emr-safety" element={<EMRModule />} />
-                  <Route path="/criticality" element={<CriticalityModule />} />
-                  <Route path="/spectroscopy" element={<SpectroscopyModule />} />
-                  <Route path="/marssim" element={<MARSSIMModule />} />
-                  <Route path="/brachytherapy" element={<BrachytherapyModule />} />
-                  <Route path="/first-responder" element={<FirstResponderModule />} />
-                  <Route path="/monte-carlo" element={<MonteCarloModule />} />
-                  <Route path="/hardware" element={<DetectorHardwareModule />} />
-                  <Route path="/scenarios" element={<ScenarioBuilderModule />} />
-                  <Route path="/literature" element={<LiteratureModule />} />
-                </Routes>
+                <Suspense fallback={<ModuleLoadingSkeleton />}>
+                  <Routes>
+                    <Route path="/" element={<Navigate to="/nuclides" replace />} />
+                    <Route path="/nuclides" element={<NuclideTableModule />} />
+                    <Route path="/dose" element={<DoseCalculatorModule />} />
+                    <Route path="/visualisation" element={<VisualisationModule />} />
+                    <Route path="/transport" element={<TransportModule />} />
+                    <Route path="/reg" element={<RegModule />} />
+                    <Route path="/decay" element={<DecayModule />} />
+                    <Route path="/verify" element={<VerificationModule />} />
+                    <Route path="/spatial3d" element={<Spatial3DModule />} />
+                    <Route path="/worker" element={<WorkerDosimetryModule />} />
+                    <Route path="/xray" element={<PulsedXRayModule />} />
+                    <Route path="/equipment" element={<EquipmentLibraryModule />} />
+                    <Route path="/responder" element={<ReverseResponderModule />} />
+                    <Route path="/shielding" element={<ShieldingModule />} />
+                    <Route path="/plume" element={<PlumeModule />} />
+                    <Route path="/laser" element={<LaserModule />} />
+                    <Route path="/xray-tube" element={<XRayTubeModule />} />
+                    <Route path="/internal-dose" element={<InternalDosimetryModule />} />
+                    <Route path="/emr-safety" element={<EMRModule />} />
+                    <Route path="/criticality" element={<CriticalityModule />} />
+                    <Route path="/spectroscopy" element={<SpectroscopyModule />} />
+                    <Route path="/marssim" element={<MARSSIMModule />} />
+                    <Route path="/brachytherapy" element={<BrachytherapyModule />} />
+                    <Route path="/first-responder" element={<FirstResponderModule />} />
+                    <Route path="/monte-carlo" element={<MonteCarloModule />} />
+                    <Route path="/hardware" element={<DetectorHardwareModule />} />
+                    <Route path="/scenarios" element={<ScenarioBuilderModule />} />
+                    <Route path="/literature" element={<LiteratureModule />} />
+                  </Routes>
+                </Suspense>
               </ErrorBoundary>
             </div>
           </main>

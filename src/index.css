@@ -57,8 +57,47 @@ body.theme-tactical-hud {
   background: #000000;
 }
 body.theme-tactical-hud .panel {
+  background: rgba(5, 10, 18, 0.96);
   border: 1px solid #00e5ff;
   box-shadow: 0 0 14px rgba(0, 240, 255, 0.2);
+}
+body.theme-tactical-hud input,
+body.theme-tactical-hud select,
+body.theme-tactical-hud textarea,
+body.theme-tactical-hud .form-control {
+  background: #030712 !important;
+  color: #38bdf8 !important;
+  border: 1px solid rgba(0, 229, 255, 0.5) !important;
+}
+body.theme-tactical-hud input:focus,
+body.theme-tactical-hud select:focus,
+body.theme-tactical-hud textarea:focus {
+  border-color: #00f0ff !important;
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.4) !important;
+  outline: none !important;
+}
+body.theme-tactical-hud .hud-card {
+  background: rgba(2, 6, 14, 0.85);
+  border-color: rgba(0, 229, 255, 0.45);
+}
+body.theme-tactical-hud table th {
+  background: #041b2d !important;
+  color: #00f0ff !important;
+  border-color: #0284c7 !important;
+}
+body.theme-tactical-hud table td {
+  border-color: rgba(2, 132, 199, 0.3) !important;
+  color: #e0f2fe !important;
+}
+body.theme-tactical-hud .sidebar {
+  background-color: rgba(2, 4, 8, 0.98) !important;
+  border-right: 1px solid rgba(0, 229, 255, 0.4) !important;
+}
+body.theme-tactical-hud ::-webkit-scrollbar-thumb {
+  background: #0284c7 !important;
+}
+body.theme-tactical-hud ::-webkit-scrollbar-track {
+  background: #000000 !important;
 }
 
 /* Night-Vision Red Tactical Theme */
@@ -77,8 +116,81 @@ body.theme-night-vision {
   background: #080000;
 }
 body.theme-night-vision .panel {
+  background: rgba(18, 3, 3, 0.95);
   border: 1px solid rgba(239, 68, 68, 0.5);
   box-shadow: 0 0 12px rgba(239, 68, 68, 0.15);
+}
+body.theme-night-vision input,
+body.theme-night-vision select,
+body.theme-night-vision textarea,
+body.theme-night-vision .form-control {
+  background: #140202 !important;
+  color: #fca5a5 !important;
+  border: 1px solid rgba(239, 68, 68, 0.5) !important;
+}
+body.theme-night-vision input:focus,
+body.theme-night-vision select:focus,
+body.theme-night-vision textarea:focus {
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.4) !important;
+  outline: none !important;
+}
+body.theme-night-vision .hud-card {
+  background: rgba(24, 4, 4, 0.85);
+  border-color: rgba(239, 68, 68, 0.35);
+}
+body.theme-night-vision .hud-metric-label {
+  color: #f87171;
+}
+body.theme-night-vision .hud-metric-value {
+  color: #fecaca;
+}
+body.theme-night-vision h1,
+body.theme-night-vision h2,
+body.theme-night-vision h3,
+body.theme-night-vision h4,
+body.theme-night-vision h5,
+body.theme-night-vision h6 {
+  color: #fca5a5 !important;
+}
+body.theme-night-vision table th {
+  background: #260505 !important;
+  color: #fca5a5 !important;
+  border-color: #7f1d1d !important;
+}
+body.theme-night-vision table td {
+  border-color: rgba(127, 29, 29, 0.4) !important;
+  color: #fecaca !important;
+}
+body.theme-night-vision .btn-primary {
+  background: #dc2626 !important;
+  color: #fff !important;
+  border-color: #ef4444 !important;
+}
+body.theme-night-vision .btn-secondary {
+  background: rgba(220, 38, 38, 0.15) !important;
+  color: #fca5a5 !important;
+  border-color: rgba(239, 68, 68, 0.4) !important;
+}
+body.theme-night-vision .sidebar {
+  background-color: rgba(12, 2, 2, 0.96) !important;
+  border-right-color: rgba(239, 68, 68, 0.35) !important;
+}
+body.theme-night-vision .sidebar-search-input {
+  background: #1a0303 !important;
+  border-color: rgba(239, 68, 68, 0.4) !important;
+  color: #fca5a5 !important;
+}
+body.theme-night-vision .hud-badge-primary {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.4);
+}
+body.theme-night-vision ::-webkit-scrollbar-thumb {
+  background: #7f1d1d !important;
+}
+body.theme-night-vision ::-webkit-scrollbar-track {
+  background: #080000 !important;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -625,4 +737,15 @@ a:hover {
   color: #94a3b8;
   border: 1px solid rgba(148, 163, 184, 0.35);
 }
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
 

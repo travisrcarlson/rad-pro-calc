@@ -1,5 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { runMonteCarloSimulation, type MonteCarloConfig, type MonteCarloResult } from '../../workers/monteCarloWorker';
+import { useRegulatory } from '../../context/RegulatoryContext';
+import { AuditDossierModal } from '../../components/AuditDossierModal';
+import { type CalculationDossierPayload } from '../../services/auditDossierService';
 
 interface PresetSource {
   name: string;
@@ -17,6 +20,8 @@ const PRESET_SOURCES: PresetSource[] = [
 ];
 
 export const MonteCarloModule: React.FC = () => {
+  const { currentFramework } = useRegulatory();
+  const [isDossierOpen, setIsDossierOpen] = useState<boolean>(false);
   const [materialId, setMaterialId] = useState<MonteCarloConfig['materialId']>('lead');
   const [thickness_cm, setThickness_cm] = useState<number>(5.0);
   const [energy_MeV, setEnergy_MeV] = useState<number>(0.6617);
@@ -143,6 +148,33 @@ export const MonteCarloModule: React.FC = () => {
 
   const maxBinCount = result ? Math.max(...result.spectrumBins.map(b => b.count), 1) : 1;
 
+  const dossierPayload: CalculationDossierPayload = useMemo(() => ({
+    reportTitle: `Stochastic Monte Carlo Shielding Verification — ${materialId.toUpperCase()} (${thickness_cm.toFixed(1)} cm)`,
+    moduleName: 'Monte Carlo Micro-Kernel Photon Transport',
+    statuteCitation: `${currentFramework.name} (${currentFramework.citation}) / NCRP Report No. 147`,
+    verificationTestId: 'VTEST-25 (Klein-Nishina Cross-Section)',
+    operatorName: 'Shielding Design Physicist',
+    operatorCredentials: 'CHP, RRPT',
+    facility: 'Computational Radiological Engineering Lab',
+    notes: `Monte Carlo stochastic photon simulation across ${histories.toLocaleString()} histories through ${thickness_cm} cm of ${materialId}. Sampling Klein-Nishina differential Compton scattering, photoelectric cross-section, and electron pair production.`,
+    formulaDescription: '\\frac{d\\sigma}{d\\Omega} = \\frac{r_e^2}{2} \\left(\\frac{E\'}{E}\\right)^2 \\left[\\frac{E\'}{E} + \\frac{E}{E\'} - \\sin^2\\theta\\right], \\quad B = \\frac{I_{\\text{total}}}{I_{\\text{uncollided}}}',
+    inputs: [
+      { label: 'Shielding Material', value: materialId.toUpperCase() },
+      { label: 'Slab Thickness', value: thickness_cm, unit: 'cm' },
+      { label: 'Incident Photon Energy E₀', value: energy_MeV, unit: 'MeV' },
+      { label: 'Histories Simulated', value: histories.toLocaleString() },
+      { label: 'Regulatory Framework', value: `${currentFramework.governingBody} (${currentFramework.name})` }
+    ],
+    outputs: [
+      { label: 'Total Transmission Fraction', value: result ? (result.transmissionFraction * 100).toFixed(2) : '0', unit: '%', status: 'PASS' },
+      { label: 'Uncollided Narrow-Beam Fraction', value: result ? (result.uncollidedFraction * 100).toFixed(2) : '0', unit: '%', status: 'PASS' },
+      { label: 'Scatter Buildup Factor (B)', value: result ? result.buildupFactor.toFixed(3) : '1.000', status: 'PASS' },
+      { label: 'Absorbed Energy Fraction', value: result ? (result.energyAbsorptionFraction * 100).toFixed(2) : '0', unit: '%', status: 'PASS' },
+      { label: 'Backscatter Fraction', value: result ? (result.backscatterFraction * 100).toFixed(2) : '0', unit: '%', status: 'PASS' },
+      { label: 'Mean Transmitted Energy', value: result ? result.meanTransmittedEnergy_MeV.toFixed(3) : '0', unit: 'MeV', status: 'PASS' }
+    ]
+  }), [materialId, thickness_cm, energy_MeV, histories, currentFramework, result]);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {/* Header Banner */}
@@ -180,6 +212,14 @@ export const MonteCarloModule: React.FC = () => {
           }}>
             VTEST-25 // MONTE CARLO
           </span>
+          <button
+            className="btn btn-secondary"
+            onClick={() => setIsDossierOpen(true)}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.80rem', fontWeight: 600, padding: '5px 12px' }}
+          >
+            <span>🖨️</span>
+            <span>Export Audit Dossier</span>
+          </button>
         </div>
       </div>
 
@@ -434,6 +474,7 @@ export const MonteCarloModule: React.FC = () => {
           </div>
         </div>
       </div>
+      <AuditDossierModal payload={dossierPayload} isOpen={isDossierOpen} onClose={() => setIsDossierOpen(false)} />
     </div>
   );
 };

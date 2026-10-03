@@ -418,27 +418,40 @@ export const ScenarioBuilderModule: React.FC = () => {
             </ul>
           </div>
 
-          {/* 1-Click "Dispatch to Module" Action Bar */}
-          <div>
-            <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', marginBottom: '8px' }}>
-              Linked Analytical Modules (1-Click Drill Dispatch)
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '10px' }}>
-              {currentScenario.recommendedModules.map(mod => (
-                <NavLink
-                  key={mod.path}
-                  to={mod.path}
-                  style={{
-                    padding: '10px 12px',
-                    borderRadius: '6px',
-                    background: 'rgba(0, 229, 255, 0.05)',
-                    border: '1px solid rgba(0, 229, 255, 0.25)',
-                    textDecoration: 'none',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '3px',
-                    transition: 'all 0.15s ease'
-                  }}
+            {/* 1-Click "Dispatch to Module" Action Bar */}
+            <div>
+              <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', marginBottom: '8px' }}>
+                Linked Analytical Modules (1-Click Drill Dispatch)
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '10px' }}>
+                {currentScenario.recommendedModules.map(mod => {
+                  const params = new URLSearchParams();
+                  if (currentScenario.sourceTerm.nuclide) params.set('nuclide', currentScenario.sourceTerm.nuclide);
+                  if (currentScenario.sourceTerm.activity_TBq) {
+                    params.set('activity', currentScenario.sourceTerm.activity_TBq.toString());
+                    params.set('unit', 'TBq');
+                  }
+                  if (currentScenario.protectiveActions?.recommendedGuide) {
+                    params.set('erg', currentScenario.protectiveActions.recommendedGuide.toString());
+                  }
+                  const qs = params.toString();
+                  const targetUrl = qs ? `${mod.path}?${qs}` : mod.path;
+
+                  return (
+                    <NavLink
+                      key={mod.path}
+                      to={targetUrl}
+                      style={{
+                        padding: '10px 12px',
+                        borderRadius: '6px',
+                        background: 'rgba(0, 229, 255, 0.05)',
+                        border: '1px solid rgba(0, 229, 255, 0.25)',
+                        textDecoration: 'none',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '3px',
+                        transition: 'all 0.15s ease'
+                      }}
                   onMouseEnter={e => (e.currentTarget.style.background = 'rgba(0, 229, 255, 0.12)')}
                   onMouseLeave={e => (e.currentTarget.style.background = 'rgba(0, 229, 255, 0.05)')}
                 >
@@ -452,7 +465,8 @@ export const ScenarioBuilderModule: React.FC = () => {
                     {mod.rationale}
                   </div>
                 </NavLink>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>

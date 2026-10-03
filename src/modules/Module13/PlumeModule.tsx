@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import VerificationBadge from '../../components/VerificationBadge';
 import PlotComponent from 'react-plotly.js';
 import { BlockMath, InlineMath } from 'react-katex';
@@ -58,12 +59,38 @@ const getDispersionCoefficients = (x: number, stability: string) => {
 type WorkspaceTab = 'footprint' | 'centerline' | 'controls' | 'physics';
 
 const PlumeModule: React.FC = () => {
+  const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<WorkspaceTab>('footprint');
   const [releaseRate, setReleaseRate] = useState<number>(1.0); // Curies per second
   const [windSpeed, setWindSpeed] = useState<number>(2.0); // meters per second
   const [releaseHeight, setReleaseHeight] = useState<number>(10.0); // meters
   const [stability, setStability] = useState<string>('D'); // D is neutral
   const [maxDistance, setMaxDistance] = useState<number>(1000); // meters downwind
+
+  useEffect(() => {
+    const actParam = searchParams.get('activity');
+    const unitParam = searchParams.get('unit');
+    const windParam = searchParams.get('wind');
+    const stabParam = searchParams.get('stability');
+
+    if (actParam) {
+      const parsed = parseFloat(actParam);
+      if (!isNaN(parsed) && parsed > 0) {
+        if (unitParam?.toUpperCase() === 'TBQ') {
+          setReleaseRate(parseFloat((parsed * 27 * 0.001).toFixed(3)) || 1.0);
+        } else {
+          setReleaseRate(parseFloat((parsed * 0.01).toFixed(3)) || 1.0);
+        }
+      }
+    }
+    if (windParam) {
+      const w = parseFloat(windParam);
+      if (!isNaN(w) && w > 0) setWindSpeed(w);
+    }
+    if (stabParam && STABILITY_CLASSES.includes(stabParam.toUpperCase())) {
+      setStability(stabParam.toUpperCase());
+    }
+  }, [searchParams]);
 
   // 2D Contour Grid
   const { xVals, yVals, zVals } = useMemo(() => {

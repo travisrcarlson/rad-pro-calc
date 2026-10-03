@@ -1,7 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import PlotComponent from 'react-plotly.js';
 import { BlockMath } from 'react-katex';
 import VerificationBadge from '../../components/VerificationBadge';
+import { useRegulatory } from '../../context/RegulatoryContext';
+import { AuditDossierModal } from '../../components/AuditDossierModal';
+import { type CalculationDossierPayload } from '../../services/auditDossierService';
 
 const Plot = (PlotComponent as any).default || PlotComponent;
 
@@ -239,12 +243,54 @@ const WORKER_DOSE_LIMITS: Record<EmergencyWorkerTier, { rem: number; mSv: number
 };
 
 const FirstResponderModule: React.FC = () => {
+  const { currentFramework } = useRegulatory();
+  const [searchParams] = useSearchParams();
+  const [isDossierOpen, setIsDossierOpen] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<ActiveTab>('cordon');
 
   // Operational State
   const [incidentTitle, setIncidentTitle] = useState('Incident #2026-CBRN-01: Commercial Transport Rollover');
   const [selectedIsotopeKey, setSelectedIsotopeKey] = useState<string>('Cs-137');
   const [customActivityGBq, setCustomActivityGBq] = useState<number>(3700); // 100 Ci
+
+  // Ingest Scenario Dispatch Parameters (e.g. from Scenario Builder)
+  useEffect(() => {
+    const nuclideParam = searchParams.get('nuclide');
+    const activityParam = searchParams.get('activity');
+    const unitParam = searchParams.get('unit');
+    const ergParam = searchParams.get('erg');
+
+    if (nuclideParam) {
+      if (ISOTOPE_LIBRARY[nuclideParam]) {
+        setSelectedIsotopeKey(nuclideParam);
+      } else {
+        const found = Object.keys(ISOTOPE_LIBRARY).find(k => k.toLowerCase() === nuclideParam.toLowerCase());
+        if (found) setSelectedIsotopeKey(found);
+      }
+    }
+
+    if (activityParam) {
+      const act = parseFloat(activityParam);
+      if (!isNaN(act) && act > 0) {
+        if (unitParam?.toUpperCase() === 'TBQ') {
+          setCustomActivityGBq(act * 1000);
+        } else if (unitParam?.toUpperCase() === 'CI') {
+          setCustomActivityGBq(act * 37);
+        } else if (unitParam?.toUpperCase() === 'MBQ') {
+          setCustomActivityGBq(act / 1000);
+        } else {
+          setCustomActivityGBq(act);
+        }
+      }
+    }
+
+    if (ergParam) {
+      const gNum = parseInt(ergParam, 10);
+      if (ERG_DATABASE[gNum]) {
+        setSelectedGuideNumber(gNum);
+      }
+    }
+  }, [searchParams]);
   const [explosiveYieldKgTNT, setExplosiveYieldKgTNT] = useState<number>(5.0); // 5 kg TNT RDD
   const [windSpeedMps, setWindSpeedMps] = useState<number>(3.5);
   const [windDirectionDeg, setWindDirectionDeg] = useState<number>(225); // blowing toward northeast
@@ -506,6 +552,41 @@ const FirstResponderModule: React.FC = () => {
     };
   }, [victimEmesisTimeMinutes, victimNasalSwabCPM, backgroundCPM]);
 
+  const dossierPayload: CalculationDossierPayload = useMemo(() => {
+    const erg = ERG_DATABASE[selectedGuideNumber];
+    return {
+      reportTitle: `ICS-208 Radiological Incident Safety Plan — ${incidentTitle}`,
+      moduleName: 'Module 24: Tactical First Responder & CBRN Hazard Command',
+      statuteCitation: `${currentFramework.name} (${currentFramework.citation}) / EPA-400 PAG / DOT ERG 2024`,
+      verificationTestId: 'VTEST-21 (Stay-Time & Turn-Back)',
+      operatorName: 'Incident Radiological Safety Officer',
+      operatorCredentials: 'CBRN HazMat Specialist, CHP',
+      facility: 'Mobile Command Post / Field Triage Unit',
+      notes: `Incident tactical briefing for ${isotope.name} (${customActivityGBq} GBq). Initial isolation: ${erg?.initialIsolationM || 100}m. Turn-back point: ${cordonRadii.rTurnBack.toFixed(1)}m. Regulatory emergency tier: ${currentFramework.governingBody} allows up to ${currentFramework.limits.emergencyLifeSaving_mSv} mSv for life-saving operations.`,
+      formulaDescription: 'r_{\\text{cordon}} = \\sqrt{\\frac{\\Gamma \\cdot A}{\\dot{D}_{\\text{thresh}}}}, \\quad t_{\\text{stay}} = \\frac{D_{\\text{tier}}}{\\dot{D}_{\\text{field}}}',
+      inputs: [
+        { label: 'Incident Title', value: incidentTitle },
+        { label: 'Threat Nuclide', value: `${isotope.name} (${isotope.symbol})` },
+        { label: 'Estimated Activity', value: `${customActivityGBq} GBq (${(customActivityGBq / 37).toFixed(1)} Ci)` },
+        { label: 'Measured Field Rate', value: `${measuredDoseRateValue} ${measuredUnit}` },
+        { label: 'Authorized Worker Tier', value: WORKER_DOSE_LIMITS[selectedWorkerTier].label },
+        { label: 'Regulatory Framework', value: `${currentFramework.governingBody} (${currentFramework.name})` },
+        { label: 'Lifesaving Max Authorization', value: currentFramework.limits.emergencyLifeSaving_mSv, unit: 'mSv' },
+        { label: 'Property Protection Max Authorization', value: currentFramework.limits.emergencyProperty_mSv, unit: 'mSv' },
+        { label: 'DOT ERG Guide', value: `Guide ${selectedGuideNumber}: ${erg?.title || 'Class 7'}` }
+      ],
+      outputs: [
+        { label: 'Public Isolation Perimeter', value: erg?.initialIsolationM || 100, unit: 'm', status: 'PASS' },
+        { label: 'Cold Zone Standoff (1 mR/h)', value: cordonRadii.rCold.toFixed(1), unit: 'm', status: 'PASS' },
+        { label: 'Hot Zone Boundary (10 mR/h)', value: cordonRadii.rHot.toFixed(1), unit: 'm', status: 'PASS' },
+        { label: 'Field Turn-Back Perimeter', value: cordonRadii.rTurnBack.toFixed(1), unit: 'm', status: turnBackStatus.level.includes('CRITICAL') ? 'WARNING' : 'PASS' },
+        { label: 'Authorized Stay-Time', value: maxAllowedStayTimeMinutes >= 9000 ? 'Indefinite' : `${maxAllowedStayTimeMinutes.toFixed(1)} min`, status: maxAllowedStayTimeMinutes < 15 ? 'WARNING' : 'PASS' },
+        { label: 'Field Hazard Status', value: turnBackStatus.level, status: turnBackStatus.level.includes('CRITICAL') ? 'WARNING' : 'PASS' },
+        { label: 'Recommended Countermeasure', value: `${isotope.countermeasure} (${isotope.countermeasureDose})` }
+      ]
+    };
+  }, [incidentTitle, isotope, customActivityGBq, measuredDoseRateValue, measuredUnit, selectedWorkerTier, currentFramework, selectedGuideNumber, cordonRadii, turnBackStatus, maxAllowedStayTimeMinutes]);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: '14px', overflowY: 'auto' }}>
       {/* Panel Header */}
@@ -514,6 +595,7 @@ const FirstResponderModule: React.FC = () => {
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span className="hud-badge hud-badge-primary">CBRN FIRST RESPONDER</span>
             <span className="hud-badge hud-badge-accent">DOT ERG 2024 / REAC/TS</span>
+            <span className="hud-badge hud-badge-secondary">{currentFramework.flagEmoji} {currentFramework.name}</span>
           </div>
           <h2 style={{ margin: '4px 0 0 0', fontSize: '1.4rem' }}>
             Module 24 — Tactical First Responder &amp; CBRN Hazard Command
@@ -522,7 +604,17 @@ const FirstResponderModule: React.FC = () => {
             Operational standoff zoning, emergency worker turn-back limits, DOT ERG decision trees, and REAC/TS medical countermeasure triage
           </span>
         </div>
-        <VerificationBadge testId="VTEST-21" standard="EPA-400 PAG" />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <VerificationBadge testId="VTEST-21" standard="EPA-400 PAG" />
+          <button
+            className="btn btn-secondary"
+            onClick={() => setIsDossierOpen(true)}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', fontWeight: 600, padding: '6px 14px' }}
+          >
+            <span>🖨️</span>
+            <span>Export ICS-208 Dossier</span>
+          </button>
+        </div>
       </div>
 
       {/* TACTICAL REAL-TIME ALARM & METRIC HUD */}
@@ -1362,6 +1454,7 @@ const FirstResponderModule: React.FC = () => {
           </div>
         </div>
       )}
+      <AuditDossierModal payload={dossierPayload} isOpen={isDossierOpen} onClose={() => setIsDossierOpen(false)} />
     </div>
   );
 };

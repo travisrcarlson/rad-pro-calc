@@ -1,6 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import PlotComponent from 'react-plotly.js';
 import { BlockMath, InlineMath } from 'react-katex';
+import { useRegulatory } from '../../context/RegulatoryContext';
+import { AuditDossierModal } from '../../components/AuditDossierModal';
+import { type CalculationDossierPayload } from '../../services/auditDossierService';
 
 const Plot = (PlotComponent as any).default || PlotComponent;
 
@@ -46,6 +49,8 @@ const SHIELD_PRESETS: Record<string, { name: string; tvl_cm: number }> = {
 type WorkspaceTab = '3d_room' | 'alara_chart' | 'workers' | 'sources_shields' | 'physics';
 
 const WorkerDosimetryModule: React.FC = () => {
+  const { currentFramework } = useRegulatory();
+  const [isDossierOpen, setIsDossierOpen] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<WorkspaceTab>('3d_room');
 
   // Room dimensions
@@ -281,9 +286,9 @@ const WorkerDosimetryModule: React.FC = () => {
     line: { color: '#ff9f1c', width: 2, dash: 'dash' }
   });
   chartTraces.push({
-    x: [0, maxTime], y: [20000, 20000],
+    x: [0, maxTime], y: [currentFramework.limits.occupationalAnnualEffective_mSv * 1000, currentFramework.limits.occupationalAnnualEffective_mSv * 1000],
     type: 'scatter', mode: 'lines',
-    name: 'ICRP Annual Admin Limit (20 mSv)',
+    name: `${currentFramework.name} Limit (${currentFramework.limits.occupationalAnnualEffective_mSv} mSv)`,
     line: { color: '#ff3366', width: 2, dash: 'dash' }
   });
 
@@ -327,6 +332,33 @@ const WorkerDosimetryModule: React.FC = () => {
     return { peakRate, peakWorker, highestOrgan, highestOrganDose, worstAccumulation, shiftStatus };
   }, [workers, sources, shields]);
 
+  const dossierPayload: CalculationDossierPayload = useMemo(() => ({
+    reportTitle: '3D Worker Dosimetry & ALARA Shift Analysis',
+    moduleName: 'Module 9: 3D Worker Dosimetry & ALARA Shift Tracker',
+    statuteCitation: `${currentFramework.name} (${currentFramework.citation})`,
+    verificationTestId: 'VTEST-15 / ICRP 103',
+    operatorName: 'Lead Health Physicist',
+    operatorCredentials: 'CHP, RRPT',
+    facility: 'Radiological Protection Division',
+    notes: 'Operational dosimetry evaluation with ray-AABB geometric shielding attenuation and anatomical node partitioning.',
+    formulaDescription: 'E = \\sum_{i} h_E \\frac{\\Gamma_i A_i}{d_i^2} \\exp\\left(-\\sum_{j} \\mu_j x_j\\right) t_{\\text{stay}}',
+    inputs: [
+      { label: 'Workforce Size', value: `${workers.length} Operators` },
+      { label: 'Active Hotspots', value: `${sources.length} Sources` },
+      { label: 'Shielding Structures', value: `${shields.length} Barriers` },
+      { label: 'Active Regulatory Authority', value: `${currentFramework.governingBody} (${currentFramework.name})` },
+      { label: 'Occupational Annual Limit', value: currentFramework.limits.occupationalAnnualEffective_mSv, unit: 'mSv' },
+      { label: 'Eye Lens Annual Limit', value: currentFramework.limits.lensOfEyeAnnual_mSv, unit: 'mSv' },
+      { label: 'Skin/Extremity Annual Limit', value: currentFramework.limits.skinAndExtremitiesAnnual_mSv, unit: 'mSv' }
+    ],
+    outputs: [
+      { label: 'Peak Dose Rate', value: workerAnalytics.peakRate.toFixed(1), unit: 'µSv/h', status: workerAnalytics.peakRate > 1000 ? 'WARNING' : 'COMPLIANT' },
+      { label: 'Max Individual Accumulation', value: workerAnalytics.worstAccumulation.toFixed(1), unit: 'µSv', status: workerAnalytics.shiftStatus === 'EXCEEDED' ? 'EXCEEDED' : 'COMPLIANT' },
+      { label: 'Critical Anatomical Organ', value: workerAnalytics.highestOrgan, status: 'COMPLIANT' },
+      { label: 'Shift ALARA Compliance', value: workerAnalytics.shiftStatus, status: workerAnalytics.shiftStatus === 'EXCEEDED' ? 'EXCEEDED' : 'PASS' }
+    ]
+  }), [workers, sources, shields, currentFramework, workerAnalytics]);
+
   return (
     <div className="panel" style={{ height: '100%', display: 'flex', flexDirection: 'column', gap: '16px' }}>
       
@@ -335,7 +367,7 @@ const WorkerDosimetryModule: React.FC = () => {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <span className="hud-badge hud-badge-primary">HEALTH PHYSICS SUITE</span>
-            <span className="hud-badge hud-badge-accent">ICRP 103 / 116</span>
+            <span className="hud-badge hud-badge-accent">{currentFramework.flagEmoji} {currentFramework.name} ({currentFramework.shortCode})</span>
           </div>
           <h2 style={{ margin: '6px 0 0 0', fontSize: '1.4rem', letterSpacing: '0.03em' }}>
             Advanced 3D Worker Dosimetry &amp; ALARA Shift Tracker
@@ -344,6 +376,14 @@ const WorkerDosimetryModule: React.FC = () => {
             Multi-node anatomical dosimeter modeling, posture variation (Standing / Crouching / Prone), dynamic Ray-AABB shielding attenuation, and cumulative stay-time limits.
           </p>
         </div>
+        <button
+          className="btn btn-secondary"
+          onClick={() => setIsDossierOpen(true)}
+          style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', fontWeight: 600, padding: '8px 16px' }}
+        >
+          <span>🖨️</span>
+          <span>Export Audit Dossier</span>
+        </button>
       </div>
 
       {/* Top ALARA Command HUD */}
@@ -1015,7 +1055,7 @@ const WorkerDosimetryModule: React.FC = () => {
           </div>
         )}
       </div>
-
+      <AuditDossierModal payload={dossierPayload} isOpen={isDossierOpen} onClose={() => setIsDossierOpen(false)} />
     </div>
   );
 };

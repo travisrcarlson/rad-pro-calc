@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-
-type RegFramework = 'US_NRC' | 'ICRP';
+import React, { useState, useMemo } from 'react';
+import { useRegulatory } from '../../context/RegulatoryContext';
+import { AuditDossierModal } from '../../components/AuditDossierModal';
+import { type CalculationDossierPayload } from '../../services/auditDossierService';
 
 interface WorkerRecord {
   id: string;
@@ -20,21 +21,22 @@ const INITIAL_WORKERS: WorkerRecord[] = [
 type WorkspaceTab = 'roster' | 'injector' | 'standards';
 
 const RegModule: React.FC = () => {
+  const { currentFramework, setFrameworkId, allFrameworks, frameworkId } = useRegulatory();
   const [activeTab, setActiveTab] = useState<WorkspaceTab>('roster');
-  const [framework, setFramework] = useState<RegFramework>('US_NRC');
   const [workers, setWorkers] = useState<WorkerRecord[]>(INITIAL_WORKERS);
+  const [isDossierOpen, setIsDossierOpen] = useState(false);
 
   // Injector Forms
   const [targetWorker, setTargetWorker] = useState('W001');
   const [doseAmount, setDoseAmount] = useState('1.0');
   const [doseType, setDoseType] = useState<'TEDE' | 'LDE' | 'SDE'>('TEDE');
 
-  // Regulatory Logic
-  const limits = {
-    US_NRC: { TEDE: 50, LDE: 150, SDE: 500 },
-    ICRP: { TEDE: 20, LDE: 20, SDE: 500 }
+  // Dynamic Framework Limits
+  const activeLimits = {
+    TEDE: currentFramework.limits.occupationalAnnualEffective_mSv,
+    LDE: currentFramework.limits.lensOfEyeAnnual_mSv,
+    SDE: currentFramework.limits.skinAndExtremitiesAnnual_mSv
   };
-  const activeLimits = limits[framework];
 
   const getALARAStatus = (dose: number, limit: number) => {
     const ratio = dose / limit;
@@ -85,6 +87,32 @@ const RegModule: React.FC = () => {
     }
   });
 
+  const dossierPayload: CalculationDossierPayload = useMemo(() => ({
+    reportTitle: `Annual Regulatory Dose Compliance Dossier — ${currentFramework.name}`,
+    moduleName: 'Module 5: Regulatory Compliance & ALARA Administration',
+    statuteCitation: `${currentFramework.name} (${currentFramework.citation})`,
+    verificationTestId: 'VTEST-10 / 21 CFR Part 11',
+    operatorName: 'Radiation Safety Officer (RSO)',
+    operatorCredentials: 'CHP, MS Health Physics',
+    facility: 'Central Nuclear Operations',
+    notes: `Workforce compliance assessment across ${workers.length} radiation workers against statutory limits: Whole Body (${activeLimits.TEDE} mSv), Lens of Eye (${activeLimits.LDE} mSv), Shallow Extremities (${activeLimits.SDE} mSv).`,
+    formulaDescription: 'R_{\\text{ALARA}} = \\max\\left(\\frac{\\text{TEDE}}{\\text{Limit}_{\\text{WB}}}, \\frac{\\text{LDE}}{\\text{Limit}_{\\text{Eye}}}, \\frac{\\text{SDE}}{\\text{Limit}_{\\text{Ext}}}\\right)',
+    inputs: [
+      { label: 'Regulatory Framework', value: `${currentFramework.governingBody} (${currentFramework.name})` },
+      { label: 'Statute / Directive', value: currentFramework.citation },
+      { label: 'Total Monitored Workers', value: `${workers.length} individuals` },
+      { label: 'Whole Body (TEDE) Limit', value: activeLimits.TEDE, unit: 'mSv/yr' },
+      { label: 'Lens of Eye (LDE) Limit', value: activeLimits.LDE, unit: 'mSv/yr' },
+      { label: 'Extremity (SDE) Limit', value: activeLimits.SDE, unit: 'mSv/yr' }
+    ],
+    outputs: [
+      { label: 'Regulatory Violations', value: violationCount, status: violationCount > 0 ? 'EXCEEDED' : 'PASS' },
+      { label: 'ALARA Action Triggers', value: alaraCount, status: alaraCount > 0 ? 'WARNING' : 'PASS' },
+      { label: 'Peak Whole Body Accumulation', value: highestTEDE.toFixed(1), unit: 'mSv', status: highestTEDE > activeLimits.TEDE ? 'EXCEEDED' : 'PASS' },
+      { label: 'Peak Dose Recipient', value: highestWorker || 'None', status: 'PASS' }
+    ]
+  }), [currentFramework, workers, activeLimits, violationCount, alaraCount, highestTEDE, highestWorker]);
+
   return (
     <div className="panel" style={{ height: '100%', display: 'flex', flexDirection: 'column', gap: '16px' }}>
       
@@ -93,7 +121,7 @@ const RegModule: React.FC = () => {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <span className="hud-badge hud-badge-primary">RADIATION SAFETY OFFICER (RSO) HUD</span>
-            <span className="hud-badge hud-badge-accent">{framework === 'US_NRC' ? '10 CFR 20' : 'ICRP 103'}</span>
+            <span className="hud-badge hud-badge-accent">{currentFramework.flagEmoji} {currentFramework.name} ({currentFramework.shortCode})</span>
           </div>
           <h2 style={{ margin: '6px 0 0 0', fontSize: '1.4rem', letterSpacing: '0.03em' }}>
             Regulatory Dose Compliance &amp; ALARA Administration Dashboard
@@ -103,17 +131,29 @@ const RegModule: React.FC = () => {
           </p>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(0,0,0,0.3)', padding: '6px 12px', borderRadius: '6px', border: '1px solid var(--color-border)' }}>
-          <label style={{ fontSize: '0.85rem', color: '#94a3b8', margin: 0 }}>Jurisdiction:</label>
-          <select
-            className="form-control"
-            value={framework}
-            onChange={e => setFramework(e.target.value as RegFramework)}
-            style={{ fontWeight: 'bold', color: 'var(--color-primary)', width: '200px', padding: '4px 8px' }}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(0,0,0,0.3)', padding: '6px 12px', borderRadius: '6px', border: '1px solid var(--color-border)' }}>
+            <label style={{ fontSize: '0.82rem', color: '#94a3b8', margin: 0 }}>Regime:</label>
+            <select
+              className="form-control"
+              value={frameworkId}
+              onChange={e => setFrameworkId(e.target.value as any)}
+              style={{ fontWeight: 'bold', color: 'var(--color-primary)', width: '210px', padding: '4px 8px' }}
+            >
+              {allFrameworks.map(f => (
+                <option key={f.id} value={f.id}>{f.flagEmoji} {f.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <button
+            className="btn btn-secondary"
+            onClick={() => setIsDossierOpen(true)}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 600, padding: '7px 14px' }}
           >
-            <option value="US_NRC">US NRC (10 CFR 20)</option>
-            <option value="ICRP">ICRP 103 (International)</option>
-          </select>
+            <span>🖨️</span>
+            <span>Export Compliance Dossier</span>
+          </button>
         </div>
       </div>
 
@@ -141,7 +181,7 @@ const RegModule: React.FC = () => {
             )}
           </span>
           <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
-            Standard: {framework === 'US_NRC' ? '50 mSv TEDE / 150 mSv LDE' : '20 mSv TEDE / 20 mSv LDE'}
+            Standard: {activeLimits.TEDE} mSv TEDE / {activeLimits.LDE} mSv LDE
           </span>
         </div>
 
@@ -161,7 +201,7 @@ const RegModule: React.FC = () => {
             {activeLimits.LDE} mSv / yr
           </span>
           <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
-            {framework === 'ICRP' ? 'ICRP 118 Cataract Limit' : 'NRC 10 CFR 20.1201'}
+            Directive: {currentFramework.shortCode}
           </span>
         </div>
       </div>
@@ -403,7 +443,7 @@ const RegModule: React.FC = () => {
           </div>
         )}
       </div>
-
+      <AuditDossierModal payload={dossierPayload} isOpen={isDossierOpen} onClose={() => setIsDossierOpen(false)} />
     </div>
   );
 };
