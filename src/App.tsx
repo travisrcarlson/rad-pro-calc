@@ -29,6 +29,11 @@ import LiteratureModule from './modules/Module21/LiteratureModule';
 import MARSSIMModule from './modules/Module22/MARSSIMModule';
 import BrachytherapyModule from './modules/Module23/BrachytherapyModule';
 import FirstResponderModule from './modules/Module24/FirstResponderModule';
+import MonteCarloModule from './modules/MonteCarlo/MonteCarloModule';
+import DetectorHardwareModule from './modules/Hardware/DetectorHardwareModule';
+import ScenarioBuilderModule from './modules/Scenarios/ScenarioBuilderModule';
+import { RegulatoryProvider } from './context/RegulatoryContext';
+import { RegulatorySelectorBar } from './components/RegulatorySelectorBar';
 import ErrorBoundary from './ErrorBoundary';
 
 interface NavItem {
@@ -67,6 +72,7 @@ const NAV_CATEGORIES: NavCategory[] = [
     iconSymbol: '▲',
     items: [
       { path: '/first-responder', label: 'Tactical CBRN Response', badge: 'ERG/REAC-TS', keywords: ['first responder', 'cbrn', 'hazmat', 'triage', 'decon', 'ki', 'dtpa', 'cordon', 'erg 2024'] },
+      { path: '/scenarios', label: 'Incident Scenario Drills', badge: 'INES / .radcase', keywords: ['scenario', 'drill', 'incident', 'case', 'goiania', 'tokaimura', 'cask', 'radcase'] },
       { path: '/responder', label: 'Reverse Triangulation', badge: 'Isopleths', keywords: ['responder', 'triangulation', 'source term', 'search', 'pinpoint'] },
       { path: '/plume', label: 'Plume Atmospheric Model', badge: 'Gaussian', keywords: ['plume', 'atmospheric', 'pasquill', 'dispersion', 'wind', 'fallout'] },
       { path: '/shielding', label: 'Shielding & ALARA PAGs', badge: 'NBS-107', keywords: ['shielding', 'pags', 'protective action', 'shelter', 'evacuation', 'epa-400'] },
@@ -92,6 +98,7 @@ const NAV_CATEGORIES: NavCategory[] = [
     iconSymbol: '⚛',
     items: [
       { path: '/criticality', label: 'Criticality & Reactor Core', badge: '4-Factor', keywords: ['criticality', 'reactor', 'keff', 'multiplication', 'fuel', 'lattice', 'buckling'] },
+      { path: '/monte-carlo', label: 'Monte Carlo Micro-Kernel', badge: 'Klein-Nishina', keywords: ['monte carlo', 'stochastic', 'compton', 'pair production', 'cross section', 'buildup', 'histories'] },
       { path: '/decay', label: 'Radiolysis & Decay Chains', badge: 'Bateman', keywords: ['decay', 'bateman', 'radiolysis', 'g-value', 'daughter', 'chain'] },
       { path: '/spectroscopy', label: 'Gamma Spectroscopy', badge: 'MCA / FWHM', keywords: ['spectroscopy', 'mca', 'fwhm', 'channel', 'peak', 'resolution'] }
     ]
@@ -114,6 +121,7 @@ const NAV_CATEGORIES: NavCategory[] = [
     items: [
       { path: '/nuclides', label: 'Nuclide Database', badge: 'ICRP-107', keywords: ['nuclide', 'isotope', 'half-life', 'decay mode', 'energy', 'branching'] },
       { path: '/equipment', label: 'Equipment Catalog', badge: 'Detectors', keywords: ['equipment', 'detector', 'geiger', 'scintillator', 'efficiency'] },
+      { path: '/hardware', label: 'Hardware Pulse Counter', badge: 'WebSerial/Audio', keywords: ['hardware', 'serial', 'audio', 'pulse', 'cpm', 'cps', 'currie', 'dead-time', 'geiger'] },
       { path: '/reg', label: 'Regulatory Dashboard', badge: '10 CFR 20', keywords: ['regulatory', 'nrc', 'agreement state', 'compliance', 'limits'] }
     ]
   },
@@ -123,7 +131,7 @@ const NAV_CATEGORIES: NavCategory[] = [
     color: '#c084fc',
     iconSymbol: '✓',
     items: [
-      { path: '/verify', label: 'Verification Tests', badge: '32/32 Pass', keywords: ['verify', 'test', 'sqa', 'validation', 'benchmark', 'qa'] },
+      { path: '/verify', label: 'Verification Tests', badge: '34/34 Pass', keywords: ['verify', 'test', 'sqa', 'validation', 'benchmark', 'qa'] },
       { path: '/literature', label: 'Core Literature & Physics', badge: 'Derivations', keywords: ['literature', 'citations', 'physics', 'equations', 'formulations', 'references'] }
     ]
   }
@@ -219,7 +227,7 @@ const Sidebar = () => {
           <input
             type="text"
             className="sidebar-search-input"
-            placeholder="Search 24 tools & topics..."
+            placeholder="Search 27 tools & topics..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -234,7 +242,7 @@ const Sidebar = () => {
           )}
         </div>
         <div className="sidebar-search-meta">
-          <span>{query ? `Showing ${totalMatches} of 24 tools` : '7 Categories (24 Tools)'}</span>
+          <span>{query ? `Showing ${totalMatches} of 27 tools` : '7 Categories (27 Tools)'}</span>
           {!query && (
             <button className="sidebar-toggle-all-btn" onClick={toggleAll}>
               {allExpanded ? 'Collapse All' : 'Expand All'}
@@ -323,42 +331,50 @@ const App: React.FC = () => {
   }
 
   return (
-    <Router>
-      <div className="app-container">
-        <Sidebar />
-        <main className="main-content">
-          <ErrorBoundary>
-            <Routes>
-              <Route path="/" element={<Navigate to="/nuclides" replace />} />
-              <Route path="/nuclides" element={<NuclideTableModule />} />
-              <Route path="/dose" element={<DoseCalculatorModule />} />
-              <Route path="/visualisation" element={<VisualisationModule />} />
-              <Route path="/transport" element={<TransportModule />} />
-              <Route path="/reg" element={<RegModule />} />
-              <Route path="/decay" element={<DecayModule />} />
-              <Route path="/verify" element={<VerificationModule />} />
-              <Route path="/spatial3d" element={<Spatial3DModule />} />
-              <Route path="/worker" element={<WorkerDosimetryModule />} />
-              <Route path="/xray" element={<PulsedXRayModule />} />
-              <Route path="/equipment" element={<EquipmentLibraryModule />} />
-              <Route path="/responder" element={<ReverseResponderModule />} />
-              <Route path="/shielding" element={<ShieldingModule />} />
-              <Route path="/plume" element={<PlumeModule />} />
-              <Route path="/laser" element={<LaserModule />} />
-              <Route path="/xray-tube" element={<XRayTubeModule />} />
-              <Route path="/internal-dose" element={<InternalDosimetryModule />} />
-              <Route path="/emr-safety" element={<EMRModule />} />
-              <Route path="/criticality" element={<CriticalityModule />} />
-              <Route path="/spectroscopy" element={<SpectroscopyModule />} />
-              <Route path="/marssim" element={<MARSSIMModule />} />
-              <Route path="/brachytherapy" element={<BrachytherapyModule />} />
-              <Route path="/first-responder" element={<FirstResponderModule />} />
-              <Route path="/literature" element={<LiteratureModule />} />
-            </Routes>
-          </ErrorBoundary>
-        </main>
-      </div>
-    </Router>
+    <RegulatoryProvider>
+      <Router>
+        <div className="app-container">
+          <Sidebar />
+          <main className="main-content" style={{ padding: 0, display: 'flex', flexDirection: 'column' }}>
+            <RegulatorySelectorBar />
+            <div style={{ flex: 1, padding: '20px 30px', overflowY: 'auto' }}>
+              <ErrorBoundary>
+                <Routes>
+                  <Route path="/" element={<Navigate to="/nuclides" replace />} />
+                  <Route path="/nuclides" element={<NuclideTableModule />} />
+                  <Route path="/dose" element={<DoseCalculatorModule />} />
+                  <Route path="/visualisation" element={<VisualisationModule />} />
+                  <Route path="/transport" element={<TransportModule />} />
+                  <Route path="/reg" element={<RegModule />} />
+                  <Route path="/decay" element={<DecayModule />} />
+                  <Route path="/verify" element={<VerificationModule />} />
+                  <Route path="/spatial3d" element={<Spatial3DModule />} />
+                  <Route path="/worker" element={<WorkerDosimetryModule />} />
+                  <Route path="/xray" element={<PulsedXRayModule />} />
+                  <Route path="/equipment" element={<EquipmentLibraryModule />} />
+                  <Route path="/responder" element={<ReverseResponderModule />} />
+                  <Route path="/shielding" element={<ShieldingModule />} />
+                  <Route path="/plume" element={<PlumeModule />} />
+                  <Route path="/laser" element={<LaserModule />} />
+                  <Route path="/xray-tube" element={<XRayTubeModule />} />
+                  <Route path="/internal-dose" element={<InternalDosimetryModule />} />
+                  <Route path="/emr-safety" element={<EMRModule />} />
+                  <Route path="/criticality" element={<CriticalityModule />} />
+                  <Route path="/spectroscopy" element={<SpectroscopyModule />} />
+                  <Route path="/marssim" element={<MARSSIMModule />} />
+                  <Route path="/brachytherapy" element={<BrachytherapyModule />} />
+                  <Route path="/first-responder" element={<FirstResponderModule />} />
+                  <Route path="/monte-carlo" element={<MonteCarloModule />} />
+                  <Route path="/hardware" element={<DetectorHardwareModule />} />
+                  <Route path="/scenarios" element={<ScenarioBuilderModule />} />
+                  <Route path="/literature" element={<LiteratureModule />} />
+                </Routes>
+              </ErrorBoundary>
+            </div>
+          </main>
+        </div>
+      </Router>
+    </RegulatoryProvider>
   );
 };
 

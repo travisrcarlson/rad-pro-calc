@@ -729,6 +729,65 @@ const runAllVerificationTests = (): VerificationTest[] => {
     });
   }
 
+  // VTEST-25: Klein-Nishina Total Incoherent Compton Cross-Section (α = 1.0)
+  {
+    const alpha = 1.0;
+    const r0Sq_barns = 0.079408;
+    const term1 = (1 + alpha) / (alpha * alpha);
+    const term2 = (2 * (1 + alpha)) / (1 + 2 * alpha) - Math.log(1 + 2 * alpha) / alpha;
+    const term3 = Math.log(1 + 2 * alpha) / (2 * alpha);
+    const term4 = (1 + 3 * alpha) / Math.pow(1 + 2 * alpha, 2);
+    const computedBarns = 2 * Math.PI * r0Sq_barns * (term1 * term2 + term3 - term4);
+    const expected = 0.2865;
+    const err = Math.abs((computedBarns - expected) / expected) * 100;
+    tests.push({
+      id: 'VTEST-25',
+      name: 'Klein-Nishina Total Incoherent Compton Cross-Section (α = 1.0)',
+      module: 'Monte Carlo Micro-Kernel (Photon Transport)',
+      category: 'Criticality & MCA',
+      standard: 'Klein & Nishina (1929) / Evans Atomic Nucleus',
+      standardDoc: 'Z. Physik 52, 853; Evans The Atomic Nucleus Ch. 23',
+      formulaKatex: '\\sigma_e^{\\text{KN}}(\\alpha) = 2\\pi r_0^2 \\left[ \\frac{1+\\alpha}{\\alpha^2} \\left( \\frac{2(1+\\alpha)}{1+2\\alpha} - \\frac{\\ln(1+2\\alpha)}{\\alpha} \\right) + \\frac{\\ln(1+2\\alpha)}{2\\alpha} - \\frac{1+3\\alpha}{(1+2\\alpha)^2} \\right]',
+      inputsDesc: 'Photon energy E = 0.511 MeV (alpha = 1.00), Free electron target',
+      expectedValue: expected,
+      expectedUnits: 'barns/electron',
+      expectedDisplay: '0.2865 barns',
+      computedValue: computedBarns,
+      computedDisplay: `${computedBarns.toFixed(4)} barns`,
+      tolerancePct: 0.05,
+      errorPct: err,
+      passed: err <= 0.05,
+      notes: 'Fundamental quantum electrodynamic basis for Monte Carlo gamma shielding transport.'
+    });
+  }
+
+  // VTEST-26: Currie Critical Decision Level (Lc) Detection Limit
+  {
+    const backgroundCounts = 100.0;
+    const expectedLc = 23.30;
+    const computedLc = 2.33 * Math.sqrt(backgroundCounts);
+    const err = Math.abs((computedLc - expectedLc) / expectedLc) * 100;
+    tests.push({
+      id: 'VTEST-26',
+      name: 'Currie Critical Decision Level (Lc) Detection Limit (B = 100)',
+      module: 'Hardware Metrology & Live Pulse Counting',
+      category: 'Radiometry',
+      standard: 'L.A. Currie (1968) Anal. Chem. 40, 586-593 Eq. 15',
+      standardDoc: 'Currie Limits for Qualitative Detection and Quantitative Determination',
+      formulaKatex: 'L_c = 2.33 \\cdot \\sigma_B = 2.33 \\sqrt{B}, \\quad B = 100\\text{ counts}',
+      inputsDesc: 'Background accumulation B = 100 counts, Alpha = 0.05 (95% confidence)',
+      expectedValue: expectedLc,
+      expectedUnits: 'Net Counts',
+      expectedDisplay: '23.30 Net Counts',
+      computedValue: computedLc,
+      computedDisplay: `${computedLc.toFixed(2)} Net Counts`,
+      tolerancePct: 0.01,
+      errorPct: err,
+      passed: err <= 0.01,
+      notes: 'Defines the false-positive decision threshold for environmental contamination surveys.'
+    });
+  }
+
   return tests;
 };
 

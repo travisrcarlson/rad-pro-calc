@@ -264,6 +264,34 @@ const tests = [
     compute: () => 0.412 * Math.pow(1.710, 1.265 - 0.0954 * Math.log(1.710)) * 10,
     tolerance: 0.1,
     units: 'mm (H2O)'
+  },
+  {
+    id: 'VTEST-25',
+    name: 'Klein-Nishina Total Incoherent Compton Cross-Section (α = 1.0)',
+    module: 'Monte Carlo Micro-Kernel (Photon Transport)',
+    standard: 'Klein & Nishina (1929) / Evans Atomic Nucleus',
+    expected: 0.2865,
+    compute: () => {
+      const alpha = 1.0;
+      const r0Sq_barns = 0.079408; // (2.8179e-13 cm)^2 = 7.9408e-26 cm^2 = 0.079408 barns
+      const term1 = (1 + alpha) / (alpha * alpha);
+      const term2 = (2 * (1 + alpha)) / (1 + 2 * alpha) - Math.log(1 + 2 * alpha) / alpha;
+      const term3 = Math.log(1 + 2 * alpha) / (2 * alpha);
+      const term4 = (1 + 3 * alpha) / Math.pow(1 + 2 * alpha, 2);
+      return 2 * Math.PI * r0Sq_barns * (term1 * term2 + term3 - term4);
+    },
+    tolerance: 0.05,
+    units: 'barns/electron'
+  },
+  {
+    id: 'VTEST-26',
+    name: 'Currie Critical Decision Level (Lc) Detection Limit (B = 100)',
+    module: 'Live Hardware & Detector Metrology Engine',
+    standard: 'L.A. Currie (1968) Anal. Chem. 40, 586-593 Eq. 15',
+    expected: 23.30,
+    compute: () => 2.33 * Math.sqrt(100.0),
+    tolerance: 0.01,
+    units: 'Net Counts'
   }
 ];
 

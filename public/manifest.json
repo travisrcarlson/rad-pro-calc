@@ -1,0 +1,16 @@
+{
+  "name": "RadPro Analyst - Health Physics Suite",
+  "short_name": "RadPro",
+  "description": "Professional Health Physics, Radiation Protection & Emergency CBRN Engineering Suite",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#050a12",
+  "theme_color": "#00e5ff",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}

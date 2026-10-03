@@ -45,6 +45,42 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Tactical High-Contrast HUD Theme */
+body.theme-tactical-hud {
+  --color-bg-deep: #000000;
+  --color-bg-panel: rgba(10, 10, 10, 0.95);
+  --color-border: rgba(0, 229, 255, 0.6);
+  --color-primary: #00f0ff;
+  --color-accent: #ffb703;
+  --color-text-main: #ffffff;
+  --color-text-muted: #cbd5e1;
+  background: #000000;
+}
+body.theme-tactical-hud .panel {
+  border: 1px solid #00e5ff;
+  box-shadow: 0 0 14px rgba(0, 240, 255, 0.2);
+}
+
+/* Night-Vision Red Tactical Theme */
+body.theme-night-vision {
+  --color-bg-deep: #080000;
+  --color-bg-panel: rgba(20, 4, 4, 0.92);
+  --color-border: rgba(239, 68, 68, 0.45);
+  --color-primary: #ef4444;
+  --color-primary-hover: #f87171;
+  --color-accent: #dc2626;
+  --color-text-main: #fecaca;
+  --color-text-muted: #ef4444;
+  --color-success: #b91c1c;
+  --color-warning: #991b1b;
+  --color-info: #ef4444;
+  background: #080000;
+}
+body.theme-night-vision .panel {
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.15);
+}
+
 h1, h2, h3, h4, h5, h6 {
   color: #fff;
   font-weight: 600;
