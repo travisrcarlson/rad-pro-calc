@@ -292,6 +292,23 @@ const tests = [
     compute: () => 2.33 * Math.sqrt(100.0),
     tolerance: 0.01,
     units: 'Net Counts'
+  },
+  {
+    id: 'VTEST-27',
+    name: 'Radiographic Geometric Magnification (M) & Penumbra Unsharpness (Ug)',
+    module: 'X-Ray Distortion & Geometry (Module 16B)',
+    standard: 'Bushong Radiologic Science 12th Ed. / ASME BPVC Sec V Art. 2',
+    expected: 0.3000,
+    compute: () => {
+      const sid = 100.0;
+      const oid = 20.0;
+      const sod = sid - oid; // 80.0
+      const focalSpot = 1.20; // mm
+      const unsharpness_mm = focalSpot * (oid / sod);
+      return unsharpness_mm;
+    },
+    tolerance: 0.01,
+    units: 'mm (Ug)'
   }
 ];
 

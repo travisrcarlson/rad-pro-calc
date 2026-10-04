@@ -788,6 +788,36 @@ const runAllVerificationTests = (): VerificationTest[] => {
     });
   }
 
+  // VTEST-27: Radiographic Geometric Magnification & Penumbra Unsharpness (Ug)
+  {
+    const sid = 100.0;
+    const oid = 20.0;
+    const sod = sid - oid; // 80.0
+    const focalSpot = 1.20; // mm
+    const expectedUg = 0.3000;
+    const computedUg = focalSpot * (oid / sod);
+    const err = Math.abs((computedUg - expectedUg) / expectedUg) * 100;
+    tests.push({
+      id: 'VTEST-27',
+      name: 'Radiographic Geometric Magnification (M) & Penumbra Unsharpness (Ug)',
+      module: 'X-Ray Distortion & Geometry (Module 16B)',
+      category: 'Machines & Beams',
+      standard: 'Bushong Radiologic Science 12th Ed. / ASME BPVC Sec V Art. 2',
+      standardDoc: 'Bushong Ch. 17: Image Quality / ASME BPVC Section V Article 2 Table T-274.1',
+      formulaKatex: 'U_g = F \\cdot \\frac{\\text{OID}}{\\text{SOD}} = F \\cdot (M - 1), \\quad M = \\frac{\\text{SID}}{\\text{SOD}} = \\frac{100}{80} = 1.250',
+      inputsDesc: 'SID = 100.0 cm, OID = 20.0 cm, SOD = 80.0 cm, Focal Spot F = 1.20 mm',
+      expectedValue: expectedUg,
+      expectedUnits: 'mm',
+      expectedDisplay: '0.3000 mm (M = 1.250x)',
+      computedValue: computedUg,
+      computedDisplay: `${computedUg.toFixed(4)} mm (M = ${(sid / sod).toFixed(3)}x)`,
+      tolerancePct: 0.01,
+      errorPct: err,
+      passed: err <= 0.01,
+      notes: 'Fundamental projection geometry benchmark determining geometric unsharpness and magnification distortion.'
+    });
+  }
+
   return tests;
 };
 

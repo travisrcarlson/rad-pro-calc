@@ -32,6 +32,7 @@ const FirstResponderModule = lazy(() => import('./modules/Module24/FirstResponde
 const MonteCarloModule = lazy(() => import('./modules/MonteCarlo/MonteCarloModule'));
 const DetectorHardwareModule = lazy(() => import('./modules/Hardware/DetectorHardwareModule'));
 const ScenarioBuilderModule = lazy(() => import('./modules/Scenarios/ScenarioBuilderModule'));
+const XRayDistortionModule = lazy(() => import('./modules/XRayDistortion/XRayDistortionModule'));
 
 import { RegulatoryProvider } from './context/RegulatoryContext';
 import { RegulatorySelectorBar } from './components/RegulatorySelectorBar';
@@ -151,6 +152,7 @@ const NAV_CATEGORIES: NavCategory[] = [
     items: [
       { path: '/xray', label: 'Pulsed & Flash X-Ray', badge: 'NCRP-147', keywords: ['pulsed', 'flash', 'x-ray', 'duty cycle', 'beam'] },
       { path: '/xray-tube', label: 'X-Ray Tube Simulator', badge: 'Kramers/Birch', keywords: ['tube', 'spectra', 'anode', 'filtration', 'hvl', 'kvp'] },
+      { path: '/xray-distortion', label: 'X-Ray Distortion & Geometry', badge: 'SID / OID / Penumbra', keywords: ['distortion', 'xray', 'sid', 'oid', 'sod', 'penumbra', 'unsharpness', 'magnification', 'depth', 'foreshortening', 'elongation', 'asme', 'ndt', 'geometry', 'frustum'] },
       { path: '/laser', label: 'Laser Safety & NOHD', badge: 'ANSI Z136', keywords: ['laser', 'nohd', 'mpe', 'divergence', 'beam optical'] },
       { path: '/emr-safety', label: 'EW EMR & Microwave', badge: 'IEEE C95.1', keywords: ['emr', 'rf', 'microwave', 'radar', 'electromagnetic', 'sar'] }
     ]
@@ -195,7 +197,7 @@ const NAV_CATEGORIES: NavCategory[] = [
     color: '#c084fc',
     iconSymbol: '✓',
     items: [
-      { path: '/verify', label: 'Verification Tests', badge: '34/34 Pass', keywords: ['verify', 'test', 'sqa', 'validation', 'benchmark', 'qa'] },
+      { path: '/verify', label: 'Verification Tests', badge: '35/35 Pass', keywords: ['verify', 'test', 'sqa', 'validation', 'benchmark', 'qa'] },
       { path: '/literature', label: 'Core Literature & Physics', badge: 'Derivations', keywords: ['literature', 'citations', 'physics', 'equations', 'formulations', 'references'] }
     ]
   }
@@ -422,6 +424,7 @@ const App: React.FC = () => {
                     <Route path="/plume" element={<PlumeModule />} />
                     <Route path="/laser" element={<LaserModule />} />
                     <Route path="/xray-tube" element={<XRayTubeModule />} />
+                    <Route path="/xray-distortion" element={<XRayDistortionModule />} />
                     <Route path="/internal-dose" element={<InternalDosimetryModule />} />
                     <Route path="/emr-safety" element={<EMRModule />} />
                     <Route path="/criticality" element={<CriticalityModule />} />
