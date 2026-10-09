@@ -1001,12 +1001,373 @@ const METHOD_DOCS: MethodDoc[] = [
     benchmarks: 'Gold-standard consensus datasets published in Medical Physics Vol. 31 (2004) and Vol. 41 (2014) for I-125 (model 6711), Pd-103 (model 200), Cs-131, and Ir-192.'
   },
 
+  // 24. Module 24: Tactical CBRN First Responder & Hazard Command
+  {
+    id: 'M24-FirstResponder',
+    moduleId: 'Module 24',
+    moduleName: 'Tactical CBRN First Responder & Hazard Command',
+    domain: 'Environmental Dispersion & Response',
+    title: 'CBRN Incident Command, ERG 2024 Exclusion Zones, EPA PAG Stay-Times & Decorporation Protocols',
+    overview: 'Provides operational decision matrices and dosimetric limits for radiological emergency response personnel, hazmat incident commanders, and first responders under DOT ERG 2024 (Guide 163), EPA Protective Action Guides (PAG 2017), REAC/TS medical countermeasure regimens, and OSHA 29 CFR 1910.120 HAZWOPER.',
+    standards: [
+      { org: 'US DOT / PHMSA', code: 'ERG 2024 Guide 163', year: '2024', title: 'Emergency Response Guidebook: Radioactive Materials (Low to High Level Radiation)' },
+      { org: 'US EPA', code: 'EPA-400/R-17/001', year: '2017', title: 'PAG Manual: Protective Action Guides and Planning Guidance for Radiological Incidents' },
+      { org: 'REAC/TS', code: 'Medical Management 4th Ed.', year: '2021', title: 'The Medical Basis for Radiation-Accident Preparedness & Internal Contamination' },
+      { org: 'US OSHA', code: '29 CFR 1910.120', year: '2022', title: 'Hazardous Waste Operations and Emergency Response (HAZWOPER)' }
+    ],
+    primaryFormula: 't_{\\text{stay}} = \\frac{D_{\\text{cap}} - (2 \\cdot t_{\\text{transit}} \\cdot \\dot{D}_{\\text{transit}})}{\\dot{D}_{\\text{hotzone}}}',
+    secondaryFormulas: [
+      { label: 'Tactical Turn-Around Dose Ceiling (50% Guideline)', formula: 'D_{\\text{turn}} = 0.50 \\times D_{\\text{cap}} \\quad [\\text{Mandatory egress initiated when dose reaches half of limit}]' },
+      { label: 'ERG Initial Cordon Distance Isolation Rule', formula: 'R_{\\text{iso}} = \\begin{cases} 100 \\text{ m (330 ft)} & \\text{Spill, leak, or suspected package} \\\\ 300 \\text{ m (1000 ft)} & \\text{Fire, explosion, or tank car breach} \\end{cases}' },
+      { label: 'Thyroid Iodine-131 Potassium Iodide (KI) Blocking Efficacy', formula: 'E_{\\text{block}}(t) = 1.0 - \\frac{1}{1 + e^{-\\kappa (t_{\\text{admin}} - t_{\\text{uptake}})}} \\implies E \\approx 99\\% \\text{ if } t \\le -2\\text{h}; \\, 50\\% \\text{ at } +4\\text{h}' },
+      { label: 'Prussian Blue Insoluble Chelation Excretion Factor', formula: 'T_{1/2, \\text{eff}}(\\text{Cs-137}) = \\frac{T_{\\text{biol}} \\cdot T_{\\text{rad}}}{T_{\\text{biol}} + T_{\\text{rad}}} \\implies T_{\\text{biol}} \\text{ reduced from 110 d to } \\sim 38 \\text{ d}' }
+    ],
+    derivationSteps: [
+      {
+        stepTitle: '1. Worker Dose Accumulation & Transit Field Ingress',
+        explanation: 'The total occupational dose accumulated during an emergency intervention mission is the sum of entry transit dose, hot zone work dose, and extraction transit dose:',
+        math: 'D_{\\text{total}} = D_{\\text{ingress}} + D_{\\text{hotzone}} + D_{\\text{egress}} \\le D_{\\text{cap}}'
+      },
+      {
+        stepTitle: '2. Critical Stay-Time Formula Inversion',
+        explanation: 'Assuming symmetric entry and exit pathways through perimeter fringe radiation fields (D_transit = t_transit * Ddot_transit), the allowable dwell time in the high-dose hotzone is rigorously inverted:',
+        math: 't_{\\text{stay}} \\cdot \\dot{D}_{\\text{hotzone}} + 2 t_{\\text{transit}} \\dot{D}_{\\text{transit}} \\le D_{\\text{cap}} \\implies t_{\\text{stay}} = \\frac{D_{\\text{cap}} - 2 t_{\\text{transit}} \\dot{D}_{\\text{transit}}}{\\dot{D}_{\\text{hotzone}}}'
+      },
+      {
+        stepTitle: '3. EPA PAG Multi-Tier Action Guideline Boundaries',
+        explanation: 'EPA PAG-2017 establishes three statutory action levels for emergency workers: Tier 1 (protecting valuable property: 50 mSv / 5 rem), Tier 2 (lifesaving / protecting large populations: 100 mSv / 10 rem), and Tier 3 (lifesaving / extreme catastrophe: 250 mSv / 25 rem on a voluntary, informed basis):',
+        math: 'D_{\\text{cap}} \\in \\{50 \\text{ mSv}, \\, 100 \\text{ mSv}, \\, 250 \\text{ mSv}\\}'
+      },
+      {
+        stepTitle: '4. Medical Countermeasure Decorporation Kinetics',
+        explanation: 'Internal contamination requires rapid administration of isotope-specific decorporation agents: KI (130 mg adult) blocks thyroid radioiodine uptake via competitive Wolff-Chaikoff saturation; Prussian Blue (insoluble ferric hexacyanoferrate, 3 g/day) exchanges Cs+/Tl+ ions in the gut lumen, interrupting enterohepatic circulation; Ca/Zn-DTPA binds actinides (Pu, Am, Cm) into octadentate chelate complexes rapidly cleared by renal excretion:',
+        math: '\\frac{dC_{\\text{plasma}}}{dt} = -(\\lambda_{\\text{biol}} + \\lambda_{\\text{rad}} + k_{\\text{chelate}} [\\text{DTPA}]) C_{\\text{plasma}}'
+      }
+    ],
+    variables: [
+      { symbol: 't_{\\text{stay}}', description: 'Maximum allowable dwell duration inside high-dose hotzone', units: 'hours (or minutes)' },
+      { symbol: 'D_{\\text{cap}}', description: 'Statutory Protective Action Guide emergency worker cumulative dose ceiling', units: 'mSv (or rem)' },
+      { symbol: '\\dot{D}_{\\text{hotzone}}', description: 'Measured ambient dose equivalent rate at the tactical work position', units: 'mSv·h⁻¹ (or rem·h⁻¹)' },
+      { symbol: 't_{\\text{transit}}', description: 'One-way transit travel duration across perimeter transition zone', units: 'hours (or minutes)' },
+      { symbol: '\\dot{D}_{\\text{transit}}', description: 'Average ambient dose rate encountered during entry/exit transit', units: 'mSv·h⁻¹ (or rem·h⁻¹)' },
+      { symbol: 'R_{\\text{iso}}', description: 'ERG emergency tactical initial isolation cordon radius', units: 'm' },
+      { symbol: 'T_{1/2, \\text{eff}}', description: 'Effective clearance half-life of internal decorporated contaminant', units: 'days' }
+    ],
+    assumptions: [
+      'Hazard zone dose rate fields remain quasistatic over the mission operational duration.',
+      'Emergency personnel operate with full SCBA and Level A/B PPE preventing inhalation of particulate aerosol.',
+      'Transit dose is accumulated symmetrically along the ingress and egress vectors.'
+    ],
+    benchmarks: 'Validated against US DOT ERG 2024 Table of Initial Isolation Distances, EPA PAG-2017 Table 2-1 emergency worker guidelines, REAC/TS casualty algorithms, and VTEST-24.'
+  },
+
+  // 25. Module 16B: X-Ray Image Distortion, Magnification & Geometric Penumbra
+  {
+    id: 'M16B-Distortion',
+    moduleId: 'Module 16B',
+    moduleName: 'X-Ray Image Distortion & Geometric Penumbra',
+    domain: 'Non-Ionizing EMR & Lasers',
+    title: 'Projection Radiography Geometry, Magnification, Geometric Unsharpness & Angle Distortion',
+    overview: 'Calculates projective beam geometry, dimensional magnification factors, geometric unsharpness (penumbra) relative to focal spot dimensions, and non-parallel projection distortion (foreshortening vs elongation) under ASME BPVC Section V Article 2 Table T-274.1, ISO 17636-1:2022, and Cieszynski bisecting angle rules.',
+    standards: [
+      { org: 'ASME', code: 'BPVC Section V Article 2', year: '2023', title: 'Nondestructive Examination: Radiographic Examination (Table T-274.1 Geometric Unsharpness Limits)' },
+      { org: 'ISO', code: 'ISO 17636-1:2022', year: '2022', title: 'Non-destructive testing of welds - Radiographic testing - Part 1: X- and gamma-ray techniques with film' },
+      { org: 'AAPM', code: 'Report No. 74', year: '2002', title: 'Quality Control in Diagnostic Radiology: Geometric Accuracy and Focal Spot Performance' },
+      { org: 'ASTM', code: 'ASTM E1000-16', year: '2016', title: 'Standard Guide for Radioscopy' }
+    ],
+    primaryFormula: 'U_g = F_s \\cdot \\frac{\\text{OID}}{\\text{SOD}} = F_s \\cdot \\frac{\\text{OID}}{\\text{SID} - \\text{OID}} = F_s \\cdot (M - 1)',
+    secondaryFormulas: [
+      { label: 'Linear Magnification Factor (M)', formula: 'M = \\frac{\\text{SID}}{\\text{SOD}} = \\frac{\\text{SID}}{\\text{SID} - \\text{OID}} = \\frac{L_{\\text{image}}}{L_{\\text{object}}}' },
+      { label: 'Depth Frustum Slice Magnification & Spatial Divergence', formula: 'M(z) = \\frac{\\text{SID}}{\\text{SID} - z}, \\quad z \\in [0, \\, \\text{Object Thickness}]' },
+      { label: 'Oblique Beam Projection & Tilt Distortion (Cieszynski Bisecting Rule)', formula: 'L_{\\text{proj}} = L_{\\text{true}} \\cdot M \\cdot \\frac{\\cos(\\theta_{\\text{object}})}{\\cos(\\theta_{\\text{beam}})} \\implies \\begin{cases} \\text{Foreshortening}: & \\theta_{\\text{object}} > 0, \\theta_{\\text{beam}} = 0 \\\\ \\text{Elongation}: & \\theta_{\\text{beam}} > 0, \\theta_{\\text{object}} = 0 \\end{cases}' },
+      { label: 'ASME BPVC Section V Table T-274.1 Maximum Ug Threshold', formula: 'U_{g, \\text{max}} = \\begin{cases} 0.51 \\text{ mm (0.020 in)} & t \\le 50.8 \\text{ mm} \\\\ 0.76 \\text{ mm (0.030 in)} & 50.8 < t \\le 76.2 \\text{ mm} \\\\ 1.02 \\text{ mm (0.040 in)} & 76.2 < t \\le 101.6 \\text{ mm} \\\\ 1.78 \\text{ mm (0.070 in)} & t > 101.6 \\text{ mm} \\end{cases}' }
+    ],
+    derivationSteps: [
+      {
+        stepTitle: '1. Similar Triangles Geometric Optics Formulation',
+        explanation: 'Let an X-ray focal spot of finite physical width F_s reside at z = 0, an absorbing feature edge reside at z = SOD, and the imaging detector plate reside at z = SID. From similar triangles formed by rays grazing opposing focal spot edges:',
+        math: '\\frac{U_g}{\\text{OID}} = \\frac{F_s}{\\text{SOD}} \\implies U_g = F_s \\cdot \\frac{\\text{OID}}{\\text{SOD}}'
+      },
+      {
+        stepTitle: '2. Source-to-Object Distance Substitution',
+        explanation: 'By Euclidean axial geometry, SID = SOD + OID. Substituting SOD = SID - OID expresses geometric unsharpness as a function of external setup parameters:',
+        math: 'U_g = F_s \\cdot \\frac{\\text{OID}}{\\text{SID} - \\text{OID}}'
+      },
+      {
+        stepTitle: '3. Magnification and Penumbra Equivalence',
+        explanation: 'The linear image magnification factor is defined as M = SID / SOD. Expressing (M - 1) in terms of OID:',
+        math: 'M - 1 = \\frac{\\text{SID}}{\\text{SOD}} - 1 = \\frac{\\text{SID} - \\text{SOD}}{\\text{SOD}} = \\frac{\\text{OID}}{\\text{SOD}} \\implies U_g = F_s \\cdot (M - 1)'
+      },
+      {
+        stepTitle: '4. Non-Parallel Angle Distortion & Cieszynski Bisecting Rule',
+        explanation: 'When an anatomical or structural object is inclined at angle theta_object relative to the detector and the central beam is directed at angle theta_beam, projection follows Cieszynski\'s bisecting law. If the central ray is perpendicular to the detector but the object is tilted, the projected dimension shrinks: L_proj = L * cos(theta_obj) * M, causing foreshortening. When the ray is inclined but the object lies parallel, the projected shadow stretches: L_proj = L * M / cos(theta_beam), causing elongation:',
+        math: '\\text{Distortion Ratio} = \\frac{L_{\\text{proj}}}{L_{\\text{object}} \\cdot M} = \\frac{\\cos(\\theta_{\\text{object}})}{\\cos(\\theta_{\\text{beam}})}'
+      }
+    ],
+    variables: [
+      { symbol: '\\text{SID}', description: 'Source-to-Image Distance (focal spot to image detector)', units: 'mm (or cm, in)' },
+      { symbol: '\\text{OID}', description: 'Object-to-Image Distance (object plane to image detector)', units: 'mm (or cm, in)' },
+      { symbol: '\\text{SOD}', description: 'Source-to-Object Distance (SID - OID)', units: 'mm (or cm, in)' },
+      { symbol: 'F_s', description: 'Nominal focal spot size (IEC 60336 standard)', units: 'mm' },
+      { symbol: 'U_g', description: 'Geometric unsharpness (penumbral blur width on detector)', units: 'mm' },
+      { symbol: 'M', description: 'Linear optical magnification factor', units: 'dimensionless (≥ 1.0)' },
+      { symbol: 'L_{\\text{image}}', description: 'Projected dimension of feature on image detector', units: 'mm' },
+      { symbol: 'L_{\\text{object}}', description: 'True physical dimension of feature', units: 'mm' },
+      { symbol: '\\theta_{\\text{object}}', description: 'Tilt angle of object plane relative to detector plane', units: 'degrees' }
+    ],
+    assumptions: [
+      'Rectilinear ray propagation from a planar focal spot emission profile.',
+      'Planar imaging detector perpendicular to central optical axis (unless tilt angle specified).',
+      'Homogeneous magnification across differential depth planes.'
+    ],
+    benchmarks: 'Validated against ASME BPVC Section V Table T-274.1 unsharpness limits, ISO 17636-1 Class A/B weld radiographic criteria, and VTEST-27.'
+  },
+
+  // 26. Engine: Monte Carlo Stochastic Photon Transport
+  {
+    id: 'MC-Transport',
+    moduleId: 'Engine: Monte Carlo',
+    moduleName: 'Stochastic Photon Transport Micro-Kernel',
+    domain: 'Dose, Transport & Shielding',
+    title: 'Monte Carlo Particle Tracking, Klein-Nishina Scattering & Exponential Transformation',
+    overview: 'High-performance deterministic/stochastic Monte Carlo micro-kernel simulating individual photon histories: photoelectric absorption, Klein-Nishina incoherent Compton scattering via Kahn rejection sampling, electron-positron pair production, and energy buildup calculation across heterogeneous multi-layer media.',
+    standards: [
+      { org: 'NIST', code: 'NBSIR 87-3597', year: '1987', title: 'XCOM: Photon Cross Sections Database for Elements and Mixtures' },
+      { org: 'LANL', code: 'LA-UR-03-1987', year: '2003', title: 'MCNP - A General Monte Carlo N-Particle Transport Code, Version 5' },
+      { org: 'ICRU', code: 'Report 90', year: '2016', title: 'Key Data for Ionizing-Radiation Dosimetry: Measurement Standards and Applications' },
+      { org: 'Kahn, H.', code: 'Rand Corporation RM-1237', year: '1954', title: 'Applications of Monte Carlo: Rejection Sampling Algorithms' }
+    ],
+    primaryFormula: '\\frac{d\\sigma_{\\text{KN}}}{d\\Omega} = \\frac{r_e^2}{2} P(E, \\theta)^2 \\left[ P(E, \\theta) + P(E, \\theta)^{-1} - \\sin^2\\theta \\right], \\quad P(E, \\theta) = \\frac{1}{1 + \\alpha (1 - \\cos\\theta)}',
+    secondaryFormulas: [
+      { label: 'Stochastic Free-Flight Path Length Sampling', formula: 's = -\\frac{\\ln(\\xi)}{\\Sigma_t(E)} = -\\frac{\\ln(\\xi)}{\\rho \\sum_i w_i (\\mu/\\rho)_i(E)}' },
+      { label: 'Kahn Incoherent Scattering Rejection Sampling Kernel', formula: '\\eta = \\frac{1 + 2\\alpha}{1 + 2\\alpha + \\alpha(1+2\\alpha)}, \\quad \\text{accept } \\cos\\theta \\text{ if } \\xi_3 \\le \\frac{1}{2}\\left(1 + \\cos^2\\theta\\right)' },
+      { label: 'Monte Carlo Dose Buildup Factor B', formula: 'B = \\frac{\\sum_{h=1}^N w_h \\cdot \\Delta E_{\\text{total}, h}}{\\sum_{h=1}^N w_h \\cdot \\Delta E_{\\text{uncollided}, h}} = 1 + \\frac{D_{\\text{scattered}}}{D_{\\text{primary}}}' },
+      { label: 'Batch Variance & Relative Error (RE)', formula: 's_{\\bar{x}} = \\sqrt{\\frac{1}{N(N-1)} \\sum_{i=1}^N (x_i - \\bar{x})^2}, \\quad \\text{RE} = \\frac{s_{\\bar{x}}}{\\bar{x}} < 0.05 \\text{ (FOM Convergence)}' }
+    ],
+    derivationSteps: [
+      {
+        stepTitle: '1. Exponential Survival Probability & Flight Path Sampling',
+        explanation: 'The probability of a photon traversing distance s in a homogeneous medium without collision is P(s) = exp(-Sigma_t * s). By the inverse transform method using pseudo-random deviat xi in (0, 1]:',
+        math: '\\xi = \\int_s^\\infty \\Sigma_t e^{-\\Sigma_t s^{\\prime}} ds^{\\prime} = e^{-\\Sigma_t s} \\implies s = -\\frac{\\ln(\\xi)}{\\Sigma_t}'
+      },
+      {
+        stepTitle: '2. Interaction Channel Selection',
+        explanation: 'At collision point (x, y, z), the macroscopic cross sections are decomposed into Sigma_t = Sigma_pe + Sigma_compton + Sigma_pair. A uniform random number xi_2 decides interaction type via cumulative branching ratios:',
+        math: 'P_{\\text{pe}} = \\frac{\\Sigma_{\\text{pe}}}{\\Sigma_t}, \\quad P_{\\text{comp}} = \\frac{\\Sigma_{\\text{comp}}}{\\Sigma_t}, \\quad P_{\\text{pair}} = \\frac{\\Sigma_{\\text{pair}}}{\\Sigma_t}'
+      },
+      {
+        stepTitle: '3. Kahn Klein-Nishina Polar Angle Sampling',
+        explanation: 'To sample Compton scattering angle theta without numerical inversion of the transcendental Klein-Nishina integral, Kahn\'s algorithm samples candidate energy ratio eta and accepts candidate cos(theta) = 1 - (1/eta - 1)/alpha with probability g(cos theta) = 0.5 * (1 + cos^2 theta):',
+        math: 'g(\\cos\\theta) = \\frac{1 + \\cos^2\\theta}{2} \\ge \\xi_3 \\implies \\text{Accept polar deflection } \\theta'
+      },
+      {
+        stepTitle: '4. Tallying and Statistical Figure-of-Merit (FOM)',
+        explanation: 'Dose deposition tallies are accumulated across volumetric voxel grids. The precision of the Monte Carlo estimate is governed by the Central Limit Theorem and evaluated via the Figure of Merit:',
+        math: '\\text{FOM} = \\frac{1}{\\text{RE}^2 \\cdot T_{\\text{CPU}}} = \\text{constant}'
+      }
+    ],
+    variables: [
+      { symbol: '\\frac{d\\sigma_{\\text{KN}}}{d\\Omega}', description: 'Differential Klein-Nishina scattering cross section per electron', units: 'cm²·sr⁻¹' },
+      { symbol: 'r_e', description: 'Classical electron radius (2.81794 × 10⁻¹³ cm)', units: 'cm' },
+      { symbol: '\\alpha', description: 'Incident photon energy in electron rest-mass equivalents (E / 0.511 MeV)', units: 'dimensionless' },
+      { symbol: 's', description: 'Sampled linear distance to next interaction point', units: 'cm' },
+      { symbol: '\\Sigma_t', description: 'Total macroscopic linear attenuation coefficient', units: 'cm⁻¹' },
+      { symbol: 'B', description: 'Dose buildup factor accounting for multiple scattered photons', units: 'dimensionless (≥ 1.0)' },
+      { symbol: '\\text{RE}', description: 'Relative statistical error of the Monte Carlo tally', units: 'dimensionless' }
+    ],
+    assumptions: [
+      'Unpolarized incident photon beam.',
+      'Target atomic electrons are free and stationary (Klein-Nishina impulse approximation).',
+      'Bremsstrahlung losses from secondary electrons are deposited locally (kerma approximation).'
+    ],
+    benchmarks: 'Validated against LANL MCNP5 standard photon benchmark problems, ANSI/ANS-6.4.3 buildup factor datasets, and VTEST-25.'
+  },
+
+  // 27. Engine: Hardware Metrology & Live Pulse Counting
+  {
+    id: 'HW-Metrology',
+    moduleId: 'Engine: Metrology',
+    moduleName: 'Hardware Metrology & Live Pulse Counting',
+    domain: 'Spectroscopy & Radiation Detection',
+    title: 'Radiation Detector Metrology: Dead-Time Models, Currie Detection Limits & Serial/Audio Ingestion',
+    overview: 'Implements real-time physical hardware acquisition protocols (WebSerial API, Audio WebAudio pulse-counting buffer) alongside rigorous ISO 11929 / Currie metrological corrections for paralyzable/non-paralyzable dead-time, Poisson counting uncertainty, and Minimum Detectable Activity (MDA).',
+    standards: [
+      { org: 'ISO', code: 'ISO 11929-1:2019', year: '2019', title: 'Determination of characteristic limits for ionizing radiation measurements - Part 1: Counting measurements' },
+      { org: 'Currie, L. A.', code: 'Anal. Chem. 40(3)', year: '1968', title: 'Limits for Qualitative Detection and Quantitative Determination' },
+      { org: 'IEC', code: 'IEC 60325:2002', year: '2002', title: 'Radiation protection instrumentation - Alpha, beta and alpha/beta surface contamination meters' },
+      { org: 'NIST', code: 'SP 250-90', year: '2018', title: 'NIST Calibration Services for Radiation Protection Instrumentation' }
+    ],
+    primaryFormula: 'n = \\frac{m}{1 - m \\cdot \\tau} \\quad [\\text{Non-Paralyzable}] \\quad \\text{vs} \\quad m = n \\cdot e^{-n \\cdot \\tau} \\quad [\\text{Paralyzable}]',
+    secondaryFormulas: [
+      { label: 'Currie Critical Decision Level Lc (Type I Error Alpha = 0.05)', formula: 'L_c = k_{1-\\alpha} \\sigma_0 = 1.645 \\sqrt{R_b \\cdot t_s \\left(1 + \\frac{t_s}{t_b}\\right)} \\xrightarrow{t_s = t_b} 2.33 \\sqrt{B}' },
+      { label: 'Currie Minimum Detectable Activity Limit Ld (Type I & II Beta = 0.05)', formula: 'L_d = 2.71 + 3.29 \\sqrt{R_b \\cdot t_s \\left(1 + \\frac{t_s}{t_b}\\right)} \\xrightarrow{t_s = t_b} 2.71 + 4.65 \\sqrt{B}' },
+      { label: 'Minimum Detectable Activity (MDA) in Becquerels', formula: '\\text{MDA} = \\frac{L_d}{\\epsilon \\cdot Y_\\gamma \\cdot t_s \\cdot F_{\\text{geom}}} \\quad [\\text{Bq}]' },
+      { label: 'Two-Source Dead-Time Measurement Form Factor', formula: '\\tau = \\frac{R_1 + R_2 - R_{12} - R_b}{(R_{12} - R_b)^2 - (R_1 - R_b)^2 - (R_2 - R_b)^2}' }
+    ],
+    derivationSteps: [
+      {
+        stepTitle: '1. Non-Paralyzable Dead Time Derivation',
+        explanation: 'In a non-paralyzable counter, each registered count incapacitates the channel for duration tau. During total time T, the dead interval is m * T * tau, leaving live-time T_live = T * (1 - m * tau). True rate n is therefore:',
+        math: 'n = \\frac{m T}{T_{\\text{live}}} = \\frac{m T}{T(1 - m \\tau)} = \\frac{m}{1 - m \\tau}'
+      },
+      {
+        stepTitle: '2. Paralyzable Dead Time Formulation',
+        explanation: 'In a paralyzable counter, every interaction extends the dead period by tau whether recorded or lost. The probability of an interval tau containing 0 Poisson arrivals from process of rate n is exp(-n * tau):',
+        math: 'm = n \\cdot P(0; n \\tau) = n \\cdot e^{-n \\tau}'
+      },
+      {
+        stepTitle: '3. Currie Critical Decision Level Lc Derivation',
+        explanation: 'Under null hypothesis H0 (true sample net activity = 0), net count S = N_s - N_b * (t_s / t_b) has variance sigma_0^2 = B * (1 + t_s/t_b). For equal count times t_s = t_b, sigma_0 = sqrt(2*B). Setting alpha = 0.05 (k = 1.645):',
+        math: 'L_c = 1.645 \\sigma_0 = 1.645 \\sqrt{2 B} = 2.326 \\sqrt{B} \\approx 2.33 \\sqrt{B}'
+      },
+      {
+        stepTitle: '4. Minimum Detectable Activity Limit Ld Derivation',
+        explanation: 'To limit Type II false negative risk to beta = 0.05, the true net count L_d must exceed L_c by 1.645 * sigma_Ld. Solving L_d - 1.645 * sqrt(sigma_0^2 + L_d) = L_c analytically:',
+        math: 'L_d = (1.645)^2 + 2 L_c = 2.706 + 4.653 \\sqrt{B} \\approx 2.71 + 4.65 \\sqrt{B}'
+      }
+    ],
+    variables: [
+      { symbol: 'n', description: 'True physical event interaction rate inside detector volume', units: 's⁻¹ (cps) or cpm' },
+      { symbol: 'm', description: 'Recorded count rate subject to instrument dead-time losses', units: 's⁻¹ (cps) or cpm' },
+      { symbol: '\\tau', description: 'Detector electronic resolving dead-time parameter', units: 'µs or s' },
+      { symbol: 'L_c', description: 'Critical decision level net counts threshold (alpha = 0.05)', units: 'counts' },
+      { symbol: 'L_d', description: 'Minimum detectable net counts limit (alpha = beta = 0.05)', units: 'counts' },
+      { symbol: 'B', description: 'Total accumulated background counts during counting duration', units: 'counts' },
+      { symbol: '\\epsilon', description: 'Absolute detector counting efficiency', units: 'dimensionless' },
+      { symbol: 't_s, t_b', description: 'Sample and background acquisition durations', units: 's' }
+    ],
+    assumptions: [
+      'Counting pulses follow a stationary Poisson process.',
+      'Background radiation intensity remains constant across calibration and measurement cycles.',
+      'Dead-time resolving constant tau is rate-independent over the active counting regime.'
+    ],
+    benchmarks: 'Validated against ISO 11929-1:2019 standard worked examples, Currie 1968 classic benchmarks, and VTEST-26.'
+  },
+
+  // 28. Engine: Multi-Jurisdictional Regulatory Frameworks Engine
+  {
+    id: 'REG-Global',
+    moduleId: 'Engine: Regulatory',
+    moduleName: 'Multi-Jurisdictional Regulatory Frameworks Engine',
+    domain: 'Regulatory Standards & Transport Security',
+    title: 'Harmonized Multi-Jurisdiction Regulatory Dose Limits, Cumulative Constraints & ALARA Compliance',
+    overview: 'Provides algorithmic multi-regime statutory compliance engines cross-referencing US NRC (10 CFR 20), IAEA GSR Part 3, European EURATOM 2013/59 / UK IRR17, NATO STANAG 2470 / AMedP-7.1, and Canadian CNSC SOR/2000-203 dose constraints for occupational, public, emergency worker, and prenatal personnel.',
+    standards: [
+      { org: 'US NRC', code: '10 CFR Part 20 Subpart C', year: '2023', title: 'Occupational Dose Limits (§ 20.1201) and Public Dose Limits (§ 20.1301)' },
+      { org: 'IAEA', code: 'GSR Part 3', year: '2014', title: 'Radiation Protection and Safety of Radiation Sources: International Basic Safety Standards' },
+      { org: 'EURATOM', code: 'Directive 2013/59/Euratom', year: '2013', title: 'Basic Safety Standards for Protection Against Dangers from Ionizing Radiation' },
+      { org: 'NATO', code: 'STANAG 2470 / AMedP-7.1', year: '2019', title: 'Commander\'s Guide on Radiation Protection in Military Operations' },
+      { org: 'CNSC', code: 'SOR/2000-203', year: '2020', title: 'Radiation Protection Regulations (Canadian Nuclear Safety Commission)' }
+    ],
+    primaryFormula: '\\text{TEDE} = \\text{DDE} + \\text{CEDE} = \\int_0^T \\dot{H}^*(10) dt + \\sum_j e_{50, j} \\cdot I_j \\le L_{\\text{regime}}',
+    secondaryFormulas: [
+      { label: 'Lens of the Eye Dose Equivalent (LDE) Discrepancy Matrix', formula: 'L_{\\text{eye}} = \\begin{cases} 150 \\text{ mSv/yr} & \\text{US NRC 10 CFR 20.1201 (Traditional)} \\\\ 20 \\text{ mSv/yr} & \\text{IAEA GSR-3 / EURATOM 2013/59 / CNSC (ICRP 118 Cat. Threshold)} \\end{cases}' },
+      { label: 'Public Dose Limit (Excluding Natural Background & Medical)', formula: 'E_{\\text{public}} \\le 1.0 \\text{ mSv/yr (100 mrem/yr)} \\quad [\\text{Continuous dose rate } < 0.02 \\text{ mSv/h in unrestricted area}]' },
+      { label: 'Embryo/Fetus Prenatal Dose Limit (Declared Pregnant Worker)', formula: 'H_{\\text{fetus}} \\le 5.0 \\text{ mSv (US NRC 10 CFR 20.1208)} \\quad [\\le 0.5 \\text{ mSv/month}] \\quad \\text{vs} \\quad 1.0 \\text{ mSv (EURATOM)}' },
+      { label: 'NATO STANAG 2470 Tactical Operational Exposure Guidance (OEG)', formula: '\\text{OEG-1 (Risk 1)} = 0.05 \\text{ Gy}; \\quad \\text{OEG-2 (Risk 2)} = 0.25 \\text{ Gy}; \\quad \\text{OEG-3 (Risk 3)} = 0.70 \\text{ Gy}' }
+    ],
+    derivationSteps: [
+      {
+        stepTitle: '1. Total Effective Dose Equivalent (TEDE) Integration',
+        explanation: 'TEDE integrates external penetrating photon/neutron exposure (Deep Dose Equivalent, DDE at 10 mm depth) and internal committed dose (Committed Effective Dose Equivalent, CEDE over 50 years):',
+        math: '\\text{TEDE} = \\text{DDE} + \\text{CEDE} = H_p(10) + \\sum_j e_{50, j} \\cdot I_j'
+      },
+      {
+        stepTitle: '2. Multi-Jurisdictional Annual Averaging Protocols',
+        explanation: 'US NRC enforces a fixed single-year limit of 50 mSv (5 rem), whereas IAEA GSR Part 3, EURATOM, and CNSC enforce 20 mSv/yr averaged over 5 consecutive calendar years (100 mSv in 5 years), with no single year exceeding 50 mSv:',
+        math: '\\bar{E}_{5\\text{yr}} = \\frac{1}{5} \\sum_{y=1}^5 E_y \\le 20 \\text{ mSv/yr} \\quad \\text{and} \\quad E_y \\le 50 \\text{ mSv in any single year}'
+      },
+      {
+        stepTitle: '3. Lens of the Eye Cataractogenesis Threshold Evolution',
+        explanation: 'Epidemiological studies of radiation-induced posterior subcapsular cataracts demonstrated lower thresholds without clear latency, prompting ICRP Publication 118 to reduce the occupational eye lens limit from 150 mSv/yr to 20 mSv/yr. This lower limit has been codified across EURATOM, IAEA, and Canada, while US NRC 10 CFR 20 retains 150 mSv/yr:',
+        math: 'L_{\\text{eye, EURATOM}} = 20 \\text{ mSv/yr} \\quad \\text{vs} \\quad L_{\\text{eye, US NRC}} = 150 \\text{ mSv/yr}'
+      },
+      {
+        stepTitle: '4. Military Tactical Radiation Exposure Guidelines',
+        explanation: 'In combat and tactical environments governed by NATO STANAG 2470 / AMedP-7.1, civilian limits are superseded by Operational Exposure Guidance (OEG) classes designed to prevent acute performance degradation:',
+        math: '\\text{OEG-1 (0.05 Gy)} \\to \\text{OEG-2 (0.25 Gy)} \\to \\text{OEG-3 (0.70 Gy ARS Onset)}'
+      }
+    ],
+    variables: [
+      { symbol: '\\text{TEDE}', description: 'Total Effective Dose Equivalent combining external DDE and internal CEDE', units: 'mSv (or rem)' },
+      { symbol: '\\text{DDE}', description: 'Deep Dose Equivalent measured at tissue depth of 10 mm (Hp(10))', units: 'mSv (or rem)' },
+      { symbol: '\\text{CEDE}', description: 'Committed Effective Dose Equivalent from internalized radionuclides over 50 years', units: 'mSv (or rem)' },
+      { symbol: 'L_{\\text{regime}}', description: 'Statutory occupational dose ceiling in the specified jurisdiction', units: 'mSv·yr⁻¹' },
+      { symbol: 'L_{\\text{eye}}', description: 'Annual equivalent dose ceiling to the lens of the eye', units: 'mSv·yr⁻¹' },
+      { symbol: 'e_{50, j}', description: '50-year committed effective dose coefficient per unit intake of nuclide j', units: 'Sv·Bq⁻¹' }
+    ],
+    assumptions: [
+      'Monitored workers are non-pregnant adults aged ≥ 18 years under active dosimetric supervision.',
+      'Background terrestrial and cosmic radiation is excluded from statutory occupational registers.',
+      'Committed doses are evaluated over standard 50-year post-intake clearance commitment.'
+    ],
+    benchmarks: 'Validated against statutory requirements in 10 CFR 20, IAEA GSR Part 3 Schedule III, EURATOM 2013/59 Annex VII, CNSC SOR/2000-203, and NATO STANAG 2470.'
+  },
+
+  // 29. Engine: Incident Scenario Drills & 21 CFR Part 11 Audit Engine
+  {
+    id: 'SCEN-Audit',
+    moduleId: 'Engine: Compliance',
+    moduleName: 'Incident Scenario Drills & Cryptographic Audit Engine',
+    domain: 'Regulatory Standards & Transport Security',
+    title: 'IAEA INES Scale Incident Modeling, .radcase Drill Simulations & 21 CFR Part 11 Tamper-Evident SHA-256 Ledgers',
+    overview: 'Provides realistic radiation emergency scenario drill engines parameterized by IAEA International Nuclear and Radiological Event Scale (INES Level 1-7) severity ratings, exportable .radcase incident bundles, and tamper-evident cryptographic audit trailing conforming to FDA 21 CFR Part 11 and ISO/IEC 17025:2017.',
+    standards: [
+      { org: 'IAEA / OECD-NEA', code: 'INES User\'s Manual', year: '2008', title: 'The International Nuclear and Radiological Event Scale User\'s Manual' },
+      { org: 'US FDA', code: '21 CFR Part 11', year: '2003', title: 'Electronic Records; Electronic Signatures (Scope and Application Guidance)' },
+      { org: 'ISO / IEC', code: 'ISO/IEC 17025:2017', year: '2017', title: 'General requirements for the competence of testing and calibration laboratories (§ 7.11 Data Control)' },
+      { org: 'NIST', code: 'FIPS PUB 180-4', year: '2015', title: 'Secure Hash Standard (SHS): SHA-256 Cryptographic Hash Algorithm' }
+    ],
+    primaryFormula: 'H_k = \\text{SHA-256}\\Big( H_{k-1} \\,\\|\\, t_k \\,\\|\\, \\text{UserID}_k \\,\\|\\, \\text{Action}_k \\,\\|\\, \\Delta\\text{State}_k \\Big)',
+    secondaryFormulas: [
+      { label: 'IAEA INES Severity Rating Scale Logarithmic Function', formula: '\\text{INES Level} = \\min\\left( 7, \\, \\max\\left( 1, \\, \\left\\lfloor \\log_{10}\\left( \\frac{A_{\\text{rel}}(\\text{I-131 eq})}{A_{\\text{threshold}}} \\right) \\right\\rfloor + 3 \\right) \\right)' },
+      { label: 'Radiological Equivalence to Iodine-131 (INES Inhalation Factor)', formula: 'A_{\\text{eq}}(\\text{I-131}) = \\sum_i A_i \\cdot f_{i, \\text{inhalation}}' },
+      { label: 'Cryptographic Merkle Root Verification Hash', formula: 'H_{\\text{root}} = \\text{SHA-256}\\Big( H_{\\text{left}} \\, \\| \\, H_{\\text{right}} \\Big)' }
+    ],
+    derivationSteps: [
+      {
+        stepTitle: '1. IAEA INES Scale Logarithmic Classification',
+        explanation: 'The INES scale quantifies event significance from Level 1 (Anomaly) to Level 7 (Major Accident). On-site defense-in-depth degradation governs Levels 1-3, whereas environmental source term releases govern Levels 4-7 based on I-131 radiotoxicity equivalence:',
+        math: '\\text{Level 4: } > \\text{tens of TBq} \\to \\text{Level 5: } > \\text{hundreds of TBq} \\to \\text{Level 7: } > \\text{tens of thousands of TBq}'
+      },
+      {
+        stepTitle: '2. Radiotoxicity Normalization to Iodine-131',
+        explanation: 'Different radionuclides possess widely varying radiotoxicity. INES normalizes all releases into I-131 equivalent activity using established inhalation weighting coefficients (Cs-137 factor = 40, Sr-90 factor = 20, Pu-239 alpha factor = 10,000):',
+        math: 'A_{\\text{eq}}(\\text{I-131}) = A_{\\text{I-131}} + 40 \\cdot A_{\\text{Cs-137}} + 20 \\cdot A_{\\text{Sr-90}} + 10^4 \\cdot A_{\\text{Pu-239}}'
+      },
+      {
+        stepTitle: '3. FDA 21 CFR Part 11 Cryptographic Audit Blockchain',
+        explanation: 'To satisfy 21 CFR § 11.10(e) mandating secure, computer-generated, time-stamped audit trails to independently record the date and time of operator entries and actions, each calculation event generates an immutable cryptographic block:',
+        math: 'H_k = \\text{SHA-256}(H_{k-1} + t_k + \\text{user} + \\text{action} + \\text{hash}(\\text{payload}))'
+      },
+      {
+        stepTitle: '4. Mathematical Proof of Tamper Evident Verification',
+        explanation: 'If an adversary alters any historical ledger entry j < k, the resulting hash H_j\' differs from H_j with probability 1 - 2^(-256). Because block (j+1) incorporates H_j, every downstream hash invalidates, enabling instant verification:',
+        math: 'H_j^{\\prime} \\ne H_j \\implies H_{j+1}^{\\prime} \\ne H_{j+1} \\implies H_k^{\\prime} \\ne H_k \\quad [\\text{Immediate Tamper Detection}]'
+      }
+    ],
+    variables: [
+      { symbol: 'H_k', description: 'Cryptographic SHA-256 hash digest of the k-th audit trail entry', units: '256-bit hexadecimal string' },
+      { symbol: 'H_{k-1}', description: 'Hash digest of the immediately preceding audit record block (genesis = 0^64)', units: '256-bit hexadecimal string' },
+      { symbol: 't_k', description: 'Monotonic UTC ISO-8601 calculation timestamp', units: 'string' },
+      { symbol: '\\text{INES Level}', description: 'International Nuclear and Radiological Event Scale rating integer', units: '1 to 7' },
+      { symbol: 'A_{\\text{rel}}', description: 'Total activity released into atmospheric boundary layer', units: 'TBq' },
+      { symbol: 'f_{i, \\text{inhalation}}', description: 'Inhalation radiotoxicity weighting factor normalized to I-131', units: 'dimensionless' }
+    ],
+    assumptions: [
+      'Audit log records are appended sequentially with monotonic UTC timestamps.',
+      'Cryptographic collision resistance of SHA-256 (2^128 operations against birthday attack).',
+      'INES severity evaluations assume unmitigated source term dispersion into the environment.'
+    ],
+    benchmarks: 'Validated against IAEA INES User\'s Manual historical benchmarks (Chernobyl Level 7, Fukushima Level 7, Three Mile Island Level 5, Goiania Level 5, Tokaimura Level 4) and FDA 21 CFR Part 11 guidelines.'
+  },
+
   // === FORWARD-LOOKING EXPANSION METHODOLOGIES (FUTURE RESEARCH & SPECIFICATIONS) ===
 
   // EXP-1: 10 CFR Part 61 Radioactive Waste Characterization & Disposal
   {
     id: 'EXP-10CFR61',
-    moduleId: 'Module 24 (Future)',
+    moduleId: 'Module 25 (Expansion)',
     moduleName: 'Radioactive Waste Characterization (10 CFR 61)',
     domain: 'Regulatory Standards & Transport Security',
     title: '10 CFR Part 61.55 Waste Classification (Class A/B/C/GTCC) & Sum of Fractions Rule',
@@ -1039,7 +1400,7 @@ const METHOD_DOCS: MethodDoc[] = [
   // EXP-2: ANSI/ANS-8.3 Criticality Accident Alarm System (CAAS)
   {
     id: 'EXP-CAAS',
-    moduleId: 'Module 25 (Future)',
+    moduleId: 'Module 26 (Expansion)',
     moduleName: 'Criticality Accident Alarm System (ANSI/ANS-8.3)',
     domain: 'Nuclear Kinetics & Reactivity',
     title: 'Criticality Accident Alarm Systems (CAAS), Minimum Accident of Concern & 20 rad/min Threshold',
@@ -1070,7 +1431,7 @@ const METHOD_DOCS: MethodDoc[] = [
   // EXP-3: Bethe-Bloch Ion Stopping Power & Bragg Peak
   {
     id: 'EXP-BetheBloch',
-    moduleId: 'Module 26 (Future)',
+    moduleId: 'Module 27 (Expansion)',
     moduleName: 'Alpha & Heavy Ion Stopping Power',
     domain: 'Medical & Advanced Expansion',
     title: 'Bethe-Bloch Equation & Bragg Peak Energy Deposition in Matter',
@@ -1103,7 +1464,7 @@ const METHOD_DOCS: MethodDoc[] = [
   // EXP-4: Space Radiation & Galactic Cosmic Rays
   {
     id: 'EXP-SpaceRad',
-    moduleId: 'Module 27 (Future)',
+    moduleId: 'Module 28 (Expansion)',
     moduleName: 'Space Radiation & GCR Transport',
     domain: 'Medical & Advanced Expansion',
     title: 'Badhwar-O\'Neill GCR Model, Solar Modulation Φ & SPE Shielding',
@@ -1197,7 +1558,7 @@ const LiteratureModule: React.FC = () => {
           style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.95rem', padding: '10px 18px', borderBottom: activeTab === 'current' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'current' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'current' ? 'bold' : 'normal' }}
           onClick={() => setActiveTab('current')}
         >
-          🔬 Active Validated Modules (1 – 23)
+          🔬 Active Validated Modules & Core Physics
         </button>
         <button
           className={`nav-link ${activeTab === 'derivations' ? 'active' : ''}`}
@@ -1211,7 +1572,7 @@ const LiteratureModule: React.FC = () => {
           style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.95rem', padding: '10px 18px', borderBottom: activeTab === 'expansion' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'expansion' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'expansion' ? 'bold' : 'normal' }}
           onClick={() => setActiveTab('expansion')}
         >
-          🚀 Research & Expansion Specifications (Modules 24+)
+          🚀 Research & Expansion Specifications (Modules 25+)
         </button>
         <button
           className={`nav-link ${activeTab === 'standards' ? 'active' : ''}`}
@@ -1538,6 +1899,111 @@ const LiteratureModule: React.FC = () => {
                   <td style={{ padding: '10px' }}>1983</td>
                   <td style={{ padding: '10px' }}>Atmospheric Dispersion Models for Potential Accident Consequence Assessments</td>
                   <td style={{ padding: '10px', color: 'var(--color-text-muted)' }}>Pasquill-Gifford Gaussian dispersion coefficients, plume rise, and ground-level concentration limits.</td>
+                </tr>
+                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  <td style={{ padding: '10px', fontWeight: 'bold', color: '#00E5FF' }}>US DOT ERG 2024</td>
+                  <td style={{ padding: '10px' }}>US DOT / PHMSA</td>
+                  <td style={{ padding: '10px' }}>2024</td>
+                  <td style={{ padding: '10px' }}>Emergency Response Guidebook (Guide 163: Radioactive Materials)</td>
+                  <td style={{ padding: '10px', color: 'var(--color-text-muted)' }}>Initial isolation perimeter cordons (100 m spill, 300 m fire/burst), hot/warm/cold zone boundaries.</td>
+                </tr>
+                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  <td style={{ padding: '10px', fontWeight: 'bold', color: '#00E5FF' }}>EPA PAG Manual</td>
+                  <td style={{ padding: '10px' }}>US EPA</td>
+                  <td style={{ padding: '10px' }}>2017</td>
+                  <td style={{ padding: '10px' }}>Protective Action Guides and Planning Guidance for Radiological Incidents (EPA-400/R-17/001)</td>
+                  <td style={{ padding: '10px', color: 'var(--color-text-muted)' }}>Emergency worker dose ceilings (50, 100, 250 mSv), turn-around thresholds, public relocation criteria.</td>
+                </tr>
+                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  <td style={{ padding: '10px', fontWeight: 'bold', color: '#00E5FF' }}>REAC/TS 4th Ed.</td>
+                  <td style={{ padding: '10px' }}>ORAU / REAC/TS</td>
+                  <td style={{ padding: '10px' }}>2021</td>
+                  <td style={{ padding: '10px' }}>The Medical Basis for Radiation-Accident Preparedness: Medical Countermeasures</td>
+                  <td style={{ padding: '10px', color: 'var(--color-text-muted)' }}>Decorporation pharmacokinetics: KI thyroid blocking, Prussian Blue Cs-137 chelation, Ca/Zn-DTPA actinide mobilization.</td>
+                </tr>
+                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  <td style={{ padding: '10px', fontWeight: 'bold', color: '#00E5FF' }}>ASME BPVC Sec. V T-274.1</td>
+                  <td style={{ padding: '10px' }}>ASME</td>
+                  <td style={{ padding: '10px' }}>2023</td>
+                  <td style={{ padding: '10px' }}>Boiler & Pressure Vessel Code, Section V, Article 2, Table T-274.1</td>
+                  <td style={{ padding: '10px', color: 'var(--color-text-muted)' }}>Maximum geometric unsharpness (Ug) limits (0.51 mm to 1.78 mm) as function of weld thickness.</td>
+                </tr>
+                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  <td style={{ padding: '10px', fontWeight: 'bold', color: '#00E5FF' }}>ISO 17636-1:2022</td>
+                  <td style={{ padding: '10px' }}>ISO</td>
+                  <td style={{ padding: '10px' }}>2022</td>
+                  <td style={{ padding: '10px' }}>Non-destructive testing of welds - Radiographic testing - Part 1: X- and gamma-ray techniques</td>
+                  <td style={{ padding: '10px', color: 'var(--color-text-muted)' }}>Geometric penumbra limits, minimum SID configurations, Class A and Class B radiographic testing techniques.</td>
+                </tr>
+                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  <td style={{ padding: '10px', fontWeight: 'bold', color: '#00E5FF' }}>MCNP5 (LA-UR-03-1987)</td>
+                  <td style={{ padding: '10px' }}>LANL</td>
+                  <td style={{ padding: '10px' }}>2003</td>
+                  <td style={{ padding: '10px' }}>MCNP - A General Monte Carlo N-Particle Transport Code</td>
+                  <td style={{ padding: '10px', color: 'var(--color-text-muted)' }}>Photon stochastic transport micro-kernel, Kahn Klein-Nishina rejection sampling, Woodcock tracking.</td>
+                </tr>
+                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  <td style={{ padding: '10px', fontWeight: 'bold', color: '#00E5FF' }}>Klein & Nishina (1929)</td>
+                  <td style={{ padding: '10px' }}>Z. Phys.</td>
+                  <td style={{ padding: '10px' }}>1929</td>
+                  <td style={{ padding: '10px' }}>Über die Streuung von Strahlung durch freie Elektronen nach der neuen relativistischen Quantendynamik von Dirac</td>
+                  <td style={{ padding: '10px', color: 'var(--color-text-muted)' }}>Quantum relativistic differential and total cross-section for Compton photon scattering off free electrons.</td>
+                </tr>
+                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  <td style={{ padding: '10px', fontWeight: 'bold', color: '#00E5FF' }}>Currie Metrology (1968)</td>
+                  <td style={{ padding: '10px' }}>Anal. Chem.</td>
+                  <td style={{ padding: '10px' }}>1968</td>
+                  <td style={{ padding: '10px' }}>Limits for Qualitative Detection and Quantitative Determination</td>
+                  <td style={{ padding: '10px', color: 'var(--color-text-muted)' }}>Decision threshold (Lc = 2.33*sqrt(B)), detection limit (Ld = 2.71 + 4.65*sqrt(B)), and MDA formulations.</td>
+                </tr>
+                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  <td style={{ padding: '10px', fontWeight: 'bold', color: '#00E5FF' }}>IAEA GSR Part 3</td>
+                  <td style={{ padding: '10px' }}>IAEA</td>
+                  <td style={{ padding: '10px' }}>2014</td>
+                  <td style={{ padding: '10px' }}>Radiation Protection and Safety of Radiation Sources: International Basic Safety Standards</td>
+                  <td style={{ padding: '10px', color: 'var(--color-text-muted)' }}>Harmonized international dose constraints (20 mSv/yr 5-yr average, 20 mSv lens of eye limit).</td>
+                </tr>
+                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  <td style={{ padding: '10px', fontWeight: 'bold', color: '#00E5FF' }}>EURATOM 2013/59</td>
+                  <td style={{ padding: '10px' }}>European Union</td>
+                  <td style={{ padding: '10px' }}>2013</td>
+                  <td style={{ padding: '10px' }}>Council Directive 2013/59/Euratom (Basic Safety Standards Directive)</td>
+                  <td style={{ padding: '10px', color: 'var(--color-text-muted)' }}>European statutory occupational dose framework, 1 mSv prenatal protection, 20 mSv/yr lens threshold.</td>
+                </tr>
+                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  <td style={{ padding: '10px', fontWeight: 'bold', color: '#00E5FF' }}>NATO STANAG 2470</td>
+                  <td style={{ padding: '10px' }}>NATO / Military</td>
+                  <td style={{ padding: '10px' }}>2019</td>
+                  <td style={{ padding: '10px' }}>AMedP-7.1 Commander's Guide on Radiation Protection in Military Operations</td>
+                  <td style={{ padding: '10px', color: 'var(--color-text-muted)' }}>Military tactical Operational Exposure Guidance (OEG 1: 0.05 Gy, OEG 2: 0.25 Gy, OEG 3: 0.70 Gy).</td>
+                </tr>
+                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  <td style={{ padding: '10px', fontWeight: 'bold', color: '#00E5FF' }}>CNSC SOR/2000-203</td>
+                  <td style={{ padding: '10px' }}>CNSC Canada</td>
+                  <td style={{ padding: '10px' }}>2020</td>
+                  <td style={{ padding: '10px' }}>Canadian Radiation Protection Regulations</td>
+                  <td style={{ padding: '10px', color: 'var(--color-text-muted)' }}>Nuclear Energy Worker (NEW) limits (100 mSv per 5-year period), pregnant NEW limits (4 mSv).</td>
+                </tr>
+                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  <td style={{ padding: '10px', fontWeight: 'bold', color: '#00E5FF' }}>IAEA INES Manual</td>
+                  <td style={{ padding: '10px' }}>IAEA / OECD-NEA</td>
+                  <td style={{ padding: '10px' }}>2008</td>
+                  <td style={{ padding: '10px' }}>The International Nuclear and Radiological Event Scale User's Manual</td>
+                  <td style={{ padding: '10px', color: 'var(--color-text-muted)' }}>INES severity Levels 1 through 7, radiotoxicity equivalence multipliers normalized to Iodine-131.</td>
+                </tr>
+                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  <td style={{ padding: '10px', fontWeight: 'bold', color: '#00E5FF' }}>FDA 21 CFR Part 11</td>
+                  <td style={{ padding: '10px' }}>US FDA</td>
+                  <td style={{ padding: '10px' }}>2003</td>
+                  <td style={{ padding: '10px' }}>Electronic Records; Electronic Signatures (Title 21 Code of Federal Regulations)</td>
+                  <td style={{ padding: '10px', color: 'var(--color-text-muted)' }}>Computer-generated time-stamped audit trails, SHA-256 tamper-evident integrity verification.</td>
+                </tr>
+                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  <td style={{ padding: '10px', fontWeight: 'bold', color: '#00E5FF' }}>ISO/IEC 17025:2017</td>
+                  <td style={{ padding: '10px' }}>ISO / IEC</td>
+                  <td style={{ padding: '10px' }}>2017</td>
+                  <td style={{ padding: '10px' }}>General requirements for competence of testing and calibration laboratories (§ 7.11 Control of Data)</td>
+                  <td style={{ padding: '10px', color: 'var(--color-text-muted)' }}>Data integrity validation, cryptographic traceability, software qualification criteria for radiological testing.</td>
                 </tr>
               </tbody>
             </table>
