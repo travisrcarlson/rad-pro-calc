@@ -1,5 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import equipmentDataRaw from '../../data/equipment_database.json';
+import HistoricalIncidentsModule from '../Module30/HistoricalIncidentsModule';
 
 interface EquipmentRecord {
   deviceName: string;
@@ -89,9 +91,25 @@ const processedEquipment: EquipmentRecord[] = (equipmentDataRaw as any[]).map((r
 });
 
 const EquipmentLibraryModule: React.FC = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTab = searchParams.get('tab') === 'incidents' ? 'incidents' : 'equipment';
+  const [activeTab, setActiveTab] = useState<'equipment' | 'incidents'>(initialTab);
+
   const [filter, setFilter] = useState<string>('All');
   const [hazardFilter, setHazardFilter] = useState<string>('All');
   const [search, setSearch] = useState<string>('');
+
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam === 'incidents' || tabParam === 'equipment') {
+      setActiveTab(tabParam);
+    }
+  }, [searchParams]);
+
+  const handleTabChange = (tab: 'equipment' | 'incidents') => {
+    setActiveTab(tab);
+    setSearchParams(tab === 'equipment' ? {} : { tab });
+  };
 
   const uniqueCategories = useMemo(() => {
     const cats = new Set<string>();
@@ -117,61 +135,89 @@ const EquipmentLibraryModule: React.FC = () => {
   return (
     <div className="panel" style={{ height: '100%', display: 'flex', flexDirection: 'column', gap: '16px' }}>
       
-      {/* Header */}
-      <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span className="hud-badge hud-badge-primary">COMMERCIAL SOURCE REGISTRY</span>
-            <span className="hud-badge hud-badge-accent">IAEA SAFETY STANDARDS</span>
+      {/* Primary Database Section Tab Navigation */}
+      <div style={{ display: 'flex', gap: '10px', borderBottom: '1px solid rgba(0, 229, 255, 0.2)', paddingBottom: '12px', flexWrap: 'wrap' }}>
+        <button
+          type="button"
+          className={`btn ${activeTab === 'equipment' ? 'btn-primary' : 'btn-secondary'}`}
+          onClick={() => handleTabChange('equipment')}
+          style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', fontWeight: activeTab === 'equipment' ? 'bold' : 'normal' }}
+        >
+          <span>📋 Industrial Equipment &amp; Sealed Sources</span>
+          <span style={{ fontSize: '0.75rem', padding: '1px 6px', borderRadius: '10px', background: activeTab === 'equipment' ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.1)' }}>
+            {processedEquipment.length} Devices
+          </span>
+        </button>
+
+        <button
+          type="button"
+          className={`btn ${activeTab === 'incidents' ? 'btn-primary' : 'btn-secondary'}`}
+          onClick={() => handleTabChange('incidents')}
+          style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', fontWeight: activeTab === 'incidents' ? 'bold' : 'normal' }}
+        >
+          <span>📜 Historical Incident Archive &amp; Forensics</span>
+          <span style={{ fontSize: '0.75rem', padding: '1px 6px', borderRadius: '10px', background: activeTab === 'incidents' ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.1)' }}>
+            INES 1–7
+          </span>
+        </button>
+      </div>
+
+      {activeTab === 'incidents' ? (
+        <HistoricalIncidentsModule />
+      ) : (
+        <>
+          {/* Header */}
+          <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span className="hud-badge hud-badge-primary">COMMERCIAL SOURCE REGISTRY</span>
+                <span className="hud-badge hud-badge-accent">IAEA SAFETY STANDARDS</span>
+              </div>
+              <h2 style={{ margin: '6px 0 0 0', fontSize: '1.4rem', letterSpacing: '0.03em' }}>
+                Radioactive Equipment &amp; Sealed Source Library
+              </h2>
+              <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
+                Identify commercial devices, industrial radiography cameras, well-logging tools, and medical teletherapy heads. Catalog contains {processedEquipment.length} validated profiles.
+              </p>
+            </div>
           </div>
-          <h2 style={{ margin: '6px 0 0 0', fontSize: '1.4rem', letterSpacing: '0.03em' }}>
-            Radioactive Equipment &amp; Sealed Source Library
-          </h2>
-          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
-            Identify commercial devices, industrial radiography cameras, well-logging tools, and medical teletherapy heads. Catalog contains {processedEquipment.length} validated profiles.
-          </p>
-        </div>
-      </div>
 
-      {/* Controls Bar */}
-      <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center', background: 'rgba(0,0,0,0.3)', padding: '12px 16px', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
-        <input
-          type="text"
-          className="form-control"
-          placeholder="Search device name, manufacturer, or isotope (e.g. 'Troxler', 'Cs-137', 'Sentinel', 'Ir-192')..."
-          style={{ flex: '1 1 280px', padding: '8px 12px', fontSize: '0.9rem' }}
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
-        <select
-          className="form-control"
-          style={{ width: '200px', fontSize: '0.85rem' }}
-          value={filter}
-          onChange={e => setFilter(e.target.value)}
-        >
-          <option value="All">All Application Sectors</option>
-          {uniqueCategories.map(cat => (
-            <option key={cat} value={cat}>{cat}</option>
-          ))}
-        </select>
-        <select
-          className="form-control"
-          style={{ width: '180px', fontSize: '0.85rem' }}
-          value={hazardFilter}
-          onChange={e => setHazardFilter(e.target.value)}
-        >
-          <option value="All">All Hazard Tiers</option>
-          <option value="EXTREME">EXTREME (Category 1)</option>
-          <option value="HIGH">HIGH (Category 2)</option>
-          <option value="MODERATE">MODERATE (Category 3)</option>
-          <option value="LOW">LOW (Category 4)</option>
-          <option value="SAFE">SAFE / EXEMPT</option>
-        </select>
+          {/* Controls Bar */}
+          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center', background: 'rgba(0,0,0,0.3)', padding: '12px 16px', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
+            <input
+              type="text"
+              className="form-control"
+              placeholder="Search device name, manufacturer, or isotope (e.g. 'Troxler', 'Cs-137', 'Sentinel', 'Ir-192')..."
+              style={{ flex: '1 1 280px', padding: '8px 12px', fontSize: '0.9rem' }}
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+            <select
+              className="form-control"
+              style={{ width: '200px', fontSize: '0.85rem' }}
+              value={filter}
+              onChange={e => setFilter(e.target.value)}
+            >
+              <option value="All">All Application Sectors</option>
+              {uniqueCategories.map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+            <select
+              className="form-control"
+              style={{ width: '180px', fontSize: '0.85rem' }}
+              value={hazardFilter}
+              onChange={e => setHazardFilter(e.target.value)}
+            >
+              <option value="All">All Hazard Tiers</option>
+              <option value="EXTREME">EXTREME (Category 1)</option>
+              <option value="HIGH">HIGH (Category 2)</option>
+              <option value="MODERATE">MODERATE (Category 3)</option>
+              <option value="LOW">LOW (Category 4)</option>
+              <option value="SAFE">SAFE / EXEMPT</option>
+            </select>
 
-        <span style={{ fontSize: '0.8rem', color: '#94a3b8', marginLeft: 'auto' }}>
-          Showing <strong>{filteredEquipment.length}</strong> of {processedEquipment.length} items
-        </span>
-      </div>
+          </div>
 
       {/* Equipment Card Grid */}
       <div style={{ flex: 1, overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '16px', alignContent: 'start', paddingRight: '4px' }}>
@@ -355,6 +401,8 @@ const EquipmentLibraryModule: React.FC = () => {
           </div>
         )}
       </div>
+        </>
+      )}
 
     </div>
   );

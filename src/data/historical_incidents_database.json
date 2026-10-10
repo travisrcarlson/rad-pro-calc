@@ -1,0 +1,831 @@
+[
+  {
+    "id": "chernobyl_1986",
+    "name": "Chernobyl Nuclear Power Plant Unit 4 Catastrophe",
+    "year": 1986,
+    "date": "April 26, 1986",
+    "location": "Pripyat, Ukrainian SSR, Soviet Union",
+    "coordinates": { "lat": 51.3892, "lon": 30.0997 },
+    "inesLevel": 7,
+    "eventType": "Reactor Meltdown & Core Explosion",
+    "primaryIsotope": "I-131, Cs-137, Sr-90",
+    "radionuclides": ["I-131", "Cs-137", "Sr-90", "Xe-133", "Pu-239", "Zr-95", "Te-132"],
+    "estimatedActivityTBq": 12000000.0,
+    "estimatedActivityCi": 324300000.0,
+    "physicalForm": "Irradiated UO2 Fuel Pellets, Hot Graphite & Volatile Aerosols",
+    "peakContactDoseRate_Gy_h": 300.0,
+    "fatalities": 31,
+    "arsCases": 134,
+    "peopleScreened": 600000,
+    "evacuees": 116000,
+    "summary": "During a low-power rundown turbine test of the RBMK-1000 graphite-moderated water-cooled reactor, operators disabled emergency core cooling systems and accumulated xenon poison in the core. Manual control rod withdrawal breached minimum operating reactivity margins (ORM < 15 rods). Depressing the AZ-5 emergency scram button initiated positive scram reactivity insertion due to graphite displacer tips on control rods, triggering a prompt-critical runaway excursion, thermal steam explosion, and a 10-day burning graphite core fire.",
+    "chronology": [
+      "01:23:04 - Turbine generator rundown test begins; cooling water flow diminishes.",
+      "01:23:40 - Senior Reactor Control Engineer Leonid Toptunov presses AZ-5 emergency scram.",
+      "01:23:43 - Graphite rod tips enter core bottom, displacing coolant water and adding positive reactivity. Prompt criticality achieved.",
+      "01:23:45 - Reactor power surges past 30,000 MWth (10x nominal). Fuel channels rupture, generating a violent steam explosion lifting the 2,000-ton upper biological shield (Elena).",
+      "01:23:47 - Second explosion ejects burning graphite blocks and core fuel into surrounding facility roof and atmosphere.",
+      "Day 1-10 - Soviet helicopter pilots drop 5,000 tons of sand, lead, clay, and boron onto the burning open core.",
+      "April 27 - Complete evacuation of Pripyat's 49,360 residents initiated."
+    ],
+    "rootCauses": [
+      "Positive void coefficient of reactivity inherent to RBMK-1000 graphite-moderated design at low core power.",
+      "Control rod design flaw: 4.5-meter graphite follower tips displaced neutron-absorbing water upon initial insertion, producing positive reactivity surge.",
+      "Violation of Operating Reactivity Margin (ORM) limits with inadequate computer safety interlocks.",
+      "Institutional secrecy and lack of transparent safety culture within the Soviet nuclear sector."
+    ],
+    "healthPhysicsImpact": "Massive atmospheric plume dispersed across Western USSR and Continental Europe. Over 134 plant operators and firemen developed confirmed Acute Radiation Syndrome (ARS) with bone marrow failure and severe localized cutaneous burns. Over 6,000 pediatric thyroid cancer cases attributed to radioiodine ingestion in contaminated milk.",
+    "medicalResponse": {
+      "decorporationAgents": ["Potassium Iodide (KI)", "Prussian Blue"],
+      "treatmentProtocols": "Reverse isolation in sterile laminar-flow wards at Hospital No. 6 (Moscow); allogeneic bone marrow transplantation (led by Dr. Robert Gale); broad-spectrum antibacterial and antifungal therapy; high-dose cytokine support.",
+      "biodosimetryMethods": ["Dicentric Chromosome Assay (DCA)", "Absolute Lymphocyte Count (ALC) Andrews curve"]
+    },
+    "regulatoryReforms": [
+      "Worldwide retrofitting of all RBMK reactors: increased fuel enrichment from 2.0% to 2.4%, installed 80 permanent absorber rods, redesigned control rods without water-displacer gaps, reduced scram insertion time from 18s to 12s.",
+      "Establishment of the World Association of Nuclear Operators (WANO) in 1989 for peer safety benchmarking.",
+      "Creation of the International Nuclear and Radiological Event Scale (INES) by IAEA and OECD/NEA in 1990."
+    ],
+    "iaeaReportReference": "IAEA Safety Series No. 75-INSAG-7 (1992)",
+    "relatedModules": [
+      { "modulePath": "/cbrn-consequence", "moduleName": "CBRN Fallout & Shelter", "actionPrompt": "Model RBMK fission product decay kinetics using Way-Wigner equation" },
+      { "modulePath": "/plume", "moduleName": "Plume Atmospheric Model", "actionPrompt": "Simulate Gaussian downwind dispersion of I-131 and Cs-137" },
+      { "modulePath": "/medical-countermeasures", "moduleName": "Medical Countermeasures", "actionPrompt": "Evaluate KI thyroid blockade and Prussian Blue decorporation efficacy" }
+    ]
+  },
+  {
+    "id": "fukushima_2011",
+    "name": "Fukushima Daiichi Multi-Unit SBO & Core Meltdowns",
+    "year": 2011,
+    "date": "March 11, 2011",
+    "location": "Okuma & Futaba, Fukushima Prefecture, Japan",
+    "coordinates": { "lat": 37.4214, "lon": 141.0326 },
+    "inesLevel": 7,
+    "eventType": "Station Blackout (SBO) & Triple Core Meltdown",
+    "primaryIsotope": "I-131, Cs-137, Cs-134, Xe-133",
+    "radionuclides": ["I-131", "Cs-137", "Cs-134", "Xe-133", "Te-132", "Sr-90"],
+    "estimatedActivityTBq": 900000.0,
+    "estimatedActivityCi": 24320000.0,
+    "physicalForm": "Corium Melt, Steam Aerosols, Stripped Hydrogen Gas",
+    "peakContactDoseRate_Gy_h": 10.0,
+    "fatalities": 0,
+    "arsCases": 0,
+    "peopleScreened": 280000,
+    "evacuees": 154000,
+    "summary": "Following the magnitude 9.1 Great East Japan Earthquake, reactor units 1-3 automatically scrammed. Forty-six minutes later, a 14-meter tsunami overtopped the facility's 5.7-meter sea wall, flooding turbine basements and drowning 12 of 13 emergency diesel generators and DC battery banks. In the resulting prolonged Station Blackout (SBO), high-pressure cooling failed, unshielded zircaloy fuel clad oxidized with superheated steam releasing hydrogen, causing core meltdowns and violent hydrogen explosions in Units 1, 3, and 4.",
+    "chronology": [
+      "14:46 - Magnitude 9.1 undersea megathrust earthquake strikes; Units 1-3 scram successfully.",
+      "15:37 - First tsunami waves arrive; 14-15m crest drowns diesel generators and seawater intake pumps.",
+      "15:41 - Total station blackout (SBO) declared across Units 1-4; all AC power and DC battery instrumentation lost.",
+      "March 12, 15:36 - Hydrogen gas accumulates in Unit 1 reactor building upper floor; violent detonation blows off roof.",
+      "March 13 - Core melt proceeds in Unit 3; emergency seawater injection commences through fire engines.",
+      "March 14, 11:01 - Unit 3 secondary containment destroyed by massive hydrogen explosion.",
+      "March 15, 06:14 - Sound of explosion at Unit 2 drywell suppression chamber; Unit 4 top floors blast-damaged from back-flowed hydrogen.",
+      "March-April - Over 520 PBq of noble gases and volatile radionuclides released into air and Pacific Ocean."
+    ],
+    "rootCauses": [
+      "Inadequate design basis tsunami safety assessment and failure to construct seawalls conforming to revised paleotsunami data (869 Sanriku Jogan earthquake).",
+      "Vulnerability of emergency power systems: placement of backup diesel generators and switchgear in flood-prone basements.",
+      "Regulatory capture and inadequate independent oversight by NISA.",
+      "Severe accident management guidelines lacked procedures for prolonged multi-unit total station blackouts without external power or battery telemetry."
+    ],
+    "healthPhysicsImpact": "No acute radiation deaths or deterministic ARS cases among plant staff or public. Evacuation of 154,000 residents prevented severe pediatric thyroid doses. Low-level chronic deposition contaminated agricultural soils in Fukushima Prefecture, necessitating extensive topsoil removal and a 1.5 km subterranean frozen ice-wall barrier to curb contaminated groundwater flow.",
+    "medicalResponse": {
+      "decorporationAgents": ["Potassium Iodide (KI)"],
+      "treatmentProtocols": "Prophylactic KI distributed to municipalities; whole-body counter (WBC) screening of 280,000 residents; strict food chain interception (radioactive cesium limits in food lowered to 100 Bq/kg).",
+      "biodosimetryMethods": ["Whole-Body Counting (WBC)", "Thyroid Radioiodine Probe Dosimetry"]
+    },
+    "regulatoryReforms": [
+      "Global stress-testing of nuclear fleets (EU and NRC Fukushima Task Force).",
+      "NRC 10 CFR 50.155 (Mitigation of Beyond-Design-Basis Events / FLEX initiative): portable generators, mobile water pumps, and satellite communications staged at off-site regional response centers.",
+      "Installation of passive autocatalytic hydrogen recombiners (PARs) and hardened containment vent systems (HCVS) with filtered containment venting.",
+      "Dissolution of NISA and establishment of the independent Nuclear Regulation Authority (NRA) in Japan."
+    ],
+    "iaeaReportReference": "IAEA Fukushima Daiichi Accident Report (2015)",
+    "relatedModules": [
+      { "modulePath": "/first-responder", "moduleName": "Tactical CBRN Response", "actionPrompt": "Review ERG Guide 163 cordon boundaries and KI dosing guidelines" },
+      { "modulePath": "/tactical-gis", "moduleName": "Tactical GIS & ATAK Hub", "actionPrompt": "Project 20 km evacuation cordon and downwind coastal plumes" },
+      { "modulePath": "/cbrn-consequence", "moduleName": "CBRN Fallout & Shelter", "actionPrompt": "Evaluate public evacuation crossover dose vs shelter stay-time" }
+    ]
+  },
+  {
+    "id": "goiania_1987",
+    "name": "Goiânia Orphan Teletherapy Source Rupture",
+    "year": 1987,
+    "date": "September 13, 1987",
+    "location": "Goiânia, Goiás, Brazil",
+    "coordinates": { "lat": -16.6869, "lon": -49.2648 },
+    "inesLevel": 5,
+    "eventType": "Orphan Industrial / Medical Teletherapy Source",
+    "primaryIsotope": "Cs-137",
+    "radionuclides": ["Cs-137", "Ba-137m"],
+    "estimatedActivityTBq": 50.9,
+    "estimatedActivityCi": 1375.0,
+    "physicalForm": "Cesium Chloride (CsCl) Highly Soluble Powder",
+    "peakContactDoseRate_Gy_h": 4.6,
+    "fatalities": 4,
+    "arsCases": 28,
+    "peopleScreened": 112000,
+    "evacuees": 200,
+    "summary": "An abandoned rotating teletherapy unit (Cesapan F-3000) containing 50.9 TBq of Cs-137 powder was scavenged from a partially demolished radiotherapy clinic by two metal scavengers. They dismantled the lead assembly with a sledgehammer, breaching the double stainless-steel capsule. The luminescent blue CsCl powder was distributed among friends, family, and junkyard workers, who applied it to skin and handled food with contaminated hands.",
+    "chronology": [
+      "Sept 13 - Scavengers Roberto dos Santos and Wagner Pereira enter abandoned IGR clinic and wheel away 100 kg teletherapy head in a wheelbarrow.",
+      "Sept 15 - At Pereira's home, scavengers puncture capsule window with a screwdriver, sustaining severe beta-gamma radiation burns to hands.",
+      "Sept 18 - Source assembly sold to Devair Ferreira's scrap junkyard. Ferreira notices glowing blue powder in the dark.",
+      "Sept 21-25 - Ferreira distributes pinch-sized samples of powder to relatives and neighbors. His 6-year-old niece, Leide das Neves, handles dust while eating a sandwich.",
+      "Sept 28 - Ferreira's wife, Gabriela Maria, notices multiple family members severely ill with nausea and burns; transports breached capsule in a plastic bag on a public bus to sanitary surveillance.",
+      "Sept 29 - Physicist Walter Mendes Ferreira uses a scintillation detector; meter saturates off-scale immediately; national emergency declared.",
+      "October - Over 112,000 individuals screened at Olympic Stadium; 249 contaminated; 4 fatalities."
+    ],
+    "rootCauses": [
+      "Abandonment of high-activity medical teletherapy facility without securing sources or notifying regulatory authorities (CNEN).",
+      "Lack of national cradle-to-grave tracking registry for retired Category 1 radiation sources.",
+      "Chemical choice of highly soluble, hygroscopic cesium chloride powder rather than insoluble ceramic glass forms."
+    ],
+    "healthPhysicsImpact": "Four patients died from massive internal and external doses (4.5 to 7.0 Gy) leading to irreversible bone marrow failure and hemorrhagic shock. Over 112,000 people were screened in Goiânia's Olympic Stadium. Eighty-five houses required extensive decontamination, and seven residences were completely demolished and entombed as radioactive waste.",
+    "medicalResponse": {
+      "decorporationAgents": ["Prussian Blue (Ferric Hexacyanoferrate / Radiogardase)"],
+      "treatmentProtocols": "First widespread clinical use of Prussian Blue (10 g/day orally), binding Cs+ in the gastrointestinal tract and preventing enterohepatic recirculation; biological half-life reduced from 110 days to 28 days; granulocyte colony-stimulating factors (G-CSF) administered.",
+      "biodosimetryMethods": ["Dicentric Chromosome Aberration (DCA) Calibration", "Whole-Body Counting", "Daily 24-hr Urinalysis"]
+    },
+    "regulatoryReforms": [
+      "IAEA Code of Conduct on the Safety and Security of Radioactive Sources (2004).",
+      "Transition of international radiotherapy source manufacturing away from soluble CsCl salts to solid metallic cobalt-60 or vitrified matrices.",
+      "Mandatory financial surety bonding and legal accountability for decommissioned clinical irradiators."
+    ],
+    "iaeaReportReference": "IAEA The Radiological Accident in Goiânia (STI/PUB/815, 1988)",
+    "relatedModules": [
+      { "modulePath": "/medical-countermeasures", "moduleName": "Medical Countermeasures", "actionPrompt": "Simulate Prussian Blue Cs-137 decorporation kinetics (VTEST-30)" },
+      { "modulePath": "/internal-dose", "moduleName": "Internal Dosimetry", "actionPrompt": "Calculate CEDE and 50-year organ committed doses for Cs-137" },
+      { "modulePath": "/first-responder", "moduleName": "Tactical CBRN Response", "actionPrompt": "Review REAC/TS cytogenetic biodosimetry triage curves" }
+    ]
+  },
+  {
+    "id": "tokaimura_1999",
+    "name": "Tokaimura JCO Fuel Conversion Criticality Excursion",
+    "year": 1999,
+    "date": "September 30, 1999",
+    "location": "Tokaimura, Ibaraki Prefecture, Japan",
+    "coordinates": { "lat": 36.4633, "lon": 140.5894 },
+    "inesLevel": 4,
+    "eventType": "Solution Criticality Accident",
+    "primaryIsotope": "U-235 Fission Products",
+    "radionuclides": ["U-235", "Na-24", "I-131", "Cs-137", "Prompt Neutrons", "Prompt Gammas"],
+    "estimatedActivityTBq": 18.5,
+    "estimatedActivityCi": 500.0,
+    "physicalForm": "Enriched Uranyl Nitrate Solution (18.8% U-235)",
+    "peakContactDoseRate_Gy_h": 15.0,
+    "fatalities": 2,
+    "arsCases": 3,
+    "peopleScreened": 10000,
+    "evacuees": 161,
+    "summary": "Three technicians preparing fuel for the Joyo experimental fast breeder reactor bypassed licensed safety procedures to save time. Instead of using a geometrically favorable dissolution column, they manually poured 16.6 kg of 18.8% enriched uranyl nitrate aqueous solution into an uncooled wide-bottom precipitation tank using stainless-steel buckets. The solution reached critical mass (~5.5 kg limit), resulting in a flash criticality and continuous pulse excursion lasting 20 hours.",
+    "chronology": [
+      "10:35 - Technician Masato Shinohara holds funnel while Hisashi Ouchi pours seventh bucket of uranyl nitrate solution into precipitation tank.",
+      "10:35:05 - Criticality threshold crossed; bright blue Cherenkov flash illuminates room; gamma alarms sound across facility.",
+      "10:36 - Technicians experience immediate nausea, difficulty breathing, and lose consciousness.",
+      "11:00 - Continuous subcritical/critical fission cycling sustained by water jacket around vessel acting as neutron reflector.",
+      "15:00 - 350-meter evacuation perimeter established around JCO complex; 310,000 residents instructed to shelter-in-place.",
+      "Oct 1, 02:30 - Team of 16 plant workers in relay entries drain the cooling water jacket, eliminating neutron reflection and terminating the chain reaction after 20 hours."
+    ],
+    "rootCauses": [
+      "Deliberate procedural deviation: replacing geometrically safe dissolving tanks with open buckets and wide cylindrical precipitation tanks.",
+      "Unapproved commercial operating manual created by JCO management without regulatory approval.",
+      "Total absence of criticality safety training for conversion workers.",
+      "Lack of automatic criticality trip mechanisms or emergency neutron poison injection systems."
+    ],
+    "healthPhysicsImpact": "Hisashi Ouchi received an astronomical estimated dose of 16 to 23 GyEq; died after 83 days from total immune depletion and cellular breakdown. Masato Shinohara received 6 to 10 GyEq; died after 211 days. Over 660 individuals (including emergency workers and local residents) received measurable radiation doses.",
+    "medicalResponse": {
+      "decorporationAgents": ["Supportive Care", "G-CSF"],
+      "treatmentProtocols": "First clinical attempt at peripheral blood stem cell transplantation (PBSCT) and umbilical cord blood transplant for acute lethal radiation syndrome; massive transfusion support and cultured skin grafting.",
+      "biodosimetryMethods": ["Neutron activation of blood Sodium-24 (Na-24)", "Electron Spin Resonance (ESR) on tooth enamel", "Chromosomal aberration analysis"]
+    },
+    "regulatoryReforms": [
+      "Total cancellation of JCO's commercial fuel processing license.",
+      "Mandatory physical geometry constraints (fail-safe dimensions) on all fissile solution processing in Japan.",
+      "Installation of continuous gamma/neutron criticality accident alarm systems (CAAS, ANSI/ANS-8.3).",
+      "Establishment of the Japanese Nuclear Emergency Response Special Measures Law."
+    ],
+    "iaeaReportReference": "IAEA Report on the Preliminary Fact Finding Mission (1999)",
+    "relatedModules": [
+      { "modulePath": "/caas-criticality", "moduleName": "CAAS Criticality Alarms", "actionPrompt": "Simulate Nordheim-Fuchs prompt excursion and ANSI/ANS-8.3 alarm trigger" },
+      { "modulePath": "/criticality", "moduleName": "Criticality & Reactor Core", "actionPrompt": "Evaluate solution geometric buckling and k-effective" },
+      { "modulePath": "/spectroscopy", "moduleName": "Gamma Spectroscopy (MCA)", "actionPrompt": "Identify Na-24 blood activation lines at 1368 keV and 2754 keV (VTEST-08)" }
+    ]
+  },
+  {
+    "id": "kyshtym_1957",
+    "name": "Kyshtym Disaster / Mayak Nuclear Chemical Combine",
+    "year": 1957,
+    "date": "September 29, 1957",
+    "location": "Ozyorsk (Chelyabinsk-40), Chelyabinsk Oblast, USSR",
+    "coordinates": { "lat": 55.6989, "lon": 60.8039 },
+    "inesLevel": 6,
+    "eventType": "High-Level Waste Tank Thermal Explosion",
+    "primaryIsotope": "Ce-144, Zr-95, Sr-90",
+    "radionuclides": ["Ce-144", "Zr-95", "Nb-95", "Sr-90", "Y-90", "Ru-106", "Cs-137"],
+    "estimatedActivityTBq": 740000.0,
+    "estimatedActivityCi": 20000000.0,
+    "physicalForm": "Dry Nitrate & Acetate Salt Concentrates",
+    "peakContactDoseRate_Gy_h": 25.0,
+    "fatalities": 200,
+    "arsCases": 1000,
+    "peopleScreened": 270000,
+    "evacuees": 11000,
+    "summary": "At the Mayak chemical combine (a closed plutonium production facility), the cooling water system of an underground 300 cubic meter stainless-steel waste tank containing 70 to 80 metric tons of radioactive nitrate waste failed unnoticed. The tank slowly evaporated dry, heating to over 350°C. On September 29, the dried nitrate and acetate salts detonated with the force of 70 to 100 tons of TNT, blowing off the 160-ton concrete lid and launching radioactive debris 1 kilometer high into the atmosphere.",
+    "chronology": [
+      "Early 1956 - Cooling pipe to waste tank No. 14 begins leaking; technicians turn off water flow without monitoring temperature rise.",
+      "Sept 29, 16:20 - Extreme internal pressure and temperature detonate dried nitrate salts with 70-100 ton TNT equivalent.",
+      "16:25 - 160-ton concrete shield slab thrown 25 meters away; 20 million Curies released into environment.",
+      "17:00-24:00 - Dense radioactive cloud moves north-northeast over 300 km × 50 km swath of Chelyabinsk, Sverdlovsk, and Tyumen oblasts.",
+      "Day 7-300 - Secret evacuation of 23 rural villages (10,700 people); all livestock killed and buried; topsoil plowed under."
+    ],
+    "rootCauses": [
+      "Failure of tank cooling monitoring instrumentation due to high radiation fields causing wire degradation.",
+      "Lack of secondary backup cooling loops or temperature alarm trips.",
+      "Design error: storing combustible organic acetates mixed with powerful oxidizing nitrate salts.",
+      "Total absence of public emergency response planning in secret military facilities."
+    ],
+    "healthPhysicsImpact": "Contaminated a 20,000 km² corridor designated as the East Urals Radioactive Trace (EURT / VURS). High concentrations of bone-seeking Strontium-90 ($^{90}\\text{Sr}$) led to widespread chronic radiation sickness among rural populations consuming local milk and grain. Secret from the world until revealed by Soviet biologist Zhores Medvedev in 1976.",
+    "medicalResponse": {
+      "decorporationAgents": ["None available in secret zone"],
+      "treatmentProtocols": "Retroactive epidemiological study; permanent creation of the East Ural Ecological Reserve to restrict human entry.",
+      "biodosimetryMethods": ["Whole-body Strontium-90 bone counting", "Teeth beta measurements"]
+    },
+    "regulatoryReforms": [
+      "Separation of organic solvents and oxidizers in nuclear waste storage.",
+      "Redundant, passively cooled double-shell waste tanks with continuous thermocouple matrices.",
+      "Development of nuclear vitrification technology (converting liquid high-level waste into borosilicate glass blocks)."
+    ],
+    "iaeaReportReference": "INES User's Manual / Chelyabinsk Radiological Legacy Assessment",
+    "relatedModules": [
+      { "modulePath": "/cbrn-consequence", "moduleName": "CBRN Fallout & Shelter", "actionPrompt": "Calculate groundshine dose rate integration over 50 years" },
+      { "modulePath": "/internal-dose", "moduleName": "Internal Dosimetry", "actionPrompt": "Analyze Sr-90 bone surface retention and biokinetics" },
+      { "modulePath": "/tactical-gis", "moduleName": "Tactical GIS & ATAK Hub", "actionPrompt": "Map East Urals Radioactive Trace (EURT) isopleths" }
+    ]
+  },
+  {
+    "id": "sl1_1961",
+    "name": "SL-1 Stationary Low-Power Reactor No. 1 Explosion",
+    "year": 1961,
+    "date": "January 3, 1961",
+    "location": "National Reactor Testing Station, Idaho Falls, Idaho, USA",
+    "coordinates": { "lat": 43.5186, "lon": -112.8228 },
+    "inesLevel": 4,
+    "eventType": "Reactor Prompt-Critical Excursion & Steam Blast",
+    "primaryIsotope": "I-131, Cs-137, Fission Fragments",
+    "radionuclides": ["I-131", "Cs-137", "Sr-90", "Xe-133", "Prompt Neutrons"],
+    "estimatedActivityTBq": 3.7,
+    "estimatedActivityCi": 100.0,
+    "physicalForm": "Vaporized Metallic Uranium Fuel & Steam",
+    "peakContactDoseRate_Gy_h": 10.0,
+    "fatalities": 3,
+    "arsCases": 3,
+    "peopleScreened": 790,
+    "evacuees": 0,
+    "summary": "During routine maintenance shutdown of the Army's prototype 3 MWth boiling water reactor, a 3-man military crew was reassembling the control rod drive mechanisms. The central control rod (rod 9) had to be manually lifted a few inches to connect the drive mechanism. The operator pulled the central rod out 20 inches, far exceeding the 4-inch critical margin. The reactor went prompt critical with an instantaneous 20 GW power burst in 4 milliseconds, vaporizing water and causing an explosive water hammer that lifted the 26,000-pound reactor vessel 9 feet into the ceiling.",
+    "chronology": [
+      "21:01 - Army specialists John Byrnes, Richard Legg, and Richard McKinley manually withdraw central rod 9.",
+      "21:01:04 - Rod pulled 20 inches; prompt-critical excursion occurs ($k_{\\text{eff}} \\approx 1.25$); fission pulse releases 130 MJ of energy.",
+      "21:01:04.5 - Extreme pressure wave (water hammer) accelerates 5 tons of water upward at 160 ft/s, impaling operator Richard Legg to ceiling with a shield plug.",
+      "21:10 - Automatic fire alarms sound at testing station; responding fire crews encounter off-scale radiation fields (> 1000 R/h).",
+      "22:30 - Rescue teams confirm all three operators dead from traumatic blast and acute lethal radiation.",
+      "Jan-Feb - Remote cranes and armored recovery vehicles dismantle highly radioactive core debris for burial in desert trenches."
+    ],
+    "rootCauses": [
+      "Design vulnerability: reactor could achieve prompt criticality on the withdrawal of a single central control rod ('single-failure vulnerability').",
+      "Manual physical handling of control rods without mechanical motion stops or physical interlocks.",
+      "Mechanical sticking of control rod blades in guide shrouds due to corrosion and thermal bowing, encouraging operators to exert excessive manual force.",
+      "Inadequate supervision during night maintenance shifts."
+    ],
+    "healthPhysicsImpact": "First fatal reactor accident in US history. The bodies of the three servicemen were so heavily contaminated (emitting ~500 R/h) that their heads and arms had to be excised or buried in lead-lined coffins entombed in concrete vaults. Approximately 80 curies of I-131 escaped into the desert air.",
+    "medicalResponse": {
+      "decorporationAgents": ["None (immediate traumatic and ARS fatalities)"],
+      "treatmentProtocols": "Post-mortem forensic radiochemistry: activation of gold in wedding ring ($^{198}\\text{Au}$) and body sodium ($^{24}\\text{Na}$) used to calculate neutron fluence of $1.5 \\times 10^{13} \\text{ n/cm}^2$.",
+      "biodosimetryMethods": ["Gold-198 jewelry neutron activation", "Blood Sodium-24 activation"]
+    },
+    "regulatoryReforms": [
+      "The 'One-Stuck-Rod' Rule: Mandatory requirement for all commercial and military reactors worldwide to remain safely subcritical with the single highest-worth control rod fully withdrawn.",
+      "Ban on direct manual rod lifting without positive mechanical gear drives.",
+      "Creation of rigorous human reliability standards in reactor maintenance."
+    ],
+    "iaeaReportReference": "IDO-19301: SL-1 Reactor Accident Final Report (AEC, 1962)",
+    "relatedModules": [
+      { "modulePath": "/caas-criticality", "moduleName": "CAAS Criticality Alarms", "actionPrompt": "Calculate prompt excursion FWHM duration using Nordheim-Fuchs (VTEST-31)" },
+      { "modulePath": "/criticality", "moduleName": "Criticality & Reactor Core", "actionPrompt": "Verify 4-factor formula and excess reactivity control margin" },
+      { "modulePath": "/spectroscopy", "moduleName": "Gamma Spectroscopy (MCA)", "actionPrompt": "Analyze Au-198 activation peak at 412 keV (VTEST-20)" }
+    ]
+  },
+  {
+    "id": "three_mile_island_1979",
+    "name": "Three Mile Island Unit 2 Partial Core Meltdown",
+    "year": 1979,
+    "date": "March 28, 1979",
+    "location": "Londonderry Township, Dauphin County, Pennsylvania, USA",
+    "coordinates": { "lat": 40.1532, "lon": -76.7247 },
+    "inesLevel": 5,
+    "eventType": "Loss of Coolant Accident (LOCA) & Partial Meltdown",
+    "primaryIsotope": "Xe-133, I-131, Kr-85",
+    "radionuclides": ["Xe-133", "Xe-135", "I-131", "Kr-85", "Cs-137"],
+    "estimatedActivityTBq": 480000.0,
+    "estimatedActivityCi": 13000000.0,
+    "physicalForm": "Noble Gases & Volatile Fission Products",
+    "peakContactDoseRate_Gy_h": 1.0,
+    "fatalities": 0,
+    "arsCases": 0,
+    "peopleScreened": 140000,
+    "evacuees": 140000,
+    "summary": "At 04:00, secondary condensate polishing pumps tripped, leading to a turbine trip and reactor scram. A pilot-operated relief valve (PORV) opened to relieve steam pressure but stuck open. The control room instrument only indicated that electrical power to the solenoid was off, misleading operators into believing the valve was closed. Thinking the pressurizer was solid full of water, operators throttled high-pressure injection (HPI), starving the core. Over 50% of the core melted before cooling was restored 16 hours later.",
+    "chronology": [
+      "04:00:00 - Main feedwater pumps trip; steam generators dry out; auxiliary feedwater valves found closed (maintenance error).",
+      "04:00:08 - PORV opens at 2,255 psi; fails to reseat when pressure drops.",
+      "04:02 - High Pressure Injection automatically initiates, but operators throttle flow to prevent 'going solid'.",
+      "06:18 - Next shift engineer notices 280°F drain line pipe temperature and closes block valve, ending 2-hour loss of coolant.",
+      "06:30-12:00 - Half of the core has uncovered and melted at temperatures exceeding 2,200°C; zircaloy-water reaction generates 1,000 cu ft hydrogen bubble inside vessel.",
+      "13:50 - Hydrogen burn produces 28 psi containment pressure spike.",
+      "March 30 - Governor Thornburgh advises pregnant women and preschool children within 5 miles to evacuate."
+    ],
+    "rootCauses": [
+      "Inadequate control room ergonomics and human-machine interface (HMI): misleading valve status indicator ('lamp off' meant solenoid unpowered, not valve closed).",
+      "Operator training deficiency: training emphasized danger of solid water conditions over core uncover risk.",
+      "Failure to disseminate precursor incident data (Davis-Besse 1977 PORV failure).",
+      "Maintenance tag-out procedure failure: auxiliary feedwater block valves left closed prior to startup."
+    ],
+    "healthPhysicsImpact": "Containment building held 99.9% of core inventory. Only noble gases (~13 million Ci Xe-133) and negligible I-131 (~15 Ci) escaped. Average dose to 2 million surrounding residents was approximately 0.014 mSv (1.4 mrem), less than a chest X-ray. No discernible epidemiological health consequences detected.",
+    "medicalResponse": {
+      "decorporationAgents": ["Potassium Iodide (KI) staged but not distributed"],
+      "treatmentProtocols": "Comprehensive environmental air and milk thermoluminescent dosimeter (TLD) network; long-term epidemiological registry monitored by PA Dept of Health.",
+      "biodosimetryMethods": ["Environmental TLD dosimetry", "Direct thyroid bioassay"]
+    },
+    "regulatoryReforms": [
+      "Establishment of the Institute of Nuclear Power Operations (INPO) for industry-wide peer operational standards.",
+      "Creation of NRC NUREG-0737: comprehensive human factors design, safety parameter display systems (SPDS), and post-accident sampling capabilities.",
+      "Mandatory on-shift Shift Technical Advisors (STAs) with engineering degrees.",
+      "Federal Emergency Management Agency (FEMA) oversight of offsite radiological emergency preparedness (REP)."
+    ],
+    "iaeaReportReference": "NUREG-0585: TMI-2 Lessons Learned Task Force Final Report (NRC, 1979)",
+    "relatedModules": [
+      { "modulePath": "/first-responder", "moduleName": "Tactical CBRN Response", "actionPrompt": "Evaluate EPA-400 Protective Action Guide evacuation thresholds (VTEST-21)" },
+      { "modulePath": "/plume", "moduleName": "Plume Atmospheric Model", "actionPrompt": "Model Xe-133 puff trajectory and ground plane shine (VTEST-18)" },
+      { "modulePath": "/reg", "moduleName": "Regulatory Dashboard", "actionPrompt": "Audit 10 CFR 20 annual public dose limit (1 mSv/yr)" }
+    ]
+  },
+  {
+    "id": "demon_core_1945_1946",
+    "name": "Los Alamos 'Demon Core' Criticality Accidents",
+    "year": 1945,
+    "date": "August 21, 1945 & May 21, 1946",
+    "location": "Omega Site, Los Alamos Laboratory, New Mexico, USA",
+    "coordinates": { "lat": 35.8711, "lon": -106.2842 },
+    "inesLevel": 4,
+    "eventType": "Manual Core Assembly Criticality Bursts",
+    "primaryIsotope": "Pu-239 Prompt Neutrons",
+    "radionuclides": ["Pu-239", "Prompt Neutrons", "Prompt Gammas", "Na-24"],
+    "estimatedActivityTBq": 0.01,
+    "estimatedActivityCi": 0.27,
+    "physicalForm": "Solid 6.2 kg Delta-Phase Plutonium-Gallium Sphere",
+    "peakContactDoseRate_Gy_h": 500.0,
+    "fatalities": 2,
+    "arsCases": 3,
+    "peopleScreened": 20,
+    "evacuees": 0,
+    "summary": "A 6.2 kg delta-phase plutonium sphere ('Rufus') was subject to two fatal criticality accidents while scientists conducted manual neutron reflector assembly experiments ('tickling the dragon's tail'). In August 1945, Harry Daghlian dropped a tungsten carbide brick directly onto the core. In May 1946, Louis Slotin was using a flathead screwdriver blade to maintain a gap between two beryllium reflector hemispheres; the screwdriver slipped, closing the hemisphere and initiating an instantaneous super-prompt critical burst.",
+    "chronology": [
+      "Aug 21, 1945 - Harry Daghlian builds a tungsten carbide reflector wall around plutonium core alone at night. While adding final brick, scintillation counters buzz; his hand twitches and drops 4.4 kg brick onto core. Prompt flash occurs.",
+      "Sept 15, 1945 - Daghlian dies 25 days later from acute radiation syndrome and severe necrotic hand burns (absorbed dose ~5.1 Sv).",
+      "May 21, 1946 - Louis Slotin conducts demonstration before 7 scientists using a flathead screwdriver as a wedge to adjust beryllium reflector dome.",
+      "15:20 - Screwdriver slips; beryllium hemisphere closes over core; instant blue glow and heat wave; Slotin flips upper shell onto floor with his bare hands to shield colleagues.",
+      "May 30, 1946 - Slotin dies 9 days later from massive gastrointestinal and hematopoietic destruction (absorbed dose ~11 Gy)."
+    ],
+    "rootCauses": [
+      "Performance of hands-on, manual manipulation of fissile assemblies without remote handling manipulators or mechanical safety stops.",
+      "Violation of laboratory buddy rules (Daghlian was operating alone at night without a safety observer).",
+      "Overconfidence and normalization of deviance in handling subcritical weapons assemblies."
+    ],
+    "healthPhysicsImpact": "Two brilliant physicists killed in identical fashion by the same physical core. Louis Slotin absorbed ~1,000 rads of neutron and gamma radiation in under 1 second. The core was subsequently melted down and repurposed into weapons stockpiles.",
+    "medicalResponse": {
+      "decorporationAgents": ["None (external neutron/gamma prompt exposure)"],
+      "treatmentProtocols": "Supportive fluid resuscitation, blood transfusions, morphine analgesia for severe intestinal radiation necrosis.",
+      "biodosimetryMethods": ["Blood Sodium-24 activation", "Induced radioactivity in dental restorations"]
+    },
+    "regulatoryReforms": [
+      "Immediate, permanent ban on all manual, hands-on criticality experiments across the entire US nuclear complex.",
+      "Design and construction of remote-controlled criticality testing facilities (Pajarito Remote Control Laboratory) operating behind 1/4-mile earth berms.",
+      "Formulation of the criticality safety double contingency principle (ANSI/ANS-8.1)."
+    ],
+    "iaeaReportReference": "LA-13638: A Review of Criticality Accidents (LANL, 2000)",
+    "relatedModules": [
+      { "modulePath": "/criticality", "moduleName": "Criticality & Reactor Core", "actionPrompt": "Simulate bare vs reflected plutonium core critical mass" },
+      { "modulePath": "/caas-criticality", "moduleName": "CAAS Criticality Alarms", "actionPrompt": "Calculate prompt burst yield and immediate lethality distance (VTEST-31)" },
+      { "modulePath": "/dose", "moduleName": "Dose Calculator", "actionPrompt": "Model prompt neutron RBE quality factor (wR = 20)" }
+    ]
+  },
+  {
+    "id": "ciudad_juarez_1983",
+    "name": "Ciudad Juárez Cobalt-60 Contaminated Rebar",
+    "year": 1983,
+    "date": "December 6, 1983",
+    "location": "Ciudad Juárez, Chihuahua, Mexico",
+    "coordinates": { "lat": 31.6904, "lon": -106.4245 },
+    "inesLevel": 4,
+    "eventType": "Orphan Source / Foundry Contamination",
+    "primaryIsotope": "Co-60",
+    "radionuclides": ["Co-60"],
+    "estimatedActivityTBq": 16.7,
+    "estimatedActivityCi": 450.0,
+    "physicalForm": "6,000 Micro-Pellets of Cobalt-60 Metal (1mm x 1mm)",
+    "peakContactDoseRate_Gy_h": 10.0,
+    "fatalities": 0,
+    "arsCases": 5,
+    "peopleScreened": 4000,
+    "evacuees": 0,
+    "summary": "A maintenance technician at the Centro Médico de Especialidades stole an obsolete Picker C-3000 teletherapy unit containing 450 Ci (16.7 TBq) of Co-60 in 6,000 tiny pellets. He loaded it into a pickup truck, took it to the Yonke Fénix scrap yard, and cut the head open. The magnets punctured the capsule, scattering pellets inside the truck and shredder. Contaminated scrap was sold to Aceros de Chihuahua and Falcón steel foundries, which smelted the cobalt into 6,000 tons of construction rebar and 10,000 metal table bases shipped throughout Mexico and the US.",
+    "chronology": [
+      "Dec 6, 1983 - Vicente Sotelo steals the teletherapy head and transports it in a Datsun pickup truck.",
+      "Dec 6, 14:00 - Scrap workers smash the machine; cobalt pellets scatter into the truck bed, street, and shredder magnets.",
+      "Dec 14 - Contaminated steel melted at Aceros de Chihuahua; radioactive emissions escape into furnace slag and steel bars.",
+      "Jan 16, 1984 - A commercial delivery truck carrying rebar takes a wrong exit onto Pajarito Road near Los Alamos National Laboratory, triggering automated perimeter radiation trip alarms.",
+      "Jan-Feb 1984 - International multi-agency search tracks over 6,000 metric tons of radioactive rebar installed in homes, schools, and exported table pedestal bases."
+    ],
+    "rootCauses": [
+      "Illegal importation and storage of a teletherapy machine without Mexican nuclear commission (CNSNS) permits.",
+      "Absence of radiation portal monitors at scrap yards and metal foundries.",
+      "Unregistered scrap metal transactions of specialized medical devices."
+    ],
+    "healthPhysicsImpact": "Over 4,000 people were exposed; five junkyard workers developed localized cutaneous radiation syndromes and hematological depression. Massive demolition of newly constructed buildings in Mexico was required to excavate radioactive rebar.",
+    "medicalResponse": {
+      "decorporationAgents": ["None (insoluble metallic pellets, external gamma hazard)"],
+      "treatmentProtocols": "Surgical excision of necrotic cutaneous burns; medical monitoring of steel foundry workers.",
+      "biodosimetryMethods": ["Cytogenetic dicentric analysis", "Whole-body gamma counting"]
+    },
+    "regulatoryReforms": [
+      "Mandatory installation of highly sensitive vehicle portal monitors (PVTs) at all scrap metal foundries, borders, and recycling centers internationally.",
+      "Establishment of the IAEA Technical Document Series on radioactive scrap metal screening.",
+      "Enhanced penal codes for abandonment or illicit trafficking of Category 1 and 2 sources."
+    ],
+    "iaeaReportReference": "CNSNS Technical Report / US NRC Information Notice 84-14",
+    "relatedModules": [
+      { "modulePath": "/transport", "moduleName": "Transport Packaging", "actionPrompt": "Verify Type B packaging and Special Form source encapsulation" },
+      { "modulePath": "/dose", "moduleName": "Dose Calculator", "actionPrompt": "Calculate unshielded Co-60 dose rate at 1 meter (VTEST-01)" },
+      { "modulePath": "/shielding", "moduleName": "Shielding & ALARA PAGs", "actionPrompt": "Evaluate concrete and lead HVL attenuation for 1.25 MeV gamma" }
+    ]
+  },
+  {
+    "id": "therac25_1985",
+    "name": "Therac-25 Computer-Controlled Linac Massive Overdoses",
+    "year": 1985,
+    "date": "1985 – 1987",
+    "location": "Tyler (TX), Marietta (GA), Yakima (WA), USA & Hamilton (ON), Canada",
+    "coordinates": { "lat": 32.3513, "lon": -95.3011 },
+    "inesLevel": 3,
+    "eventType": "Medical Linear Accelerator Software Safety Failure",
+    "primaryIsotope": "25 MeV High-Energy Electron Beam",
+    "radionuclides": ["High-Energy Bremsstrahlung & Electrons"],
+    "estimatedActivityTBq": 0.0,
+    "estimatedActivityCi": 0.0,
+    "physicalForm": "Raw 25 MeV Electron Beam (100x Therapeutic Dose)",
+    "peakContactDoseRate_Gy_h": 1000.0,
+    "fatalities": 3,
+    "arsCases": 6,
+    "peopleScreened": 6,
+    "evacuees": 0,
+    "summary": "The Therac-25 was a dual-mode medical linear accelerator engineered by AECL. Unlike earlier Therac-6 and Therac-20 models, all electromechanical hardware interlocks were removed, relying solely on software routines. A software race condition allowed experienced operators who rapidly corrected input keys ('X' to 'E' within 8 seconds) to trigger the beam while the high-current 25 MeV electron gun fired directly at the patient without the tungsten target or scattering foil in place, delivering massive lethal overdoses exceeding 200 Gy.",
+    "chronology": [
+      "June 3, 1985 - Kennestone Hospital (Marietta, GA): 61-year-old patient receives massive localized overdose; develops deep necrosis.",
+      "July 26, 1985 - Ontario Cancer Foundation: 40-year-old patient overexposed; AECL initially denies software could be responsible.",
+      "March 21, 1986 - East Texas Cancer Center (Tyler, TX): Ray Cox overexposed; describes sensation of intense heat and lightning shock; computer displayed 'Malfunction 54'.",
+      "April 11, 1986 - Second Tyler patient overexposed by same operator under identical typing sequence; dies 3 weeks later.",
+      "May 1986 - Physicist Fritz Hager reproduces race condition: rapid entry of 'Up-Arrow' + 'Enter' during magnet positioning bypassed checks.",
+      "Feb 1987 - FDA declares Therac-25 defective; AECL mandated to install physical hardware interlocks."
+    ],
+    "rootCauses": [
+      "Removal of independent electromechanical hardware safety interlocks in reliance on unverified software.",
+      "Race condition bug in PDP-11 assembly code (shared memory flag byte overflow).",
+      "Inadequate software verification, validation (V&V), and absence of defensive programming.",
+      "Failure of manufacturer to investigate initial user overdose reports (dismissing them as impossible)."
+    ],
+    "healthPhysicsImpact": "Six cancer patients received localized radiation overdoses between 150 Gy and 250 Gy (15,000 to 25,000 rads). Three patients died directly from radiation-induced myelopathy, brainstem necrosis, and systemic infections.",
+    "medicalResponse": {
+      "decorporationAgents": ["None (external particle beam)"],
+      "treatmentProtocols": "Hyperbaric oxygen therapy; surgical debridement of necrotic chest wall and temporal lobe; palliative analgesia.",
+      "biodosimetryMethods": ["Physical simulation of electron fluence", "Clinical lesion mapping"]
+    },
+    "regulatoryReforms": [
+      "Foundational case study in software safety engineering (Nancy Leveson's landmark study).",
+      "FDA premarket notification 510(k) and medical device software validation guidelines (IEC 62304).",
+      "Universal mandate for independent hardware safety interlocks on all clinical radiation therapy accelerators."
+    ],
+    "iaeaReportReference": "IEEE Computer: Medical Devices: The Therac-25 (Leveson & Turner, 1993)",
+    "relatedModules": [
+      { "modulePath": "/verify", "moduleName": "Verification Tests", "actionPrompt": "Review IEEE 730 SQA and IEC 62304 verification benchmarks" },
+      { "modulePath": "/xray-tube", "moduleName": "X-Ray Tube Simulator", "actionPrompt": "Compare continuous bremsstrahlung vs raw electron beam flux" },
+      { "modulePath": "/literature", "moduleName": "Core Literature & Physics", "actionPrompt": "Inspect Leveson Therac-25 software safety case documentation" }
+    ]
+  },
+  {
+    "id": "windscale_1957",
+    "name": "Windscale Pile No. 1 Graphite Core Fire",
+    "year": 1957,
+    "date": "October 10, 1957",
+    "location": "Sellafield, Cumberland, United Kingdom",
+    "coordinates": { "lat": 54.4208, "lon": -3.4981 },
+    "inesLevel": 5,
+    "eventType": "Graphite Moderator Fire & Atmospheric Release",
+    "primaryIsotope": "I-131, Po-210, Cs-137",
+    "radionuclides": ["I-131", "Po-210", "Cs-137", "Xe-133", "Te-132"],
+    "estimatedActivityTBq": 740.0,
+    "estimatedActivityCi": 20000.0,
+    "physicalForm": "Burning Metallic Uranium & Oxidized Graphite Particulate",
+    "peakContactDoseRate_Gy_h": 5.0,
+    "fatalities": 0,
+    "arsCases": 0,
+    "peopleScreened": 25000,
+    "evacuees": 0,
+    "summary": "During a routine heating cycle to release stored Wigner energy (lattice dislocations in graphite caused by neutron bombardment), operators applied second-stage nuclear heating too quickly. Metallic uranium fuel cartridges caught fire inside the air-cooled graphite pile. The fire burned for 3 days through 150 channels. When opening inspection plugs, physicists saw fuel cartridges glowing cherry red. Workers heroically extinguished the fire using high-volume water hoses at risk of a hydrogen explosion.",
+    "chronology": [
+      "Oct 7 - Heating cycle initiated to anneal graphite moderator; reactor power raised.",
+      "Oct 8 - Operators apply unexpected second heating burst, believing graphite temperature was dropping.",
+      "Oct 10, 16:30 - Thermocouples spike past 400°C; inspection plug opened; technicians peer directly into flaming core glowing cherry red.",
+      "Oct 10, 22:00 - High-pressure CO2 pumped into core fails to extinguish fire.",
+      "Oct 11, 08:55 - Station manager Tom Tuohy orders fire hoses connected directly into fuel channels; water suppresses fire without steam explosion.",
+      "Oct 12 - UK Ministry of Agriculture institutes 500 km² milk ban to protect public from Iodine-131 ingestion."
+    ],
+    "rootCauses": [
+      "Inadequate scientific understanding of Wigner energy release kinetics in graphite moderators.",
+      "Thermocouples placed in areas of average neutron flux rather than peak temperature hotspots.",
+      "Air-cooled, once-through ventilation design without recirculating containment.",
+      "Filter galleries installed at chimney tops (Sir John Cockcroft's insistence, 'Cockcroft's Follies') captured 95% of volatile material, preventing cataclysmic disaster."
+    ],
+    "healthPhysicsImpact": "Release of 740 TBq of Iodine-131 and 88 TBq of highly toxic Polonium-210. Prompt institution of a milk ban across 500 km² prevented severe pediatric thyroid doses. Estimated to have caused ~33 excess cancer deaths over 50 years.",
+    "medicalResponse": {
+      "decorporationAgents": ["None (milk ban primary countermeasure)"],
+      "treatmentProtocols": "Immediate dumping and condemnation of over 3 million liters of agricultural cow milk.",
+      "biodosimetryMethods": ["Thyroid radioiodine counting in agricultural workers", "Pasture deposition surveys"]
+    },
+    "regulatoryReforms": [
+      "Permanent shutdown and entombment of both Windscale air-cooled plutonium production piles.",
+      "Establishment of the UK Nuclear Installations Inspectorate (NII).",
+      "Separation of civil commercial nuclear energy generation from military weapons production."
+    ],
+    "iaeaReportReference": "Penny Report (1957) / UKAEA Archive Assessment",
+    "relatedModules": [
+      { "modulePath": "/plume", "moduleName": "Plume Atmospheric Model", "actionPrompt": "Simulate atmospheric transport and agricultural deposition" },
+      { "modulePath": "/cbrn-consequence", "moduleName": "CBRN Fallout & Shelter", "actionPrompt": "Model Ten Berge toxic load and radioactive decay integration" },
+      { "modulePath": "/decay", "moduleName": "Radiolysis & Decay Chains", "actionPrompt": "Calculate Bateman decay chain for I-131 to stable Xe-131" }
+    ]
+  },
+  {
+    "id": "lia_2001",
+    "name": "Lia Strontium-90 RTG Forest Scavenging Accident",
+    "year": 2001,
+    "date": "December 2, 2001",
+    "location": "Lia, Enguri River Gorge, Tsalenjikha, Georgia",
+    "coordinates": { "lat": 42.7486, "lon": 42.0239 },
+    "inesLevel": 3,
+    "eventType": "Orphan Radioisotope Thermoelectric Generator (RTG)",
+    "primaryIsotope": "Sr-90",
+    "radionuclides": ["Sr-90", "Y-90"],
+    "estimatedActivityTBq": 2590.0,
+    "estimatedActivityCi": 70000.0,
+    "physicalForm": "Strontium Titanate (SrTiO3) Ceramic Cores",
+    "peakContactDoseRate_Gy_h": 12.0,
+    "fatalities": 1,
+    "arsCases": 3,
+    "peopleScreened": 50,
+    "evacuees": 0,
+    "summary": "Three woodcutters working in a remote freezing forest near the Enguri River stumbled upon two unshielded metal canisters giving off significant radiant heat with melting snow around them. Unaware they were looking at Soviet Strontium-90 radioisotope thermoelectric generator (RTG) heat sources (each containing 35,000 Ci / 1,295 TBq of Sr-90), they carried the warm cylinders to their campsite and slept with their backs pressed directly against them for warmth.",
+    "chronology": [
+      "Dec 2, 2001 - Three lumberjacks find two hot canisters in deep woods; use them as personal heating stones overnight.",
+      "Dec 2, 22:00 - Within 3 hours, all men experience acute nausea, vomiting, dizziness, and intense back erythema.",
+      "Dec 4 - Severe radiation burn blisters appear on backs; lumberjacks seek local medical treatment.",
+      "Dec 22 - Patients transferred to Tbilisi Burn Center with intractable full-thickness cutaneous radiation necrosis down to thoracic vertebrae.",
+      "Jan 2002 - IAEA emergency medical mission dispatched; patients flown to Moscow and Paris specialized burn institutes.",
+      "Feb 2003 - Patient with highest exposure (absorbed dose > 10 Gy localized) dies from chronic sepsis, pulmonary embolism, and radiation ulcer necrosis."
+    ],
+    "rootCauses": [
+      "Disintegration of the Soviet Union leading to abandoned military navigation RTG units in remote former Soviet republics.",
+      "Complete absence of regulatory warning symbols (trefoils) remaining on corroded orphan canisters.",
+      "Total lack of security or perimeter control for abandoned Category 1 radiological heat sources."
+    ],
+    "healthPhysicsImpact": "Contact dose rate exceeded 12 Gy/h due to intense beta emission from Strontium-90 and its daughter Yttrium-90, compounded by energetic Bremsstrahlung radiation. Produced catastrophic full-thickness radiation ulcers requiring multiple latissimus dorsi myocutaneous flap surgeries.",
+    "medicalResponse": {
+      "decorporationAgents": ["Calcium Gluconate", "Supportive"],
+      "treatmentProtocols": "Microvascular free-flap reconstruction in France (Percy Military Hospital); high-dose analgesia; antibiotic coverage for persistent osteomyelitis.",
+      "biodosimetryMethods": ["Dicentric Chromosome Aberration (DCA)", "EPR on bone fragments"]
+    },
+    "regulatoryReforms": [
+      "IAEA global campaign for the recovery, retrieval, and consolidation of abandoned Soviet-era RTGs.",
+      "Replacement of Strontium-90 RTGs with solar power and wind generation for remote lighthouses and radio relays.",
+      "Implementation of the Global Threat Reduction Initiative (GTRI)."
+    ],
+    "iaeaReportReference": "IAEA The Radiological Accident in Lia, Georgia (2014)",
+    "relatedModules": [
+      { "modulePath": "/first-responder", "moduleName": "Tactical CBRN Response", "actionPrompt": "Review localized cutaneous radiation injury (CRI) staging" },
+      { "modulePath": "/internal-dose", "moduleName": "Internal Dosimetry", "actionPrompt": "Calculate Sr-90 / Y-90 secular equilibrium beta stopping power" },
+      { "modulePath": "/dose", "moduleName": "Dose Calculator", "actionPrompt": "Model Bremsstrahlung radiation yield in heavy metals" }
+    ]
+  },
+  {
+    "id": "yanango_1999",
+    "name": "Yanango Industrial Radiography Source Pocket Incident",
+    "year": 1999,
+    "date": "February 20, 1999",
+    "location": "Yanango Hydroelectric Project, Junín Department, Peru",
+    "coordinates": { "lat": -11.1963, "lon": -75.4687 },
+    "inesLevel": 3,
+    "eventType": "Industrial Radiography Overexposure",
+    "primaryIsotope": "Ir-192",
+    "radionuclides": ["Ir-192"],
+    "estimatedActivityTBq": 1.37,
+    "estimatedActivityCi": 37.0,
+    "physicalForm": "Sealed Stainless-Steel Metallic Pellet Capsule",
+    "peakContactDoseRate_Gy_h": 25.0,
+    "fatalities": 0,
+    "arsCases": 1,
+    "peopleScreened": 20,
+    "evacuees": 0,
+    "summary": "During non-destructive testing (NDT) of penstock welds at the Yanango Hydroelectric plant, an unshielded 1.37 TBq (37 Ci) Ir-192 source capsule detached from its pigtail wire and dropped into a tunnel. A welder found the small shiny metal cylinder, mistook it for a pipe fitting, and pocketed it in the right rear pocket of his denim jeans. He worked with it against his buttocks for 6.5 hours before returning home.",
+    "chronology": [
+      "Feb 20, 16:00 - Radiographer fails to perform physical survey meter sweep following radiographic shot.",
+      "Feb 20, 17:00 - Welder picks up dropped source capsule and puts it in right rear pocket.",
+      "Feb 20, 23:30 - Welder experiences severe back pain and buttock erythema; takes off trousers and leaves them on family bed where wife and child sleep.",
+      "Feb 21 - Radiographer notices source missing; retrieves trousers from welder's home.",
+      "March - Welder develops catastrophic necrotic radiation burn with ulceration penetrating deep into gluteal muscle and sciatic nerve.",
+      "April - Patient flown to Percy Military Hospital (Paris); undergoes extensive surgical excision, microsurgical flap grafting, and eventual hemipelvectomy."
+    ],
+    "rootCauses": [
+      "Failure of radiographer to use a calibrated, operational survey meter to verify source retraction into the camera (10 CFR 34 / ISO 3999 violation).",
+      "Inadequate radiographic boundary roping and lack of dedicated safety radiographer.",
+      "Public unawareness regarding the appearance and lethal danger of sealed radiography capsules."
+    ],
+    "healthPhysicsImpact": "Localized contact dose to the right buttock exceeded 10,000 Gy (1,000,000 rads), with an effective whole-body dose of approximately 1.5 Gy. Welder suffered permanent disability, chronic pain syndrome, and limb loss. His wife and child sustained low-level doses.",
+    "medicalResponse": {
+      "decorporationAgents": ["None (external gamma source)"],
+      "treatmentProtocols": "Pioneering cellular therapy: autologous mesenchymal stem cell (MSC) injections at Percy Hospital to stimulate microvascular angiogenetic healing; repetitive surgical debridement.",
+      "biodosimetryMethods": ["Dicentric Chromosome Aberration (DCA)", "Thermographic skin perfusion imaging"]
+    },
+    "regulatoryReforms": [
+      "Mandatory dual-alarm rate meters (chirpers) worn on trunk of all industrial radiographers.",
+      "Physical interlock devices that prevent disconnect of guide tubes until source is physically locked in camera.",
+      "Stringent IAEA and national certification for non-destructive testing personnel."
+    ],
+    "iaeaReportReference": "IAEA The Radiological Accident in Yanango (STI/PUB/1101, 2000)",
+    "relatedModules": [
+      { "modulePath": "/first-responder", "moduleName": "Tactical CBRN Response", "actionPrompt": "Establish 10 CFR 34.41 restricted cordon boundaries" },
+      { "modulePath": "/dose", "moduleName": "Dose Calculator", "actionPrompt": "Calculate unshielded Ir-192 inverse-square contact dose rate (VTEST-01)" },
+      { "modulePath": "/shielding", "moduleName": "Shielding & ALARA PAGs", "actionPrompt": "Evaluate lead collimator shielding factors" }
+    ]
+  },
+  {
+    "id": "samut_prakan_2000",
+    "name": "Samut Prakan Orphan Teletherapy Source Theft",
+    "year": 2000,
+    "date": "January 15, 2000",
+    "location": "Samut Prakan Province, Thailand",
+    "coordinates": { "lat": 13.5991, "lon": 100.5998 },
+    "inesLevel": 4,
+    "eventType": "Orphan Teletherapy Source Dismantlement",
+    "primaryIsotope": "Co-60",
+    "radionuclides": ["Co-60"],
+    "estimatedActivityTBq": 15.7,
+    "estimatedActivityCi": 425.0,
+    "physicalForm": "Cobalt-60 Metal Pellets in Lead/Stainless Housing",
+    "peakContactDoseRate_Gy_h": 2.0,
+    "fatalities": 3,
+    "arsCases": 10,
+    "peopleScreened": 2000,
+    "evacuees": 0,
+    "summary": "An obsolete teletherapy unit containing a 15.7 TBq (425 Ci) Co-60 source had been stored illicitly in an unsecured, open-air parking lot in Bangkok. Four scrap collectors stole the 1,000 kg lead-shielded head and sold it to a junkyard in Samut Prakan. Junkyard workers used an oxyacetylene cutting torch to slice open the lead container, unshielding the Cobalt-60 beam. Over several days, workers and family members suffered catastrophic gamma irradiation.",
+    "chronology": [
+      "Jan 15, 2000 - Scavengers steal heavy lead cylinder from unsecured parking lot.",
+      "Feb 1 - Junkyard owner purchases cylinder; workers begin cutting lead casing with gas torch.",
+      "Feb 12 - Cylinder cut in half; unshielded Co-60 core drops into open air scrap pile.",
+      "Feb 15 - Junkyard workers develop severe vomiting, diarrhea, swollen hands, and hair loss.",
+      "Feb 18 - Medical doctors identify acute radiation syndrome; Office of Atomic Energy for Peace (OAEP) alerted.",
+      "Feb 19-20 - OAEP emergency teams locate source using lead-shielded mechanical backhoes and remote tongs; entomb source in lead container."
+    ],
+    "rootCauses": [
+      "Illegal storage of high-activity medical teletherapy equipment without regulatory security or locks.",
+      "Scrap yard lacked radiation detection instrumentation at intake weigh scales.",
+      "Delay in medical recognition of radiation injury by local clinics."
+    ],
+    "healthPhysicsImpact": "Ten individuals suffered severe Acute Radiation Syndrome (ARS). Three workers died within weeks from bone marrow failure and sepsis. Multiple family members suffered localized necrotic hand burns resulting in bilateral amputations.",
+    "medicalResponse": {
+      "decorporationAgents": ["None (external gamma irradiation)"],
+      "treatmentProtocols": "Hematopoietic growth factors (G-CSF and GM-CSF); barrier nursing in laminar airflow rooms; surgical amputation of gangrenous fingers.",
+      "biodosimetryMethods": ["Dicentric Chromosome Assay", "Micronucleus Assay"]
+    },
+    "regulatoryReforms": [
+      "Thai national inventory and physical confiscation of all disused radioactive sources.",
+      "Establishment of the Thai Nuclear Energy for Peace Act.",
+      "Strengthening of IAEA Category 1-3 security guidelines for scrap processing."
+    ],
+    "iaeaReportReference": "IAEA The Radiological Accident in Samut Prakarn (STI/PUB/1124, 2002)",
+    "relatedModules": [
+      { "modulePath": "/first-responder", "moduleName": "Tactical CBRN Response", "actionPrompt": "Establish emergency isolation perimeter for Category 1 Co-60" },
+      { "modulePath": "/dose", "moduleName": "Dose Calculator", "actionPrompt": "Calculate Co-60 specific gamma ray constant Γ = 1.32 R·m²/Ci·h" },
+      { "modulePath": "/tactical-gis", "moduleName": "Tactical GIS & ATAK Hub", "actionPrompt": "Simulate sensor mesh multilateration of orphan source (VTEST-32)" }
+    ]
+  },
+  {
+    "id": "k19_1961",
+    "name": "K-19 Soviet Nuclear Submarine Reactor Loss of Coolant",
+    "year": 1961,
+    "date": "July 4, 1961",
+    "location": "North Atlantic Ocean (Near Jan Mayen Island)",
+    "coordinates": { "lat": 71.0500, "lon": -8.4500 },
+    "inesLevel": 4,
+    "eventType": "Submarine Reactor Core Meltdown Crisis",
+    "primaryIsotope": "Fission Products & Prompt Gammas",
+    "radionuclides": ["I-131", "Cs-137", "Xe-133", "Prompt Gammas", "Neutrons"],
+    "estimatedActivityTBq": 150.0,
+    "estimatedActivityCi": 4050.0,
+    "physicalForm": "Superheated Primary Reactor Coolant & Corium Fuel",
+    "peakContactDoseRate_Gy_h": 50.0,
+    "fatalities": 8,
+    "arsCases": 30,
+    "peopleScreened": 139,
+    "evacuees": 139,
+    "summary": "While conducting exercises in the North Atlantic, the Soviet Hotel-class nuclear ballistic missile submarine K-19 suffered a major pipe break in its starboard VM-1 pressurized water reactor cooling loop. Reactor core temperature climbed towards 800°C, threatening an uncontrollable prompt-critical meltdown, catastrophic steam explosion, and thermal breach of adjacent R-13 nuclear ballistic missiles. An 8-man engineering team heroically volunteered to enter the unshielded reactor compartment, welding a makeshift cooling line from fresh drinking water reserves.",
+    "chronology": [
+      "04:15 - Primary coolant pipe ruptures; reactor scram automatically triggers, but decay heat causes core temperature to rise uncontrollably.",
+      "05:00 - Core temperature reaches 800°C; control room radiation meters peg off-scale.",
+      "06:00 - Captain Nikolai Zateyev orders jury-rigged emergency coolant pipe fabricated.",
+      "06:30 - Lieutenant Boris Korchilov and seven engineers enter the reactor compartment in pairs without specialized radiation suits, welding pipes in direct 50 Sv/h fields.",
+      "08:00 - Fresh water circulation established; core temperature stabilizes below 400°C, averting catastrophic meltdown.",
+      "July 5 - All eight repair team members suffer acute radiation sickness with lethal doses (> 50-60 Sv) and die within days."
+    ],
+    "rootCauses": [
+      "Rushed submarine construction and sub-standard pipe welding during the Cold War arms race.",
+      "Complete lack of an installed emergency auxiliary core cooling system (ECCS).",
+      "Absence of high-range radiation detection equipment and specialized heavy radiation protective suits aboard the vessel."
+    ],
+    "healthPhysicsImpact": "Eight crew members received fatal whole-body doses exceeding 50 to 60 Sv (5,000 to 6,000 rem) and died within two weeks. Fifteen more died in subsequent years from chronic radiogenic disorders. The entire crew received significant exposures from airborne radioactive steam circulated through the ventilation system.",
+    "medicalResponse": {
+      "decorporationAgents": ["None (catastrophic prompt external gamma doses)"],
+      "treatmentProtocols": "Emergency evacuation to Soviet naval hospital in Polyarny; full-body washing and isolation; palliative end-of-life care.",
+      "biodosimetryMethods": ["Reconstruction from operational time logs", "Hematological decline rates"]
+    },
+    "regulatoryReforms": [
+      "Redesign of all Soviet naval reactors with redundant, independent closed emergency cooling circuits.",
+      "Installation of automated backup decay heat removal systems.",
+      "Mandatory containment compartments capable of complete isolated ventilation lockdown."
+    ],
+    "iaeaReportReference": "Russian Ministry of Atomic Energy Historical Archives (Minatom, 1993)",
+    "relatedModules": [
+      { "modulePath": "/cbrn-consequence", "moduleName": "CBRN Fallout & Shelter", "actionPrompt": "Evaluate acute radiation syndrome (ARS) lethal dose LD50/60" },
+      { "modulePath": "/criticality", "moduleName": "Criticality & Reactor Core", "actionPrompt": "Calculate post-scram decay heat generation curves" },
+      { "modulePath": "/first-responder", "moduleName": "Tactical CBRN Response", "actionPrompt": "Review METREPOL medical triage categories for mass casualties" }
+    ]
+  },
+  {
+    "id": "cosmos954_1978",
+    "name": "Cosmos 954 Nuclear Radar Satellite Re-entry & Dispersal",
+    "year": 1978,
+    "date": "January 24, 1978",
+    "location": "Northwest Territories & Nunavut, Canada",
+    "coordinates": { "lat": 62.4540, "lon": -114.3718 },
+    "inesLevel": 3,
+    "eventType": "Space Nuclear Reactor Satellite Re-entry",
+    "primaryIsotope": "U-235 Fission Products",
+    "radionuclides": ["U-235", "Sr-90", "Cs-137", "I-131", "Ce-144", "Zr-95"],
+    "estimatedActivityTBq": 110.0,
+    "estimatedActivityCi": 2970.0,
+    "physicalForm": "Enriched Uranium-Molybdenum Fuel Core Fragments",
+    "peakContactDoseRate_Gy_h": 5.0,
+    "fatalities": 0,
+    "arsCases": 0,
+    "peopleScreened": 100,
+    "evacuees": 0,
+    "summary": "Cosmos 954 was a Soviet RORSAT ocean radar reconnaissance satellite powered by a BES-5 nuclear reactor containing 50 kg of 90% enriched Uranium-235. The onboard booster rocket designed to propel the spent reactor into a 900-km high graveyard orbit failed. The satellite tumbled out of orbit, re-entering Earth's atmosphere over northern Canada and disintegrating into over 4,000 radioactive fragments scattered across a 124,000 km² swath from Great Slave Lake to northern Alberta.",
+    "chronology": [
+      "Dec 1977 - Cosmos 954 orbit becomes unstable; Soviet authorities warn US that reactor boost failed.",
+      "Jan 24, 1978, 11:53 GMT - Satellite re-enters atmosphere over Queen Charlotte Islands, blazing across the Canadian north.",
+      "Jan 24, 12:00 GMT - Reactor burns and disintegrates over Great Slave Lake, Northwest Territories.",
+      "Jan 25 - Operation Morning Light launched: joint US-Canadian task force deploys airborne gamma spectrometers and mobile search teams across Arctic terrain.",
+      "April - Search teams recover 'The Crater' specimen (emitting 200 R/h) and 'The Antlers' fuel rod fragment (emitting 500 R/h contact).",
+      "Oct 1978 - Cleanup concludes after collecting over 4,000 particulate and core fragments."
+    ],
+    "rootCauses": [
+      "Reliability failure of satellite booster engine meant to separate and loft reactor into storage orbit.",
+      "Lack of aerodynamic backup re-entry core dispersal mechanisms.",
+      "Design of space reactors utilizing highly toxic enriched fuel in low-earth orbit without failsafe ejection."
+    ],
+    "healthPhysicsImpact": "Remarkably, no civilian casualties occurred due to the extreme sparseness of the subarctic Canadian tundra. Several hunters and prospectors passed near fragments before retrieval. Canada successfully billed the Soviet Union for cleanup costs under the 1972 Space Liability Convention.",
+    "medicalResponse": {
+      "decorporationAgents": ["None required"],
+      "treatmentProtocols": "Airborne gamma survey mapping (DoE NEST teams); lead pig containment shielding for recovered core fragments.",
+      "biodosimetryMethods": ["Airborne gamma spectrometer surveying", "Mobile in-situ gamma spectroscopy"]
+    },
+    "regulatoryReforms": [
+      "UN Principles Relevant to the Use of Nuclear Power Sources in Outer Space (Resolution 47/68, 1992).",
+      "Mandatory dual-redundant reactor core separation systems on all subsequent space nuclear missions.",
+      "Phasing out of low-orbit nuclear reactor satellites in favor of solar panels and RTGs."
+    ],
+    "iaeaReportReference": "Operation Morning Light Final Report (ECL/AECB, 1980)",
+    "relatedModules": [
+      { "modulePath": "/tactical-gis", "moduleName": "Tactical GIS & ATAK Hub", "actionPrompt": "Map wide-area sensor picket grid search patterns" },
+      { "modulePath": "/spectroscopy", "moduleName": "Gamma Spectroscopy (MCA)", "actionPrompt": "Analyze U-235 signature lines and fission product decay" },
+      { "modulePath": "/transport", "moduleName": "Transport Packaging", "actionPrompt": "Review Type B accident containment criteria under extreme impact" }
+    ]
+  }
+]
