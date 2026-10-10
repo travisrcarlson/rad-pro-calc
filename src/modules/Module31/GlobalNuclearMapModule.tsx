@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PlotComponent from 'react-plotly.js';
 import {
@@ -8,6 +8,7 @@ import {
   buildGeospatialDossierPayload,
   exportGeospatialPinsToCSV,
   exportGeospatialPinsToJSON,
+  getTimelineYearStats,
   type UnifiedGeospatialPin,
   type GeospatialCategory
 } from '../../services/globalGeospatialService';
@@ -27,13 +28,19 @@ export const GlobalNuclearMapModule: React.FC = () => {
   const [showDetonations, setShowDetonations] = useState<boolean>(true);
   const [showIncidents, setShowIncidents] = useState<boolean>(true);
 
+  // Timeline Player State
+  const [timelineMode, setTimelineMode] = useState<'cumulative' | 'single' | 'off'>('cumulative');
+  const [currentYear, setCurrentYear] = useState<number>(1962);
+  const [isPlaying, setIsPlaying] = useState<boolean>(false);
+  const [playbackSpeed, setPlaybackSpeed] = useState<number>(1); // 1 = 800ms per year
+  const playTimerRef = useRef<any>(null);
+
   // Advanced Filtering State
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedCountry, setSelectedCountry] = useState<string>('all');
   const [activeCategoryFilter, setActiveCategoryFilter] = useState<'all' | GeospatialCategory>('all');
   const [featuredDetonationsOnly, setFeaturedDetonationsOnly] = useState<boolean>(false);
   const [selectedEnvironment, setSelectedEnvironment] = useState<string>('all');
-  const [selectedDecade, setSelectedDecade] = useState<string>('all');
   const [selectedReactorStatus, setSelectedReactorStatus] = useState<string>('all');
   const [selectedReactorType, setSelectedReactorType] = useState<string>('all');
 
@@ -54,7 +61,35 @@ export const GlobalNuclearMapModule: React.FC = () => {
   // All Available Countries
   const countries = useMemo(() => getGeospatialCountries(), []);
 
-  // Filtered Pins
+  // Playback Loop
+  useEffect(() => {
+    if (!isPlaying) {
+      if (playTimerRef.current) clearInterval(playTimerRef.current);
+      return;
+    }
+
+    const intervalMs = Math.round(900 / playbackSpeed);
+    playTimerRef.current = setInterval(() => {
+      setCurrentYear(prev => {
+        if (prev >= 2024) {
+          setIsPlaying(false);
+          return 2024;
+        }
+        return prev + 1;
+      });
+    }, intervalMs);
+
+    return () => {
+      if (playTimerRef.current) clearInterval(playTimerRef.current);
+    };
+  }, [isPlaying, playbackSpeed]);
+
+  // Year Telemetry Stats for Active Year
+  const yearStats = useMemo(() => {
+    return getTimelineYearStats(currentYear);
+  }, [currentYear]);
+
+  // Filtered Pins with Timeline Support
   const pins = useMemo(() => {
     return getUnifiedGeospatialPins({
       includeReactors: showReactors && (activeCategoryFilter === 'all' || activeCategoryFilter === 'reactor'),
@@ -64,9 +99,10 @@ export const GlobalNuclearMapModule: React.FC = () => {
       country: selectedCountry,
       featuredOnly: featuredDetonationsOnly,
       environment: selectedEnvironment,
-      decade: selectedDecade,
       reactorStatus: selectedReactorStatus,
-      reactorType: selectedReactorType
+      reactorType: selectedReactorType,
+      timelineMode,
+      timelineYear: currentYear
     });
   }, [
     showReactors,
@@ -77,12 +113,13 @@ export const GlobalNuclearMapModule: React.FC = () => {
     selectedCountry,
     featuredDetonationsOnly,
     selectedEnvironment,
-    selectedDecade,
     selectedReactorStatus,
-    selectedReactorType
+    selectedReactorType,
+    timelineMode,
+    currentYear
   ]);
 
-  // Aggregate Statistics
+  // Global Aggregate Statistics
   const stats = useMemo(() => {
     const all = getUnifiedGeospatialPins();
     const reactorCount = all.filter(p => p.category === 'reactor').length;
@@ -175,14 +212,16 @@ export const GlobalNuclearMapModule: React.FC = () => {
     navigate('/incidents');
   };
 
-  // Construct Plotly Traces by Category
+  // Construct Plotly Traces by Category with Active Year Flash Highlighting
   const plotData = useMemo(() => {
     const reactorPins = pins.filter(p => p.category === 'reactor');
-    const detonationPins = pins.filter(p => p.category === 'detonation');
+    const pastDetonationPins = pins.filter(p => p.category === 'detonation' && !p.isCurrentYear);
+    const currentYearDetonationPins = pins.filter(p => p.category === 'detonation' && p.isCurrentYear);
     const incidentPins = pins.filter(p => p.category === 'incident');
 
     const traces: any[] = [];
 
+    // 1. Civil Nuclear Power & Research Reactors
     if (reactorPins.length > 0) {
       traces.push({
         type: 'scattergeo',
@@ -198,7 +237,7 @@ export const GlobalNuclearMapModule: React.FC = () => {
             return Math.max(6, Math.min(16, Math.sqrt((p.rawReactor?.capacityMWe || 1000) / 25)));
           }),
           color: reactorPins.map(p => p.color),
-          opacity: 0.88,
+          opacity: 0.85,
           symbol: 'circle',
           line: { width: 1.2, color: '#34d399' }
         },
@@ -206,37 +245,66 @@ export const GlobalNuclearMapModule: React.FC = () => {
       });
     }
 
-    if (detonationPins.length > 0) {
+    // 2. Historical Past Detonations (Cumulative timeline prior years)
+    if (pastDetonationPins.length > 0) {
       traces.push({
         type: 'scattergeo',
         mode: 'markers',
-        name: `Detonations (${detonationPins.length})`,
-        lat: detonationPins.map(p => p.coordinates.lat),
-        lon: detonationPins.map(p => p.coordinates.lon),
-        text: detonationPins.map(p => `<b>${p.name}</b><br>${p.location}<br>${p.primaryMetric}<br>${p.dateOrYear} // ${p.secondaryMetric}`),
+        name: timelineMode !== 'off' ? `Past Tests (${pastDetonationPins.length})` : `Detonations (${pastDetonationPins.length})`,
+        lat: pastDetonationPins.map(p => p.coordinates.lat),
+        lon: pastDetonationPins.map(p => p.coordinates.lon),
+        text: pastDetonationPins.map(p => `<b>${p.name}</b><br>${p.location}<br>${p.primaryMetric}<br>${p.dateOrYear} // ${p.secondaryMetric}`),
         hoverinfo: 'text',
         marker: {
-          size: detonationPins.map(p => {
+          size: pastDetonationPins.map(p => {
             const y = p.rawDetonation?.yieldKt || 20;
-            if (y >= 1000) return 14;
-            if (y >= 100) return 10;
-            if (y >= 10) return 7;
-            return 5;
+            if (y >= 1000) return 12;
+            if (y >= 100) return 9;
+            if (y >= 10) return 6;
+            return 4.5;
           }),
-          color: detonationPins.map(p => p.color),
-          opacity: 0.85,
+          color: pastDetonationPins.map(p => p.color),
+          opacity: 0.75,
           symbol: 'diamond',
-          line: { width: 1.0, color: '#f87171' }
+          line: { width: 0.8, color: '#f87171' }
         },
-        customdata: detonationPins
+        customdata: pastDetonationPins
       });
     }
 
+    // 3. Current Year Active Explosions (Flashing Highlight Effect)
+    if (currentYearDetonationPins.length > 0) {
+      traces.push({
+        type: 'scattergeo',
+        mode: 'markers',
+        name: `💥 Year ${currentYear} Blasts (${currentYearDetonationPins.length})`,
+        lat: currentYearDetonationPins.map(p => p.coordinates.lat),
+        lon: currentYearDetonationPins.map(p => p.coordinates.lon),
+        text: currentYearDetonationPins.map(p => `<b>💥 ${p.name} (${p.dateOrYear})</b><br>${p.location}<br><b>${p.primaryMetric}</b><br>${p.secondaryMetric}`),
+        hoverinfo: 'text',
+        marker: {
+          size: currentYearDetonationPins.map(p => {
+            const y = p.rawDetonation?.yieldKt || 20;
+            if (y >= 1000) return 22;
+            if (y >= 100) return 17;
+            if (y >= 10) return 13;
+            return 10;
+          }),
+          color: '#facc15', // Brilliant electric yellow/gold
+          opacity: 0.98,
+          symbol: 'star',
+          line: { width: 2.5, color: '#ffffff' }
+        },
+        customdata: currentYearDetonationPins
+      });
+    }
+
+    // 4. INES Historical Accidents
     if (incidentPins.length > 0) {
       traces.push({
         type: 'scattergeo',
         mode: 'markers',
-        name: `INES Accidents (${incidentPins.length})`,
+        name: `Accidents (${incidentPins.length})`,
         lat: incidentPins.map(p => p.coordinates.lat),
         lon: incidentPins.map(p => p.coordinates.lon),
         text: incidentPins.map(p => `<b>${p.name}</b><br>${p.location}<br>${p.primaryMetric}<br>${p.secondaryMetric}`),
@@ -252,7 +320,7 @@ export const GlobalNuclearMapModule: React.FC = () => {
       });
     }
 
-    // Add great circle distance arc if distance pins are selected
+    // 5. Great Circle Distance Path
     if (distancePinA && distancePinB) {
       traces.push({
         type: 'scattergeo',
@@ -270,7 +338,7 @@ export const GlobalNuclearMapModule: React.FC = () => {
     }
 
     return traces;
-  }, [pins, distancePinA, distancePinB]);
+  }, [pins, timelineMode, currentYear, distancePinA, distancePinB]);
 
   // Handle click on map markers
   const handlePlotClick = (data: any) => {
@@ -283,45 +351,72 @@ export const GlobalNuclearMapModule: React.FC = () => {
   };
 
   return (
-    <div className="global-nuclear-map-module" style={{ display: 'flex', flexDirection: 'column', gap: '16px', height: '100%' }}>
+    <div
+      className="global-nuclear-map-module"
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '18px',
+        minHeight: '100%',
+        paddingBottom: '40px'
+      }}
+    >
       
-      {/* Top Header */}
-      <div className="panel-header" style={{ marginBottom: '2px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+      {/* 1. TOP HEADER & PROJECTION SELECTOR */}
+      <div className="panel" style={{ padding: '14px 18px', flexShrink: 0 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px' }}>
           <div>
-            <h2 style={{ margin: '0 0 6px 0', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <h2 style={{ margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.4rem' }}>
               <span>🌍 Global Nuclear Geospatial &amp; 3D Earth Hub</span>
-              <span style={{ fontSize: '0.75rem', padding: '3px 8px', background: 'rgba(0, 229, 255, 0.12)', color: 'var(--color-primary)', border: '1px solid rgba(0, 229, 255, 0.3)', borderRadius: '4px' }}>
+              <span style={{ fontSize: '0.72rem', padding: '3px 8px', background: 'rgba(0, 229, 255, 0.12)', color: 'var(--color-primary)', border: '1px solid rgba(0, 229, 255, 0.3)', borderRadius: '4px', fontWeight: 600 }}>
                 IAEA PRIS (739 Units) // 2,038 Weapons Tests // Orthographic 3D
               </span>
             </h2>
-            <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: '0.88rem' }}>
-              Comprehensive 3D planetary observatory mapping 319 civil &amp; research nuclear complexes (739 commercial power units), 2,038 historical atomic &amp; thermonuclear detonations (1945–present), and landmark radiological accident sites.
+            <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: '0.86rem' }}>
+              Comprehensive planetary observatory mapping 319 civil &amp; research complexes (739 commercial power units), 2,038 historic atomic/thermonuclear detonations (1945–present), and landmark radiological accident sites.
             </p>
           </div>
 
           {/* Action & Projection Modes */}
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', gap: '6px', alignItems: 'center', background: 'rgba(0,0,0,0.3)', padding: '4px 8px', borderRadius: '6px', border: '1px solid rgba(0, 229, 255, 0.2)' }}>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '5px', alignItems: 'center', background: 'rgba(0,0,0,0.35)', padding: '4px 8px', borderRadius: '6px', border: '1px solid rgba(0, 229, 255, 0.2)' }}>
               <span style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)', marginRight: '4px' }}>Projection:</span>
               <button
-                className={`btn ${projectionType === 'orthographic' ? 'btn-primary' : 'btn-secondary'}`}
+                className="btn"
                 onClick={() => setProjectionType('orthographic')}
-                style={{ padding: '4px 10px', fontSize: '0.78rem' }}
+                style={{
+                  padding: '4px 10px',
+                  fontSize: '0.78rem',
+                  background: projectionType === 'orthographic' ? 'rgba(0, 229, 255, 0.2)' : 'transparent',
+                  color: projectionType === 'orthographic' ? '#00e5ff' : '#94a3b8',
+                  border: projectionType === 'orthographic' ? '1px solid #00e5ff' : '1px solid transparent'
+                }}
               >
                 🌍 3D Globe
               </button>
               <button
-                className={`btn ${projectionType === 'natural earth' ? 'btn-primary' : 'btn-secondary'}`}
+                className="btn"
                 onClick={() => setProjectionType('natural earth')}
-                style={{ padding: '4px 10px', fontSize: '0.78rem' }}
+                style={{
+                  padding: '4px 10px',
+                  fontSize: '0.78rem',
+                  background: projectionType === 'natural earth' ? 'rgba(0, 229, 255, 0.2)' : 'transparent',
+                  color: projectionType === 'natural earth' ? '#00e5ff' : '#94a3b8',
+                  border: projectionType === 'natural earth' ? '1px solid #00e5ff' : '1px solid transparent'
+                }}
               >
                 🗺️ Natural Earth
               </button>
               <button
-                className={`btn ${projectionType === 'mercator' ? 'btn-primary' : 'btn-secondary'}`}
+                className="btn"
                 onClick={() => setProjectionType('mercator')}
-                style={{ padding: '4px 10px', fontSize: '0.78rem' }}
+                style={{
+                  padding: '4px 10px',
+                  fontSize: '0.78rem',
+                  background: projectionType === 'mercator' ? 'rgba(0, 229, 255, 0.2)' : 'transparent',
+                  color: projectionType === 'mercator' ? '#00e5ff' : '#94a3b8',
+                  border: projectionType === 'mercator' ? '1px solid #00e5ff' : '1px solid transparent'
+                }}
               >
                 🧭 Mercator
               </button>
@@ -333,27 +428,27 @@ export const GlobalNuclearMapModule: React.FC = () => {
                 className="btn btn-secondary"
                 onClick={handleExportCSV}
                 title="Export filtered records as CSV"
-                style={{ fontSize: '0.75rem', padding: '5px 9px' }}
+                style={{ fontSize: '0.75rem', padding: '5px 10px' }}
               >
-                📥 Export CSV
+                📥 CSV
               </button>
               <button
                 className="btn btn-secondary"
                 onClick={handleExportJSON}
                 title="Export filtered records as JSON"
-                style={{ fontSize: '0.75rem', padding: '5px 9px' }}
+                style={{ fontSize: '0.75rem', padding: '5px 10px' }}
               >
-                📥 Export JSON
+                📥 JSON
               </button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Global Status HUD Metrics */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '12px' }}>
+      {/* 2. GLOBAL STATUS HUD METRICS */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', flexShrink: 0 }}>
         <div className="panel" style={{ padding: '12px 14px', borderLeft: '3px solid #10b981' }}>
-          <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Nuclear Power Complexes</div>
+          <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Nuclear Power Complexes</div>
           <div style={{ fontSize: '1.35rem', fontWeight: 'bold', color: '#10b981', marginTop: '2px' }}>
             {stats.reactorCount} Sites (739 Units)
           </div>
@@ -363,7 +458,7 @@ export const GlobalNuclearMapModule: React.FC = () => {
         </div>
 
         <div className="panel" style={{ padding: '12px 14px', borderLeft: '3px solid #ef4444' }}>
-          <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Weapons Detonations &amp; Tests</div>
+          <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Weapons Detonations &amp; Tests</div>
           <div style={{ fontSize: '1.35rem', fontWeight: 'bold', color: '#ef4444', marginTop: '2px' }}>
             {stats.detonationCount} Recorded Events
           </div>
@@ -373,7 +468,7 @@ export const GlobalNuclearMapModule: React.FC = () => {
         </div>
 
         <div className="panel" style={{ padding: '12px 14px', borderLeft: '3px solid #f59e0b' }}>
-          <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Landmark INES Incidents</div>
+          <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Landmark INES Incidents</div>
           <div style={{ fontSize: '1.35rem', fontWeight: 'bold', color: '#f59e0b', marginTop: '2px' }}>
             {stats.incidentCount} Accidents
           </div>
@@ -383,44 +478,299 @@ export const GlobalNuclearMapModule: React.FC = () => {
         </div>
 
         <div className="panel" style={{ padding: '12px 14px', borderLeft: '3px solid #00e5ff' }}>
-          <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Active Map Markers</div>
+          <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Active Map Markers</div>
           <div style={{ fontSize: '1.35rem', fontWeight: 'bold', color: 'var(--color-primary)', marginTop: '2px' }}>
             {pins.length} Plotted Pins
           </div>
           <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
-            Instant Haversine &amp; Simulation Link
+            {timelineMode !== 'off' ? `Timeline Year: ${currentYear}` : 'Instant Haversine &amp; Plume Link'}
           </div>
         </div>
       </div>
 
-      {/* Controls & Layer Toggles Bar */}
-      <div className="panel" style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      {/* 3. INTERACTIVE HISTORICAL TIMELINE PLAYER (NEW FEATURE) */}
+      <div
+        className="panel"
+        style={{
+          padding: '14px 18px',
+          background: 'linear-gradient(180deg, rgba(15, 23, 42, 0.95) 0%, rgba(7, 11, 20, 0.95) 100%)',
+          border: '1px solid rgba(0, 229, 255, 0.3)',
+          borderRadius: '8px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px',
+          flexShrink: 0
+        }}
+      >
+        {/* Timeline Header & Transport Controls */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span style={{ fontSize: '1.05rem', fontWeight: 700, color: '#ecf0f1', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span>⏱️ Nuclear Testing Timeline</span>
+            </span>
+
+            {/* Play/Pause Button */}
+            <button
+              className="btn"
+              onClick={() => setIsPlaying(!isPlaying)}
+              style={{
+                padding: '5px 14px',
+                fontSize: '0.82rem',
+                fontWeight: 700,
+                background: isPlaying ? 'rgba(239, 68, 68, 0.25)' : 'rgba(16, 185, 129, 0.25)',
+                color: isPlaying ? '#f87171' : '#34d399',
+                border: isPlaying ? '1px solid #ef4444' : '1px solid #10b981',
+                borderRadius: '6px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              <span>{isPlaying ? '⏸ Pause' : '▶ Play Timelapse'}</span>
+            </button>
+
+            {/* Step -1 / +1 Year */}
+            <div style={{ display: 'flex', gap: '4px' }}>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setCurrentYear(y => Math.max(1945, y - 1))}
+                disabled={currentYear <= 1945}
+                style={{ padding: '4px 8px', fontSize: '0.74rem' }}
+                title="Step backward one year"
+              >
+                ⏮ -1 Yr
+              </button>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setCurrentYear(y => Math.min(2024, y + 1))}
+                disabled={currentYear >= 2024}
+                style={{ padding: '4px 8px', fontSize: '0.74rem' }}
+                title="Step forward one year"
+              >
+                +1 Yr ⏭
+              </button>
+            </div>
+
+            {/* Speed Pills */}
+            <div style={{ display: 'flex', gap: '3px', background: 'rgba(0,0,0,0.3)', padding: '2px 4px', borderRadius: '4px' }}>
+              {[0.5, 1, 2, 4].map(s => (
+                <button
+                  key={s}
+                  onClick={() => setPlaybackSpeed(s)}
+                  style={{
+                    background: playbackSpeed === s ? 'rgba(0, 229, 255, 0.25)' : 'transparent',
+                    color: playbackSpeed === s ? '#00e5ff' : '#64748b',
+                    border: 'none',
+                    borderRadius: '3px',
+                    fontSize: '0.7rem',
+                    padding: '2px 6px',
+                    cursor: 'pointer',
+                    fontWeight: playbackSpeed === s ? 700 : 400
+                  }}
+                >
+                  {s}x
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Timeline Mode Selector & Active Year Badge */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ display: 'flex', background: 'rgba(0,0,0,0.35)', padding: '3px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <button
+                onClick={() => setTimelineMode('cumulative')}
+                style={{
+                  padding: '3px 8px',
+                  fontSize: '0.73rem',
+                  background: timelineMode === 'cumulative' ? 'rgba(0, 229, 255, 0.2)' : 'transparent',
+                  color: timelineMode === 'cumulative' ? '#00e5ff' : '#94a3b8',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontWeight: timelineMode === 'cumulative' ? 600 : 400
+                }}
+                title="Shows all detonations up to the active year"
+              >
+                Cumulative (1945 → {currentYear})
+              </button>
+              <button
+                onClick={() => setTimelineMode('single')}
+                style={{
+                  padding: '3px 8px',
+                  fontSize: '0.73rem',
+                  background: timelineMode === 'single' ? 'rgba(245, 158, 11, 0.2)' : 'transparent',
+                  color: timelineMode === 'single' ? '#f59e0b' : '#94a3b8',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontWeight: timelineMode === 'single' ? 600 : 400
+                }}
+                title="Shows only detonations in the selected year"
+              >
+                Single Year ({currentYear})
+              </button>
+              <button
+                onClick={() => setTimelineMode('off')}
+                style={{
+                  padding: '3px 8px',
+                  fontSize: '0.73rem',
+                  background: timelineMode === 'off' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
+                  color: timelineMode === 'off' ? '#fff' : '#64748b',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer'
+                }}
+                title="Shows all detonations without timeline filtering"
+              >
+                All Years (Off)
+              </button>
+            </div>
+
+            {/* Large Active Year Display */}
+            <div style={{
+              background: 'rgba(0, 229, 255, 0.15)',
+              border: '1px solid rgba(0, 229, 255, 0.4)',
+              borderRadius: '6px',
+              padding: '4px 14px',
+              color: 'var(--color-primary)',
+              fontFamily: 'var(--font-mono)',
+              fontSize: '1.25rem',
+              fontWeight: 800
+            }}>
+              {currentYear}
+            </div>
+          </div>
+        </div>
+
+        {/* Timeline Range Scrubber Slider */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <input
+            type="range"
+            min="1945"
+            max="2024"
+            step="1"
+            value={currentYear}
+            onChange={(e) => setCurrentYear(parseInt(e.target.value, 10))}
+            style={{
+              width: '100%',
+              accentColor: 'var(--color-primary)',
+              cursor: 'pointer',
+              height: '6px'
+            }}
+          />
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem', color: '#64748b' }}>
+            <span>1945 (Trinity)</span>
+            <span>1954 (Bravo)</span>
+            <span>1961 (Tsar)</span>
+            <span>1962 (Peak)</span>
+            <span>1963 (PTBT)</span>
+            <span>1974 (India)</span>
+            <span>1992 (Moratorium)</span>
+            <span>1998 (Pakistan)</span>
+            <span>2017 (DPRK)</span>
+            <span>2024</span>
+          </div>
+        </div>
+
+        {/* Milestone & Annual Telemetry Banner */}
+        <div style={{
+          background: 'rgba(0,0,0,0.4)',
+          borderLeft: yearStats.milestoneTitle ? '3px solid #facc15' : '3px solid rgba(0, 229, 255, 0.3)',
+          padding: '8px 12px',
+          borderRadius: '4px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '8px'
+        }}>
+          <div>
+            {yearStats.milestoneTitle ? (
+              <div>
+                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#facc15', marginRight: '6px' }}>
+                  {yearStats.flag} {yearStats.milestoneTitle}
+                </span>
+                <span style={{ fontSize: '0.78rem', color: '#cbd5e1' }}>
+                  {yearStats.milestoneNote}
+                </span>
+              </div>
+            ) : (
+              <span style={{ fontSize: '0.78rem', color: '#94a3b8' }}>
+                Nuclear testing operations continuing under international treaty regimes.
+              </span>
+            )}
+          </div>
+
+          {/* Quick Year Telemetry Stats */}
+          <div style={{ display: 'flex', gap: '14px', fontSize: '0.75rem', fontFamily: 'var(--font-mono)' }}>
+            <span style={{ color: '#ecf0f1' }}>
+              Tests in {currentYear}: <strong style={{ color: '#facc15' }}>{yearStats.annualTestCount}</strong> ({yearStats.annualYieldMt.toFixed(2)} Mt)
+            </span>
+            <span style={{ color: '#94a3b8' }}>
+              Cumulative: <strong style={{ color: '#38bdf8' }}>{yearStats.cumulativeTestCount}</strong> ({yearStats.cumulativeYieldMt.toFixed(1)} Mt)
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* 4. CONTROLS & FILTER BAR */}
+      <div className="panel" style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: '12px', flexShrink: 0 }}>
         
         {/* Row 1: Layer Switches + Search + Country */}
-        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
           
-          {/* Layer Toggles */}
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          {/* Layer Visibility Toggles */}
+          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
             <button
-              className={`btn ${showReactors ? 'btn-primary' : 'btn-secondary'}`}
               onClick={() => setShowReactors(!showReactors)}
-              style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.78rem', padding: '4px 10px' }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+                fontSize: '0.76rem',
+                padding: '5px 11px',
+                borderRadius: '5px',
+                cursor: 'pointer',
+                background: showReactors ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.03)',
+                color: showReactors ? '#34d399' : '#64748b',
+                border: showReactors ? '1px solid #10b981' : '1px solid rgba(255,255,255,0.08)'
+              }}
             >
-              <span>🟢 Nuclear Plants ({stats.reactorCount})</span>
+              <span>🟢 Reactors ({stats.reactorCount})</span>
             </button>
 
             <button
-              className={`btn ${showDetonations ? 'btn-primary' : 'btn-secondary'}`}
               onClick={() => setShowDetonations(!showDetonations)}
-              style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.78rem', padding: '4px 10px' }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+                fontSize: '0.76rem',
+                padding: '5px 11px',
+                borderRadius: '5px',
+                cursor: 'pointer',
+                background: showDetonations ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255,255,255,0.03)',
+                color: showDetonations ? '#f87171' : '#64748b',
+                border: showDetonations ? '1px solid #ef4444' : '1px solid rgba(255,255,255,0.08)'
+              }}
             >
               <span>🔴 Detonations ({stats.detonationCount})</span>
             </button>
 
             <button
-              className={`btn ${showIncidents ? 'btn-primary' : 'btn-secondary'}`}
               onClick={() => setShowIncidents(!showIncidents)}
-              style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.78rem', padding: '4px 10px' }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+                fontSize: '0.76rem',
+                padding: '5px 11px',
+                borderRadius: '5px',
+                cursor: 'pointer',
+                background: showIncidents ? 'rgba(245, 158, 11, 0.2)' : 'rgba(255,255,255,0.03)',
+                color: showIncidents ? '#fbbf24' : '#64748b',
+                border: showIncidents ? '1px solid #f59e0b' : '1px solid rgba(255,255,255,0.08)'
+              }}
             >
               <span>🟡 Accidents ({stats.incidentCount})</span>
             </button>
@@ -430,10 +780,10 @@ export const GlobalNuclearMapModule: React.FC = () => {
           <input
             type="text"
             className="form-control"
-            placeholder="Search facility name, test name, series, or country (e.g. 'Bruce', 'Castle Bravo', 'Novaya Zemlya')..."
+            placeholder="Search facility name, test name, series, or country (e.g. 'Castle Bravo', 'Novaya Zemlya', 'Bruce')..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            style={{ flex: '1 1 220px', fontSize: '0.82rem', padding: '5px 12px' }}
+            style={{ flex: '1 1 240px', fontSize: '0.82rem', padding: '6px 12px' }}
           />
 
           {/* Country Selector */}
@@ -441,7 +791,7 @@ export const GlobalNuclearMapModule: React.FC = () => {
             className="form-control"
             value={selectedCountry}
             onChange={(e) => setSelectedCountry(e.target.value)}
-            style={{ width: '170px', fontSize: '0.82rem', padding: '5px 10px' }}
+            style={{ width: '180px', fontSize: '0.82rem', padding: '6px 10px' }}
           >
             <option value="all">All Nations ({countries.length})</option>
             {countries.map(c => (
@@ -457,39 +807,47 @@ export const GlobalNuclearMapModule: React.FC = () => {
               setSelectedCountry('all');
               setSearchQuery('');
               setSelectedEnvironment('all');
-              setSelectedDecade('all');
               setSelectedReactorStatus('all');
               setSelectedReactorType('all');
               setFeaturedDetonationsOnly(false);
+              setTimelineMode('cumulative');
+              setCurrentYear(1962);
             }}
-            style={{ fontSize: '0.76rem', padding: '4px 8px' }}
-            title="Reset all filters and globe center"
+            style={{ fontSize: '0.76rem', padding: '5px 10px' }}
+            title="Reset all filters, timeline, and globe position"
           >
             ↺ Reset All
           </button>
         </div>
 
-        {/* Row 2: Deep Drilldown Filters */}
-        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '8px' }}>
+        {/* Row 2: Deep Drilldown Dropdowns */}
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '10px' }}>
           
-          {/* Landmark Tests Toggle */}
+          {/* Landmark Featured Tests Switch */}
           <button
-            className={`btn ${featuredDetonationsOnly ? 'btn-primary' : 'btn-secondary'}`}
             onClick={() => setFeaturedDetonationsOnly(!featuredDetonationsOnly)}
-            style={{ fontSize: '0.74rem', padding: '3px 8px', display: 'flex', alignItems: 'center', gap: '4px' }}
-            title="Toggle between landmark featured operations (77) and the full historical detonations catalog (2,038)"
+            style={{
+              fontSize: '0.74rem',
+              padding: '4px 10px',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              background: featuredDetonationsOnly ? 'rgba(0, 229, 255, 0.2)' : 'rgba(255,255,255,0.03)',
+              color: featuredDetonationsOnly ? 'var(--color-primary)' : '#94a3b8',
+              border: featuredDetonationsOnly ? '1px solid var(--color-primary)' : '1px solid rgba(255,255,255,0.1)'
+            }}
+            title="Toggle between landmark operations (77) and the full historical detonations catalog (2,038)"
           >
-            <span>{featuredDetonationsOnly ? '⭐ Landmark Tests (77)' : '🌐 All Weapons Tests (2,038)'}</span>
+            {featuredDetonationsOnly ? '⭐ Landmark Tests Only (77)' : '🌐 All Weapons Tests (2,038)'}
           </button>
 
           {/* Test Environment Filter */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
             <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>Environment:</span>
             <select
               className="form-control"
               value={selectedEnvironment}
               onChange={(e) => setSelectedEnvironment(e.target.value)}
-              style={{ fontSize: '0.74rem', padding: '3px 6px', width: '130px' }}
+              style={{ fontSize: '0.75rem', padding: '4px 8px', width: '135px' }}
             >
               <option value="all">All Environments</option>
               <option value="Atmospheric">Atmospheric / Air</option>
@@ -499,34 +857,14 @@ export const GlobalNuclearMapModule: React.FC = () => {
             </select>
           </div>
 
-          {/* Decade Filter */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>Decade:</span>
-            <select
-              className="form-control"
-              value={selectedDecade}
-              onChange={(e) => setSelectedDecade(e.target.value)}
-              style={{ fontSize: '0.74rem', padding: '3px 6px', width: '100px' }}
-            >
-              <option value="all">All Decades</option>
-              <option value="1940s">1940s</option>
-              <option value="1950s">1950s</option>
-              <option value="1960s">1960s</option>
-              <option value="1970s">1970s</option>
-              <option value="1980s">1980s</option>
-              <option value="1990s">1990s</option>
-              <option value="2000s">2000s+</option>
-            </select>
-          </div>
-
           {/* Reactor Status Filter */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
             <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>Plant Status:</span>
             <select
               className="form-control"
               value={selectedReactorStatus}
               onChange={(e) => setSelectedReactorStatus(e.target.value)}
-              style={{ fontSize: '0.74rem', padding: '3px 6px', width: '130px' }}
+              style={{ fontSize: '0.75rem', padding: '4px 8px', width: '135px' }}
             >
               <option value="all">All Statuses</option>
               <option value="Operational">Operational</option>
@@ -536,14 +874,14 @@ export const GlobalNuclearMapModule: React.FC = () => {
             </select>
           </div>
 
-          {/* Reactor Technology / Family Filter */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          {/* Reactor Architecture / Family Filter */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
             <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>Architecture:</span>
             <select
               className="form-control"
               value={selectedReactorType}
               onChange={(e) => setSelectedReactorType(e.target.value)}
-              style={{ fontSize: '0.74rem', padding: '3px 6px', width: '130px' }}
+              style={{ fontSize: '0.75rem', padding: '4px 8px', width: '140px' }}
             >
               <option value="all">All Architectures</option>
               <option value="PWR">PWR</option>
@@ -560,8 +898,8 @@ export const GlobalNuclearMapModule: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Geospatial Workspace (Globe + Inspector Drawer) */}
-      <div style={{ display: 'grid', gridTemplateColumns: selectedPin ? '1fr 400px' : '1fr', gap: '16px', flex: 1, minHeight: '520px' }}>
+      {/* 5. MAIN GEOSPATIAL WORKSPACE (GLOBE CANVAS + INSPECTOR PANEL) */}
+      <div style={{ display: 'grid', gridTemplateColumns: selectedPin ? '1fr 410px' : '1fr', gap: '18px', minHeight: '580px', flexShrink: 0 }}>
         
         {/* Globe Visualization Canvas */}
         <div
@@ -574,7 +912,8 @@ export const GlobalNuclearMapModule: React.FC = () => {
             flexDirection: 'column',
             background: '#070b14',
             border: '1px solid rgba(0, 229, 255, 0.25)',
-            borderRadius: '8px'
+            borderRadius: '8px',
+            minHeight: '580px'
           }}
         >
           {/* Top Floating Helper Tag */}
@@ -583,7 +922,7 @@ export const GlobalNuclearMapModule: React.FC = () => {
             top: '12px',
             left: '14px',
             zIndex: 10,
-            background: 'rgba(5, 10, 18, 0.85)',
+            background: 'rgba(5, 10, 18, 0.88)',
             backdropFilter: 'blur(4px)',
             border: '1px solid rgba(0, 229, 255, 0.2)',
             borderRadius: '6px',
@@ -598,7 +937,7 @@ export const GlobalNuclearMapModule: React.FC = () => {
             data={plotData}
             layout={{
               autosize: true,
-              height: 540,
+              height: 580,
               margin: { t: 0, b: 0, l: 0, r: 0 },
               paper_bgcolor: 'transparent',
               plot_bgcolor: 'transparent',
@@ -625,7 +964,7 @@ export const GlobalNuclearMapModule: React.FC = () => {
               legend: {
                 x: 0.02,
                 y: 0.05,
-                bgcolor: 'rgba(5, 10, 18, 0.85)',
+                bgcolor: 'rgba(5, 10, 18, 0.88)',
                 bordercolor: 'rgba(0, 229, 255, 0.3)',
                 borderwidth: 1,
                 font: { color: '#ecf0f1', size: 11 }
@@ -651,11 +990,11 @@ export const GlobalNuclearMapModule: React.FC = () => {
               display: 'flex',
               flexDirection: 'column',
               gap: '12px',
-              background: 'rgba(5, 10, 18, 0.88)',
+              background: 'rgba(5, 10, 18, 0.92)',
               border: `1px solid ${selectedPin.color}`,
-              boxShadow: '0 8px 30px rgba(0,0,0,0.5)',
+              boxShadow: '0 8px 30px rgba(0,0,0,0.6)',
               overflowY: 'auto',
-              maxHeight: '600px'
+              maxHeight: '620px'
             }}
           >
             {/* Header */}
@@ -846,12 +1185,12 @@ export const GlobalNuclearMapModule: React.FC = () => {
         )}
       </div>
 
-      {/* Distance Measurement Bar (When Active) */}
+      {/* 6. DISTANCE MEASUREMENT BANNER (WHEN ACTIVE) */}
       {distancePinA && distancePinB && measuredDistanceKm !== null && (
         <div
           className="panel"
           style={{
-            padding: '12px 16px',
+            padding: '12px 18px',
             background: 'rgba(0, 229, 255, 0.08)',
             border: '1px solid rgba(0, 229, 255, 0.4)',
             borderRadius: '6px',
@@ -859,21 +1198,22 @@ export const GlobalNuclearMapModule: React.FC = () => {
             justifyContent: 'space-between',
             alignItems: 'center',
             flexWrap: 'wrap',
-            gap: '10px'
+            gap: '10px',
+            flexShrink: 0
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '0.84rem', color: '#ecf0f1' }}>
+            <span style={{ fontSize: '0.86rem', color: '#ecf0f1' }}>
               📏 Great Circle Distance between <strong>{distancePinA.name}</strong> and <strong>{distancePinB.name}</strong>:
             </span>
-            <span style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--color-primary)', fontFamily: 'var(--font-mono)' }}>
+            <span style={{ fontSize: '1.15rem', fontWeight: 'bold', color: 'var(--color-primary)', fontFamily: 'var(--font-mono)' }}>
               {measuredDistanceKm.toLocaleString(undefined, { maximumFractionDigits: 1 })} km
             </span>
             <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
               ({(measuredDistanceKm * 0.539957).toFixed(1)} Nautical Miles)
             </span>
-            <span style={{ fontSize: '0.78rem', color: '#f59e0b' }}>
-              ⚡ Shockwave transit: ~{(measuredDistanceKm / 0.34).toFixed(0)}s (air)
+            <span style={{ fontSize: '0.8rem', color: '#f59e0b', fontWeight: 600 }}>
+              ⚡ Shockwave transit: ~{(measuredDistanceKm / 0.34).toFixed(0)}s (air speed)
             </span>
           </div>
           <button
@@ -882,45 +1222,76 @@ export const GlobalNuclearMapModule: React.FC = () => {
               setDistancePinA(null);
               setDistancePinB(null);
             }}
-            style={{ fontSize: '0.76rem', padding: '4px 8px' }}
+            style={{ fontSize: '0.76rem', padding: '4px 10px' }}
           >
             Clear Measurement
           </button>
         </div>
       )}
 
-      {/* Bottom Directory Grid / Quick-Select Cards */}
-      <div className="panel" style={{ padding: '14px 16px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
-          <h4 style={{ margin: 0, fontSize: '0.92rem', color: '#fff' }}>
-            📋 Global Nuclear Directory ({pins.length} Matches)
+      {/* 7. BOTTOM DIRECTORY GRID / QUICK-SELECT CARDS */}
+      <div className="panel" style={{ padding: '14px 18px', flexShrink: 0 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+          <h4 style={{ margin: 0, fontSize: '0.94rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span>📋 Global Nuclear Site Directory</span>
+            <span style={{ fontSize: '0.72rem', padding: '2px 6px', background: 'rgba(255,255,255,0.06)', borderRadius: '3px', color: 'var(--color-text-muted)' }}>
+              {pins.length} Matches Plotted
+            </span>
           </h4>
           <div style={{ display: 'flex', gap: '6px' }}>
             <button
-              className={`btn ${activeCategoryFilter === 'all' ? 'btn-primary' : 'btn-secondary'}`}
               onClick={() => setActiveCategoryFilter('all')}
-              style={{ fontSize: '0.75rem', padding: '3px 8px' }}
+              style={{
+                fontSize: '0.74rem',
+                padding: '3px 9px',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                background: activeCategoryFilter === 'all' ? 'rgba(0, 229, 255, 0.2)' : 'transparent',
+                color: activeCategoryFilter === 'all' ? 'var(--color-primary)' : '#94a3b8',
+                border: activeCategoryFilter === 'all' ? '1px solid var(--color-primary)' : '1px solid rgba(255,255,255,0.08)'
+              }}
             >
               All Types
             </button>
             <button
-              className={`btn ${activeCategoryFilter === 'reactor' ? 'btn-primary' : 'btn-secondary'}`}
               onClick={() => setActiveCategoryFilter('reactor')}
-              style={{ fontSize: '0.75rem', padding: '3px 8px' }}
+              style={{
+                fontSize: '0.74rem',
+                padding: '3px 9px',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                background: activeCategoryFilter === 'reactor' ? 'rgba(16, 185, 129, 0.2)' : 'transparent',
+                color: activeCategoryFilter === 'reactor' ? '#34d399' : '#94a3b8',
+                border: activeCategoryFilter === 'reactor' ? '1px solid #10b981' : '1px solid rgba(255,255,255,0.08)'
+              }}
             >
               Reactors ({stats.reactorCount})
             </button>
             <button
-              className={`btn ${activeCategoryFilter === 'detonation' ? 'btn-primary' : 'btn-secondary'}`}
               onClick={() => setActiveCategoryFilter('detonation')}
-              style={{ fontSize: '0.75rem', padding: '3px 8px' }}
+              style={{
+                fontSize: '0.74rem',
+                padding: '3px 9px',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                background: activeCategoryFilter === 'detonation' ? 'rgba(239, 68, 68, 0.2)' : 'transparent',
+                color: activeCategoryFilter === 'detonation' ? '#f87171' : '#94a3b8',
+                border: activeCategoryFilter === 'detonation' ? '1px solid #ef4444' : '1px solid rgba(255,255,255,0.08)'
+              }}
             >
               Detonations ({stats.detonationCount})
             </button>
             <button
-              className={`btn ${activeCategoryFilter === 'incident' ? 'btn-primary' : 'btn-secondary'}`}
               onClick={() => setActiveCategoryFilter('incident')}
-              style={{ fontSize: '0.75rem', padding: '3px 8px' }}
+              style={{
+                fontSize: '0.74rem',
+                padding: '3px 9px',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                background: activeCategoryFilter === 'incident' ? 'rgba(245, 158, 11, 0.2)' : 'transparent',
+                color: activeCategoryFilter === 'incident' ? '#fbbf24' : '#94a3b8',
+                border: activeCategoryFilter === 'incident' ? '1px solid #f59e0b' : '1px solid rgba(255,255,255,0.08)'
+              }}
             >
               Accidents ({stats.incidentCount})
             </button>
@@ -932,9 +1303,9 @@ export const GlobalNuclearMapModule: React.FC = () => {
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
           gap: '10px',
-          maxHeight: '220px',
+          maxHeight: '260px',
           overflowY: 'auto',
-          paddingRight: '4px'
+          paddingRight: '6px'
         }}>
           {pins.map(pin => (
             <div
@@ -957,7 +1328,7 @@ export const GlobalNuclearMapModule: React.FC = () => {
                   {pin.name}
                 </span>
                 <span style={{ fontSize: '0.68rem', padding: '1px 5px', borderRadius: '3px', background: `${pin.color}22`, color: pin.color, fontWeight: 'bold' }}>
-                  {pin.category === 'reactor' ? pin.typeOrClassification : pin.category === 'detonation' ? 'TEST' : 'INES'}
+                  {pin.category === 'reactor' ? pin.typeOrClassification : pin.category === 'detonation' ? (pin.year ? `${pin.year}` : 'TEST') : 'INES'}
                 </span>
               </div>
               <div style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)' }}>
@@ -971,7 +1342,7 @@ export const GlobalNuclearMapModule: React.FC = () => {
         </div>
       </div>
 
-      {/* Universal 21 CFR Part 11 Audit Dossier Modal */}
+      {/* 8. UNIVERSAL 21 CFR PART 11 AUDIT DOSSIER MODAL */}
       {activeDossierPayload && (
         <AuditDossierModal
           isOpen={isDossierOpen}

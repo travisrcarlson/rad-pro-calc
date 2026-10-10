@@ -91,6 +91,8 @@ export interface UnifiedGeospatialPin {
   primaryMetric: string;
   secondaryMetric: string;
   dateOrYear: string;
+  year?: number;
+  isCurrentYear?: boolean;
   typeOrClassification: string;
   color: string;
   symbol: string;
@@ -114,6 +116,91 @@ export function getAllDetonations(): NuclearDetonationRecord[] {
 
 export function getAllIncidentsWithCoords(): any[] {
   return INCIDENTS.filter(i => i.coordinates && typeof i.coordinates.lat === 'number');
+}
+
+/**
+ * Historical milestone descriptions for nuclear testing years.
+ */
+export const HISTORICAL_MILESTONES: Record<number, { title: string; note: string; flag: string }> = {
+  1945: { title: "Dawn of the Atomic Age (Trinity & WWII)", note: "US conducts Trinity test at Alamogordo (21 kt); combat drops on Hiroshima (15 kt) and Nagasaki (21 kt).", flag: "🇺🇸" },
+  1946: { title: "Operation Crossroads (Bikini Atoll)", note: "US conducts Able and Baker underwater tests to evaluate nuclear blast survivability on naval warships.", flag: "🇺🇸" },
+  1948: { title: "Operation Sandstone", note: "Enewetak Atoll tests validating levitated core designs for higher explosive efficiency.", flag: "🇺🇸" },
+  1949: { title: "First Soviet A-Bomb (RDS-1 / First Lightning)", note: "Soviet Union detonates 22 kt implosion plutonium bomb at Semipalatinsk Polygon, ending US nuclear monopoly.", flag: "🇷🇺" },
+  1951: { title: "Nevada Test Site Inauguration", note: "Operation Ranger establishes the Nevada Proving Grounds (NTS) for continental atmospheric testing.", flag: "🇺🇸" },
+  1952: { title: "First Thermonuclear Detonation (Ivy Mike)", note: "US detonates 10.4 Mt cryogenic liquid deuterium device at Enewetak, obliterating Elugelab island. UK tests first A-bomb (Hurricane).", flag: "🇺🇸🇬🇧" },
+  1953: { title: "Soviet Thermonuclear Test (RDS-6s 'Layer Cake')", note: "First Soviet thermonuclear test (400 kt) using alternate layers of fissionable material and fusion fuel.", flag: "🇷🇺" },
+  1954: { title: "Castle Bravo 15 Megaton Super-Yield Disaster", note: "US dry-fuel lithium deuteride thermonuclear test at Bikini yields 2.5x expected, causing extensive radiological contamination.", flag: "🇺🇸" },
+  1955: { title: "First True Two-Stage Soviet H-Bomb (RDS-37)", note: "Sakharov 'Third Idea' radiation implosion design detonated at Semipalatinsk (1.6 Mt).", flag: "🇷🇺" },
+  1957: { title: "Operation Plumbbob & UK Operation Grapple", note: "Intensive US testing (29 nuclear tests); UK successfully tests first thermonuclear device (Grapple X).", flag: "🇺🇸🇬🇧" },
+  1958: { title: "Operation Hardtack & US/Soviet Moratorium", note: "77 tests conducted prior to a temporary voluntary testing moratorium (1958–1961).", flag: "🇺🇸🇷🇺" },
+  1960: { title: "Gerboise Bleue: France Becomes 4th Nuclear Power", note: "France detonates 70 kt atmospheric device in the Sahara Desert at Reggane, Algeria.", flag: "🇫🇷" },
+  1961: { title: "Tsar Bomba (RDS-220, 50 Megatons)", note: "Largest explosive detonation in human history dropped by Tu-95 over Novaya Zemlya; shockwave circled the globe 3 times.", flag: "🇷🇺" },
+  1962: { title: "Cold War Peak: 178 Detonations in One Year", note: "Highest annual testing cadence in history during the Cuban Missile Crisis (US Operation Dominic and Soviet Novaya Zemlya super-yield series).", flag: "🇺🇸🇷🇺" },
+  1963: { title: "Partial Nuclear Test Ban Treaty (PTBT)", note: "US, USSR, and UK sign treaty banning atmospheric, space, and underwater tests; testing moves entirely underground.", flag: "🌐" },
+  1964: { title: "Project 596: China Becomes 5th Nuclear Power", note: "China detonates its first atomic bomb (22 kt U-235 implosion) at Lop Nur test ground.", flag: "🇨🇳" },
+  1967: { title: "China Detonates First Thermonuclear Device (3.3 Mt)", note: "China transitions from A-bomb to H-bomb in just 32 months (Test No. 6), the fastest progression of any nuclear state.", flag: "🇨🇳" },
+  1968: { title: "Operation Canopus (France)", note: "France detonates its first thermonuclear weapon (2.6 Mt) at Fangataufa Atoll.", flag: "🇫🇷" },
+  1971: { title: "Project Cannikin (5 Megatons Underground)", note: "Largest underground nuclear test conducted by the United States, detonated at 1,870 m depth on Amchitka Island, Alaska.", flag: "🇺🇸" },
+  1974: { title: "Smiling Buddha: India's First Nuclear Test", note: "India conducts underground nuclear test (12 kt) at Pokhran, designated a 'peaceful nuclear explosion'.", flag: "🇮🇳" },
+  1979: { title: "Vela Incident (South Atlantic)", note: "Double-flash optical sensor alert on US Vela satellite indicative of an unannounced low-yield nuclear test.", flag: "❓" },
+  1985: { title: "Soviet Test Moratorium", note: "Mikhail Gorbachev announces unilateral Soviet moratorium on nuclear testing.", flag: "🇷🇺" },
+  1992: { title: "End of US & Soviet Nuclear Testing", note: "Operation Aqueduct test Divider (Sept 23, 1992) is the final US nuclear test; Russia conducts last test in 1990.", flag: "🇺🇸🇷🇺" },
+  1995: { title: "Final French Moruroa Campaign", note: "France conducts its final 6 underground tests at Moruroa and Fangataufa before permanent site closure.", flag: "🇫🇷" },
+  1996: { title: "Comprehensive Nuclear-Test-Ban Treaty (CTBT)", note: "CTBT opens for signature at the United Nations, establishing international monitoring system (IMS).", flag: "🌐" },
+  1998: { title: "Pokhran-II & Chagai-I Nuclear Showdown", note: "India conducts 5 tests (Operation Shakti); Pakistan responds with 6 underground tests at Ras Koh Hills.", flag: "🇮🇳🇵🇰" },
+  2006: { title: "First North Korean Underground Test", note: "DPRK conducts sub-kiloton test in horizontal tunnel at Punggye-ri.", flag: "🇰🇵" },
+  2017: { title: "Punggye-ri Thermonuclear Test (Mb 6.3)", note: "North Korea tests high-yield two-stage thermonuclear device (~150–250 kt), causing mountain collapse.", flag: "🇰🇵" }
+};
+
+export interface TimelineYearStats {
+  year: number;
+  annualTestCount: number;
+  annualYieldMt: number;
+  cumulativeTestCount: number;
+  cumulativeYieldMt: number;
+  leadingCountry: string;
+  milestoneTitle?: string;
+  milestoneNote?: string;
+  flag?: string;
+}
+
+/**
+ * Computes chronological telemetry for a given timeline year.
+ */
+export function getTimelineYearStats(year: number): TimelineYearStats {
+  const annual = DETONATIONS.filter(d => d.year === year);
+  const cumulative = DETONATIONS.filter(d => d.year <= year);
+
+  let annualYieldKt = 0;
+  annual.forEach(d => { annualYieldKt += d.yieldKt; });
+
+  let cumulativeYieldKt = 0;
+  cumulative.forEach(d => { cumulativeYieldKt += d.yieldKt; });
+
+  const countryCounts: Record<string, number> = {};
+  annual.forEach(d => { countryCounts[d.country] = (countryCounts[d.country] || 0) + 1; });
+  let leadingCountry = 'None';
+  let maxCount = 0;
+  for (const [c, cnt] of Object.entries(countryCounts)) {
+    if (cnt > maxCount) {
+      maxCount = cnt;
+      leadingCountry = `${c} (${cnt})`;
+    }
+  }
+
+  const milestone = HISTORICAL_MILESTONES[year];
+
+  return {
+    year,
+    annualTestCount: annual.length,
+    annualYieldMt: annualYieldKt / 1000,
+    cumulativeTestCount: cumulative.length,
+    cumulativeYieldMt: cumulativeYieldKt / 1000,
+    leadingCountry,
+    milestoneTitle: milestone?.title,
+    milestoneNote: milestone?.note,
+    flag: milestone?.flag
+  };
 }
 
 /**
@@ -149,6 +236,8 @@ export interface GeospatialFilterOptions {
   decade?: string | 'all';
   reactorStatus?: string | 'all';
   reactorType?: string | 'all';
+  timelineMode?: 'off' | 'cumulative' | 'single';
+  timelineYear?: number;
 }
 
 export function getUnifiedGeospatialPins(options: GeospatialFilterOptions = {}): UnifiedGeospatialPin[] {
@@ -162,7 +251,9 @@ export function getUnifiedGeospatialPins(options: GeospatialFilterOptions = {}):
     environment = 'all',
     decade = 'all',
     reactorStatus = 'all',
-    reactorType = 'all'
+    reactorType = 'all',
+    timelineMode = 'off',
+    timelineYear = 2024
   } = options;
 
   const pins: UnifiedGeospatialPin[] = [];
@@ -204,6 +295,7 @@ export function getUnifiedGeospatialPins(options: GeospatialFilterOptions = {}):
         primaryMetric: isResearch ? `${r.thermalMWth} MWth (Research)` : `${r.capacityMWe.toLocaleString()} MWe (${r.thermalMWth.toLocaleString()} MWth)`,
         secondaryMetric: `${r.unitsCount} Unit${r.unitsCount > 1 ? 's' : ''} // ${r.status}`,
         dateOrYear: r.firstGridYear ? `Grid: ${r.firstGridYear}` : 'N/A',
+        year: r.firstGridYear ?? undefined,
         typeOrClassification: r.type,
         color: isResearch ? '#a855f7' : isOperational ? '#10b981' : isUnderConst ? '#38bdf8' : '#64748b',
         symbol: 'circle',
@@ -216,6 +308,10 @@ export function getUnifiedGeospatialPins(options: GeospatialFilterOptions = {}):
   // 2. Process Detonations & Test Sites
   if (includeDetonations) {
     DETONATIONS.forEach(d => {
+      // Timeline filter
+      if (timelineMode === 'cumulative' && timelineYear !== undefined && d.year > timelineYear) return;
+      if (timelineMode === 'single' && timelineYear !== undefined && d.year !== timelineYear) return;
+
       if (featuredOnly && !d.isFeatured) return;
       if (country !== 'all' && d.country.toLowerCase() !== country.toLowerCase()) return;
       if (environment !== 'all' && d.environment && d.environment !== environment) return;
@@ -234,6 +330,8 @@ export function getUnifiedGeospatialPins(options: GeospatialFilterOptions = {}):
         if (!match) return;
       }
 
+      const isCurrentYear = timelineMode !== 'off' && timelineYear !== undefined && d.year === timelineYear;
+
       pins.push({
         id: d.id,
         category: 'detonation',
@@ -244,8 +342,16 @@ export function getUnifiedGeospatialPins(options: GeospatialFilterOptions = {}):
         primaryMetric: `Yield: ${d.yieldDisplay}`,
         secondaryMetric: `${d.testType} // ${d.environment || d.purpose}`,
         dateOrYear: d.date,
+        year: d.year,
+        isCurrentYear,
         typeOrClassification: d.testType,
-        color: d.yieldKt >= 1000 ? '#ef4444' : d.yieldKt >= 100 ? '#f97316' : '#eab308',
+        color: isCurrentYear
+          ? '#facc15' // Brilliant bright sunburst gold for current year tests!
+          : d.yieldKt >= 1000
+          ? '#ef4444'
+          : d.yieldKt >= 100
+          ? '#f97316'
+          : '#eab308',
         symbol: 'diamond',
         isFeatured: !!d.isFeatured,
         rawDetonation: d
@@ -283,6 +389,7 @@ export function getUnifiedGeospatialPins(options: GeospatialFilterOptions = {}):
         primaryMetric: `INES Level ${inc.inesLevel}`,
         secondaryMetric: `${inc.fatalities} Fatalities // ${inc.primaryIsotope}`,
         dateOrYear: inc.date,
+        year: inc.date ? parseInt(inc.date.slice(0, 4), 10) : undefined,
         typeOrClassification: inc.eventType,
         color: inc.inesLevel >= 7 ? '#ef4444' : inc.inesLevel >= 5 ? '#f59e0b' : '#00e5ff',
         symbol: 'cross',
