@@ -33,6 +33,7 @@ const MonteCarloModule = lazy(() => import('./modules/MonteCarlo/MonteCarloModul
 const DetectorHardwareModule = lazy(() => import('./modules/Hardware/DetectorHardwareModule'));
 const ScenarioBuilderModule = lazy(() => import('./modules/Scenarios/ScenarioBuilderModule'));
 const XRayDistortionModule = lazy(() => import('./modules/XRayDistortion/XRayDistortionModule'));
+const CBRNConsequenceModule = lazy(() => import('./modules/Module25/CBRNConsequenceModule'));
 
 import { RegulatoryProvider } from './context/RegulatoryContext';
 import { RegulatorySelectorBar } from './components/RegulatorySelectorBar';
@@ -137,6 +138,7 @@ const NAV_CATEGORIES: NavCategory[] = [
     iconSymbol: '▲',
     items: [
       { path: '/first-responder', label: 'Tactical CBRN Response', badge: 'ERG/REAC-TS', keywords: ['first responder', 'cbrn', 'hazmat', 'triage', 'decon', 'ki', 'dtpa', 'cordon', 'erg 2024'] },
+      { path: '/cbrn-consequence', label: 'CBRN Fallout & Shelter', badge: 'Way-Wigner / NCRP-165', keywords: ['cbrn', 'fallout', 'shelter', 'wigner', '7-10 rule', 'protection factor', 'aegl', 'tih', 'egress', 'evacuation', 'biodosimetry', 'dicentric', 'metrepol'] },
       { path: '/scenarios', label: 'Incident Scenario Drills', badge: 'INES / .radcase', keywords: ['scenario', 'drill', 'incident', 'case', 'goiania', 'tokaimura', 'cask', 'radcase'] },
       { path: '/responder', label: 'Reverse Triangulation', badge: 'Isopleths', keywords: ['responder', 'triangulation', 'source term', 'search', 'pinpoint'] },
       { path: '/plume', label: 'Plume Atmospheric Model', badge: 'Gaussian', keywords: ['plume', 'atmospheric', 'pasquill', 'dispersion', 'wind', 'fallout'] },
@@ -432,6 +434,7 @@ const App: React.FC = () => {
                     <Route path="/marssim" element={<MARSSIMModule />} />
                     <Route path="/brachytherapy" element={<BrachytherapyModule />} />
                     <Route path="/first-responder" element={<FirstResponderModule />} />
+                    <Route path="/cbrn-consequence" element={<CBRNConsequenceModule />} />
                     <Route path="/monte-carlo" element={<MonteCarloModule />} />
                     <Route path="/hardware" element={<DetectorHardwareModule />} />
                     <Route path="/scenarios" element={<ScenarioBuilderModule />} />

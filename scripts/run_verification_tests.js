@@ -309,6 +309,24 @@ const tests = [
     },
     tolerance: 0.01,
     units: 'mm (Ug)'
+  },
+  {
+    id: 'VTEST-28',
+    name: 'Way-Wigner Fission Product Decay & In-Shelter Dose Integration (t=1h to 24h, PF=10)',
+    module: 'CBRN Consequence & Fallout (Module 25)',
+    standard: 'NCRP Report No. 165 / Glasstone & Dolan (1977)',
+    expected: 23.5194,
+    compute: () => {
+      const r1 = 100.0; // R/h at 1 hr
+      const t1 = 1.0;
+      const t2 = 24.0;
+      const pf = 10.0;
+      // D(t1, t2) = (5 * r1 / pf) * (t1^(-0.2) - t2^(-0.2))
+      const doseShelter = (5.0 * r1 / pf) * (Math.pow(t1, -0.2) - Math.pow(t2, -0.2));
+      return doseShelter;
+    },
+    tolerance: 0.01,
+    units: 'R'
   }
 ];
 

@@ -818,6 +818,36 @@ const runAllVerificationTests = (): VerificationTest[] => {
     });
   }
 
+  // VTEST-28: Way-Wigner Fission Product Decay & In-Shelter Dose Integration
+  {
+    const r1 = 100.0; // R/h at 1h
+    const t1 = 1.0;
+    const t2 = 24.0;
+    const pf = 10.0;
+    const expectedDose = 23.5194;
+    const computedDose = (5.0 * r1 / pf) * (Math.pow(t1, -0.2) - Math.pow(t2, -0.2));
+    const err = Math.abs((computedDose - expectedDose) / expectedDose) * 100;
+    tests.push({
+      id: 'VTEST-28',
+      name: 'Way-Wigner Fission Product Decay & In-Shelter Dose Integration',
+      module: 'CBRN Consequence & Fallout (Module 25)',
+      category: 'Atmospheric',
+      standard: 'NCRP Report No. 165 / Glasstone & Dolan (1977)',
+      standardDoc: 'NCRP Report No. 165: Responding to a Radiological or Nuclear Terrorism Incident / Glasstone Ch. 9',
+      formulaKatex: 'D(t_1, t_2) = \\frac{1}{\\text{PF}} \\int_{t_1}^{t_2} R_1 t^{-1.2} dt = \\frac{5 R_1}{\\text{PF}} \\left[ t_1^{-0.2} - t_2^{-0.2} \\right]',
+      inputsDesc: 'R₁ = 100.0 R/h, t₁ = 1.0 h, t₂ = 24.0 h, Protection Factor PF = 10.0',
+      expectedValue: expectedDose,
+      expectedUnits: 'R',
+      expectedDisplay: '23.5194 R (at PF = 10)',
+      computedValue: computedDose,
+      computedDisplay: `${computedDose.toFixed(4)} R (at PF = 10)`,
+      tolerancePct: 0.01,
+      errorPct: err,
+      passed: err <= 0.01,
+      notes: 'Gold-standard Way-Wigner t^-1.2 fission product integral for civil defense shelter dose assessment.'
+    });
+  }
+
   return tests;
 };
 

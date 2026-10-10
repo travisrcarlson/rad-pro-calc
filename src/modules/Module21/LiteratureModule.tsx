@@ -1362,12 +1362,71 @@ const METHOD_DOCS: MethodDoc[] = [
     benchmarks: 'Validated against IAEA INES User\'s Manual historical benchmarks (Chernobyl Level 7, Fukushima Level 7, Three Mile Island Level 5, Goiania Level 5, Tokaimura Level 4) and FDA 21 CFR Part 11 guidelines.'
   },
 
+  // 30. Module 25: CBRN Tactical Consequence, Fallout & Shelter Optimization
+  {
+    id: 'M25-CBRNConsequence',
+    moduleId: 'Module 25',
+    moduleName: 'CBRN Consequence, Fallout & Shelter Optimization',
+    domain: 'Environmental Dispersion & Response',
+    title: 'Way-Wigner Fission Product Decay, Expedient Shelter Protection Factors & Evacuation Timing Optimization',
+    overview: 'Simulates nuclear detonation groundshine fallout fields, power-law radiological decay rates, expedient multi-layer building shielding attenuation, optimal shelter egress crossover timing, and cytogenetic biodosimetry under NCRP Report No. 165, FEMA Planning Guidance, and IAEA TRS-405.',
+    standards: [
+      { org: 'NCRP', code: 'Report No. 165', year: '2010', title: 'Responding to a Radiological or Nuclear Terrorism Incident: A Guide for Decision Makers' },
+      { org: 'FEMA', code: 'Planning Guidance 2nd Ed.', year: '2022', title: 'Nuclear Detonation Planning Guidance: Response and Recovery' },
+      { org: 'Glasstone & Dolan', code: 'Effects of Nuclear Weapons 3rd Ed.', year: '1977', title: 'Chapter IX: Residual Radiation and Fallout' },
+      { org: 'IAEA', code: 'Technical Reports Series No. 405', year: '2001', title: 'Cytogenetic Analysis for Radiation Dose Assessment: A Manual' }
+    ],
+    primaryFormula: 'D(t_1, t_2) = \\frac{1}{\\text{PF}} \\int_{t_1}^{t_2} R_1 t^{-1.2} dt = \\frac{5 R_1}{\\text{PF}} \\left[ t_1^{-0.2} - t_2^{-0.2} \\right]',
+    secondaryFormulas: [
+      { label: 'Way-Wigner Fission Decay Empirical Power Law ("7-10 Rule")', formula: 'R(t) = R_1 \\cdot t^{-1.2} \\implies R(7t) \\approx 0.1 \\cdot R(t), \\quad R(49t) \\approx 0.01 \\cdot R(t)' },
+      { label: 'Optimal Evacuation Departure Crossover Point', formula: 't_{\\text{depart}} = \\arg\\min_{t} \\left[ \\int_{t_{\\text{arr}}}^t \\frac{R(t^{\\prime})}{\\text{PF}_1} dt^{\\prime} + \\int_t^{t + \\Delta t} \\frac{R(t^{\\prime})}{\\text{PF}_{\\text{veh}}} dt^{\\prime} + \\int_{t + \\Delta t}^{T} \\frac{R(t^{\\prime})}{\\text{PF}_2} dt^{\\prime} \\right]' },
+      { label: 'IAEA Dicentric Chromosome Assay Dose Quadratic Inversion', formula: 'Y = c + \\alpha D + \\beta D^2 \\implies D = \\frac{-\\alpha + \\sqrt{\\alpha^2 + 4\\beta(Y - c)}}{2\\beta}' },
+      { label: 'Ten Berge Chemical Toxic Load Exponent (Infiltration)', formula: 'L = \\int_0^T C_{\\text{indoor}}(t)^n dt, \\quad \\frac{dC_{\\text{in}}}{dt} = \\text{ACH} \\cdot (C_{\\text{out}} - C_{\\text{in}})' }
+    ],
+    derivationSteps: [
+      {
+        stepTitle: '1. Way-Wigner Decay Integration',
+        explanation: 'Fission product activity represents the composite sum of hundreds of decay chains. Frank and Metropolis (1947) and Way and Wigner (1948) demonstrated that statistical integration over multiple radioactive nuclides yields a power law decay t^(-1.2):',
+        math: 'R(t) = R_1 \\cdot t^{-1.2} \\implies \\int_{t_1}^{t_2} t^{-1.2} dt = \\left[ \\frac{t^{-0.2}}{-0.2} \\right]_{t_1}^{t_2} = -5 \\left( t_2^{-0.2} - t_1^{-0.2} \\right) = 5 \\left( t_1^{-0.2} - t_2^{-0.2} \\right)'
+      },
+      {
+        stepTitle: '2. Expedient Shelter Protection Factor (PF)',
+        explanation: 'Protection Factor (PF) is defined as the ratio of unshielded exposure rate 1 meter above an infinite plane to the exposure rate at an interior detector point. For composite multilayer structures with areal mass density sigma:',
+        math: '\\text{PF} = \\frac{\\dot{D}_{\\text{unshielded}}}{\\dot{D}_{\\text{shelter}}} \\approx \\prod_{i=1}^m 2^{\\frac{x_i}{\\text{HVL}_i}}'
+      },
+      {
+        stepTitle: '3. Optimal Evacuation Timing Dilemma',
+        explanation: 'Occupants in poor shelters face a trade-off: remaining accumulates steady in-shelter dose, while evacuating imposes a high transit dose. Minimizing total dose requires solving dD_total/dt_depart = 0, yielding the exact departure window.',
+        math: '\\frac{dD_{\\text{total}}}{dt_{\\text{dep}}} = \\frac{R(t_{\\text{dep}})}{\\text{PF}_1} + \\frac{R(t_{\\text{dep}}+\\Delta t) - R(t_{\\text{dep}})}{\\text{PF}_{\\text{veh}}} - \\frac{R(t_{\\text{dep}}+\\Delta t)}{\\text{PF}_2} = 0'
+      },
+      {
+        stepTitle: '4. Cytogenetic Dicentric Chromosome Inversion',
+        explanation: 'Radiation induces double-strand DNA breaks that misrepair into dicentric ring chromosomes. The yield follows the linear-quadratic model Y = c + alpha*D + beta*D^2. Inverting this quadratic equation reconstructs absorbed dose with Poisson confidence bounds:',
+        math: 'D = \\frac{-\\alpha + \\sqrt{\\alpha^2 + 4\\beta(Y - c)}}{2\\beta}'
+      }
+    ],
+    variables: [
+      { symbol: 'R_1', description: 'Reference exposure rate at t = 1.0 hour post-burst', units: 'R·h⁻¹ or Gy·h⁻¹' },
+      { symbol: '\\text{PF}', description: 'Structural Protection Factor of the shelter', units: 'dimensionless (≥ 1.0)' },
+      { symbol: 't_1, t_2', description: 'Beginning and ending integration time points post-detonation', units: 'hours' },
+      { symbol: '\\text{ACH}', description: 'Air changes per hour building infiltration ventilation rate', units: 'h⁻¹' },
+      { symbol: 'Y', description: 'Dicentric chromosome frequency per scored metaphase cell', units: 'dicentrics/cell' },
+      { symbol: '\\alpha, \\beta', description: 'Linear and quadratic yield coefficients for 60Co / Fission gammas', units: 'Gy⁻¹, Gy⁻²' }
+    ],
+    assumptions: [
+      'Early fallout decay follows empirical t^(-1.2) power law over the first 6 months.',
+      'Ground contamination is distributed homogeneously over an infinite flat plane.',
+      'Shelter ventilation infiltration follows continuous stirred-tank reactor (CSTR) air exchange.'
+    ],
+    benchmarks: 'Validated against NCRP Report No. 165 Table 3.1 protection factors, FEMA Nuclear Planning Guidance, Glasstone & Dolan Chapter 9 decay data, and VTEST-28.'
+  },
+
   // === FORWARD-LOOKING EXPANSION METHODOLOGIES (FUTURE RESEARCH & SPECIFICATIONS) ===
 
   // EXP-1: 10 CFR Part 61 Radioactive Waste Characterization & Disposal
   {
     id: 'EXP-10CFR61',
-    moduleId: 'Module 25 (Expansion)',
+    moduleId: 'Module 26 (Expansion)',
     moduleName: 'Radioactive Waste Characterization (10 CFR 61)',
     domain: 'Regulatory Standards & Transport Security',
     title: '10 CFR Part 61.55 Waste Classification (Class A/B/C/GTCC) & Sum of Fractions Rule',
@@ -1400,7 +1459,7 @@ const METHOD_DOCS: MethodDoc[] = [
   // EXP-2: ANSI/ANS-8.3 Criticality Accident Alarm System (CAAS)
   {
     id: 'EXP-CAAS',
-    moduleId: 'Module 26 (Expansion)',
+    moduleId: 'Module 27 (Expansion)',
     moduleName: 'Criticality Accident Alarm System (ANSI/ANS-8.3)',
     domain: 'Nuclear Kinetics & Reactivity',
     title: 'Criticality Accident Alarm Systems (CAAS), Minimum Accident of Concern & 20 rad/min Threshold',
@@ -1431,7 +1490,7 @@ const METHOD_DOCS: MethodDoc[] = [
   // EXP-3: Bethe-Bloch Ion Stopping Power & Bragg Peak
   {
     id: 'EXP-BetheBloch',
-    moduleId: 'Module 27 (Expansion)',
+    moduleId: 'Module 28 (Expansion)',
     moduleName: 'Alpha & Heavy Ion Stopping Power',
     domain: 'Medical & Advanced Expansion',
     title: 'Bethe-Bloch Equation & Bragg Peak Energy Deposition in Matter',
@@ -1464,7 +1523,7 @@ const METHOD_DOCS: MethodDoc[] = [
   // EXP-4: Space Radiation & Galactic Cosmic Rays
   {
     id: 'EXP-SpaceRad',
-    moduleId: 'Module 28 (Expansion)',
+    moduleId: 'Module 29 (Expansion)',
     moduleName: 'Space Radiation & GCR Transport',
     domain: 'Medical & Advanced Expansion',
     title: 'Badhwar-O\'Neill GCR Model, Solar Modulation Φ & SPE Shielding',
@@ -1572,7 +1631,7 @@ const LiteratureModule: React.FC = () => {
           style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.95rem', padding: '10px 18px', borderBottom: activeTab === 'expansion' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'expansion' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'expansion' ? 'bold' : 'normal' }}
           onClick={() => setActiveTab('expansion')}
         >
-          🚀 Research & Expansion Specifications (Modules 25+)
+          🚀 Research & Expansion Specifications (Modules 26+)
         </button>
         <button
           className={`nav-link ${activeTab === 'standards' ? 'active' : ''}`}
@@ -2004,6 +2063,27 @@ const LiteratureModule: React.FC = () => {
                   <td style={{ padding: '10px' }}>2017</td>
                   <td style={{ padding: '10px' }}>General requirements for competence of testing and calibration laboratories (§ 7.11 Control of Data)</td>
                   <td style={{ padding: '10px', color: 'var(--color-text-muted)' }}>Data integrity validation, cryptographic traceability, software qualification criteria for radiological testing.</td>
+                </tr>
+                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  <td style={{ padding: '10px', fontWeight: 'bold', color: '#00E5FF' }}>NCRP Report No. 165</td>
+                  <td style={{ padding: '10px' }}>NCRP</td>
+                  <td style={{ padding: '10px' }}>2010</td>
+                  <td style={{ padding: '10px' }}>Responding to a Radiological or Nuclear Terrorism Incident: A Guide for Decision Makers</td>
+                  <td style={{ padding: '10px', color: 'var(--color-text-muted)' }}>Expedient shelter protection factors (PF), Way-Wigner decay modeling, and evacuation departure crossover timing.</td>
+                </tr>
+                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  <td style={{ padding: '10px', fontWeight: 'bold', color: '#00E5FF' }}>FEMA Nuclear Guidance</td>
+                  <td style={{ padding: '10px' }}>FEMA / DHS</td>
+                  <td style={{ padding: '10px' }}>2022</td>
+                  <td style={{ padding: '10px' }}>Nuclear Detonation Planning Guidance: Response and Recovery (2nd Edition)</td>
+                  <td style={{ padding: '10px', color: 'var(--color-text-muted)' }}>Dangerous fallout zone boundaries, life-saving shelter-in-place protocols, and transit exposure minimizers.</td>
+                </tr>
+                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  <td style={{ padding: '10px', fontWeight: 'bold', color: '#00E5FF' }}>IAEA TRS-405</td>
+                  <td style={{ padding: '10px' }}>IAEA</td>
+                  <td style={{ padding: '10px' }}>2001</td>
+                  <td style={{ padding: '10px' }}>Cytogenetic Analysis for Radiation Dose Assessment: A Manual</td>
+                  <td style={{ padding: '10px', color: 'var(--color-text-muted)' }}>Dicentric chromosome aberration calibration curves (linear-quadratic yield) and mass casualty biodosimetry triage.</td>
                 </tr>
               </tbody>
             </table>
