@@ -40,6 +40,7 @@ const MedicalCountermeasuresModule = lazyWithRetry(() => import('./modules/Modul
 const CAASCriticalityModule = lazyWithRetry(() => import('./modules/Module28/CAASCriticalityModule'), 'CAASCriticalityModule');
 const TacticalGISModule = lazyWithRetry(() => import('./modules/Module29/TacticalGISModule'), 'TacticalGISModule');
 const HistoricalIncidentsModule = lazyWithRetry(() => import('./modules/Module30/HistoricalIncidentsModule'), 'HistoricalIncidentsModule');
+const GlobalNuclearMapModule = lazyWithRetry(() => import('./modules/Module31/GlobalNuclearMapModule'), 'GlobalNuclearMapModule');
 
 import { RegulatoryProvider } from './context/RegulatoryContext';
 import { RegulatorySelectorBar } from './components/RegulatorySelectorBar';
@@ -200,6 +201,7 @@ const NAV_CATEGORIES: NavCategory[] = [
       { path: '/nuclides', label: 'Nuclide Database', badge: 'ICRP-107', keywords: ['nuclide', 'isotope', 'half-life', 'decay mode', 'energy', 'branching'] },
       { path: '/equipment', label: 'Equipment Catalog', badge: 'Detectors', keywords: ['equipment', 'detector', 'geiger', 'scintillator', 'efficiency'] },
       { path: '/incidents', label: 'Historical Incidents DB', badge: 'INES 1-7', keywords: ['historical', 'incident', 'accident', 'chernobyl', 'fukushima', 'goiania', 'tokaimura', 'sl-1', 'forensics', 'case'] },
+      { path: '/global-map', label: 'Global 3D Earth Hub', badge: 'Reactors & Tests', keywords: ['globe', 'map', 'earth', 'reactor', 'detonation', 'test site', 'nuclear', 'geospatial', '3d', 'coordinates', 'orbit', 'polygon'] },
       { path: '/hardware', label: 'Hardware Pulse Counter', badge: 'WebSerial/Audio', keywords: ['hardware', 'serial', 'audio', 'pulse', 'cpm', 'cps', 'currie', 'dead-time', 'geiger'] },
       { path: '/reg', label: 'Regulatory Dashboard', badge: '10 CFR 20', keywords: ['regulatory', 'nrc', 'agreement state', 'compliance', 'limits'] }
     ]
@@ -451,6 +453,7 @@ const App: React.FC = () => {
                     <Route path="/caas-criticality" element={<CAASCriticalityModule />} />
                     <Route path="/tactical-gis" element={<TacticalGISModule />} />
                     <Route path="/incidents" element={<HistoricalIncidentsModule />} />
+                    <Route path="/global-map" element={<GlobalNuclearMapModule />} />
                     <Route path="/monte-carlo" element={<MonteCarloModule />} />
                     <Route path="/hardware" element={<DetectorHardwareModule />} />
                     <Route path="/scenarios" element={<ScenarioBuilderModule />} />

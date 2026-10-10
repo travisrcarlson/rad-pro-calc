@@ -1,0 +1,1060 @@
+[
+  {
+    "id": "bruce-ca",
+    "name": "Bruce Nuclear Generating Station",
+    "country": "Canada",
+    "region": "Ontario",
+    "coordinates": {
+      "lat": 44.3253,
+      "lon": -81.5989
+    },
+    "type": "PHWR/CANDU",
+    "status": "Operational",
+    "capacityMWe": 6550,
+    "thermalMWth": 19650,
+    "unitsCount": 8,
+    "firstGridYear": 1977,
+    "operator": "Bruce Power",
+    "fissionInventoryTBq": {
+      "I131": 310000000.0,
+      "Cs137": 48000000.0,
+      "Xe133": 520000000.0
+    },
+    "notes": "Largest nuclear generating facility in North America by capacity."
+  },
+  {
+    "id": "darlington-ca",
+    "name": "Darlington Nuclear Generating Station",
+    "country": "Canada",
+    "region": "Ontario",
+    "coordinates": {
+      "lat": 43.8697,
+      "lon": -78.7236
+    },
+    "type": "PHWR/CANDU",
+    "status": "Operational",
+    "capacityMWe": 3512,
+    "thermalMWth": 10536,
+    "unitsCount": 4,
+    "firstGridYear": 1990,
+    "operator": "Ontario Power Generation",
+    "fissionInventoryTBq": {
+      "I131": 160000000.0,
+      "Cs137": 25000000.0,
+      "Xe133": 280000000.0
+    },
+    "notes": "Supplies ~20% of Ontario electricity; CANDU-9 design basis."
+  },
+  {
+    "id": "pickering-ca",
+    "name": "Pickering Nuclear Generating Station",
+    "country": "Canada",
+    "region": "Ontario",
+    "coordinates": {
+      "lat": 43.8117,
+      "lon": -79.0667
+    },
+    "type": "PHWR/CANDU",
+    "status": "Operational",
+    "capacityMWe": 3100,
+    "thermalMWth": 9300,
+    "unitsCount": 6,
+    "firstGridYear": 1971,
+    "operator": "Ontario Power Generation",
+    "fissionInventoryTBq": {
+      "I131": 140000000.0,
+      "Cs137": 22000000.0,
+      "Xe133": 240000000.0
+    },
+    "notes": "Located near Toronto GTA; ongoing refurbishment program."
+  },
+  {
+    "id": "chalk-river-ca",
+    "name": "Chalk River Laboratories (NRU / Research)",
+    "country": "Canada",
+    "region": "Ontario",
+    "coordinates": {
+      "lat": 45.9986,
+      "lon": -77.3622
+    },
+    "type": "Research / Heavy Water",
+    "status": "Permanent Shutdown",
+    "capacityMWe": 0,
+    "thermalMWth": 135,
+    "unitsCount": 1,
+    "firstGridYear": 1957,
+    "operator": "Canadian Nuclear Laboratories",
+    "fissionInventoryTBq": {
+      "I131": 2100000.0,
+      "Cs137": 350000.0,
+      "Xe133": 3800000.0
+    },
+    "notes": "Birthplace of CANDU; historical global producer of Mo-99 medical radioisotopes."
+  },
+  {
+    "id": "palo-verde-us",
+    "name": "Palo Verde Generating Station",
+    "country": "United States",
+    "region": "Arizona",
+    "coordinates": {
+      "lat": 33.3964,
+      "lon": -112.8681
+    },
+    "type": "PWR",
+    "status": "Operational",
+    "capacityMWe": 3937,
+    "thermalMWth": 11970,
+    "unitsCount": 3,
+    "firstGridYear": 1986,
+    "operator": "Arizona Public Service",
+    "fissionInventoryTBq": {
+      "I131": 190000000.0,
+      "Cs137": 30000000.0,
+      "Xe133": 320000000.0
+    },
+    "notes": "Combustion Engineering System 80 PWR; only nuclear plant cooled entirely by reclaimed wastewater."
+  },
+  {
+    "id": "browns-ferry-us",
+    "name": "Browns Ferry Nuclear Plant",
+    "country": "United States",
+    "region": "Alabama",
+    "coordinates": {
+      "lat": 34.7042,
+      "lon": -87.1189
+    },
+    "type": "BWR",
+    "status": "Operational",
+    "capacityMWe": 3400,
+    "thermalMWth": 10200,
+    "unitsCount": 3,
+    "firstGridYear": 1974,
+    "operator": "Tennessee Valley Authority (TVA)",
+    "fissionInventoryTBq": {
+      "I131": 160000000.0,
+      "Cs137": 26000000.0,
+      "Xe133": 270000000.0
+    },
+    "notes": "GE BWR-4 with Mark I containment; site of famous 1975 cable tray fire."
+  },
+  {
+    "id": "vogtle-us",
+    "name": "Alvin W. Vogtle Electric Generating Plant",
+    "country": "United States",
+    "region": "Georgia",
+    "coordinates": {
+      "lat": 33.1425,
+      "lon": -81.7628
+    },
+    "type": "PWR",
+    "status": "Operational",
+    "capacityMWe": 4536,
+    "thermalMWth": 13600,
+    "unitsCount": 4,
+    "firstGridYear": 1987,
+    "operator": "Southern Nuclear",
+    "fissionInventoryTBq": {
+      "I131": 220000000.0,
+      "Cs137": 34000000.0,
+      "Xe133": 370000000.0
+    },
+    "notes": "Units 3 & 4 are the first Westinghouse AP1000 generation III+ reactors deployed in the US."
+  },
+  {
+    "id": "peach-bottom-us",
+    "name": "Peach Bottom Atomic Power Station",
+    "country": "United States",
+    "region": "Pennsylvania",
+    "coordinates": {
+      "lat": 39.7589,
+      "lon": -76.2692
+    },
+    "type": "BWR",
+    "status": "Operational",
+    "capacityMWe": 2770,
+    "thermalMWth": 8310,
+    "unitsCount": 2,
+    "firstGridYear": 1974,
+    "operator": "Constellation Energy",
+    "fissionInventoryTBq": {
+      "I131": 130000000.0,
+      "Cs137": 21000000.0,
+      "Xe133": 220000000.0
+    },
+    "notes": "GE BWR-4 with Mark I containment on the Susquehanna River; licensed through 2054."
+  },
+  {
+    "id": "braidwood-us",
+    "name": "Braidwood Generating Station",
+    "country": "United States",
+    "region": "Illinois",
+    "coordinates": {
+      "lat": 41.2436,
+      "lon": -88.2292
+    },
+    "type": "PWR",
+    "status": "Operational",
+    "capacityMWe": 2389,
+    "thermalMWth": 7167,
+    "unitsCount": 2,
+    "firstGridYear": 1988,
+    "operator": "Constellation Energy",
+    "fissionInventoryTBq": {
+      "I131": 110000000.0,
+      "Cs137": 18000000.0,
+      "Xe133": 190000000.0
+    },
+    "notes": "Westinghouse 4-loop PWR supplying Chicago metropolitan electrical grid."
+  },
+  {
+    "id": "diablo-canyon-us",
+    "name": "Diablo Canyon Power Plant",
+    "country": "United States",
+    "region": "California",
+    "coordinates": {
+      "lat": 35.2111,
+      "lon": -120.8556
+    },
+    "type": "PWR",
+    "status": "Operational",
+    "capacityMWe": 2256,
+    "thermalMWth": 6768,
+    "unitsCount": 2,
+    "firstGridYear": 1985,
+    "operator": "Pacific Gas and Electric (PG&E)",
+    "fissionInventoryTBq": {
+      "I131": 100000000.0,
+      "Cs137": 17000000.0,
+      "Xe133": 180000000.0
+    },
+    "notes": "Sole operating commercial nuclear power station in California; seismic fault reinforced."
+  },
+  {
+    "id": "three-mile-island-us",
+    "name": "Three Mile Island Generating Station",
+    "country": "United States",
+    "region": "Pennsylvania",
+    "coordinates": {
+      "lat": 40.1531,
+      "lon": -76.7247
+    },
+    "type": "PWR",
+    "status": "Permanent Shutdown",
+    "capacityMWe": 819,
+    "thermalMWth": 2560,
+    "unitsCount": 2,
+    "firstGridYear": 1974,
+    "operator": "Constellation Energy",
+    "fissionInventoryTBq": {
+      "I131": 40000000.0,
+      "Cs137": 6200000.0,
+      "Xe133": 68000000.0
+    },
+    "notes": "Unit 2 melted in 1979 INES 5 accident; Unit 1 slated for restart as Crane Clean Energy Center."
+  },
+  {
+    "id": "oak-ridge-hfir-us",
+    "name": "High Flux Isotope Reactor (HFIR) - ORNL",
+    "country": "United States",
+    "region": "Tennessee",
+    "coordinates": {
+      "lat": 35.9181,
+      "lon": -84.3094
+    },
+    "type": "Research / High Flux",
+    "status": "Operational",
+    "capacityMWe": 0,
+    "thermalMWth": 85,
+    "unitsCount": 1,
+    "firstGridYear": 1965,
+    "operator": "Oak Ridge National Laboratory (DOE)",
+    "fissionInventoryTBq": {
+      "I131": 1300000.0,
+      "Cs137": 210000.0,
+      "Xe133": 2300000.0
+    },
+    "notes": "Highest thermal neutron flux (2.6 x 10^15 n/cm2/s); primary Western producer of Cf-252 and Pu-238."
+  },
+  {
+    "id": "inl-atr-us",
+    "name": "Advanced Test Reactor (ATR) - INL",
+    "country": "United States",
+    "region": "Idaho",
+    "coordinates": {
+      "lat": 43.5878,
+      "lon": -112.9644
+    },
+    "type": "Research / Test",
+    "status": "Operational",
+    "capacityMWe": 0,
+    "thermalMWth": 250,
+    "unitsCount": 1,
+    "firstGridYear": 1967,
+    "operator": "Idaho National Laboratory (DOE)",
+    "fissionInventoryTBq": {
+      "I131": 3900000.0,
+      "Cs137": 620000.0,
+      "Xe133": 6800000.0
+    },
+    "notes": "Serpentine cloverleaf core geometry; tests nuclear fuels and materials for naval and advanced reactors."
+  },
+  {
+    "id": "laguna-verde-mx",
+    "name": "Laguna Verde Nuclear Power Station",
+    "country": "Mexico",
+    "region": "Veracruz",
+    "coordinates": {
+      "lat": 19.7214,
+      "lon": -96.4069
+    },
+    "type": "BWR",
+    "status": "Operational",
+    "capacityMWe": 1640,
+    "thermalMWth": 4920,
+    "unitsCount": 2,
+    "firstGridYear": 1990,
+    "operator": "CFE (Comisión Federal de Electricidad)",
+    "fissionInventoryTBq": {
+      "I131": 76000000.0,
+      "Cs137": 12000000.0,
+      "Xe133": 130000000.0
+    },
+    "notes": "Sole commercial nuclear power station in Mexico; located on the Gulf of Mexico coast."
+  },
+  {
+    "id": "zaporizhzhia-ua",
+    "name": "Zaporizhzhia Nuclear Power Plant",
+    "country": "Ukraine",
+    "region": "Zaporizhzhia Oblast",
+    "coordinates": {
+      "lat": 47.5117,
+      "lon": 34.5847
+    },
+    "type": "VVER-1000",
+    "status": "Operational",
+    "capacityMWe": 5700,
+    "thermalMWth": 18000,
+    "unitsCount": 6,
+    "firstGridYear": 1985,
+    "operator": "Energoatom",
+    "fissionInventoryTBq": {
+      "I131": 280000000.0,
+      "Cs137": 44000000.0,
+      "Xe133": 480000000.0
+    },
+    "notes": "Largest nuclear power plant in Europe; contested frontline facility subject to IAEA monitoring."
+  },
+  {
+    "id": "chernobyl-ua",
+    "name": "Chernobyl Nuclear Power Plant",
+    "country": "Ukraine",
+    "region": "Kyiv Oblast",
+    "coordinates": {
+      "lat": 51.3896,
+      "lon": 30.0991
+    },
+    "type": "RBMK-1000",
+    "status": "Permanent Shutdown",
+    "capacityMWe": 3800,
+    "thermalMWth": 12800,
+    "unitsCount": 4,
+    "firstGridYear": 1977,
+    "operator": "SSE ChNPP",
+    "fissionInventoryTBq": {
+      "I131": 0,
+      "Cs137": 31000000.0,
+      "Xe133": 0
+    },
+    "notes": "Unit 4 destroyed in 1986 INES 7 disaster; sheltered under the New Safe Confinement (NSC) arch."
+  },
+  {
+    "id": "south-ukraine-ua",
+    "name": "South Ukraine Nuclear Power Plant",
+    "country": "Ukraine",
+    "region": "Mykolaiv Oblast",
+    "coordinates": {
+      "lat": 47.8178,
+      "lon": 31.2189
+    },
+    "type": "VVER-1000",
+    "status": "Operational",
+    "capacityMWe": 2850,
+    "thermalMWth": 9000,
+    "unitsCount": 3,
+    "firstGridYear": 1982,
+    "operator": "Energoatom",
+    "fissionInventoryTBq": {
+      "I131": 140000000.0,
+      "Cs137": 22000000.0,
+      "Xe133": 240000000.0
+    },
+    "notes": "VVER-1000/320 series situated on the Southern Bug river."
+  },
+  {
+    "id": "gravelines-fr",
+    "name": "Gravelines Nuclear Power Station",
+    "country": "France",
+    "region": "Hauts-de-France",
+    "coordinates": {
+      "lat": 51.0153,
+      "lon": 2.1361
+    },
+    "type": "PWR",
+    "status": "Operational",
+    "capacityMWe": 5460,
+    "thermalMWth": 16380,
+    "unitsCount": 6,
+    "firstGridYear": 1980,
+    "operator": "Électricité de France (EDF)",
+    "fissionInventoryTBq": {
+      "I131": 260000000.0,
+      "Cs137": 41000000.0,
+      "Xe133": 440000000.0
+    },
+    "notes": "Largest nuclear power plant in Western Europe by output; cooled by English Channel seawater."
+  },
+  {
+    "id": "cattenom-fr",
+    "name": "Cattenom Nuclear Power Station",
+    "country": "France",
+    "region": "Grand Est",
+    "coordinates": {
+      "lat": 49.4158,
+      "lon": 6.2181
+    },
+    "type": "PWR",
+    "status": "Operational",
+    "capacityMWe": 5200,
+    "thermalMWth": 15600,
+    "unitsCount": 4,
+    "firstGridYear": 1986,
+    "operator": "Électricité de France (EDF)",
+    "fissionInventoryTBq": {
+      "I131": 240000000.0,
+      "Cs137": 38000000.0,
+      "Xe133": 410000000.0
+    },
+    "notes": "P4 series 1,300 MWe PWRs located near Luxembourg and Germany borders on Moselle river."
+  },
+  {
+    "id": "flamanville-fr",
+    "name": "Flamanville Nuclear Power Station",
+    "country": "France",
+    "region": "Normandy",
+    "coordinates": {
+      "lat": 49.5367,
+      "lon": -1.8822
+    },
+    "type": "PWR",
+    "status": "Operational",
+    "capacityMWe": 4530,
+    "thermalMWth": 13590,
+    "unitsCount": 3,
+    "firstGridYear": 1986,
+    "operator": "Électricité de France (EDF)",
+    "fissionInventoryTBq": {
+      "I131": 210000000.0,
+      "Cs137": 33000000.0,
+      "Xe133": 360000000.0
+    },
+    "notes": "Includes the newly commissioned Flamanville-3 European Pressurized Reactor (EPR, 1,650 MWe)."
+  },
+  {
+    "id": "olkiluoto-fi",
+    "name": "Olkiluoto Nuclear Power Plant",
+    "country": "Finland",
+    "region": "Satakunta",
+    "coordinates": {
+      "lat": 61.2372,
+      "lon": 21.4408
+    },
+    "type": "BWR / EPR",
+    "status": "Operational",
+    "capacityMWe": 3380,
+    "thermalMWth": 10140,
+    "unitsCount": 3,
+    "firstGridYear": 1978,
+    "operator": "Teollisuuden Voima (TVO)",
+    "fissionInventoryTBq": {
+      "I131": 160000000.0,
+      "Cs137": 25000000.0,
+      "Xe133": 270000000.0
+    },
+    "notes": "Unit 3 is a 1,600 MWe EPR; site is adjacent to the Onkalo spent nuclear fuel deep repository."
+  },
+  {
+    "id": "forsmark-se",
+    "name": "Forsmark Nuclear Power Plant",
+    "country": "Sweden",
+    "region": "Uppsala",
+    "coordinates": {
+      "lat": 60.4042,
+      "lon": 18.1678
+    },
+    "type": "BWR",
+    "status": "Operational",
+    "capacityMWe": 3271,
+    "thermalMWth": 9813,
+    "unitsCount": 3,
+    "firstGridYear": 1980,
+    "operator": "Vattenfall",
+    "fissionInventoryTBq": {
+      "I131": 150000000.0,
+      "Cs137": 24000000.0,
+      "Xe133": 260000000.0
+    },
+    "notes": "ABB Atom BWRs; site detected initial Chernobyl fallout deposition in April 1986."
+  },
+  {
+    "id": "sizewell-b-uk",
+    "name": "Sizewell B Nuclear Power Station",
+    "country": "United Kingdom",
+    "region": "Suffolk",
+    "coordinates": {
+      "lat": 52.2144,
+      "lon": 1.6186
+    },
+    "type": "PWR",
+    "status": "Operational",
+    "capacityMWe": 1198,
+    "thermalMWth": 3425,
+    "unitsCount": 1,
+    "firstGridYear": 1995,
+    "operator": "EDF Energy",
+    "fissionInventoryTBq": {
+      "I131": 54000000.0,
+      "Cs137": 8600000.0,
+      "Xe133": 92000000.0
+    },
+    "notes": "Only operating commercial Pressurized Water Reactor (PWR) in the United Kingdom."
+  },
+  {
+    "id": "hinkley-point-c-uk",
+    "name": "Hinkley Point C Nuclear Power Station",
+    "country": "United Kingdom",
+    "region": "Somerset",
+    "coordinates": {
+      "lat": 51.2081,
+      "lon": -3.1294
+    },
+    "type": "EPR",
+    "status": "Under Construction",
+    "capacityMWe": 3260,
+    "thermalMWth": 9000,
+    "unitsCount": 2,
+    "firstGridYear": 2029,
+    "operator": "EDF Energy / CGN",
+    "fissionInventoryTBq": {
+      "I131": 150000000.0,
+      "Cs137": 24000000.0,
+      "Xe133": 260000000.0
+    },
+    "notes": "Two EPR units under active construction on the Bristol Channel."
+  },
+  {
+    "id": "temelin-cz",
+    "name": "Temelín Nuclear Power Station",
+    "country": "Czech Republic",
+    "region": "South Bohemia",
+    "coordinates": {
+      "lat": 49.1803,
+      "lon": 14.3772
+    },
+    "type": "VVER-1000",
+    "status": "Operational",
+    "capacityMWe": 2110,
+    "thermalMWth": 6240,
+    "unitsCount": 2,
+    "firstGridYear": 2000,
+    "operator": "ČEZ Group",
+    "fissionInventoryTBq": {
+      "I131": 98000000.0,
+      "Cs137": 15000000.0,
+      "Xe133": 170000000.0
+    },
+    "notes": "Hybrid Soviet VVER-1000 reactor with Westinghouse I&C safety systems."
+  },
+  {
+    "id": "leningrad-ru",
+    "name": "Leningrad Nuclear Power Station",
+    "country": "Russia",
+    "region": "Leningrad Oblast",
+    "coordinates": {
+      "lat": 59.8433,
+      "lon": 29.0436
+    },
+    "type": "RBMK / VVER-1200",
+    "status": "Operational",
+    "capacityMWe": 4187,
+    "thermalMWth": 12560,
+    "unitsCount": 4,
+    "firstGridYear": 1974,
+    "operator": "Rosenergoatom",
+    "fissionInventoryTBq": {
+      "I131": 200000000.0,
+      "Cs137": 31000000.0,
+      "Xe133": 340000000.0
+    },
+    "notes": "Located on Gulf of Finland at Sosnovy Bor; transition from RBMK to VVER-1200 units."
+  },
+  {
+    "id": "kursk-ru",
+    "name": "Kursk Nuclear Power Station",
+    "country": "Russia",
+    "region": "Kursk Oblast",
+    "coordinates": {
+      "lat": 51.6756,
+      "lon": 35.6033
+    },
+    "type": "RBMK-1000 / VVER-TOI",
+    "status": "Operational",
+    "capacityMWe": 3000,
+    "thermalMWth": 9600,
+    "unitsCount": 3,
+    "firstGridYear": 1976,
+    "operator": "Rosenergoatom",
+    "fissionInventoryTBq": {
+      "I131": 150000000.0,
+      "Cs137": 23000000.0,
+      "Xe133": 250000000.0
+    },
+    "notes": "Chernobyl sister design RBMK-1000 plant located in Kurchatov."
+  },
+  {
+    "id": "beloyarsk-ru",
+    "name": "Beloyarsk Fast Reactor Station",
+    "country": "Russia",
+    "region": "Sverdlovsk Oblast",
+    "coordinates": {
+      "lat": 56.8417,
+      "lon": 61.3214
+    },
+    "type": "FBR / Sodium Fast",
+    "status": "Operational",
+    "capacityMWe": 1485,
+    "thermalMWth": 3900,
+    "unitsCount": 2,
+    "firstGridYear": 1980,
+    "operator": "Rosenergoatom",
+    "fissionInventoryTBq": {
+      "I131": 61000000.0,
+      "Cs137": 9800000.0,
+      "Xe133": 100000000.0
+    },
+    "notes": "World leader in commercial sodium-cooled fast breeder reactors (BN-600 & BN-800)."
+  },
+  {
+    "id": "kashiwazaki-kariwa-jp",
+    "name": "Kashiwazaki-Kariwa Nuclear Power Station",
+    "country": "Japan",
+    "region": "Niigata Prefecture",
+    "coordinates": {
+      "lat": 37.4283,
+      "lon": 138.5986
+    },
+    "type": "ABWR / BWR",
+    "status": "Operational",
+    "capacityMWe": 7965,
+    "thermalMWth": 23895,
+    "unitsCount": 7,
+    "firstGridYear": 1985,
+    "operator": "TEPCO",
+    "fissionInventoryTBq": {
+      "I131": 380000000.0,
+      "Cs137": 59000000.0,
+      "Xe133": 640000000.0
+    },
+    "notes": "Largest nuclear power station in the world by net electrical capacity rating."
+  },
+  {
+    "id": "fukushima-daiichi-jp",
+    "name": "Fukushima Daiichi Nuclear Power Station",
+    "country": "Japan",
+    "region": "Fukushima Prefecture",
+    "coordinates": {
+      "lat": 37.4214,
+      "lon": 141.0325
+    },
+    "type": "BWR",
+    "status": "Permanent Shutdown",
+    "capacityMWe": 4696,
+    "thermalMWth": 14000,
+    "unitsCount": 6,
+    "firstGridYear": 1971,
+    "operator": "TEPCO",
+    "fissionInventoryTBq": {
+      "I131": 0,
+      "Cs137": 25000000.0,
+      "Xe133": 0
+    },
+    "notes": "Units 1-3 suffered meltdowns during 2011 INES 7 earthquake/tsunami SBO."
+  },
+  {
+    "id": "takahama-jp",
+    "name": "Takahama Nuclear Power Station",
+    "country": "Japan",
+    "region": "Fukui Prefecture",
+    "coordinates": {
+      "lat": 35.5222,
+      "lon": 135.5056
+    },
+    "type": "PWR",
+    "status": "Operational",
+    "capacityMWe": 3220,
+    "thermalMWth": 9660,
+    "unitsCount": 4,
+    "firstGridYear": 1974,
+    "operator": "Kansai Electric Power",
+    "fissionInventoryTBq": {
+      "I131": 150000000.0,
+      "Cs137": 24000000.0,
+      "Xe133": 260000000.0
+    },
+    "notes": "Operating Mitsubishi PWRs; re-licensed past 50 years under NRA post-Fukushima safety rules."
+  },
+  {
+    "id": "kori-shin-kori-kr",
+    "name": "Kori & Shin-Kori Nuclear Power Complex",
+    "country": "South Korea",
+    "region": "Busan / Ulsan",
+    "coordinates": {
+      "lat": 35.3183,
+      "lon": 129.29
+    },
+    "type": "PWR / APR-1400",
+    "status": "Operational",
+    "capacityMWe": 7489,
+    "thermalMWth": 22467,
+    "unitsCount": 7,
+    "firstGridYear": 1978,
+    "operator": "KHNP",
+    "fissionInventoryTBq": {
+      "I131": 350000000.0,
+      "Cs137": 55000000.0,
+      "Xe133": 600000000.0
+    },
+    "notes": "Among the world largest nuclear complexes; home to flagship APR-1400 generation III+ units."
+  },
+  {
+    "id": "hanbit-kr",
+    "name": "Hanbit Nuclear Power Plant",
+    "country": "South Korea",
+    "region": "Yeonggwang County",
+    "coordinates": {
+      "lat": 35.4144,
+      "lon": 126.4178
+    },
+    "type": "PWR",
+    "status": "Operational",
+    "capacityMWe": 5875,
+    "thermalMWth": 17625,
+    "unitsCount": 6,
+    "firstGridYear": 1986,
+    "operator": "KHNP",
+    "fissionInventoryTBq": {
+      "I131": 280000000.0,
+      "Cs137": 43000000.0,
+      "Xe133": 470000000.0
+    },
+    "notes": "Standardized Korean OPR-1000 and Westinghouse PWRs on the Yellow Sea coast."
+  },
+  {
+    "id": "taishan-cn",
+    "name": "Taishan Nuclear Power Plant",
+    "country": "China",
+    "region": "Guangdong",
+    "coordinates": {
+      "lat": 21.9189,
+      "lon": 112.9819
+    },
+    "type": "EPR",
+    "status": "Operational",
+    "capacityMWe": 3320,
+    "thermalMWth": 9180,
+    "unitsCount": 2,
+    "firstGridYear": 2018,
+    "operator": "CGN / EDF",
+    "fissionInventoryTBq": {
+      "I131": 160000000.0,
+      "Cs137": 25000000.0,
+      "Xe133": 270000000.0
+    },
+    "notes": "First operational European Pressurized Reactor (EPR-1750) facility in the world."
+  },
+  {
+    "id": "yangjiang-cn",
+    "name": "Yangjiang Nuclear Power Station",
+    "country": "China",
+    "region": "Guangdong",
+    "coordinates": {
+      "lat": 21.7083,
+      "lon": 112.2611
+    },
+    "type": "CPR-1000",
+    "status": "Operational",
+    "capacityMWe": 6000,
+    "thermalMWth": 18000,
+    "unitsCount": 6,
+    "firstGridYear": 2014,
+    "operator": "CGN",
+    "fissionInventoryTBq": {
+      "I131": 290000000.0,
+      "Cs137": 45000000.0,
+      "Xe133": 490000000.0
+    },
+    "notes": "Six CPR-1000 units producing over 48 TWh clean electricity annually."
+  },
+  {
+    "id": "fuqing-cn",
+    "name": "Fuqing Nuclear Power Plant",
+    "country": "China",
+    "region": "Fujian",
+    "coordinates": {
+      "lat": 25.4456,
+      "lon": 119.4447
+    },
+    "type": "Hualong One / CPR",
+    "status": "Operational",
+    "capacityMWe": 6150,
+    "thermalMWth": 18450,
+    "unitsCount": 6,
+    "firstGridYear": 2014,
+    "operator": "CNNC",
+    "fissionInventoryTBq": {
+      "I131": 290000000.0,
+      "Cs137": 46000000.0,
+      "Xe133": 500000000.0
+    },
+    "notes": "Flagship deployment site of China indigenous generation III Hualong One (HPR1000)."
+  },
+  {
+    "id": "barakah-ae",
+    "name": "Barakah Nuclear Energy Plant",
+    "country": "United Arab Emirates",
+    "region": "Al Dhafra, Abu Dhabi",
+    "coordinates": {
+      "lat": 23.9678,
+      "lon": 52.2333
+    },
+    "type": "APR-1400",
+    "status": "Operational",
+    "capacityMWe": 5348,
+    "thermalMWth": 16044,
+    "unitsCount": 4,
+    "firstGridYear": 2020,
+    "operator": "Nawah Energy Company",
+    "fissionInventoryTBq": {
+      "I131": 250000000.0,
+      "Cs137": 40000000.0,
+      "Xe133": 430000000.0
+    },
+    "notes": "First commercial nuclear power station in the Arab world; provides 25% of UAE electricity."
+  },
+  {
+    "id": "kudankulam-in",
+    "name": "Kudankulam Nuclear Power Plant",
+    "country": "India",
+    "region": "Tamil Nadu",
+    "coordinates": {
+      "lat": 8.1764,
+      "lon": 77.7125
+    },
+    "type": "VVER-1000",
+    "status": "Operational",
+    "capacityMWe": 2000,
+    "thermalMWth": 6000,
+    "unitsCount": 2,
+    "firstGridYear": 2013,
+    "operator": "Nuclear Power Corporation of India (NPCIL)",
+    "fissionInventoryTBq": {
+      "I131": 94000000.0,
+      "Cs137": 15000000.0,
+      "Xe133": 160000000.0
+    },
+    "notes": "Highest capacity nuclear station in India; Units 3-6 under active construction."
+  },
+  {
+    "id": "tarapur-in",
+    "name": "Tarapur Atomic Power Station",
+    "country": "India",
+    "region": "Maharashtra",
+    "coordinates": {
+      "lat": 19.83,
+      "lon": 72.6569
+    },
+    "type": "BWR / PHWR",
+    "status": "Operational",
+    "capacityMWe": 1400,
+    "thermalMWth": 4200,
+    "unitsCount": 4,
+    "firstGridYear": 1969,
+    "operator": "NPCIL",
+    "fissionInventoryTBq": {
+      "I131": 65000000.0,
+      "Cs137": 10000000.0,
+      "Xe133": 110000000.0
+    },
+    "notes": "First commercial nuclear power station built in India."
+  },
+  {
+    "id": "bushehr-ir",
+    "name": "Bushehr Nuclear Power Plant",
+    "country": "Iran",
+    "region": "Bushehr Province",
+    "coordinates": {
+      "lat": 28.8306,
+      "lon": 50.8864
+    },
+    "type": "VVER-1000",
+    "status": "Operational",
+    "capacityMWe": 1000,
+    "thermalMWth": 3000,
+    "unitsCount": 1,
+    "firstGridYear": 2011,
+    "operator": "NPPD",
+    "fissionInventoryTBq": {
+      "I131": 47000000.0,
+      "Cs137": 7400000.0,
+      "Xe133": 81000000.0
+    },
+    "notes": "Located on Persian Gulf coast; hybrid Kraftwerk Union civil structure completed by Atomstroyexport."
+  },
+  {
+    "id": "dimona-il",
+    "name": "Shimon Peres Negev Nuclear Research Center (Dimona)",
+    "country": "Israel",
+    "region": "Negev Desert",
+    "coordinates": {
+      "lat": 31.0014,
+      "lon": 35.1453
+    },
+    "type": "Research / Heavy Water",
+    "status": "Operational",
+    "capacityMWe": 0,
+    "thermalMWth": 75,
+    "unitsCount": 1,
+    "firstGridYear": 1962,
+    "operator": "Israel Atomic Energy Commission",
+    "fissionInventoryTBq": {
+      "I131": 1100000.0,
+      "Cs137": 180000.0,
+      "Xe133": 2000000.0
+    },
+    "notes": "French-built heavy water natural uranium reactor for research and isotope extraction."
+  },
+  {
+    "id": "karachi-pk",
+    "name": "Karachi Nuclear Power Complex (KANUPP)",
+    "country": "Pakistan",
+    "region": "Sindh",
+    "coordinates": {
+      "lat": 24.8458,
+      "lon": 66.7889
+    },
+    "type": "Hualong One / CANDU",
+    "status": "Operational",
+    "capacityMWe": 2200,
+    "thermalMWth": 6600,
+    "unitsCount": 2,
+    "firstGridYear": 1972,
+    "operator": "PAEC",
+    "fissionInventoryTBq": {
+      "I131": 100000000.0,
+      "Cs137": 16000000.0,
+      "Xe133": 180000000.0
+    },
+    "notes": "Units K-2 & K-3 are Chinese Hualong One 1,100 MWe reactors on the Arabian Sea."
+  },
+  {
+    "id": "angra-br",
+    "name": "Central Nuclear Almirante Álvaro Alberto (Angra)",
+    "country": "Brazil",
+    "region": "Rio de Janeiro",
+    "coordinates": {
+      "lat": -23.0078,
+      "lon": -44.4556
+    },
+    "type": "PWR",
+    "status": "Operational",
+    "capacityMWe": 1884,
+    "thermalMWth": 5652,
+    "unitsCount": 2,
+    "firstGridYear": 1985,
+    "operator": "Eletronuclear",
+    "fissionInventoryTBq": {
+      "I131": 88000000.0,
+      "Cs137": 14000000.0,
+      "Xe133": 150000000.0
+    },
+    "notes": "Only nuclear plant in Brazil; Westinghouse Unit 1 and Siemens/KWU Unit 2."
+  },
+  {
+    "id": "atucha-ar",
+    "name": "Atucha Nuclear Power Complex",
+    "country": "Argentina",
+    "region": "Buenos Aires Province",
+    "coordinates": {
+      "lat": -33.9675,
+      "lon": -59.2064
+    },
+    "type": "PHWR / Heavy Water",
+    "status": "Operational",
+    "capacityMWe": 1027,
+    "thermalMWth": 3100,
+    "unitsCount": 2,
+    "firstGridYear": 1974,
+    "operator": "Nucleoeléctrica Argentina",
+    "fissionInventoryTBq": {
+      "I131": 48000000.0,
+      "Cs137": 7600000.0,
+      "Xe133": 83000000.0
+    },
+    "notes": "Siemens-designed pressurized heavy water reactors using natural and slightly enriched uranium."
+  },
+  {
+    "id": "koeberg-za",
+    "name": "Koeberg Nuclear Power Station",
+    "country": "South Africa",
+    "region": "Western Cape",
+    "coordinates": {
+      "lat": -33.6767,
+      "lon": 18.4319
+    },
+    "type": "PWR",
+    "status": "Operational",
+    "capacityMWe": 1860,
+    "thermalMWth": 5580,
+    "unitsCount": 2,
+    "firstGridYear": 1984,
+    "operator": "Eskom",
+    "fissionInventoryTBq": {
+      "I131": 87000000.0,
+      "Cs137": 13000000.0,
+      "Xe133": 150000000.0
+    },
+    "notes": "Only commercial nuclear power station on the African continent; cooled by Atlantic Ocean."
+  },
+  {
+    "id": "opal-au",
+    "name": "Open Pool Australian Lightwater (OPAL) Reactor",
+    "country": "Australia",
+    "region": "New South Wales",
+    "coordinates": {
+      "lat": -34.0525,
+      "lon": 150.9808
+    },
+    "type": "Research / Pool-type",
+    "status": "Operational",
+    "capacityMWe": 0,
+    "thermalMWth": 20,
+    "unitsCount": 1,
+    "firstGridYear": 2006,
+    "operator": "ANSTO",
+    "fissionInventoryTBq": {
+      "I131": 310000.0,
+      "Cs137": 49000.0,
+      "Xe133": 540000.0
+    },
+    "notes": "State-of-the-art open pool research reactor providing medical isotopes and neutron beam research."
+  }
+]

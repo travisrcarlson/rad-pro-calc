@@ -1,0 +1,770 @@
+[
+  {
+    "id": "trinity-1945",
+    "name": "Trinity (Manhattan Project)",
+    "country": "United States",
+    "location": "Jornada del Muerto, Alamogordo, New Mexico",
+    "coordinates": {
+      "lat": 33.6773,
+      "lon": -106.4754
+    },
+    "date": "1945-07-16",
+    "year": 1945,
+    "yieldKt": 21.0,
+    "yieldDisplay": "21.0 kt",
+    "testType": "Tower / Surface",
+    "purpose": "First Atomic Detonation",
+    "heightOfBurstM": 30,
+    "fireballRadiusM": 200,
+    "promptEffects": {
+      "thermalRadiusKm_3rdDeg": 1.9,
+      "blast5psiRadiusKm": 1.7,
+      "promptRadiation1SvRadiusKm": 1.4
+    },
+    "historicalSignificance": "World first artificial nuclear explosion. Plutonium implosion device (The Gadget); created green trinitite glass."
+  },
+  {
+    "id": "hiroshima-1945",
+    "name": "Little Boy (Hiroshima Bombing)",
+    "country": "United States",
+    "location": "Hiroshima, Honshu, Japan",
+    "coordinates": {
+      "lat": 34.3955,
+      "lon": 132.4536
+    },
+    "date": "1945-08-06",
+    "year": 1945,
+    "yieldKt": 15.0,
+    "yieldDisplay": "15.0 kt",
+    "testType": "Airburst (Combat)",
+    "purpose": "Combat Detonation",
+    "heightOfBurstM": 580,
+    "fireballRadiusM": 180,
+    "promptEffects": {
+      "thermalRadiusKm_3rdDeg": 1.7,
+      "blast5psiRadiusKm": 1.5,
+      "promptRadiation1SvRadiusKm": 1.3
+    },
+    "historicalSignificance": "First wartime combat employment of a nuclear weapon. Gun-type enriched uranium-235 architecture."
+  },
+  {
+    "id": "nagasaki-1945",
+    "name": "Fat Man (Nagasaki Bombing)",
+    "country": "United States",
+    "location": "Nagasaki, Kyushu, Japan",
+    "coordinates": {
+      "lat": 32.7737,
+      "lon": 129.8632
+    },
+    "date": "1945-08-09",
+    "year": 1945,
+    "yieldKt": 21.0,
+    "yieldDisplay": "21.0 kt",
+    "testType": "Airburst (Combat)",
+    "purpose": "Combat Detonation",
+    "heightOfBurstM": 503,
+    "fireballRadiusM": 200,
+    "promptEffects": {
+      "thermalRadiusKm_3rdDeg": 1.9,
+      "blast5psiRadiusKm": 1.7,
+      "promptRadiation1SvRadiusKm": 1.4
+    },
+    "historicalSignificance": "Second wartime combat employment. Plutonium-239 implosion pit device dropped by B-29 Bockscar."
+  },
+  {
+    "id": "crossroads-able-1946",
+    "name": "Operation Crossroads Able",
+    "country": "United States",
+    "location": "Bikini Atoll, Marshall Islands",
+    "coordinates": {
+      "lat": 11.5833,
+      "lon": 165.4833
+    },
+    "date": "1946-07-01",
+    "year": 1946,
+    "yieldKt": 23.0,
+    "yieldDisplay": "23.0 kt",
+    "testType": "Airburst",
+    "purpose": "Naval Target Fleet Vulnerability",
+    "heightOfBurstM": 158,
+    "fireballRadiusM": 210,
+    "promptEffects": {
+      "thermalRadiusKm_3rdDeg": 2.0,
+      "blast5psiRadiusKm": 1.8,
+      "promptRadiation1SvRadiusKm": 1.5
+    },
+    "historicalSignificance": "First post-war nuclear test. Target fleet of 95 captured and decommissioned naval warships in Bikini lagoon."
+  },
+  {
+    "id": "crossroads-baker-1946",
+    "name": "Operation Crossroads Baker",
+    "country": "United States",
+    "location": "Bikini Atoll, Marshall Islands",
+    "coordinates": {
+      "lat": 11.5833,
+      "lon": 165.4833
+    },
+    "date": "1946-07-25",
+    "year": 1946,
+    "yieldKt": 23.0,
+    "yieldDisplay": "23.0 kt",
+    "testType": "Underwater",
+    "purpose": "Subsurface Naval Explosion & Base Surge",
+    "heightOfBurstM": -27,
+    "fireballRadiusM": 0,
+    "promptEffects": {
+      "thermalRadiusKm_3rdDeg": 0,
+      "blast5psiRadiusKm": 1.6,
+      "promptRadiation1SvRadiusKm": 2.2
+    },
+    "historicalSignificance": "First underwater nuclear detonation; threw 2 million tons of water into the air, creating lethal radioactive base surge."
+  },
+  {
+    "id": "ivy-mike-1952",
+    "name": "Operation Ivy Mike (First Hydrogen Bomb)",
+    "country": "United States",
+    "location": "Elugelab Island, Enewetak Atoll",
+    "coordinates": {
+      "lat": 11.6667,
+      "lon": 162.1833
+    },
+    "date": "1952-11-01",
+    "year": 1952,
+    "yieldKt": 10400.0,
+    "yieldDisplay": "10.4 MT",
+    "testType": "Surface",
+    "purpose": "First Full-Scale Thermonuclear Detonation",
+    "heightOfBurstM": 6,
+    "fireballRadiusM": 3200,
+    "promptEffects": {
+      "thermalRadiusKm_3rdDeg": 24.0,
+      "blast5psiRadiusKm": 11.2,
+      "promptRadiation1SvRadiusKm": 4.5
+    },
+    "historicalSignificance": "First full-scale staged radiation implosion thermonuclear bomb (Teller-Ulam design); completely vaporized Elugelab island."
+  },
+  {
+    "id": "castle-bravo-1954",
+    "name": "Operation Castle Bravo",
+    "country": "United States",
+    "location": "Bikini Atoll, Marshall Islands",
+    "coordinates": {
+      "lat": 11.6972,
+      "lon": 165.2719
+    },
+    "date": "1954-03-01",
+    "year": 1954,
+    "yieldKt": 15000.0,
+    "yieldDisplay": "15.0 MT",
+    "testType": "Surface",
+    "purpose": "Dry-Fuel Thermonuclear Weapon",
+    "heightOfBurstM": 2,
+    "fireballRadiusM": 3800,
+    "promptEffects": {
+      "thermalRadiusKm_3rdDeg": 29.0,
+      "blast5psiRadiusKm": 12.8,
+      "promptRadiation1SvRadiusKm": 4.9
+    },
+    "historicalSignificance": "Largest nuclear test conducted by the United States. Unexpected Li-7 (n, 2n) cross section tripled planned yield to 15 MT, contaminating Lucky Dragon No. 5."
+  },
+  {
+    "id": "upshot-knothole-grable-1953",
+    "name": "Upshot-Knothole Grable (Atomic Cannon)",
+    "country": "United States",
+    "location": "Frenchman Flat, Nevada Test Site",
+    "coordinates": {
+      "lat": 36.7933,
+      "lon": -115.9392
+    },
+    "date": "1953-05-25",
+    "year": 1953,
+    "yieldKt": 15.0,
+    "yieldDisplay": "15.0 kt",
+    "testType": "Airburst (Artillery)",
+    "purpose": "Tactical Nuclear Artillery Test",
+    "heightOfBurstM": 160,
+    "fireballRadiusM": 180,
+    "promptEffects": {
+      "thermalRadiusKm_3rdDeg": 1.7,
+      "blast5psiRadiusKm": 1.5,
+      "promptRadiation1SvRadiusKm": 1.3
+    },
+    "historicalSignificance": "Only nuclear artillery shell ever fired in history. 280mm M65 Atomic Cannon fired W9 shell 11 km downrange."
+  },
+  {
+    "id": "plumbbob-hood-1957",
+    "name": "Operation Plumbbob Hood",
+    "country": "United States",
+    "location": "Yucca Flat, Nevada Test Site",
+    "coordinates": {
+      "lat": 37.135,
+      "lon": -116.0467
+    },
+    "date": "1957-07-05",
+    "year": 1957,
+    "yieldKt": 74.0,
+    "yieldDisplay": "74.0 kt",
+    "testType": "Balloon Airburst",
+    "purpose": "Thermonuclear Secondary Prototype",
+    "heightOfBurstM": 460,
+    "fireballRadiusM": 340,
+    "promptEffects": {
+      "thermalRadiusKm_3rdDeg": 3.3,
+      "blast5psiRadiusKm": 2.7,
+      "promptRadiation1SvRadiusKm": 2.0
+    },
+    "historicalSignificance": "Largest atmospheric nuclear detonation in the continental United States. Suspended from 1,500-foot tethered balloon."
+  },
+  {
+    "id": "starfish-prime-1962",
+    "name": "Operation Starfish Prime",
+    "country": "United States",
+    "location": "Johnston Atoll, North Pacific",
+    "coordinates": {
+      "lat": 16.7333,
+      "lon": -169.5167
+    },
+    "date": "1962-07-09",
+    "year": 1962,
+    "yieldKt": 1400.0,
+    "yieldDisplay": "1.4 MT",
+    "testType": "Exoatmospheric / HEMP",
+    "purpose": "High Altitude Nuclear EMP & Van Allen Belt",
+    "heightOfBurstM": 400000,
+    "fireballRadiusM": 0,
+    "promptEffects": {
+      "thermalRadiusKm_3rdDeg": 0,
+      "blast5psiRadiusKm": 0,
+      "promptRadiation1SvRadiusKm": 0
+    },
+    "historicalSignificance": "400 km high-altitude detonation. Generated massive electromagnetic pulse (HEMP) knocking out streetlights in Hawaii 1,450 km away; damaged 1/3 of LEO satellites."
+  },
+  {
+    "id": "sedan-1962",
+    "name": "Project Sedan (Plowshare Excavation)",
+    "country": "United States",
+    "location": "Yucca Flat, Nevada Test Site",
+    "coordinates": {
+      "lat": 37.1769,
+      "lon": -116.0461
+    },
+    "date": "1962-07-06",
+    "year": 1962,
+    "yieldKt": 104.0,
+    "yieldDisplay": "104.0 kt",
+    "testType": "Underground Crater",
+    "purpose": "Plowshare / Nuclear Earthmoving",
+    "heightOfBurstM": -194,
+    "fireballRadiusM": 380,
+    "promptEffects": {
+      "thermalRadiusKm_3rdDeg": 0,
+      "blast5psiRadiusKm": 2.9,
+      "promptRadiation1SvRadiusKm": 2.2
+    },
+    "historicalSignificance": "Largest man-made nuclear excavation crater in the US (390 meters across, 100 meters deep); displaced 12 million tons of earth."
+  },
+  {
+    "id": "cannikin-1971",
+    "name": "Cannikin (Amchitka Test)",
+    "country": "United States",
+    "location": "Amchitka Island, Aleutian Islands, Alaska",
+    "coordinates": {
+      "lat": 51.4697,
+      "lon": 179.1764
+    },
+    "date": "1971-11-06",
+    "year": 1971,
+    "yieldKt": 5000.0,
+    "yieldDisplay": "5.0 MT",
+    "testType": "Underground Cavity",
+    "purpose": "Spartan ABM Warhead Proof Test",
+    "heightOfBurstM": -1870,
+    "fireballRadiusM": 0,
+    "promptEffects": {
+      "thermalRadiusKm_3rdDeg": 0,
+      "blast5psiRadiusKm": 0,
+      "promptRadiation1SvRadiusKm": 0
+    },
+    "historicalSignificance": "Largest underground nuclear test in US history. 5 MT W71 warhead detonated 1.8 km deep; sparked formation of Greenpeace."
+  },
+  {
+    "id": "rds-1-1949",
+    "name": "RDS-1 (Joe-1)",
+    "country": "USSR",
+    "location": "Semipalatinsk Test Site, Kazakhstan",
+    "coordinates": {
+      "lat": 50.4361,
+      "lon": 77.8139
+    },
+    "date": "1949-08-29",
+    "year": 1949,
+    "yieldKt": 22.0,
+    "yieldDisplay": "22.0 kt",
+    "testType": "Tower / Surface",
+    "purpose": "First Soviet Atomic Bomb",
+    "heightOfBurstM": 30,
+    "fireballRadiusM": 200,
+    "promptEffects": {
+      "thermalRadiusKm_3rdDeg": 1.9,
+      "blast5psiRadiusKm": 1.7,
+      "promptRadiation1SvRadiusKm": 1.4
+    },
+    "historicalSignificance": "Ended the US atomic monopoly; Igor Kurchatov leadership with Klaus Fuchs espionage intelligence."
+  },
+  {
+    "id": "rds-6s-1953",
+    "name": "RDS-6s (Joe-4 / Sloika)",
+    "country": "USSR",
+    "location": "Semipalatinsk Test Site, Kazakhstan",
+    "coordinates": {
+      "lat": 50.4361,
+      "lon": 77.8139
+    },
+    "date": "1953-08-12",
+    "year": 1953,
+    "yieldKt": 400.0,
+    "yieldDisplay": "400.0 kt",
+    "testType": "Tower",
+    "purpose": "First Soviet Thermonuclear Test",
+    "heightOfBurstM": 30,
+    "fireballRadiusM": 700,
+    "promptEffects": {
+      "thermalRadiusKm_3rdDeg": 6.2,
+      "blast5psiRadiusKm": 4.3,
+      "promptRadiation1SvRadiusKm": 2.7
+    },
+    "historicalSignificance": "Sakharov Layer Cake (Sloika) concentric alternating shells of U-238 and lithium-6 deuteride."
+  },
+  {
+    "id": "rds-37-1955",
+    "name": "RDS-37 (First Soviet True Two-Stage H-Bomb)",
+    "country": "USSR",
+    "location": "Semipalatinsk Test Site, Kazakhstan",
+    "coordinates": {
+      "lat": 50.0667,
+      "lon": 78.7167
+    },
+    "date": "1955-11-22",
+    "year": 1955,
+    "yieldKt": 1600.0,
+    "yieldDisplay": "1.6 MT",
+    "testType": "Airburst",
+    "purpose": "Radiation Implosion Two-Stage Test",
+    "heightOfBurstM": 1550,
+    "fireballRadiusM": 1300,
+    "promptEffects": {
+      "thermalRadiusKm_3rdDeg": 11.5,
+      "blast5psiRadiusKm": 6.5,
+      "promptRadiation1SvRadiusKm": 3.3
+    },
+    "historicalSignificance": "First Soviet two-stage true radiation implosion thermonuclear weapon designed by Andrei Sakharov and Yakov Zeldovich."
+  },
+  {
+    "id": "tsar-bomba-1961",
+    "name": "Tsar Bomba (RDS-220 / AN602)",
+    "country": "USSR",
+    "location": "Sukhoy Nos, Novaya Zemlya, Arctic Ocean",
+    "coordinates": {
+      "lat": 73.85,
+      "lon": 54.5
+    },
+    "date": "1961-10-30",
+    "year": 1961,
+    "yieldKt": 50000.0,
+    "yieldDisplay": "50.0 MT",
+    "testType": "Airburst",
+    "purpose": "Super-Yield Thermonuclear Display",
+    "heightOfBurstM": 4200,
+    "fireballRadiusM": 4000,
+    "promptEffects": {
+      "thermalRadiusKm_3rdDeg": 60.0,
+      "blast5psiRadiusKm": 28.0,
+      "promptRadiation1SvRadiusKm": 6.8
+    },
+    "historicalSignificance": "Largest explosive device ever detonated in human history. Fireball touched ground and reached 8 km; seismic shock circled Earth three times."
+  },
+  {
+    "id": "chagan-1965",
+    "name": "Project Chagan (Atomic Lake Crater)",
+    "country": "USSR",
+    "location": "Semipalatinsk Test Site, Kazakhstan",
+    "coordinates": {
+      "lat": 49.9367,
+      "lon": 79.0117
+    },
+    "date": "1965-01-15",
+    "year": 1965,
+    "yieldKt": 140.0,
+    "yieldDisplay": "140.0 kt",
+    "testType": "Underground Crater",
+    "purpose": "Nuclear Explosions for the National Economy",
+    "heightOfBurstM": -178,
+    "fireballRadiusM": 420,
+    "promptEffects": {
+      "thermalRadiusKm_3rdDeg": 0,
+      "blast5psiRadiusKm": 3.2,
+      "promptRadiation1SvRadiusKm": 2.3
+    },
+    "historicalSignificance": "Soviet equivalent to Project Plowshare; created an artificial reservoir and lake (Atomic Lake) 400 meters wide."
+  },
+  {
+    "id": "hurricane-1952",
+    "name": "Operation Hurricane",
+    "country": "United Kingdom",
+    "location": "Trimouille Island, Montebello Islands, Australia",
+    "coordinates": {
+      "lat": -20.4489,
+      "lon": 115.5414
+    },
+    "date": "1952-10-03",
+    "year": 1952,
+    "yieldKt": 25.0,
+    "yieldDisplay": "25.0 kt",
+    "testType": "Shipboard / Surface",
+    "purpose": "First British Atomic Bomb",
+    "heightOfBurstM": -2,
+    "fireballRadiusM": 210,
+    "promptEffects": {
+      "thermalRadiusKm_3rdDeg": 2.0,
+      "blast5psiRadiusKm": 1.8,
+      "promptRadiation1SvRadiusKm": 1.5
+    },
+    "historicalSignificance": "First British nuclear weapon test; device detonated inside the hull of frigate HMS Plym to assess covert harbor ship-bombing."
+  },
+  {
+    "id": "grapple-y-1958",
+    "name": "Operation Grapple Y",
+    "country": "United Kingdom",
+    "location": "Kiritimati (Christmas Island), Kiribati",
+    "coordinates": {
+      "lat": 1.8833,
+      "lon": -157.4167
+    },
+    "date": "1958-04-28",
+    "year": 1958,
+    "yieldKt": 3000.0,
+    "yieldDisplay": "3.0 MT",
+    "testType": "Airburst",
+    "purpose": "British Thermonuclear Megaton Capability",
+    "heightOfBurstM": 2350,
+    "fireballRadiusM": 1800,
+    "promptEffects": {
+      "thermalRadiusKm_3rdDeg": 15.0,
+      "blast5psiRadiusKm": 8.0,
+      "promptRadiation1SvRadiusKm": 3.7
+    },
+    "historicalSignificance": "Largest nuclear weapon test ever conducted by the United Kingdom; validated true British megaton thermonuclear parity."
+  },
+  {
+    "id": "gerboise-bleue-1960",
+    "name": "Gerboise Bleue",
+    "country": "France",
+    "location": "Reggane, Sahara Desert, Algeria",
+    "coordinates": {
+      "lat": 26.3117,
+      "lon": 0.0617
+    },
+    "date": "1960-02-13",
+    "year": 1960,
+    "yieldKt": 70.0,
+    "yieldDisplay": "70.0 kt",
+    "testType": "Tower",
+    "purpose": "First French Atomic Bomb",
+    "heightOfBurstM": 100,
+    "fireballRadiusM": 330,
+    "promptEffects": {
+      "thermalRadiusKm_3rdDeg": 3.2,
+      "blast5psiRadiusKm": 2.6,
+      "promptRadiation1SvRadiusKm": 1.9
+    },
+    "historicalSignificance": "First French nuclear weapon test under General Charles de Gaulle, establishing the Force de Frappe."
+  },
+  {
+    "id": "canopus-1968",
+    "name": "Canopus (First French Thermonuclear Test)",
+    "country": "France",
+    "location": "Fangataufa Atoll, Tuamotu Archipelago, French Polynesia",
+    "coordinates": {
+      "lat": -22.25,
+      "lon": -138.75
+    },
+    "date": "1968-08-24",
+    "year": 1968,
+    "yieldKt": 2600.0,
+    "yieldDisplay": "2.6 MT",
+    "testType": "Balloon Airburst",
+    "purpose": "First French Thermonuclear Weapon",
+    "heightOfBurstM": 520,
+    "fireballRadiusM": 1700,
+    "promptEffects": {
+      "thermalRadiusKm_3rdDeg": 14.0,
+      "blast5psiRadiusKm": 7.6,
+      "promptRadiation1SvRadiusKm": 3.6
+    },
+    "historicalSignificance": "First French two-stage hydrogen bomb test; suspended from a hydrogen balloon over Fangataufa lagoon."
+  },
+  {
+    "id": "project-596-1964",
+    "name": "Project 596 (Chic-1)",
+    "country": "China",
+    "location": "Lop Nur, Xinjiang Uygur Autonomous Region",
+    "coordinates": {
+      "lat": 40.8167,
+      "lon": 89.7833
+    },
+    "date": "1964-10-16",
+    "year": 1964,
+    "yieldKt": 22.0,
+    "yieldDisplay": "22.0 kt",
+    "testType": "Tower",
+    "purpose": "First Chinese Atomic Bomb",
+    "heightOfBurstM": 102,
+    "fireballRadiusM": 200,
+    "promptEffects": {
+      "thermalRadiusKm_3rdDeg": 1.9,
+      "blast5psiRadiusKm": 1.7,
+      "promptRadiation1SvRadiusKm": 1.4
+    },
+    "historicalSignificance": "First Chinese nuclear detonation. Enriched U-235 implosion design engineered under Deng Jiaxian and Qian Xuesen."
+  },
+  {
+    "id": "china-test-6-1967",
+    "name": "Test No. 6 (First Chinese Hydrogen Bomb)",
+    "country": "China",
+    "location": "Lop Nur, Xinjiang",
+    "coordinates": {
+      "lat": 40.8167,
+      "lon": 89.7833
+    },
+    "date": "1967-06-17",
+    "year": 1967,
+    "yieldKt": 3300.0,
+    "yieldDisplay": "3.3 MT",
+    "testType": "Airburst (Tu-16 airdrop)",
+    "purpose": "First Chinese Thermonuclear Detonation",
+    "heightOfBurstM": 2960,
+    "fireballRadiusM": 1900,
+    "promptEffects": {
+      "thermalRadiusKm_3rdDeg": 16.0,
+      "blast5psiRadiusKm": 8.4,
+      "promptRadiation1SvRadiusKm": 3.8
+    },
+    "historicalSignificance": "Fastest progression in history from first atomic fission to full thermonuclear staging (only 32 months)."
+  },
+  {
+    "id": "smiling-buddha-1974",
+    "name": "Operation Smiling Buddha (Pokhran-I)",
+    "country": "India",
+    "location": "Pokhran Test Range, Thar Desert, Rajasthan",
+    "coordinates": {
+      "lat": 27.0956,
+      "lon": 71.7539
+    },
+    "date": "1974-05-18",
+    "year": 1974,
+    "yieldKt": 12.0,
+    "yieldDisplay": "12.0 kt",
+    "testType": "Underground Shaft",
+    "purpose": "Peaceful Nuclear Explosion (PNE) / Weapon Prototype",
+    "heightOfBurstM": -107,
+    "fireballRadiusM": 160,
+    "promptEffects": {
+      "thermalRadiusKm_3rdDeg": 0,
+      "blast5psiRadiusKm": 1.4,
+      "promptRadiation1SvRadiusKm": 1.2
+    },
+    "historicalSignificance": "First confirmed nuclear test by a country outside the five permanent UN Security Council members."
+  },
+  {
+    "id": "pokhran-ii-1998",
+    "name": "Operation Shakti (Pokhran-II)",
+    "country": "India",
+    "location": "Pokhran Test Range, Rajasthan",
+    "coordinates": {
+      "lat": 27.0956,
+      "lon": 71.7539
+    },
+    "date": "1998-05-11",
+    "year": 1998,
+    "yieldKt": 45.0,
+    "yieldDisplay": "45.0 kt",
+    "testType": "Underground Shaft",
+    "purpose": "Thermonuclear & Fission Weapon Proof",
+    "heightOfBurstM": -200,
+    "fireballRadiusM": 270,
+    "promptEffects": {
+      "thermalRadiusKm_3rdDeg": 0,
+      "blast5psiRadiusKm": 2.3,
+      "promptRadiation1SvRadiusKm": 1.7
+    },
+    "historicalSignificance": "Five underground tests in 1998 declaring India a full nuclear-weapon state; supervised by Dr. A.P.J. Abdul Kalam."
+  },
+  {
+    "id": "chagai-i-1998",
+    "name": "Chagai-I (Ras Koh Tests)",
+    "country": "Pakistan",
+    "location": "Koh Kambaran, Ras Koh Hills, Balochistan",
+    "coordinates": {
+      "lat": 28.7833,
+      "lon": 64.9167
+    },
+    "date": "1998-05-28",
+    "year": 1998,
+    "yieldKt": 40.0,
+    "yieldDisplay": "40.0 kt",
+    "testType": "Underground Tunnel",
+    "purpose": "First Pakistani Nuclear Weapon Test",
+    "heightOfBurstM": -1000,
+    "fireballRadiusM": 250,
+    "promptEffects": {
+      "thermalRadiusKm_3rdDeg": 0,
+      "blast5psiRadiusKm": 2.2,
+      "promptRadiation1SvRadiusKm": 1.6
+    },
+    "historicalSignificance": "First public nuclear tests conducted by Pakistan in response to Pokhran-II; weaponized HEU architecture."
+  },
+  {
+    "id": "punggye-ri-2017",
+    "name": "Punggye-ri 2017 Thermonuclear Test",
+    "country": "North Korea",
+    "location": "Mount Mantap, Punggye-ri Test Site, North Hamgyong",
+    "coordinates": {
+      "lat": 41.2794,
+      "lon": 129.0872
+    },
+    "date": "2017-09-03",
+    "year": 2017,
+    "yieldKt": 150.0,
+    "yieldDisplay": "150.0–250.0 kt",
+    "testType": "Underground Tunnel",
+    "purpose": "Thermonuclear Two-Stage ICBM Warhead",
+    "heightOfBurstM": -800,
+    "fireballRadiusM": 440,
+    "promptEffects": {
+      "thermalRadiusKm_3rdDeg": 0,
+      "blast5psiRadiusKm": 3.3,
+      "promptRadiation1SvRadiusKm": 2.4
+    },
+    "historicalSignificance": "Sixth and largest North Korean nuclear test; generated magnitude 6.3 seismic event and surface collapse of Mount Mantap."
+  },
+  {
+    "id": "site-nevada",
+    "name": "Nevada National Security Site (NTS)",
+    "country": "United States",
+    "location": "Nye County, Nevada",
+    "coordinates": {
+      "lat": 37.1167,
+      "lon": -116.05
+    },
+    "date": "1951–1992",
+    "year": 1951,
+    "yieldKt": 928.0,
+    "yieldDisplay": "928 Total Tests",
+    "testType": "Proving Ground / Polygon",
+    "purpose": "Continental US Nuclear Testing Complex",
+    "heightOfBurstM": 0,
+    "fireballRadiusM": 0,
+    "promptEffects": {
+      "thermalRadiusKm_3rdDeg": 0,
+      "blast5psiRadiusKm": 0,
+      "promptRadiation1SvRadiusKm": 0
+    },
+    "historicalSignificance": "Primary continental testing ground for the US nuclear arsenal. 100 atmospheric and 828 underground nuclear tests."
+  },
+  {
+    "id": "site-semipalatinsk",
+    "name": "Semipalatinsk Test Site (The Polygon)",
+    "country": "Kazakhstan / USSR",
+    "location": "Pavlodar / East Kazakhstan Oblasts",
+    "coordinates": {
+      "lat": 50.0,
+      "lon": 78.0
+    },
+    "date": "1949–1989",
+    "year": 1949,
+    "yieldKt": 456.0,
+    "yieldDisplay": "456 Total Tests",
+    "testType": "Proving Ground / Polygon",
+    "purpose": "Primary Soviet Continental Testing Base",
+    "heightOfBurstM": 0,
+    "fireballRadiusM": 0,
+    "promptEffects": {
+      "thermalRadiusKm_3rdDeg": 0,
+      "blast5psiRadiusKm": 0,
+      "promptRadiation1SvRadiusKm": 0
+    },
+    "historicalSignificance": "Primary Soviet continental test facility; closed on August 29, 1991 by President Nursultan Nazarbayev."
+  },
+  {
+    "id": "site-novaya-zemlya",
+    "name": "Novaya Zemlya Northern Test Site",
+    "country": "Russia / USSR",
+    "location": "Novaya Zemlya Archipelago, Arctic Ocean",
+    "coordinates": {
+      "lat": 73.5,
+      "lon": 54.5
+    },
+    "date": "1955–1990",
+    "year": 1955,
+    "yieldKt": 224.0,
+    "yieldDisplay": "224 Total Tests",
+    "testType": "Proving Ground / Polygon",
+    "purpose": "Soviet Arctic High-Yield Test Site",
+    "heightOfBurstM": 0,
+    "fireballRadiusM": 0,
+    "promptEffects": {
+      "thermalRadiusKm_3rdDeg": 0,
+      "blast5psiRadiusKm": 0,
+      "promptRadiation1SvRadiusKm": 0
+    },
+    "historicalSignificance": "Site of the highest yield atmospheric and underground nuclear explosions in history, including Tsar Bomba."
+  },
+  {
+    "id": "site-lop-nur",
+    "name": "Lop Nur Nuclear Test Base",
+    "country": "China",
+    "location": "Malang / Lop Nur Basin, Xinjiang",
+    "coordinates": {
+      "lat": 40.8167,
+      "lon": 89.7833
+    },
+    "date": "1964–1996",
+    "year": 1964,
+    "yieldKt": 45.0,
+    "yieldDisplay": "45 Total Tests",
+    "testType": "Proving Ground / Polygon",
+    "purpose": "Chinese Nuclear Testing Center",
+    "heightOfBurstM": 0,
+    "fireballRadiusM": 0,
+    "promptEffects": {
+      "thermalRadiusKm_3rdDeg": 0,
+      "blast5psiRadiusKm": 0,
+      "promptRadiation1SvRadiusKm": 0
+    },
+    "historicalSignificance": "Sole nuclear weapons testing facility operated by the People Republic of China; 23 atmospheric and 22 underground tests."
+  },
+  {
+    "id": "site-moruroa",
+    "name": "Moruroa & Fangataufa Atolls",
+    "country": "France",
+    "location": "Tuamotu Archipelago, French Polynesia",
+    "coordinates": {
+      "lat": -21.8333,
+      "lon": -138.8333
+    },
+    "date": "1966–1996",
+    "year": 1966,
+    "yieldKt": 193.0,
+    "yieldDisplay": "193 Total Tests",
+    "testType": "Proving Ground / Polygon",
+    "purpose": "French Pacific Nuclear Test Center (CEP)",
+    "heightOfBurstM": 0,
+    "fireballRadiusM": 0,
+    "promptEffects": {
+      "thermalRadiusKm_3rdDeg": 0,
+      "blast5psiRadiusKm": 0,
+      "promptRadiation1SvRadiusKm": 0
+    },
+    "historicalSignificance": "Centre d Experimentations du Pacifique; site of 41 atmospheric tests and 147 underground drill hole tests."
+  }
+]
