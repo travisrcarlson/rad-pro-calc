@@ -6,6 +6,8 @@ import {
   getGeospatialCountries,
   calculateHaversineDistanceKm,
   buildGeospatialDossierPayload,
+  exportGeospatialPinsToCSV,
+  exportGeospatialPinsToJSON,
   type UnifiedGeospatialPin,
   type GeospatialCategory
 } from '../../services/globalGeospatialService';
@@ -25,10 +27,15 @@ export const GlobalNuclearMapModule: React.FC = () => {
   const [showDetonations, setShowDetonations] = useState<boolean>(true);
   const [showIncidents, setShowIncidents] = useState<boolean>(true);
 
-  // Filter State
+  // Advanced Filtering State
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedCountry, setSelectedCountry] = useState<string>('all');
   const [activeCategoryFilter, setActiveCategoryFilter] = useState<'all' | GeospatialCategory>('all');
+  const [featuredDetonationsOnly, setFeaturedDetonationsOnly] = useState<boolean>(false);
+  const [selectedEnvironment, setSelectedEnvironment] = useState<string>('all');
+  const [selectedDecade, setSelectedDecade] = useState<string>('all');
+  const [selectedReactorStatus, setSelectedReactorStatus] = useState<string>('all');
+  const [selectedReactorType, setSelectedReactorType] = useState<string>('all');
 
   // Globe Center Rotation State (Controlled for centering on clicks)
   const [centerRotation, setCenterRotation] = useState<{ lon: number; lat: number }>({ lon: 10, lat: 25 });
@@ -54,9 +61,26 @@ export const GlobalNuclearMapModule: React.FC = () => {
       includeDetonations: showDetonations && (activeCategoryFilter === 'all' || activeCategoryFilter === 'detonation'),
       includeIncidents: showIncidents && (activeCategoryFilter === 'all' || activeCategoryFilter === 'incident'),
       searchQuery,
-      country: selectedCountry
+      country: selectedCountry,
+      featuredOnly: featuredDetonationsOnly,
+      environment: selectedEnvironment,
+      decade: selectedDecade,
+      reactorStatus: selectedReactorStatus,
+      reactorType: selectedReactorType
     });
-  }, [showReactors, showDetonations, showIncidents, activeCategoryFilter, searchQuery, selectedCountry]);
+  }, [
+    showReactors,
+    showDetonations,
+    showIncidents,
+    activeCategoryFilter,
+    searchQuery,
+    selectedCountry,
+    featuredDetonationsOnly,
+    selectedEnvironment,
+    selectedDecade,
+    selectedReactorStatus,
+    selectedReactorType
+  ]);
 
   // Aggregate Statistics
   const stats = useMemo(() => {
@@ -111,6 +135,31 @@ export const GlobalNuclearMapModule: React.FC = () => {
     setIsDossierOpen(true);
   };
 
+  // Export handlers
+  const handleExportCSV = () => {
+    const csv = exportGeospatialPinsToCSV(pins);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `radpro_geospatial_export_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleExportJSON = () => {
+    const json = exportGeospatialPinsToJSON(pins);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `radpro_geospatial_export_${new Date().toISOString().slice(0, 10)}.json`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   // Dispatch to Plume Module
   const handleDispatchPlume = (_pin: UnifiedGeospatialPin) => {
     navigate('/plume');
@@ -144,11 +193,14 @@ export const GlobalNuclearMapModule: React.FC = () => {
         text: reactorPins.map(p => `<b>${p.name}</b><br>${p.location}<br>Capacity: ${p.primaryMetric}<br>Type: ${p.typeOrClassification}`),
         hoverinfo: 'text',
         marker: {
-          size: reactorPins.map(p => Math.max(7, Math.min(18, Math.sqrt((p.rawReactor?.capacityMWe || 1000) / 18)))),
-          color: '#10b981',
-          opacity: 0.9,
+          size: reactorPins.map(p => {
+            if (p.typeOrClassification === 'Research') return 8;
+            return Math.max(6, Math.min(16, Math.sqrt((p.rawReactor?.capacityMWe || 1000) / 25)));
+          }),
+          color: reactorPins.map(p => p.color),
+          opacity: 0.88,
           symbol: 'circle',
-          line: { width: 1.5, color: '#34d399' }
+          line: { width: 1.2, color: '#34d399' }
         },
         customdata: reactorPins
       });
@@ -161,14 +213,20 @@ export const GlobalNuclearMapModule: React.FC = () => {
         name: `Detonations (${detonationPins.length})`,
         lat: detonationPins.map(p => p.coordinates.lat),
         lon: detonationPins.map(p => p.coordinates.lon),
-        text: detonationPins.map(p => `<b>${p.name}</b><br>${p.location}<br>${p.primaryMetric}<br>${p.dateOrYear}`),
+        text: detonationPins.map(p => `<b>${p.name}</b><br>${p.location}<br>${p.primaryMetric}<br>${p.dateOrYear} // ${p.secondaryMetric}`),
         hoverinfo: 'text',
         marker: {
-          size: detonationPins.map(p => Math.max(8, Math.min(22, Math.sqrt((p.rawDetonation?.yieldKt || 20) / 15)))),
-          color: '#ef4444',
-          opacity: 0.9,
+          size: detonationPins.map(p => {
+            const y = p.rawDetonation?.yieldKt || 20;
+            if (y >= 1000) return 14;
+            if (y >= 100) return 10;
+            if (y >= 10) return 7;
+            return 5;
+          }),
+          color: detonationPins.map(p => p.color),
+          opacity: 0.85,
           symbol: 'diamond',
-          line: { width: 1.5, color: '#f87171' }
+          line: { width: 1.0, color: '#f87171' }
         },
         customdata: detonationPins
       });
@@ -234,38 +292,60 @@ export const GlobalNuclearMapModule: React.FC = () => {
             <h2 style={{ margin: '0 0 6px 0', display: 'flex', alignItems: 'center', gap: '10px' }}>
               <span>🌍 Global Nuclear Geospatial &amp; 3D Earth Hub</span>
               <span style={{ fontSize: '0.75rem', padding: '3px 8px', background: 'rgba(0, 229, 255, 0.12)', color: 'var(--color-primary)', border: '1px solid rgba(0, 229, 255, 0.3)', borderRadius: '4px' }}>
-                IAEA PRIS // Nuclear Weapons Tests // Orthographic 3D
+                IAEA PRIS (739 Units) // 2,038 Weapons Tests // Orthographic 3D
               </span>
             </h2>
             <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: '0.88rem' }}>
-              Interactive 3D planetary observatory mapping operational nuclear power stations, historic atomic &amp; thermonuclear detonations, and landmark radiological accident sites.
+              Comprehensive 3D planetary observatory mapping 319 civil &amp; research nuclear complexes (739 commercial power units), 2,038 historical atomic &amp; thermonuclear detonations (1945–present), and landmark radiological accident sites.
             </p>
           </div>
 
-          {/* Projection Modes */}
-          <div style={{ display: 'flex', gap: '6px', alignItems: 'center', background: 'rgba(0,0,0,0.3)', padding: '4px 8px', borderRadius: '6px', border: '1px solid rgba(0, 229, 255, 0.2)' }}>
-            <span style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)', marginRight: '4px' }}>Projection:</span>
-            <button
-              className={`btn ${projectionType === 'orthographic' ? 'btn-primary' : 'btn-secondary'}`}
-              onClick={() => setProjectionType('orthographic')}
-              style={{ padding: '4px 10px', fontSize: '0.78rem' }}
-            >
-              🌍 3D Globe
-            </button>
-            <button
-              className={`btn ${projectionType === 'natural earth' ? 'btn-primary' : 'btn-secondary'}`}
-              onClick={() => setProjectionType('natural earth')}
-              style={{ padding: '4px 10px', fontSize: '0.78rem' }}
-            >
-              🗺️ Natural Earth
-            </button>
-            <button
-              className={`btn ${projectionType === 'mercator' ? 'btn-primary' : 'btn-secondary'}`}
-              onClick={() => setProjectionType('mercator')}
-              style={{ padding: '4px 10px', fontSize: '0.78rem' }}
-            >
-              🧭 Mercator
-            </button>
+          {/* Action & Projection Modes */}
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '6px', alignItems: 'center', background: 'rgba(0,0,0,0.3)', padding: '4px 8px', borderRadius: '6px', border: '1px solid rgba(0, 229, 255, 0.2)' }}>
+              <span style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)', marginRight: '4px' }}>Projection:</span>
+              <button
+                className={`btn ${projectionType === 'orthographic' ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => setProjectionType('orthographic')}
+                style={{ padding: '4px 10px', fontSize: '0.78rem' }}
+              >
+                🌍 3D Globe
+              </button>
+              <button
+                className={`btn ${projectionType === 'natural earth' ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => setProjectionType('natural earth')}
+                style={{ padding: '4px 10px', fontSize: '0.78rem' }}
+              >
+                🗺️ Natural Earth
+              </button>
+              <button
+                className={`btn ${projectionType === 'mercator' ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => setProjectionType('mercator')}
+                style={{ padding: '4px 10px', fontSize: '0.78rem' }}
+              >
+                🧭 Mercator
+              </button>
+            </div>
+
+            {/* Export Buttons */}
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <button
+                className="btn btn-secondary"
+                onClick={handleExportCSV}
+                title="Export filtered records as CSV"
+                style={{ fontSize: '0.75rem', padding: '5px 9px' }}
+              >
+                📥 Export CSV
+              </button>
+              <button
+                className="btn btn-secondary"
+                onClick={handleExportJSON}
+                title="Export filtered records as JSON"
+                style={{ fontSize: '0.75rem', padding: '5px 9px' }}
+              >
+                📥 Export JSON
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -273,22 +353,22 @@ export const GlobalNuclearMapModule: React.FC = () => {
       {/* Global Status HUD Metrics */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '12px' }}>
         <div className="panel" style={{ padding: '12px 14px', borderLeft: '3px solid #10b981' }}>
-          <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Nuclear Power Stations</div>
+          <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Nuclear Power Complexes</div>
           <div style={{ fontSize: '1.35rem', fontWeight: 'bold', color: '#10b981', marginTop: '2px' }}>
-            {stats.reactorCount} Major Facilities
+            {stats.reactorCount} Sites (739 Units)
           </div>
           <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
-            {(stats.totalMWe / 1000).toFixed(1)}k MWe Global Capacity
+            {(stats.totalMWe / 1000).toFixed(1)}k MWe Global Net Output
           </div>
         </div>
 
         <div className="panel" style={{ padding: '12px 14px', borderLeft: '3px solid #ef4444' }}>
-          <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Weapons Detonations &amp; Sites</div>
+          <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Weapons Detonations &amp; Tests</div>
           <div style={{ fontSize: '1.35rem', fontWeight: 'bold', color: '#ef4444', marginTop: '2px' }}>
-            {stats.detonationCount} Key Operations
+            {stats.detonationCount} Recorded Events
           </div>
           <div style={{ fontSize: '0.7rem', color: '#fca5a5' }}>
-            {stats.totalYieldMt.toFixed(1)} Megatons Historical Yield
+            {stats.totalYieldMt.toFixed(1)} Mt Historical Explosive Yield
           </div>
         </div>
 
@@ -308,39 +388,41 @@ export const GlobalNuclearMapModule: React.FC = () => {
             {pins.length} Plotted Pins
           </div>
           <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
-            Instant Haversine &amp; Plume Link
+            Instant Haversine &amp; Simulation Link
           </div>
         </div>
       </div>
 
       {/* Controls & Layer Toggles Bar */}
-      <div className="panel" style={{ padding: '12px 16px' }}>
-        <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', alignItems: 'center' }}>
+      <div className="panel" style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        
+        {/* Row 1: Layer Switches + Search + Country */}
+        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
           
           {/* Layer Toggles */}
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             <button
               className={`btn ${showReactors ? 'btn-primary' : 'btn-secondary'}`}
               onClick={() => setShowReactors(!showReactors)}
-              style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', padding: '5px 12px' }}
+              style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.78rem', padding: '4px 10px' }}
             >
-              <span>🟢 Nuclear Reactors ({stats.reactorCount})</span>
+              <span>🟢 Nuclear Plants ({stats.reactorCount})</span>
             </button>
 
             <button
               className={`btn ${showDetonations ? 'btn-primary' : 'btn-secondary'}`}
               onClick={() => setShowDetonations(!showDetonations)}
-              style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', padding: '5px 12px' }}
+              style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.78rem', padding: '4px 10px' }}
             >
-              <span>🔴 Nuclear Detonations ({stats.detonationCount})</span>
+              <span>🔴 Detonations ({stats.detonationCount})</span>
             </button>
 
             <button
               className={`btn ${showIncidents ? 'btn-primary' : 'btn-secondary'}`}
               onClick={() => setShowIncidents(!showIncidents)}
-              style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', padding: '5px 12px' }}
+              style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.78rem', padding: '4px 10px' }}
             >
-              <span>🟡 INES Incidents ({stats.incidentCount})</span>
+              <span>🟡 Accidents ({stats.incidentCount})</span>
             </button>
           </div>
 
@@ -348,10 +430,10 @@ export const GlobalNuclearMapModule: React.FC = () => {
           <input
             type="text"
             className="form-control"
-            placeholder="Search facility name, test name, or country (e.g. 'Vogtle', 'Bikini', 'France')..."
+            placeholder="Search facility name, test name, series, or country (e.g. 'Bruce', 'Castle Bravo', 'Novaya Zemlya')..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            style={{ flex: '1 1 200px', fontSize: '0.82rem', padding: '6px 12px' }}
+            style={{ flex: '1 1 220px', fontSize: '0.82rem', padding: '5px 12px' }}
           />
 
           {/* Country Selector */}
@@ -359,9 +441,9 @@ export const GlobalNuclearMapModule: React.FC = () => {
             className="form-control"
             value={selectedCountry}
             onChange={(e) => setSelectedCountry(e.target.value)}
-            style={{ width: '180px', fontSize: '0.82rem', padding: '6px 12px' }}
+            style={{ width: '170px', fontSize: '0.82rem', padding: '5px 10px' }}
           >
-            <option value="all">All Sovereign Nations</option>
+            <option value="all">All Nations ({countries.length})</option>
             {countries.map(c => (
               <option key={c} value={c}>{c}</option>
             ))}
@@ -370,17 +452,116 @@ export const GlobalNuclearMapModule: React.FC = () => {
           {/* Reset View */}
           <button
             className="btn btn-secondary"
-            onClick={() => setCenterRotation({ lon: 10, lat: 25 })}
-            style={{ fontSize: '0.78rem', padding: '5px 10px' }}
-            title="Reset globe to prime meridian"
+            onClick={() => {
+              setCenterRotation({ lon: 10, lat: 25 });
+              setSelectedCountry('all');
+              setSearchQuery('');
+              setSelectedEnvironment('all');
+              setSelectedDecade('all');
+              setSelectedReactorStatus('all');
+              setSelectedReactorType('all');
+              setFeaturedDetonationsOnly(false);
+            }}
+            style={{ fontSize: '0.76rem', padding: '4px 8px' }}
+            title="Reset all filters and globe center"
           >
-            ↺ Reset Globe
+            ↺ Reset All
           </button>
+        </div>
+
+        {/* Row 2: Deep Drilldown Filters */}
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '8px' }}>
+          
+          {/* Landmark Tests Toggle */}
+          <button
+            className={`btn ${featuredDetonationsOnly ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setFeaturedDetonationsOnly(!featuredDetonationsOnly)}
+            style={{ fontSize: '0.74rem', padding: '3px 8px', display: 'flex', alignItems: 'center', gap: '4px' }}
+            title="Toggle between landmark featured operations (77) and the full historical detonations catalog (2,038)"
+          >
+            <span>{featuredDetonationsOnly ? '⭐ Landmark Tests (77)' : '🌐 All Weapons Tests (2,038)'}</span>
+          </button>
+
+          {/* Test Environment Filter */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>Environment:</span>
+            <select
+              className="form-control"
+              value={selectedEnvironment}
+              onChange={(e) => setSelectedEnvironment(e.target.value)}
+              style={{ fontSize: '0.74rem', padding: '3px 6px', width: '130px' }}
+            >
+              <option value="all">All Environments</option>
+              <option value="Atmospheric">Atmospheric / Air</option>
+              <option value="Underground">Underground</option>
+              <option value="Underwater">Underwater</option>
+              <option value="Space/High-Altitude">Space / Exoatmospheric</option>
+            </select>
+          </div>
+
+          {/* Decade Filter */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>Decade:</span>
+            <select
+              className="form-control"
+              value={selectedDecade}
+              onChange={(e) => setSelectedDecade(e.target.value)}
+              style={{ fontSize: '0.74rem', padding: '3px 6px', width: '100px' }}
+            >
+              <option value="all">All Decades</option>
+              <option value="1940s">1940s</option>
+              <option value="1950s">1950s</option>
+              <option value="1960s">1960s</option>
+              <option value="1970s">1970s</option>
+              <option value="1980s">1980s</option>
+              <option value="1990s">1990s</option>
+              <option value="2000s">2000s+</option>
+            </select>
+          </div>
+
+          {/* Reactor Status Filter */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>Plant Status:</span>
+            <select
+              className="form-control"
+              value={selectedReactorStatus}
+              onChange={(e) => setSelectedReactorStatus(e.target.value)}
+              style={{ fontSize: '0.74rem', padding: '3px 6px', width: '130px' }}
+            >
+              <option value="all">All Statuses</option>
+              <option value="Operational">Operational</option>
+              <option value="Under Construction">Under Construction</option>
+              <option value="Permanent Shutdown">Permanent Shutdown</option>
+              <option value="Suspended Operation">Suspended Operation</option>
+            </select>
+          </div>
+
+          {/* Reactor Technology / Family Filter */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>Architecture:</span>
+            <select
+              className="form-control"
+              value={selectedReactorType}
+              onChange={(e) => setSelectedReactorType(e.target.value)}
+              style={{ fontSize: '0.74rem', padding: '3px 6px', width: '130px' }}
+            >
+              <option value="all">All Architectures</option>
+              <option value="PWR">PWR</option>
+              <option value="BWR">BWR</option>
+              <option value="VVER">VVER (PWR)</option>
+              <option value="PHWR/CANDU">PHWR / CANDU</option>
+              <option value="RBMK/LWGR">RBMK / LWGR</option>
+              <option value="GCR/AGR family">Gas-Cooled (AGR/GCR)</option>
+              <option value="Fast Reactor">Fast Breeder (FBR)</option>
+              <option value="Research">Research Reactor</option>
+            </select>
+          </div>
+
         </div>
       </div>
 
       {/* Main Geospatial Workspace (Globe + Inspector Drawer) */}
-      <div style={{ display: 'grid', gridTemplateColumns: selectedPin ? '1fr 380px' : '1fr', gap: '16px', flex: 1, minHeight: '520px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: selectedPin ? '1fr 400px' : '1fr', gap: '16px', flex: 1, minHeight: '520px' }}>
         
         {/* Globe Visualization Canvas */}
         <div
@@ -410,7 +591,7 @@ export const GlobalNuclearMapModule: React.FC = () => {
             fontSize: '0.76rem',
             color: 'var(--color-text-muted)'
           }}>
-            🖱️ <strong>Click &amp; Drag</strong> to rotate 3D Globe // <strong>Scroll</strong> to zoom // <strong>Click marker</strong> to inspect
+            🖱️ <strong>Click &amp; Drag</strong> to rotate 3D Globe // <strong>Scroll</strong> to zoom // <strong>Click marker</strong> to inspect ({pins.length} active)
           </div>
 
           <Plot
@@ -470,10 +651,11 @@ export const GlobalNuclearMapModule: React.FC = () => {
               display: 'flex',
               flexDirection: 'column',
               gap: '12px',
-              background: 'rgba(5, 10, 18, 0.85)',
+              background: 'rgba(5, 10, 18, 0.88)',
               border: `1px solid ${selectedPin.color}`,
               boxShadow: '0 8px 30px rgba(0,0,0,0.5)',
-              overflowY: 'auto'
+              overflowY: 'auto',
+              maxHeight: '600px'
             }}
           >
             {/* Header */}
@@ -542,16 +724,35 @@ export const GlobalNuclearMapModule: React.FC = () => {
 
             {/* Specific Reactor Details */}
             {selectedPin.rawReactor && (
-              <div style={{ background: 'rgba(16, 185, 129, 0.08)', borderLeft: '3px solid #10b981', padding: '10px', borderRadius: '4px', fontSize: '0.8rem' }}>
-                <div style={{ color: '#34d399', fontWeight: 'bold', marginBottom: '4px' }}>Core Equilibrium Inventory Estimate:</div>
-                <div style={{ color: '#cbd5e1', lineHeight: 1.4 }}>
-                  • I-131: {(selectedPin.rawReactor.fissionInventoryTBq.I131 / 1e6).toFixed(1)}M TBq<br />
-                  • Cs-137: {(selectedPin.rawReactor.fissionInventoryTBq.Cs137 / 1e6).toFixed(1)}M TBq<br />
-                  • Xe-133: {(selectedPin.rawReactor.fissionInventoryTBq.Xe133 / 1e6).toFixed(1)}M TBq
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ background: 'rgba(16, 185, 129, 0.08)', borderLeft: '3px solid #10b981', padding: '10px', borderRadius: '4px', fontSize: '0.8rem' }}>
+                  <div style={{ color: '#34d399', fontWeight: 'bold', marginBottom: '4px' }}>Core Equilibrium Screening Inventory:</div>
+                  <div style={{ color: '#cbd5e1', lineHeight: 1.4 }}>
+                    • I-131: {((selectedPin.rawReactor.fissionInventoryTBq.i131 || selectedPin.rawReactor.fissionInventoryTBq.I131 || 0) / 1e6).toFixed(2)}M TBq<br />
+                    • Cs-137: {((selectedPin.rawReactor.fissionInventoryTBq.cs137 || selectedPin.rawReactor.fissionInventoryTBq.Cs137 || 0) / 1e6).toFixed(2)}M TBq<br />
+                    • Xe-133: {((selectedPin.rawReactor.fissionInventoryTBq.xe133 || selectedPin.rawReactor.fissionInventoryTBq.Xe133 || 0) / 1e6).toFixed(2)}M TBq
+                  </div>
+                  <div style={{ marginTop: '6px', color: 'var(--color-text-muted)', fontSize: '0.74rem' }}>
+                    Operator: {selectedPin.rawReactor.operator}
+                  </div>
                 </div>
-                <div style={{ marginTop: '6px', color: 'var(--color-text-muted)', fontSize: '0.74rem' }}>
-                  Operator: {selectedPin.rawReactor.operator}
-                </div>
+
+                {/* Individual Units Breakdown (PRIS Roster) */}
+                {selectedPin.rawReactor.units && selectedPin.rawReactor.units.length > 0 && (
+                  <div style={{ background: 'rgba(0,0,0,0.3)', padding: '10px', borderRadius: '6px', fontSize: '0.75rem' }}>
+                    <div style={{ color: '#ecf0f1', fontWeight: 600, marginBottom: '6px' }}>
+                      Operational Units at this Site ({selectedPin.rawReactor.units.length}):
+                    </div>
+                    <div style={{ maxHeight: '110px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      {selectedPin.rawReactor.units.map(u => (
+                        <div key={u.unitName} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 6px', background: 'rgba(255,255,255,0.03)', borderRadius: '3px' }}>
+                          <span style={{ color: '#38bdf8' }}>{u.unitName} ({u.model})</span>
+                          <span style={{ color: u.status === 'Operational' ? '#10b981' : '#f59e0b' }}>{u.capacityMWe > 0 ? `${u.capacityMWe} MWe` : u.status}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -560,13 +761,16 @@ export const GlobalNuclearMapModule: React.FC = () => {
               <div style={{ background: 'rgba(239, 68, 68, 0.08)', borderLeft: '3px solid #ef4444', padding: '10px', borderRadius: '4px', fontSize: '0.8rem' }}>
                 <div style={{ color: '#f87171', fontWeight: 'bold', marginBottom: '4px' }}>Prompt Weapon Effects Radii:</div>
                 <div style={{ color: '#cbd5e1', lineHeight: 1.4 }}>
-                  • 5-psi Moderate Blast Damage: {selectedPin.rawDetonation.promptEffects.blast5psiRadiusKm} km<br />
-                  • 3rd Degree Thermal Burns: {selectedPin.rawDetonation.promptEffects.thermalRadiusKm_3rdDeg} km<br />
-                  • 1.0 Sv Prompt Dose: {selectedPin.rawDetonation.promptEffects.promptRadiation1SvRadiusKm} km
+                  • Fireball Radius: {selectedPin.rawDetonation.fireballRadiusM} m<br />
+                  • 5-psi Blast Overpressure: {selectedPin.rawDetonation.promptEffects.blast5psiRadiusKm ?? ((selectedPin.rawDetonation.promptEffects.blast5psiRadiusM || 0) / 1000).toFixed(2)} km<br />
+                  • 3rd Degree Thermal Burns: {selectedPin.rawDetonation.promptEffects.thermalRadiusKm_3rdDeg ?? ((selectedPin.rawDetonation.promptEffects.thermalBurn3rdDegRadiusM || 0) / 1000).toFixed(2)} km<br />
+                  • 1.0 Sv Prompt Dose: {selectedPin.rawDetonation.promptEffects.promptRadiation1SvRadiusKm ?? ((selectedPin.rawDetonation.promptEffects.prompt1SvDoseRadiusM || 0) / 1000).toFixed(2)} km
                 </div>
-                <div style={{ marginTop: '6px', color: 'var(--color-text-muted)', fontSize: '0.74rem' }}>
-                  Purpose: {selectedPin.rawDetonation.purpose}
-                </div>
+                {selectedPin.rawDetonation.operationSeries && (
+                  <div style={{ marginTop: '6px', color: 'var(--color-primary)', fontSize: '0.74rem' }}>
+                    Series: {selectedPin.rawDetonation.operationSeries}
+                  </div>
+                )}
               </div>
             )}
 
@@ -689,7 +893,7 @@ export const GlobalNuclearMapModule: React.FC = () => {
       <div className="panel" style={{ padding: '14px 16px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
           <h4 style={{ margin: 0, fontSize: '0.92rem', color: '#fff' }}>
-            📋 Global Nuclear Site Directory ({pins.length} Matches)
+            📋 Global Nuclear Directory ({pins.length} Matches)
           </h4>
           <div style={{ display: 'flex', gap: '6px' }}>
             <button
@@ -704,21 +908,21 @@ export const GlobalNuclearMapModule: React.FC = () => {
               onClick={() => setActiveCategoryFilter('reactor')}
               style={{ fontSize: '0.75rem', padding: '3px 8px' }}
             >
-              Reactors
+              Reactors ({stats.reactorCount})
             </button>
             <button
               className={`btn ${activeCategoryFilter === 'detonation' ? 'btn-primary' : 'btn-secondary'}`}
               onClick={() => setActiveCategoryFilter('detonation')}
               style={{ fontSize: '0.75rem', padding: '3px 8px' }}
             >
-              Detonations
+              Detonations ({stats.detonationCount})
             </button>
             <button
               className={`btn ${activeCategoryFilter === 'incident' ? 'btn-primary' : 'btn-secondary'}`}
               onClick={() => setActiveCategoryFilter('incident')}
               style={{ fontSize: '0.75rem', padding: '3px 8px' }}
             >
-              Accidents
+              Accidents ({stats.incidentCount})
             </button>
           </div>
         </div>
@@ -753,7 +957,7 @@ export const GlobalNuclearMapModule: React.FC = () => {
                   {pin.name}
                 </span>
                 <span style={{ fontSize: '0.68rem', padding: '1px 5px', borderRadius: '3px', background: `${pin.color}22`, color: pin.color, fontWeight: 'bold' }}>
-                  {pin.category === 'reactor' ? 'PWR/BWR' : pin.category === 'detonation' ? 'TEST' : 'INES'}
+                  {pin.category === 'reactor' ? pin.typeOrClassification : pin.category === 'detonation' ? 'TEST' : 'INES'}
                 </span>
               </div>
               <div style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)' }}>
