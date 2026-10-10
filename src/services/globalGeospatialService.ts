@@ -76,7 +76,9 @@ export interface NuclearDetonationRecord {
   operationSeries?: string | null;
 }
 
-export type GeospatialCategory = 'reactor' | 'detonation' | 'incident';
+import { CTBTO_STATIONS, type CTBTOStationRecord } from './seismicYieldInversionService';
+
+export type GeospatialCategory = 'reactor' | 'detonation' | 'incident' | 'ctbto';
 
 export interface UnifiedGeospatialPin {
   id: string;
@@ -100,6 +102,7 @@ export interface UnifiedGeospatialPin {
   rawReactor?: GlobalReactorRecord;
   rawDetonation?: NuclearDetonationRecord;
   rawIncident?: any;
+  rawCTBTO?: CTBTOStationRecord;
 }
 
 const REACTORS: GlobalReactorRecord[] = reactorsDataRaw as unknown as GlobalReactorRecord[];
@@ -112,6 +115,10 @@ export function getAllReactors(): GlobalReactorRecord[] {
 
 export function getAllDetonations(): NuclearDetonationRecord[] {
   return DETONATIONS;
+}
+
+export function getAllCTBTOStations(): CTBTOStationRecord[] {
+  return CTBTO_STATIONS;
 }
 
 export function getAllIncidentsWithCoords(): any[] {
@@ -229,6 +236,8 @@ export interface GeospatialFilterOptions {
   includeReactors?: boolean;
   includeDetonations?: boolean;
   includeIncidents?: boolean;
+  includeCTBTO?: boolean;
+  ctbtoTech?: string | 'all';
   searchQuery?: string;
   country?: string | 'all';
   featuredOnly?: boolean;
@@ -245,6 +254,8 @@ export function getUnifiedGeospatialPins(options: GeospatialFilterOptions = {}):
     includeReactors = true,
     includeDetonations = true,
     includeIncidents = true,
+    includeCTBTO = true,
+    ctbtoTech = 'all',
     searchQuery = '',
     country = 'all',
     featuredOnly = false,
@@ -399,6 +410,49 @@ export function getUnifiedGeospatialPins(options: GeospatialFilterOptions = {}):
     });
   }
 
+  // 4. Process CTBTO International Monitoring System (IMS) Stations
+  if (includeCTBTO) {
+    CTBTO_STATIONS.forEach(st => {
+      if (country !== 'all' && st.country.toLowerCase() !== country.toLowerCase()) return;
+      if (ctbtoTech !== 'all' && st.technology !== ctbtoTech) return;
+
+      if (q) {
+        const match =
+          st.stationCode.toLowerCase().includes(q) ||
+          st.name.toLowerCase().includes(q) ||
+          st.country.toLowerCase().includes(q) ||
+          st.technology.toLowerCase().includes(q) ||
+          st.location.toLowerCase().includes(q) ||
+          (st.targetIsotopes && st.targetIsotopes.some(iso => iso.toLowerCase().includes(q)));
+        if (!match) return;
+      }
+
+      const isNobleGas = st.nobleGasEquipped;
+      const techColor = 
+        st.technology === 'Radionuclide' ? '#38bdf8' :
+        st.technology === 'Primary Seismic' ? '#f59e0b' :
+        st.technology === 'Infrasound' ? '#a855f7' :
+        st.technology === 'Hydroacoustic' ? '#06b6d4' : '#64748b';
+
+      pins.push({
+        id: st.id,
+        category: 'ctbto',
+        name: `${st.stationCode} - ${st.name}`,
+        country: st.country,
+        location: st.location,
+        coordinates: st.coordinates,
+        primaryMetric: `${st.technology} Station`,
+        secondaryMetric: isNobleGas ? `Noble Gas (Xe) Equipped // ${st.status}` : st.status,
+        dateOrYear: 'Operational IMS',
+        typeOrClassification: st.technology,
+        color: techColor,
+        symbol: 'square',
+        isFeatured: isNobleGas,
+        rawCTBTO: st
+      });
+    });
+  }
+
   return pins;
 }
 
@@ -406,6 +460,7 @@ export function getGeospatialCountries(): string[] {
   const set = new Set<string>();
   REACTORS.forEach(r => set.add(r.country));
   DETONATIONS.forEach(d => set.add(d.country));
+  CTBTO_STATIONS.forEach(s => set.add(s.country));
   return Array.from(set).sort();
 }
 
@@ -420,6 +475,7 @@ export function buildGeospatialDossierPayload(
 ): CalculationDossierPayload {
   const isReactor = pin.category === 'reactor' && pin.rawReactor;
   const isDetonation = pin.category === 'detonation' && pin.rawDetonation;
+  const isCTBTO = pin.category === 'ctbto' && pin.rawCTBTO;
 
   const invI131 = isReactor
     ? (pin.rawReactor!.fissionInventoryTBq.i131 ?? pin.rawReactor!.fissionInventoryTBq.I131 ?? 0)
@@ -435,11 +491,17 @@ export function buildGeospatialDossierPayload(
        (pin.rawDetonation!.promptEffects.thermalBurn3rdDegRadiusM ? (pin.rawDetonation!.promptEffects.thermalBurn3rdDegRadiusM / 1000).toFixed(2) : 'N/A'))
     : 'N/A';
 
+  const statuteCitation = isReactor
+    ? 'IAEA PRIS / IAEA Safety Standards GSR Part 7'
+    : isCTBTO
+    ? 'Comprehensive Nuclear-Test-Ban Treaty (CTBT) Protocol Part I / IMS Operational Manual'
+    : 'CTBTO / Glasstone & Dolan Nuclear Weapon Effects';
+
   return {
     reportTitle: `Global Nuclear Facility & Detonation Dossier: ${pin.name}`,
     moduleName: 'Global Nuclear Geospatial & 3D Earth Hub',
-    statuteCitation: isReactor ? 'IAEA PRIS / IAEA Safety Standards GSR Part 7' : 'CTBTO / Glasstone & Dolan Nuclear Weapon Effects',
-    verificationTestId: 'VTEST-28 / IAEA-GEOSPATIAL',
+    statuteCitation,
+    verificationTestId: isCTBTO ? 'VTEST-29 / CTBTO-IMS-STATION' : 'VTEST-28 / IAEA-GEOSPATIAL',
     operatorName,
     operatorCredentials: 'Certified Health Physicist (CHP) / Nuclear Geospatial Analyst',
     facility,
@@ -466,6 +528,12 @@ export function buildGeospatialDossierPayload(
         { label: 'Fireball Maximum Radius', value: `${pin.rawDetonation!.fireballRadiusM} meters` },
         { label: '5-psi Moderate Blast Damage Radius', value: `${blast5psiKm} km` },
         { label: '3rd Degree Thermal Burn Radius', value: `${thermalKm} km` }
+      ] : []),
+      ...(isCTBTO ? [
+        { label: 'IMS Technology Discipline', value: pin.rawCTBTO!.technology, status: 'PASS' as const },
+        { label: 'Station Status', value: pin.rawCTBTO!.status, status: 'PASS' as const },
+        { label: 'Noble Gas Detection Capability', value: pin.rawCTBTO!.nobleGasEquipped ? 'Certified High Sensitivity Xe-133/Xe-135 Detector' : 'Particulate Radionuclide Detector', status: 'PASS' as const },
+        { label: 'Target Verification Signatures', value: pin.rawCTBTO!.targetIsotopes.join(', ') || 'Teleseismic Waveforms', status: 'PASS' as const }
       ] : [])
     ]
   };

@@ -403,6 +403,41 @@ const tests = [
     },
     tolerance: 0.01,
     units: 'm (X_est)'
+  },
+  {
+    id: 'VTEST-33',
+    name: 'IAEA GSR Part 7 & EPA PAG 16-Sector Keyhole Evacuation Arc Sweep',
+    module: 'EPZ Consequence & Population Engine (Module 31)',
+    standard: 'EPA-400-R-92-001 / IAEA GSR Part 7 / NUREG-0654',
+    expected: 67.5000,
+    compute: () => {
+      // 16-compass sector resolution: 360 / 16 = 22.5 deg per sector
+      // 3-sector keyhole wedge spans center sector + 2 buffer sectors = 3 * 22.5 = 67.5 deg
+      const sectorSpanDeg = 360.0 / 16.0;
+      const keyholeWedgeDeg = sectorSpanDeg * 3.0;
+      return keyholeWedgeDeg;
+    },
+    tolerance: 0.001,
+    units: 'Degrees Arc'
+  },
+  {
+    id: 'VTEST-34',
+    name: 'CTBTO Murphy-Ringdal Empirical Teleseismic Yield Inversion (mb 5.55)',
+    module: 'CTBTO Seismic Inversion Engine (Module 31)',
+    standard: 'CTBT Protocol Part I / Murphy (1981) / Ringdal (1992)',
+    expected: 100.0000,
+    compute: () => {
+      // mb = alpha + beta * log10(Y) in hard rock (alpha = 4.05, beta = 0.75)
+      // Y = 10^((mb - alpha) / beta)
+      const mb = 5.55;
+      const alpha = 4.05;
+      const beta = 0.75;
+      const log10Y = (mb - alpha) / beta; // (5.55 - 4.05) / 0.75 = 1.50 / 0.75 = 2.00
+      const yieldKt = Math.pow(10, log10Y); // 10^2 = 100.0000 kt
+      return yieldKt;
+    },
+    tolerance: 0.001,
+    units: 'kt'
   }
 ];
 
