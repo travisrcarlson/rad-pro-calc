@@ -2,6 +2,8 @@ import React, { useState, useMemo } from 'react';
 import VerificationBadge from '../../components/VerificationBadge';
 import PlotComponent from 'react-plotly.js';
 import { BlockMath } from 'react-katex';
+import { AuditDossierModal } from '../../components/AuditDossierModal';
+import { type CalculationDossierPayload } from '../../services/auditDossierService';
 
 const Plot = (PlotComponent as any).default || PlotComponent;
 
@@ -89,6 +91,7 @@ const LaserModule: React.FC = () => {
   const [customDuration, setCustomDuration] = useState<string>('0.25');
   const [activeTab, setActiveTab] = useState<LaserTab>('schematic');
   const [probeDistance, setProbeDistance] = useState<number>(1.0); // interactive probe distance in meters
+  const [isDossierOpen, setIsDossierOpen] = useState<boolean>(false);
 
   // Load a preset
   const applyPreset = (preset: LaserPreset) => {
@@ -287,6 +290,33 @@ const LaserModule: React.FC = () => {
     return { tableRows, plotX, plotY, probe, maxGraphRange };
   }, [calculations, probeDistance]);
 
+  const dossierPayload: CalculationDossierPayload = useMemo(() => ({
+    reportTitle: 'Laser Radiation Hazard & NOHD Safety Assessment Dossier',
+    moduleName: 'Module 15: Laser Radiation Safety & NOHD Analyzer',
+    statuteCitation: 'ANSI Z136.1-2022 / 29 CFR 1910.133 / IEC 60825-1',
+    verificationTestId: 'VTEST-10',
+    operatorName: 'Laser Safety Officer (LSO)',
+    operatorCredentials: 'CLSO / Certified Health Physicist',
+    facility: 'Optics & Directed Energy Safety Laboratory',
+    notes: `Calculated for ${wavelength} nm (${beamColor.name}) laser emitter at ${actualPowerMW} mW. Hazard class: ${calculations.laserClass}.`,
+    formulaDescription: 'NOHD = \\frac{1}{\\theta}\\left[\\sqrt{\\frac{4P}{\\pi \\cdot MPE}} - a\\right], \\quad OD = \\log_{10}\\left(\\frac{E_0}{MPE}\\right)',
+    inputs: [
+      { label: 'Wavelength', value: wavelength, unit: 'nm' },
+      { label: 'Beam Power', value: actualPowerMW, unit: 'mW' },
+      { label: 'Aperture Diameter', value: diameter, unit: 'mm' },
+      { label: 'Beam Divergence', value: divergence, unit: 'mrad' },
+      { label: 'Exposure Duration', value: exposureDuration, unit: 's' },
+      { label: 'Probe Distance', value: probeDistance, unit: 'm' }
+    ],
+    outputs: [
+      { label: 'Laser Hazard Class', value: calculations.laserClass, status: calculations.laserClass.includes('4') ? 'WARNING' : 'COMPLIANT' },
+      { label: 'Maximum Permissible Exposure (MPE)', value: calculations.mpe.toFixed(4), unit: 'mW/cm²', status: 'PASS' },
+      { label: 'Nominal Ocular Hazard Distance (NOHD)', value: calculations.nohdMeters.toFixed(2), unit: 'm', status: 'PASS' },
+      { label: 'Required Eyewear Optical Density (OD)', value: calculations.odRequired.toFixed(2), unit: 'OD', status: calculations.odRequired > 0 ? 'WARNING' : 'PASS' },
+      { label: 'Rayleigh Range (z_R)', value: calculations.rayleighRangeM.toFixed(3), unit: 'm', status: 'PASS' }
+    ]
+  }), [wavelength, beamColor, actualPowerMW, diameter, divergence, exposureDuration, probeDistance, calculations]);
+
   return (
     <div className="laser-module" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {/* Header Banner */}
@@ -302,7 +332,26 @@ const LaserModule: React.FC = () => {
             High-precision optical engineering engine calculating ocular Maximum Permissible Exposure (MPE), Gaussian beam divergence caustics, Nominal Ocular Hazard Distance (NOHD), and optical density (OD) protection specs.
           </p>
         </div>
-        <VerificationBadge testId="VTEST-10" standard="ANSI Z136.1" />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <button
+            className="btn btn-secondary"
+            onClick={() => setIsDossierOpen(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '0.8rem',
+              padding: '6px 14px',
+              border: '1px solid rgba(0, 229, 255, 0.4)',
+              color: '#00e5ff',
+              background: 'rgba(0, 229, 255, 0.08)'
+            }}
+          >
+            <span>🛡️</span>
+            <span>Audit Dossier (21 CFR Part 11)</span>
+          </button>
+          <VerificationBadge testId="VTEST-10" standard="ANSI Z136.1" />
+        </div>
       </div>
 
       {/* Preset Library Toolbar */}
@@ -991,6 +1040,12 @@ const LaserModule: React.FC = () => {
           </div>
         </div>
       )}
+
+      <AuditDossierModal
+        isOpen={isDossierOpen}
+        onClose={() => setIsDossierOpen(false)}
+        payload={dossierPayload}
+      />
     </div>
   );
 };

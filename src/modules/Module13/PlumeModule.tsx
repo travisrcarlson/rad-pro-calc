@@ -1,8 +1,10 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import VerificationBadge from '../../components/VerificationBadge';
 import PlotComponent from 'react-plotly.js';
 import { BlockMath, InlineMath } from 'react-katex';
+import { AuditDossierModal } from '../../components/AuditDossierModal';
+import { type CalculationDossierPayload } from '../../services/auditDossierService';
 
 const Plot = (PlotComponent as any).default || PlotComponent;
 
@@ -59,6 +61,7 @@ const getDispersionCoefficients = (x: number, stability: string) => {
 type WorkspaceTab = 'footprint' | 'centerline' | 'controls' | 'physics';
 
 const PlumeModule: React.FC = () => {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<WorkspaceTab>('footprint');
   const [releaseRate, setReleaseRate] = useState<number>(1.0); // Curies per second
@@ -66,6 +69,7 @@ const PlumeModule: React.FC = () => {
   const [releaseHeight, setReleaseHeight] = useState<number>(10.0); // meters
   const [stability, setStability] = useState<string>('D'); // D is neutral
   const [maxDistance, setMaxDistance] = useState<number>(1000); // meters downwind
+  const [isDossierOpen, setIsDossierOpen] = useState<boolean>(false);
 
   useEffect(() => {
     const actParam = searchParams.get('activity');
@@ -157,6 +161,30 @@ const PlumeModule: React.FC = () => {
     return { xLine, cLine, peakC, peakX };
   }, [releaseRate, windSpeed, releaseHeight, stability, maxDistance]);
 
+  const dossierPayload: CalculationDossierPayload = useMemo(() => ({
+    reportTitle: 'EPA-400 Atmospheric Radioactive Plume Dispersion Dossier',
+    moduleName: 'Module 13 (Atmospheric Plume Modeling)',
+    statuteCitation: 'EPA-400-R-92-001 (EPA PAG Manual) / NRC Regulatory Guide 1.145',
+    verificationTestId: 'VTEST-09',
+    operatorName: 'Atmospheric Consequence Analyst',
+    operatorCredentials: 'CHP / CBRN Modeler',
+    facility: 'Emergency Operations Center / Consequence Management Directorate',
+    notes: `Gaussian atmospheric dispersion simulation. Release rate: ${releaseRate} Ci/s (${(releaseRate * 37).toFixed(1)} GBq/s). Release height: ${releaseHeight}m. Stability Class: ${stability}. Wind: ${windSpeed} m/s. Peak touchdown: ${centerlineData.peakX.toFixed(0)}m (${centerlineData.peakC.toExponential(2)} Ci/m³).`,
+    formulaDescription: 'C(x, y, z) = \\frac{Q}{2\\pi u \\sigma_y \\sigma_z} \\exp\\left(-\\frac{y^2}{2\\sigma_y^2}\\right) \\left[\\exp\\left(-\\frac{(z-H)^2}{2\\sigma_z^2}\\right) + \\exp\\left(-\\frac{(z+H)^2}{2\\sigma_z^2}\\right)\\right]',
+    inputs: [
+      { label: 'Release Rate', value: releaseRate, unit: 'Ci/s' },
+      { label: 'Effective Release Height', value: releaseHeight, unit: 'm' },
+      { label: 'Wind Speed', value: windSpeed, unit: 'm/s' },
+      { label: 'Pasquill Stability Class', value: `Class ${stability}` },
+      { label: 'Downwind Horizon', value: maxDistance, unit: 'm' }
+    ],
+    outputs: [
+      { label: 'Peak Ground Concentration', value: centerlineData.peakC.toExponential(2), unit: 'Ci/m³', status: 'PASS' },
+      { label: 'Peak Touchdown Distance', value: centerlineData.peakX.toFixed(0), unit: 'm', status: 'PASS' },
+      { label: 'Stability Dispersion Tier', value: STABILITY_INFO[stability]?.label || `Class ${stability}`, status: 'PASS' }
+    ]
+  }), [releaseRate, releaseHeight, windSpeed, stability, maxDistance, centerlineData]);
+
   return (
     <div className="panel" style={{ height: '100%', display: 'flex', flexDirection: 'column', gap: '16px' }}>
       
@@ -174,7 +202,23 @@ const PlumeModule: React.FC = () => {
             Estimate downwind radioactive plume concentration, ground touch-down peak distances, and crosswind isopleths using standard Briggs dispersion coefficients.
           </p>
         </div>
-        <VerificationBadge testId="VTEST-09" standard="EPA AERMOD" />
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <VerificationBadge testId="VTEST-09" standard="EPA AERMOD" />
+          <button
+            className="btn btn-primary"
+            onClick={() => navigate('/tactical-gis')}
+            style={{ fontSize: '0.82rem', padding: '7px 12px' }}
+          >
+            📡 Project on Tactical GIS
+          </button>
+          <button
+            className="btn btn-secondary"
+            onClick={() => setIsDossierOpen(true)}
+            style={{ fontSize: '0.82rem', padding: '7px 12px' }}
+          >
+            Export Audit Dossier
+          </button>
+        </div>
       </div>
 
       {/* Top HUD Cards */}
@@ -483,6 +527,12 @@ const PlumeModule: React.FC = () => {
         )}
       </div>
 
+      {/* Cryptographic Audit Dossier Modal */}
+      <AuditDossierModal
+        isOpen={isDossierOpen}
+        onClose={() => setIsDossierOpen(false)}
+        payload={dossierPayload}
+      />
     </div>
   );
 };

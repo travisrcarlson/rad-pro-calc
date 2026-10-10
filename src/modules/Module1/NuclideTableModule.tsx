@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import nuclidesData from '../../data/all_nuclides.json';
 
 interface NuclideRecord {
@@ -17,14 +18,14 @@ interface NuclideRecord {
 
 const getDecayBadgeColor = (mode: string) => {
   const m = (mode || '').toUpperCase();
-  if (m.includes('A')) return 'var(--badge-alpha)';
-  if (m.includes('B-')) return 'var(--badge-beta-minus)';
-  if (m.includes('B+')) return 'var(--badge-beta-plus)';
-  if (m.includes('IT')) return 'var(--badge-gamma)'; // Isomeric transition (Gamma emission)
-  if (m.includes('EC')) return 'var(--badge-ec)';
-  if (m.includes('SF')) return 'var(--badge-sf)';
-  if (m.includes('N') || m.includes('P')) return '#d35400';
-  return '#757575';
+  if (m.includes('A')) return '#ef4444'; // Alpha (red)
+  if (m.includes('B-')) return '#3b82f6'; // Beta- (blue)
+  if (m.includes('B+')) return '#ec4899'; // Beta+ (pink)
+  if (m.includes('IT')) return '#00e5ff'; // IT Gamma (cyan)
+  if (m.includes('EC')) return '#a855f7'; // Electron Capture (purple)
+  if (m.includes('SF')) return '#10b981'; // Spontaneous Fission (emerald)
+  if (m.includes('N') || m.includes('P')) return '#f97316';
+  return '#64748b';
 };
 
 const getDetectionMethod = (modes: string) => {
@@ -32,14 +33,13 @@ const getDetectionMethod = (modes: string) => {
   const m = modes.toUpperCase();
   if (m.includes('SF') || m.includes('N')) return 'Neutron Proportional (He-3/BF3)';
   if (m.includes('A') && m.includes('IT')) return 'NaI(Tl) Scintillator & ZnS(Ag) Probe';
-  if (m.includes('A')) return 'ZnS(Ag) Scintillator / PIPS / CR-39';
-  if (m == 'IT' || m == 'G') return 'HPGe Spectrometer / NaI(Tl) Scintillator';
+  if (m.includes('A')) return 'ZnS(Ag) Scintillator / PIPS / Alpha Spec';
+  if (m === 'IT' || m === 'G') return 'HPGe Spectrometer / NaI(Tl) Scintillator';
   if (m.includes('B') || m.includes('B-')) return 'Pancake GM / Liquid Scintillation';
   if (m.includes('EC')) return 'Thin-Window NaI / HPGe X-Ray Spectrometer';
   return 'Standard Geiger-Muller (Pancake)';
 };
 
-// Map atomic symbols to full element names
 const ELEMENT_NAMES: Record<string, string> = {
   'n': 'Neutron', 'H': 'Hydrogen', 'He': 'Helium', 'Li': 'Lithium', 'Be': 'Beryllium',
   'B': 'Boron', 'C': 'Carbon', 'N': 'Nitrogen', 'O': 'Oxygen', 'F': 'Fluorine',
@@ -75,10 +75,13 @@ const formatQValue = (n: NuclideRecord) => {
   return res.join(' | ') || '-';
 };
 
-const NuclideTableModule: React.FC = () => {
+export const NuclideTableModule: React.FC = () => {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
-  const [expandedElements, setExpandedElements] = useState<Set<string>>(new Set(['U', 'H', 'Cs', 'Co']));
-  
+  const [modeFilter, setModeFilter] = useState<string>('ALL');
+  const [expandedElements, setExpandedElements] = useState<Set<string>>(new Set(['Cs', 'Co', 'Ir', 'I', 'U', 'Am']));
+  const [inspectNuclide, setInspectNuclide] = useState<NuclideRecord | null>(null);
+
   const [nuclides] = useState<NuclideRecord[]>(() => {
     if (Array.isArray(nuclidesData)) {
       return nuclidesData as unknown as NuclideRecord[];
@@ -89,18 +92,30 @@ const NuclideTableModule: React.FC = () => {
   // Group nuclides by Base Atomic Symbol (Z) directly from IAEA dataset
   const groupedNuclides = useMemo(() => {
     const groups: Record<string, NuclideRecord[]> = {};
-    const searchLower = searchTerm.toLowerCase();
+    const searchLower = searchTerm.toLowerCase().trim();
 
     for (const n of nuclides) {
       if (!n.Symbol) continue;
-      
+
       const fullElementName = ELEMENT_NAMES[n.Symbol.trim()] || n.Symbol;
-      
-      const matchSearch = n.Nuclide.toLowerCase().includes(searchLower) || 
-                          fullElementName.toLowerCase().includes(searchLower) ||
-                          n.Symbol.toLowerCase() === searchLower ||
-                          (n['Decay Mode'] && n['Decay Mode'].toLowerCase().includes(searchLower));
-      
+      const decayMode = (n['Decay Mode'] || '').toUpperCase();
+
+      // Mode filter check
+      if (modeFilter !== 'ALL') {
+        if (modeFilter === 'STABLE' && decayMode !== 'STABLE' && decayMode !== '') continue;
+        if (modeFilter === 'ALPHA' && !decayMode.includes('A')) continue;
+        if (modeFilter === 'BETA_MINUS' && !decayMode.includes('B-')) continue;
+        if (modeFilter === 'BETA_PLUS' && !decayMode.includes('B+') && !decayMode.includes('EC')) continue;
+        if (modeFilter === 'GAMMA_IT' && !decayMode.includes('IT')) continue;
+        if (modeFilter === 'SF' && !decayMode.includes('SF')) continue;
+      }
+
+      const matchSearch =
+        n.Nuclide.toLowerCase().includes(searchLower) ||
+        fullElementName.toLowerCase().includes(searchLower) ||
+        n.Symbol.toLowerCase() === searchLower ||
+        decayMode.includes(searchLower);
+
       if (!matchSearch && searchTerm !== '') continue;
 
       const baseElement = n.Symbol.trim();
@@ -110,7 +125,7 @@ const NuclideTableModule: React.FC = () => {
       groups[baseElement].push(n);
     }
     return groups;
-  }, [searchTerm, nuclides]);
+  }, [searchTerm, modeFilter, nuclides]);
 
   const toggleElement = (element: string) => {
     const newExp = new Set(expandedElements);
@@ -122,109 +137,355 @@ const NuclideTableModule: React.FC = () => {
     setExpandedElements(newExp);
   };
 
+  // Cross-Module Action Dispatchers
+  const launchDoseCalc = (n: NuclideRecord) => {
+    navigate(`/dose?nuclide=${encodeURIComponent(n.Nuclide)}&activity=100&unit=MBq`);
+  };
+
+  const launchTransport = (n: NuclideRecord) => {
+    navigate(`/transport?nuclide=${encodeURIComponent(n.Nuclide)}`);
+  };
+
+  const launchPlume = (n: NuclideRecord) => {
+    navigate(`/plume?nuclide=${encodeURIComponent(n.Nuclide)}&activity=100`);
+  };
+
+  const launchDecayChain = (n: NuclideRecord) => {
+    navigate(`/decay?isotope=${encodeURIComponent(n.Nuclide)}`);
+  };
+
   return (
-    <div className="panel" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <div className="panel" style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: '14px' }}>
+      {/* Header */}
+      <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
         <div>
-          <h2>Module 1 — Master Nuclide Database</h2>
-          <span className="form-label">Reference data sourced dynamically from IAEA NNDC ({nuclides.length} global isotopes tracked)</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span className="hud-badge hud-badge-primary">IAEA NNDC REFERENCE</span>
+            <span className="hud-badge hud-badge-accent">{nuclides.length} GLOBAL ISOTOPES</span>
+          </div>
+          <h2 style={{ margin: '6px 0 0 0', fontSize: '1.4rem', letterSpacing: '0.03em' }}>
+            Master Radionuclide Database &amp; Cross-Module Action Dispatcher
+          </h2>
+          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
+            Explore nuclear structure, decay energies, half-lives, and dispatch selected isotopes directly to Dose, Transport, Plume, or Decay Chain simulators.
+          </p>
         </div>
-        <div>
-          <input 
-            type="text" 
-            className="form-control" 
-            placeholder="Search element, isotope, or radiation (e.g. Uranium, Cs-137)..." 
+
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <input
+            type="text"
+            className="form-control"
+            placeholder="Search isotope (e.g. Cobalt-60, Cs-137, Uranium)..."
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
-            style={{ width: '400px' }}
+            style={{ width: '320px', fontSize: '0.85rem' }}
           />
         </div>
       </div>
-      
-      <div className="data-table-container" style={{ flex: 1, padding: '20px', overflowY: 'auto' }}>
+
+      {/* Mode Filter Pills Ribbon */}
+      <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
+        {[
+          { id: 'ALL', label: 'All Modes' },
+          { id: 'ALPHA', label: 'α Alpha Emitters' },
+          { id: 'BETA_MINUS', label: 'β⁻ Beta Minus' },
+          { id: 'BETA_PLUS', label: 'β⁺ / EC Positron' },
+          { id: 'GAMMA_IT', label: 'IT Isomeric Gamma' },
+          { id: 'SF', label: 'Spontaneous Fission' },
+          { id: 'STABLE', label: 'Stable Isotopes' }
+        ].map(pill => (
+          <button
+            key={pill.id}
+            onClick={() => setModeFilter(pill.id)}
+            className="btn"
+            style={{
+              fontSize: '0.78rem',
+              padding: '6px 12px',
+              whiteSpace: 'nowrap',
+              background: modeFilter === pill.id ? 'var(--color-primary)' : 'rgba(255,255,255,0.04)',
+              color: modeFilter === pill.id ? '#000' : 'var(--color-text-muted)',
+              border: '1px solid var(--color-border)',
+              fontWeight: modeFilter === pill.id ? 'bold' : 'normal'
+            }}
+          >
+            {pill.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Data Table */}
+      <div className="data-table-container" style={{ flex: 1, padding: '10px', overflowY: 'auto' }}>
         {Object.keys(groupedNuclides).length === 0 ? (
-           <div style={{ textAlign: 'center', padding: '50px', color: '#888' }}>No elements match your search query.</div>
+          <div style={{ textAlign: 'center', padding: '50px', color: 'var(--color-text-muted)' }}>
+            No isotopes match your filter and search criteria.
+          </div>
         ) : (
-          Object.entries(groupedNuclides).sort(([_aSym, aIso], [_bSym, bIso]) => (aIso[0]?.Z || 0) - (bIso[0]?.Z || 0)).map(([symbol, isotopes]) => {
-            const isExpanded = expandedElements.has(symbol) || searchTerm !== '';
-            const fullName = ELEMENT_NAMES[symbol] || symbol;
-            return (
-              <div key={symbol} style={{ marginBottom: '15px', backgroundColor: 'rgba(255,255,255,0.02)', border: '1px solid #333', borderRadius: '8px', overflow: 'hidden' }}>
-                
-                {/* Element Header row */}
-                <div 
-                  onClick={() => toggleElement(symbol)}
-                  style={{ 
-                    padding: '15px 20px', backgroundColor: 'rgba(0,0,0,0.3)', 
-                    cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    borderBottom: isExpanded ? '1px solid #333' : 'none'
+          Object.entries(groupedNuclides)
+            .sort(([_aSym, aIso], [_bSym, bIso]) => (aIso[0]?.Z || 0) - (bIso[0]?.Z || 0))
+            .map(([symbol, isotopes]) => {
+              const isExpanded = expandedElements.has(symbol) || searchTerm !== '';
+              const fullName = ELEMENT_NAMES[symbol] || symbol;
+
+              return (
+                <div
+                  key={symbol}
+                  style={{
+                    marginBottom: '12px',
+                    backgroundColor: 'rgba(5, 10, 18, 0.6)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: '8px',
+                    overflow: 'hidden'
                   }}
                 >
-                  <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--color-primary)' }}>
-                     Atomic No. {isotopes[0]?.Z} — {fullName} ({symbol}) <span style={{ fontSize: '0.9rem', color: '#888', marginLeft: '10px' }}>({isotopes.length} isotopes isolated)</span>
-                  </h3>
-                  <span style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{isExpanded ? '−' : '+'}</span>
-                </div>
-
-                {/* Isotopes Table */}
-                {isExpanded && (
-                  <div style={{ padding: '0 20px 20px 20px' }}>
-                    <table className="data-table" style={{ marginTop: '15px', background: 'transparent' }}>
-                      <thead>
-                        <tr>
-                          <th>Isotope</th>
-                          <th>Half-Life</th>
-                          <th>Decay Emission Profiles</th>
-                          <th>Q-Value Energy Profile</th>
-                          <th style={{ color: '#f1c40f' }}>Best Detection Method</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {isotopes.map((n, idx) => {
-                          const modes = n['Decay Mode'] || 'Stable';
-                          
-                          // Consolidate all decay paths available in the IAEA trace
-                          const decayPaths = [];
-                          if (n['Decay Mode']) decayPaths.push({ mode: n['Decay Mode'], perc: n['Decay %'] });
-                          if (n['Decay 2']) decayPaths.push({ mode: n['Decay 2'], perc: n['Decay 2 %'] });
-                          if (n['Decay 3']) decayPaths.push({ mode: n['Decay 3'], perc: n['Decay 3 %'] });
-
-                          return (
-                            <tr key={idx}>
-                              <td style={{ fontWeight: 'bold', color: '#E0E1DD' }}>{n.Nuclide}</td>
-                              <td>{n['Half-Life'] || 'Stable'}</td>
-                              <td>
-                                {decayPaths.length > 0 ? (
-                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                    {decayPaths.map((dp, i) => (
-                                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <span className="decay-badge" style={{ backgroundColor: getDecayBadgeColor(dp.mode), minWidth: '40px', textAlign: 'center' }}>
-                                          {dp.mode.trim()}
-                                        </span>
-                                        <span style={{ fontSize: '0.85rem', color: '#ccc' }}>
-                                          {dp.perc ? `${dp.perc}%` : (dp.mode ? '100%' : '')}
-                                        </span>
-                                      </div>
-                                    ))}
-                                  </div>
-                                ) : (
-                                  <span style={{ color: '#888' }}>Stable</span>
-                                )}
-                              </td>
-                              <td style={{ fontFamily: 'monospace', color: '#999' }}>{formatQValue(n)}</td>
-                              <td style={{ color: '#27ae60', fontFamily: 'monospace', fontWeight: 600 }}>{n.Z > 0 && modes !== 'Stable' ? getDetectionMethod(modes) : '-'}</td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                  {/* Element Header */}
+                  <div
+                    onClick={() => toggleElement(symbol)}
+                    style={{
+                      padding: '12px 16px',
+                      backgroundColor: 'rgba(0,0,0,0.3)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      borderBottom: isExpanded ? '1px solid var(--color-border)' : 'none'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <span className="hud-badge hud-badge-primary">Z={isotopes[0]?.Z}</span>
+                      <h3 style={{ margin: 0, fontSize: '1.05rem', color: '#00e5ff' }}>
+                        {fullName} ({symbol})
+                      </h3>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+                        ({isotopes.length} isotopes)
+                      </span>
+                    </div>
+                    <span style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--color-text-muted)' }}>
+                      {isExpanded ? '▲' : '▼'}
+                    </span>
                   </div>
-                )}
-              </div>
-            );
-          })
+
+                  {/* Isotopes Sub-Table */}
+                  {isExpanded && (
+                    <div style={{ padding: '8px 14px 14px 14px', overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+                        <thead>
+                          <tr style={{ borderBottom: '1px solid var(--color-border)', textAlign: 'left', color: 'var(--color-primary)' }}>
+                            <th style={{ padding: '8px' }}>Isotope</th>
+                            <th style={{ padding: '8px' }}>Half-Life</th>
+                            <th style={{ padding: '8px' }}>Primary Decay</th>
+                            <th style={{ padding: '8px' }}>Q-Value Profile</th>
+                            <th style={{ padding: '8px' }}>Optimal Detection</th>
+                            <th style={{ padding: '8px', textAlign: 'right' }}>Quick Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {isotopes.map((n, idx) => {
+                            const modes = n['Decay Mode'] || 'Stable';
+                            const decayPaths = [];
+                            if (n['Decay Mode']) decayPaths.push({ mode: n['Decay Mode'], perc: n['Decay %'] });
+                            if (n['Decay 2']) decayPaths.push({ mode: n['Decay 2'], perc: n['Decay 2 %'] });
+
+                            return (
+                              <tr
+                                key={idx}
+                                style={{
+                                  borderBottom: '1px solid rgba(255,255,255,0.04)',
+                                  cursor: 'pointer',
+                                  transition: 'background 0.2s'
+                                }}
+                                onClick={() => setInspectNuclide(n)}
+                              >
+                                <td style={{ padding: '8px', fontWeight: 'bold', color: '#fff' }}>
+                                  {n.Nuclide}
+                                </td>
+                                <td style={{ padding: '8px', color: n['Half-Life'] === 'STABLE' ? '#10b981' : 'var(--color-text-muted)' }}>
+                                  {n['Half-Life'] || 'Stable'}
+                                </td>
+                                <td style={{ padding: '8px' }}>
+                                  {decayPaths.length > 0 ? (
+                                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                      {decayPaths.map((dp, i) => (
+                                        <span
+                                          key={i}
+                                          style={{
+                                            fontSize: '0.72rem',
+                                            padding: '2px 6px',
+                                            borderRadius: '4px',
+                                            background: getDecayBadgeColor(dp.mode),
+                                            color: '#fff',
+                                            fontWeight: 'bold'
+                                          }}
+                                        >
+                                          {dp.mode.trim()} {dp.perc ? `(${dp.perc}%)` : ''}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <span style={{ color: '#10b981' }}>Stable</span>
+                                  )}
+                                </td>
+                                <td style={{ padding: '8px', fontFamily: 'monospace', color: '#94a3b8' }}>
+                                  {formatQValue(n)}
+                                </td>
+                                <td style={{ padding: '8px', color: '#10b981', fontSize: '0.78rem' }}>
+                                  {n.Z > 0 && modes !== 'Stable' ? getDetectionMethod(modes) : 'Non-Radioactive'}
+                                </td>
+                                <td style={{ padding: '8px', textAlign: 'right' }} onClick={e => e.stopPropagation()}>
+                                  <div style={{ display: 'inline-flex', gap: '4px' }}>
+                                    <button
+                                      className="btn btn-sm btn-outline-primary"
+                                      title="Calculate Point Source External Dose"
+                                      onClick={() => launchDoseCalc(n)}
+                                      style={{ padding: '3px 8px', fontSize: '0.72rem' }}
+                                    >
+                                      Dose
+                                    </button>
+                                    <button
+                                      className="btn btn-sm btn-outline-primary"
+                                      title="Package for Transport (IAEA SSR-6)"
+                                      onClick={() => launchTransport(n)}
+                                      style={{ padding: '3px 8px', fontSize: '0.72rem' }}
+                                    >
+                                      Pack
+                                    </button>
+                                    <button
+                                      className="btn btn-sm btn-outline-primary"
+                                      title="Simulate Atmospheric Release Plume"
+                                      onClick={() => launchPlume(n)}
+                                      style={{ padding: '3px 8px', fontSize: '0.72rem' }}
+                                    >
+                                      Plume
+                                    </button>
+                                    <button
+                                      className="btn btn-sm btn-outline-primary"
+                                      title="Inspect Bateman Decay Chain"
+                                      onClick={() => launchDecayChain(n)}
+                                      style={{ padding: '3px 8px', fontSize: '0.72rem' }}
+                                    >
+                                      Chain
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              );
+            })
         )}
       </div>
+
+      {/* Nuclide Inspector Modal */}
+      {inspectNuclide && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.8)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '20px'
+          }}
+          onClick={() => setInspectNuclide(null)}
+        >
+          <div
+            style={{
+              background: '#0d131f',
+              border: '1px solid #00e5ff',
+              borderRadius: '10px',
+              padding: '24px',
+              maxWidth: '550px',
+              width: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px'
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <span className="hud-badge hud-badge-primary">IAEA NNDC RECORD</span>
+                <h3 style={{ margin: '6px 0 0 0', fontSize: '1.4rem', color: '#00e5ff' }}>
+                  {inspectNuclide.Nuclide} ({ELEMENT_NAMES[inspectNuclide.Symbol] || inspectNuclide.Symbol})
+                </h3>
+              </div>
+              <button
+                className="btn btn-sm btn-outline-danger"
+                onClick={() => setInspectNuclide(null)}
+              >
+                ✕ Close
+              </button>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '0.85rem' }}>
+              <div style={{ background: 'rgba(0,0,0,0.3)', padding: '10px', borderRadius: '6px' }}>
+                <span style={{ color: 'var(--color-text-muted)' }}>Atomic Number (Z):</span>
+                <strong style={{ display: 'block', fontSize: '1.1rem', color: '#fff' }}>{inspectNuclide.Z}</strong>
+              </div>
+              <div style={{ background: 'rgba(0,0,0,0.3)', padding: '10px', borderRadius: '6px' }}>
+                <span style={{ color: 'var(--color-text-muted)' }}>Neutron Count (N):</span>
+                <strong style={{ display: 'block', fontSize: '1.1rem', color: '#fff' }}>{inspectNuclide.N || (parseInt(inspectNuclide.Nuclide.split('-')[1]) - inspectNuclide.Z)}</strong>
+              </div>
+              <div style={{ background: 'rgba(0,0,0,0.3)', padding: '10px', borderRadius: '6px' }}>
+                <span style={{ color: 'var(--color-text-muted)' }}>Half-Life:</span>
+                <strong style={{ display: 'block', fontSize: '1.1rem', color: '#f59e0b' }}>{inspectNuclide['Half-Life'] || 'Stable'}</strong>
+              </div>
+              <div style={{ background: 'rgba(0,0,0,0.3)', padding: '10px', borderRadius: '6px' }}>
+                <span style={{ color: 'var(--color-text-muted)' }}>Decay Modes:</span>
+                <strong style={{ display: 'block', fontSize: '1.0rem', color: '#38bdf8' }}>{inspectNuclide['Decay Mode'] || 'None (Stable)'}</strong>
+              </div>
+            </div>
+
+            <div style={{ background: 'rgba(0,0,0,0.3)', padding: '12px', borderRadius: '6px' }}>
+              <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>PRIMARY DETECTION METHODOLOGY</span>
+              <div style={{ fontSize: '0.95rem', fontWeight: 'bold', color: '#10b981', marginTop: '4px' }}>
+                {getDetectionMethod(inspectNuclide['Decay Mode'])}
+              </div>
+            </div>
+
+            {/* Direct Launch Pipeline */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <span style={{ fontSize: '0.8rem', color: 'var(--color-primary)', fontWeight: 600 }}>DISPATCH TO COMPUTATIONAL MODULE:</span>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => { launchDoseCalc(inspectNuclide); setInspectNuclide(null); }}
+                  style={{ fontSize: '0.8rem' }}
+                >
+                  🎯 Calculate Point Dose
+                </button>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => { launchTransport(inspectNuclide); setInspectNuclide(null); }}
+                  style={{ fontSize: '0.8rem' }}
+                >
+                  📦 Transport Packaging
+                </button>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => { launchPlume(inspectNuclide); setInspectNuclide(null); }}
+                  style={{ fontSize: '0.8rem' }}
+                >
+                  🌬️ Plume Dispersion
+                </button>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => { launchDecayChain(inspectNuclide); setInspectNuclide(null); }}
+                  style={{ fontSize: '0.8rem' }}
+                >
+                  🔗 Bateman Decay Chain
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -2,6 +2,8 @@ import React, { useState, useMemo } from 'react';
 import VerificationBadge from '../../components/VerificationBadge';
 import PlotComponent from 'react-plotly.js';
 import { BlockMath } from 'react-katex';
+import { AuditDossierModal } from '../../components/AuditDossierModal';
+import { type CalculationDossierPayload } from '../../services/auditDossierService';
 
 const Plot = (PlotComponent as any).default || PlotComponent;
 
@@ -248,6 +250,7 @@ const EMRModule: React.FC = () => {
 
   // Interactive Distance Inspector
   const [selectedDistance, setSelectedDistance] = useState<number>(10.0);
+  const [isDossierOpen, setIsDossierOpen] = useState<boolean>(false);
 
   // Apply a Preset
   const applyPreset = (preset: BandPreset) => {
@@ -492,6 +495,38 @@ const EMRModule: React.FC = () => {
     return { distances, densityValues };
   }, [math, hasRadome, radomeRadiusM, isScanning, antennaPattern]);
 
+  const dossierPayload: CalculationDossierPayload = useMemo(() => ({
+    reportTitle: 'Electromagnetic Radiation Safety & HERO/HERF Exclusion Dossier',
+    moduleName: 'Module 18: Electronic Warfare EMR & Microwave Radiation Safety',
+    statuteCitation: 'IEEE C95.1-2019 / FCC OET Bulletin 65 / DoD MIL-STD-464C',
+    verificationTestId: 'VTEST-12',
+    operatorName: 'Radiation Safety Officer / EW Officer',
+    operatorCredentials: 'Certified Health Physicist / Electromagnetic Safety Specialist',
+    facility: 'Tactical Radar & Electronic Warfare Operations Base',
+    notes: `EMR emission assessment for ${freqMHz} MHz emitter operating at ${peakPowerKW} kW (${signalType}). Radome enclosure: ${hasRadome ? 'Installed' : 'None'}.`,
+    formulaDescription: 'S(R) = \\frac{\\text{EIRP}_{\\text{avg}}}{4\\pi R^2}, \\quad R_{\\text{nf}} = \\frac{2 D^2}{\\lambda}, \\quad S_{\\text{int}} = S_0 \\left(1 + \\sqrt{\\Gamma}\\right)^2',
+    inputs: [
+      { label: 'Frequency', value: freqMHz, unit: 'MHz' },
+      { label: 'Peak Power', value: peakPowerKW, unit: 'kW' },
+      { label: 'Antenna Gain', value: gainDBi, unit: 'dBi' },
+      { label: 'Aperture Diameter', value: apertureM, unit: 'm' },
+      { label: 'Operating Mode', value: `${antennaPattern} (${signalType})` },
+      { label: 'Antenna Scanning', value: isScanning ? `Active (${scanAngleDeg}° sector)` : 'Static Boresight' },
+      { label: 'Radome Enclosure', value: hasRadome ? `Yes (${radomeLossDb} dB loss)` : 'None / Open Air' },
+      { label: 'Inspection Distance', value: selectedDistance, unit: 'm' }
+    ],
+    outputs: [
+      { label: 'Controlled / Occupational Boundary', value: math.safeControlledDistStaticM.toFixed(2), unit: 'm', status: 'PASS' },
+      { label: 'Uncontrolled / Public Boundary', value: math.safeUncontrolledDistStaticM.toFixed(2), unit: 'm', status: 'PASS' },
+      { label: 'Rayleigh Near-Field Boundary (2D²/λ)', value: math.transitionDistM.toFixed(2), unit: 'm', status: 'PASS' },
+      { label: 'HERP Personnel Hazard Distance', value: math.safeControlledDistStaticM.toFixed(2), unit: 'm', status: 'PASS' },
+      { label: 'HERF Fuel Hazard Distance', value: (math.safeControlledDistStaticM * 1.5).toFixed(2), unit: 'm', status: 'PASS' },
+      { label: 'HERO Ordnance Hazard Distance', value: (math.safeControlledDistStaticM * 2.2).toFixed(2), unit: 'm', status: 'PASS' },
+      { label: 'Wavelength (λ)', value: (math.wavelength * 100).toFixed(2), unit: 'cm', status: 'PASS' },
+      { label: 'Max Near-Field Irradiance', value: (math.maxNearFieldPowerDensityW / 10).toFixed(2), unit: 'mW/cm²', status: 'PASS' }
+    ]
+  }), [freqMHz, peakPowerKW, signalType, gainDBi, apertureM, antennaPattern, isScanning, scanAngleDeg, hasRadome, radomeLossDb, selectedDistance, math]);
+
   return (
     <div className="emr-module" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {/* Header Banner */}
@@ -507,7 +542,26 @@ const EMRModule: React.FC = () => {
             Military avionics and RF safety engine mapping non-ionizing exclusion boundaries, near-field transitions (2D²/λ), dielectric radome reflection hotspots, and rotational scanning dilution.
           </p>
         </div>
-        <VerificationBadge testId="VTEST-12" standard="FCC OET-65" />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <button
+            className="btn btn-secondary"
+            onClick={() => setIsDossierOpen(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '0.8rem',
+              padding: '6px 14px',
+              border: '1px solid rgba(0, 229, 255, 0.4)',
+              color: '#00e5ff',
+              background: 'rgba(0, 229, 255, 0.08)'
+            }}
+          >
+            <span>🛡️</span>
+            <span>Audit Dossier (21 CFR Part 11)</span>
+          </button>
+          <VerificationBadge testId="VTEST-12" standard="FCC OET-65" />
+        </div>
       </div>
 
       {/* Categorized Hardware Preset Bar */}
@@ -1295,6 +1349,12 @@ const EMRModule: React.FC = () => {
           </div>
         </div>
       )}
+
+      <AuditDossierModal
+        isOpen={isDossierOpen}
+        onClose={() => setIsDossierOpen(false)}
+        payload={dossierPayload}
+      />
     </div>
   );
 };

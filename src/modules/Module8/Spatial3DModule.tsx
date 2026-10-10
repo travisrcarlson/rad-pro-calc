@@ -1,6 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import PlotComponent from 'react-plotly.js';
 import { BlockMath, InlineMath } from 'react-katex';
+import VerificationBadge from '../../components/VerificationBadge';
+import { AuditDossierModal } from '../../components/AuditDossierModal';
+import { type CalculationDossierPayload } from '../../services/auditDossierService';
 
 const Plot = (PlotComponent as any).default || PlotComponent;
 
@@ -55,6 +58,7 @@ const Spatial3DModule: React.FC = () => {
   // Visualization Bound Cutoffs
   const [displayMin, setDisplayMin] = useState<number>(10); // uSv/h
   const [displayMax, setDisplayMax] = useState<number>(2000); // uSv/h
+  const [isDossierOpen, setIsDossierOpen] = useState<boolean>(false);
 
   // State
   const [sources, setSources] = useState<Source3D[]>([
@@ -212,6 +216,31 @@ const Spatial3DModule: React.FC = () => {
     };
   }, [sources, targets, shields]);
 
+  const dossierPayload: CalculationDossierPayload = useMemo(() => ({
+    reportTitle: '3D Volumetric Shielding & Sensor Network Dossier',
+    moduleName: 'Module 8: 3D Volumetric Radiation Field & Shielding Workspace',
+    statuteCitation: 'NCRP Report No. 151 / 10 CFR Part 20 Subpart C',
+    verificationTestId: 'STRESS-01',
+    operatorName: 'Radiation Protection Physicist',
+    operatorCredentials: 'Certified Health Physicist / Facility Engineer',
+    facility: 'Volumetric Radiotherapy Bunker & Hot-Cell Vault',
+    notes: `Volumetric raycast simulation of ${sources.length} radiation sources with ${shields.length} geometric shielding blocks. Peak detected sensor: ${analytics.worstSensor} (${analytics.maxSensorDose.toFixed(2)} µSv/h).`,
+    formulaDescription: '\\dot{D} = \\sum_{i} \\frac{A_i \\cdot \\Gamma_i}{r_i^2} \\cdot 10^{-\\sum \\frac{x_j}{\\text{TVL}_j}}, \\quad r_i = \\max(r, r_{\\min})',
+    inputs: [
+      { label: 'Enclosure Dimensions', value: `${dimX}m × ${dimY}m × ${dimZ}m (${dimX * dimY * dimZ} m³)` },
+      { label: 'Active Sources Count', value: sources.length },
+      { label: 'Total Source Activity', value: `${analytics.totalMBq.toFixed(0)} MBq (${analytics.totalCi.toFixed(3)} Ci)` },
+      { label: 'Active Shield Blocks', value: shields.length },
+      { label: 'Virtual Sensor Count', value: targets.length }
+    ],
+    outputs: [
+      { label: 'Max Sensor Dose Rate', value: analytics.maxSensorDose.toFixed(2), unit: 'µSv/h', status: analytics.maxSensorDose > 25 ? 'WARNING' : 'PASS' },
+      { label: 'Critical Highest Exposure Target', value: analytics.worstSensor, status: 'PASS' },
+      { label: 'Total Installed Shields', value: analytics.totalShields, unit: 'blocks', status: 'PASS' },
+      { label: 'Enclosure Volume', value: dimX * dimY * dimZ, unit: 'm³', status: 'PASS' }
+    ]
+  }), [dimX, dimY, dimZ, sources, shields, targets, analytics]);
+
   return (
     <div className="panel" style={{ height: '100%', display: 'flex', flexDirection: 'column', gap: '16px' }}>
       
@@ -228,6 +257,26 @@ const Spatial3DModule: React.FC = () => {
           <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
             Simulate multi-source 3D radiation isodose volumes, geometric obstacle attenuation with Axis-Aligned Bounding Box (AABB) raytracing, and virtual sensor networks.
           </p>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <button
+            className="btn btn-secondary"
+            onClick={() => setIsDossierOpen(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '0.8rem',
+              padding: '6px 14px',
+              border: '1px solid rgba(0, 229, 255, 0.4)',
+              color: '#00e5ff',
+              background: 'rgba(0, 229, 255, 0.08)'
+            }}
+          >
+            <span>🛡️</span>
+            <span>Audit Dossier (21 CFR Part 11)</span>
+          </button>
+          <VerificationBadge testId="STRESS-01" standard="NCRP-151" />
         </div>
       </div>
 
@@ -799,6 +848,11 @@ const Spatial3DModule: React.FC = () => {
         )}
       </div>
 
+      <AuditDossierModal
+        isOpen={isDossierOpen}
+        onClose={() => setIsDossierOpen(false)}
+        payload={dossierPayload}
+      />
     </div>
   );
 };

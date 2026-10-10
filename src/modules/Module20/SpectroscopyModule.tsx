@@ -1,6 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import VerificationBadge from '../../components/VerificationBadge';
 import PlotComponent from 'react-plotly.js';
+import { AuditDossierModal } from '../../components/AuditDossierModal';
+import { type CalculationDossierPayload } from '../../services/auditDossierService';
 
 const Plot = (PlotComponent as any).default || PlotComponent;
 
@@ -162,6 +164,7 @@ const SpectroscopyModule: React.FC = () => {
 
   // Auto-ID search tolerance
   const [idToleranceKeV, setIdToleranceKeV] = useState<number>(5.0);
+  const [isDossierOpen, setIsDossierOpen] = useState<boolean>(false);
 
   // Generate 2048-Channel MCA Spectrum Data
   const spectrumData = useMemo(() => {
@@ -332,16 +335,62 @@ const SpectroscopyModule: React.FC = () => {
     return peaks;
   }, [spectrumData, detector, idToleranceKeV]);
 
+  const dossierPayload: CalculationDossierPayload = useMemo(() => ({
+    reportTitle: 'Gamma-Ray Spectrometry & MCA Automated Isotope Identification Dossier',
+    moduleName: 'Module 20: Gamma Spectroscopy & MCA Spectrum Analyzer',
+    statuteCitation: 'IEEE Std 325-2014 / ANSI N42.14 / ISO 17025',
+    verificationTestId: 'VTEST-14',
+    operatorName: 'Gamma Radiometric Metrologist',
+    operatorCredentials: 'CHP / ISO 17025 Qualified Technical Signatory',
+    facility: 'Low-Background Radiometrics & MCA Counting Laboratory',
+    notes: `Acquisition spectrum for ${isotope.name} (${activityKBq} kBq) using ${detector.name}. Live time: ${liveTimeSec} s. Resolved photopeaks: ${identifiedPeaks.length}.`,
+    formulaDescription: 'R = \\frac{\\text{FWHM}}{E_0} \\times 100\\%, \\quad G(E) = \\frac{A}{\\sigma \\sqrt{2\\pi}} \\exp\\left(-\\frac{(E - E_0)^2}{2\\sigma^2}\\right)',
+    inputs: [
+      { label: 'Spectrometer Detector', value: detector.name },
+      { label: 'Detector Sensor Class', value: detector.type },
+      { label: 'Source Standard', value: isotope.name },
+      { label: 'Standard Activity', value: activityKBq, unit: 'kBq' },
+      { label: 'Acquisition Live Time', value: liveTimeSec, unit: 's' },
+      { label: 'Background Shielding', value: hasShielding ? 'Low-Background Lead Castle' : 'Unshielded Ambient Air' },
+      { label: 'Peak Identification Tolerance', value: `±${idToleranceKeV} keV` }
+    ],
+    outputs: [
+      { label: 'FWHM Resolution at 662 keV', value: `${detector.fwhmAt662keV} keV (${((detector.fwhmAt662keV / 661.7) * 100).toFixed(2)}%)`, status: 'PASS' },
+      { label: 'Resolved Photopeak Count', value: identifiedPeaks.length, status: 'PASS' },
+      { label: 'Dominant Identified Isotope', value: identifiedPeaks[0]?.matchedIsotope || 'Unresolved', status: 'PASS' },
+      { label: 'Primary Energy Centroid', value: identifiedPeaks[0] ? `${identifiedPeaks[0].energyKeV.toFixed(1)} keV` : 'N/A', status: 'PASS' }
+    ]
+  }), [detector, isotope, activityKBq, liveTimeSec, hasShielding, idToleranceKeV, identifiedPeaks]);
+
   return (
     <div className="spectroscopy-module">
       <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
         <div>
-          <h2 style={{ margin: 0 }}>🔬 Gamma Spectroscopy & MCA Spectrum Analyzer</h2>
+          <h2 style={{ margin: 0 }}>🔬 Gamma Spectroscopy &amp; MCA Spectrum Analyzer</h2>
           <p style={{ color: 'var(--color-text-muted)', margin: '4px 0 0 0', fontSize: '0.85rem' }}>
             Simulate pulse-height energy spectra for NaI(Tl), HPGe, LaBr₃(Ce), and CZT detectors. Analyze photopeaks, Compton continuum, backscatter, escape peaks, and run automated isotopic identification.
           </p>
         </div>
-        <VerificationBadge testId="VTEST-14" standard="IEEE Std 325" />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <button
+            className="btn btn-secondary"
+            onClick={() => setIsDossierOpen(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '0.8rem',
+              padding: '6px 14px',
+              border: '1px solid rgba(0, 229, 255, 0.4)',
+              color: '#00e5ff',
+              background: 'rgba(0, 229, 255, 0.08)'
+            }}
+          >
+            <span>🛡️</span>
+            <span>Audit Dossier (21 CFR Part 11)</span>
+          </button>
+          <VerificationBadge testId="VTEST-14" standard="IEEE Std 325" />
+        </div>
       </div>
 
       {/* Isotope Standard Presets */}
@@ -641,6 +690,12 @@ const SpectroscopyModule: React.FC = () => {
           </table>
         </div>
       </div>
+
+      <AuditDossierModal
+        isOpen={isDossierOpen}
+        onClose={() => setIsDossierOpen(false)}
+        payload={dossierPayload}
+      />
     </div>
   );
 };

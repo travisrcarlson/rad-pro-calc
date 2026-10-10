@@ -1,5 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import PlotComponent from 'react-plotly.js';
+import VerificationBadge from '../../components/VerificationBadge';
+import { AuditDossierModal } from '../../components/AuditDossierModal';
+import { type CalculationDossierPayload } from '../../services/auditDossierService';
 
 const Plot = (PlotComponent as any).default || PlotComponent;
 
@@ -80,6 +83,7 @@ const InternalDosimetryModule: React.FC = () => {
   const [absorptionClass, setAbsorptionClass] = useState<'F' | 'M' | 'S'>('M'); // Inhalation class
   const [selectedDay, setSelectedDay] = useState<number>(10); // scrubbing time parameter
   const [timespan, setTimespan] = useState<number>(180); // simulation span (days)
+  const [isDossierOpen, setIsDossierOpen] = useState<boolean>(false);
 
   const nuclide = useMemo(() => RADIONUCLIDES[nuclideKey], [nuclideKey]);
 
@@ -187,13 +191,62 @@ const InternalDosimetryModule: React.FC = () => {
     return doseSv * 1000; // to mSv
   }, [nuclide, route, intakeActivity]);
 
+  const dossierPayload: CalculationDossierPayload = useMemo(() => ({
+    reportTitle: 'Internal Dosimetry & Biokinetic Intake Assessment Dossier',
+    moduleName: 'Module 17: Internal Dosimetry & ICRP Biokinetic Clearance Model',
+    statuteCitation: 'ICRP Publication 68 / ICRP Publication 30 / 10 CFR 20 Subpart C',
+    verificationTestId: 'VTEST-22',
+    operatorName: 'Internal Dosimetrist / Health Physicist',
+    operatorCredentials: 'Certified Health Physicist (CHP) / Medical Bioassay Specialist',
+    facility: 'Radiological Protection & In Vivo Counting Bioassay Facility',
+    notes: `Internal intake simulation for ${nuclide.name} via ${route} (${intakeActivity} kBq). Target critical organ: ${nuclide.targetOrgan}. Evaluation on Day ${selectedDay}.`,
+    formulaDescription: 'H_{50} = A_{\\text{intake}} \\cdot e(g)_{50}, \\quad \\frac{dq_i}{dt} = -(\\lambda_R + \\lambda_{B,i}) q_i + \\sum k_{ji} q_j',
+    inputs: [
+      { label: 'Radionuclide', value: nuclide.name },
+      { label: 'Intake Pathway', value: route },
+      { label: 'Intake Activity', value: intakeActivity, unit: 'kBq' },
+      { label: 'Lung Solubility Class', value: route === 'Inhalation' ? `Type ${absorptionClass}` : 'N/A' },
+      { label: 'Target Critical Organ', value: nuclide.targetOrgan },
+      { label: 'Evaluation Day', value: selectedDay, unit: 'days' }
+    ],
+    outputs: [
+      { label: '50-Year Committed Effective Dose', value: maxCommittedDose.toFixed(3), unit: 'mSv', status: maxCommittedDose > 20 ? 'WARNING' : 'PASS' },
+      { label: 'Current Accumulated Dose', value: scrubbedValues.dose.toFixed(4), unit: 'mSv', status: 'PASS' },
+      { label: 'Critical Organ Burden', value: scrubbedValues.organ.toFixed(2), unit: 'kBq', status: 'PASS' },
+      { label: 'Whole Body Retention', value: (scrubbedValues.intake + scrubbedValues.blood + scrubbedValues.organ).toFixed(2), unit: 'kBq', status: 'PASS' },
+      { label: 'Total Excreted Activity', value: scrubbedValues.excretion.toFixed(2), unit: 'kBq', status: 'PASS' }
+    ]
+  }), [nuclide, route, intakeActivity, absorptionClass, selectedDay, maxCommittedDose, scrubbedValues]);
+
   return (
     <div className="internal-dosimetry-module">
-      <div className="panel-header">
-        <h2>☢️ Internal Dosimetry & ICRP Biokinetic Model</h2>
-        <p style={{ color: 'var(--color-text-muted)' }}>
-          Simulate nuclear intake clearance pathways, evaluate multi-compartment retention dynamics, and calculate committed equivalent doses (ICRP-60 standard).
-        </p>
+      <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
+        <div>
+          <h2>☢️ Internal Dosimetry &amp; ICRP Biokinetic Model</h2>
+          <p style={{ color: 'var(--color-text-muted)', margin: '4px 0 0 0' }}>
+            Simulate nuclear intake clearance pathways, evaluate multi-compartment retention dynamics, and calculate committed equivalent doses (ICRP-60 standard).
+          </p>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <button
+            className="btn btn-secondary"
+            onClick={() => setIsDossierOpen(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '0.8rem',
+              padding: '6px 14px',
+              border: '1px solid rgba(0, 229, 255, 0.4)',
+              color: '#00e5ff',
+              background: 'rgba(0, 229, 255, 0.08)'
+            }}
+          >
+            <span>🛡️</span>
+            <span>Audit Dossier (21 CFR Part 11)</span>
+          </button>
+          <VerificationBadge testId="VTEST-22" standard="ICRP 68" />
+        </div>
       </div>
 
       <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', marginBottom: '20px' }}>
@@ -577,6 +630,12 @@ const InternalDosimetryModule: React.FC = () => {
           The biological clearance values assume standard healthy occupational adults. In case of actual contamination, clinical bioassays (e.g. whole-body counting, liquid scintillation urinalysis) must guide medical interventions like DTPA chelation (for Plutonium/Cobalt) or Prussian Blue ingestion (for Cesium).
         </p>
       </div>
+
+      <AuditDossierModal
+        isOpen={isDossierOpen}
+        onClose={() => setIsDossierOpen(false)}
+        payload={dossierPayload}
+      />
     </div>
   );
 };

@@ -1,6 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import VerificationBadge from '../../components/VerificationBadge';
 import PlotComponent from 'react-plotly.js';
+import { AuditDossierModal } from '../../components/AuditDossierModal';
+import { type CalculationDossierPayload } from '../../services/auditDossierService';
 
 const Plot = (PlotComponent as any).default || PlotComponent;
 
@@ -28,6 +30,7 @@ const XRayTubeModule: React.FC = () => {
   const [filterAl, setFilterAl] = useState<number>(2.0); // mm of Aluminum
   const [filterCu, setFilterCu] = useState<number>(0.0); // mm of Copper
   const [anodeAngle, setAnodeAngle] = useState<number>(12); // degrees
+  const [isDossierOpen, setIsDossierOpen] = useState<boolean>(false);
 
   const material = useMemo(() => ANODES[target], [target]);
 
@@ -150,6 +153,34 @@ const XRayTubeModule: React.FC = () => {
     };
   }, [spectrum, filterAl, filterCu, ma, time, kvp]);
 
+  const dossierPayload: CalculationDossierPayload = useMemo(() => ({
+    reportTitle: 'Diagnostic X-Ray Tube Spectrum & Output Compliance Dossier',
+    moduleName: 'Module 16: Diagnostic X-Ray Tube Physics & Spectrum Generator',
+    statuteCitation: 'NCRP Report No. 147 / 21 CFR 1020.30',
+    verificationTestId: 'VTEST-11',
+    operatorName: 'Diagnostic Medical Physicist',
+    operatorCredentials: 'DABR / Licensed Diagnostic Radiologic Physicist',
+    facility: 'Clinical Imaging & Interventional Radiology Center',
+    notes: `Diagnostic tube output simulation for ${target} anode target at ${kvp} kVp (${metrics.mAs.toFixed(1)} mAs). Added filtration: ${filterAl} mm Al + ${filterCu} mm Cu.`,
+    formulaDescription: 'I(E) = C \\cdot Z \\cdot (kVp - E) \\cdot e^{-\\sum \\mu_i x_i}, \\quad \\lambda_{\\min} = \\frac{hc}{e \\cdot kVp}',
+    inputs: [
+      { label: 'Anode Target Material', value: `${target} (Z=${material.z})` },
+      { label: 'Tube Potential', value: kvp, unit: 'kVp' },
+      { label: 'Tube Current', value: ma, unit: 'mA' },
+      { label: 'Exposure Time', value: time, unit: 's' },
+      { label: 'Charge Product', value: metrics.mAs.toFixed(1), unit: 'mAs' },
+      { label: 'Added Aluminum Filter', value: filterAl, unit: 'mm Al' },
+      { label: 'Added Copper Filter', value: filterCu, unit: 'mm Cu' },
+      { label: 'Anode Bevel Angle', value: anodeAngle, unit: 'degrees' }
+    ],
+    outputs: [
+      { label: 'Effective Mean Energy', value: metrics.meanEnergy.toFixed(1), unit: 'keV', status: 'PASS' },
+      { label: 'First Half-Value Layer (HVL)', value: metrics.hvl.toFixed(2), unit: 'mm Al', status: 'PASS' },
+      { label: 'Air Kerma at 1 Meter', value: metrics.doseRate.toFixed(2), unit: 'µGy', status: 'PASS' },
+      { label: 'Duane-Hunt Cutoff Wavelength', value: (1.2398 / kvp).toFixed(4), unit: 'nm', status: 'PASS' }
+    ]
+  }), [target, material, kvp, ma, time, filterAl, filterCu, anodeAngle, metrics]);
+
   return (
     <div className="xray-tube-module">
       <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
@@ -159,7 +190,26 @@ const XRayTubeModule: React.FC = () => {
             Model Bremsstrahlung continuum production, characteristic line peaks, filtration attenuation (beam hardening), and measure X-ray dose outputs.
           </p>
         </div>
-        <VerificationBadge testId="VTEST-11" standard="Duane-Hunt Law" />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <button
+            className="btn btn-secondary"
+            onClick={() => setIsDossierOpen(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '0.8rem',
+              padding: '6px 14px',
+              border: '1px solid rgba(0, 229, 255, 0.4)',
+              color: '#00e5ff',
+              background: 'rgba(0, 229, 255, 0.08)'
+            }}
+          >
+            <span>🛡️</span>
+            <span>Audit Dossier (21 CFR Part 11)</span>
+          </button>
+          <VerificationBadge testId="VTEST-11" standard="Duane-Hunt Law" />
+        </div>
       </div>
 
       <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', marginBottom: '20px' }}>
@@ -458,6 +508,12 @@ const XRayTubeModule: React.FC = () => {
           </div>
         </div>
       </div>
+
+      <AuditDossierModal
+        isOpen={isDossierOpen}
+        onClose={() => setIsDossierOpen(false)}
+        payload={dossierPayload}
+      />
     </div>
   );
 };

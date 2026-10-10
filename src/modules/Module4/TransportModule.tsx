@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import VerificationBadge from '../../components/VerificationBadge';
 import { BlockMath } from 'react-katex';
 import PlotComponent from 'react-plotly.js';
@@ -7,6 +8,8 @@ import nuclidesData from '../../data/nuclides.json'; // Contains generic Gamma c
 import equipmentDataRaw from '../../data/equipment_database.json';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
+import { AuditDossierModal } from '../../components/AuditDossierModal';
+import { type CalculationDossierPayload } from '../../services/auditDossierService';
 
 const parseActivityMBq = (activityStr: string) => {
   const str = activityStr.toLowerCase();
@@ -51,6 +54,7 @@ const A_BOUNDS: Record<string, { A1: number, A2: number }> = {
 };
 
 const TransportModule: React.FC = () => {
+  const [searchParams] = useSearchParams();
   const [selectedElement, setSelectedElement] = useState('Cs');
   const [selectedMass, setSelectedMass] = useState('137');
   const nuclideSym = `${selectedElement}-${selectedMass}`;
@@ -60,10 +64,32 @@ const TransportModule: React.FC = () => {
 
   const [innerRadius, setInnerRadius] = useState<number>(5); // cm
   const [cavityWidth, setCavityWidth] = useState<number>(10); // cm, assumed cubic cavity for mass optimization
+  const [isDossierOpen, setIsDossierOpen] = useState<boolean>(false);
 
   const [layers, setLayers] = useState<{ id: number, matIdx: number, thickness: number }[]>([
     { id: 1, matIdx: 0, thickness: 1 } // 1 cm of Lead
   ]);
+
+  // Ingest URL params from Nuclide Table or external links
+  useEffect(() => {
+    const nuclideParam = searchParams.get('nuclide');
+    const actParam = searchParams.get('activity');
+    if (nuclideParam) {
+      const parts = nuclideParam.split('-');
+      if (parts.length === 2 && elementsMap[parts[0]]) {
+        setSelectedElement(parts[0]);
+        if (elementsMap[parts[0]].masses.includes(parts[1])) {
+          setSelectedMass(parts[1]);
+        }
+      }
+    }
+    if (actParam) {
+      const parsedAct = parseFloat(actParam);
+      if (!isNaN(parsedAct) && parsedAct > 0) {
+        setActivity(parsedAct);
+      }
+    }
+  }, [searchParams]);
 
   const handleEquipmentImport = (eqName: string) => {
     const eq: any = equipmentDataRaw.find((e: any) => e['Device Name'] === eqName);
@@ -309,16 +335,94 @@ const TransportModule: React.FC = () => {
     setLayers(layers.filter(l => l.id !== id));
   };
 
+  const dossierPayload: CalculationDossierPayload = useMemo(() => ({
+    reportTitle: 'IAEA SSR-6 Dangerous Goods Consignment & Transport Manifest',
+    moduleName: 'Module 4 (Transport Packaging & Shielding Optimization)',
+    statuteCitation: 'IAEA Safety Standards Series No. SSR-6 (Rev. 1) / 49 CFR Part 173',
+    verificationTestId: 'VTEST-05',
+    operatorName: 'Certified Dangerous Goods Specialist',
+    operatorCredentials: 'DG-SA / Health Physicist',
+    facility: 'Central Nuclear Materials Logistics Facility',
+    notes: `Transport package evaluation for ${nuclideSym} (${form.toUpperCase()} form). Consignment Activity: ${actTBq.toFixed(6)} TBq. Package Type: ${pkgType}. Label Category: ${activeCategoryData.name}. Transport Index: ${TI.toFixed(1)}.`,
+    formulaDescription: '\\text{TI} = \\frac{\\dot{H}_{1\\text{m}} \\ [\\mu\\text{Sv/h}]}{10}, \\quad \\dot{H}_{\\text{surf}} = \\frac{\\Gamma \\cdot A}{d_{\\text{surf}}^2} 10^{-\\sum \\frac{x_i}{\\text{TVL}_i}}',
+    inputs: [
+      { label: 'Radionuclide', value: nuclideSym },
+      { label: 'Activity', value: actTBq.toFixed(6), unit: 'TBq' },
+      { label: 'Physical Form', value: form === 'special' ? 'Special Form (Sealed)' : 'Normal Form' },
+      { label: 'Inner Cavity Radius', value: innerRadius, unit: 'cm' },
+      { label: 'Shielding Layers Count', value: layers.length }
+    ],
+    outputs: [
+      { label: 'Package Classification', value: pkgType, status: 'PASS' },
+      { label: 'Label Category', value: activeCategoryData.name, status: activeCategoryData.id === 'CAT-EXCL' ? 'WARNING' : 'PASS' },
+      { label: 'Surface Dose Rate', value: doseSurf.toFixed(2), unit: 'µSv/h', status: doseSurf > 2000 ? 'WARNING' : 'PASS' },
+      { label: '1-Meter Dose Rate', value: dose1m.toFixed(2), unit: 'µSv/h', status: 'PASS' },
+      { label: 'Transport Index (TI)', value: TI.toFixed(1), status: TI > 10 ? 'WARNING' : 'PASS' }
+    ]
+  }), [nuclideSym, form, actTBq, pkgType, activeCategoryData, TI, doseSurf, dose1m, innerRadius, layers]);
+
   return (
     <div className="panel" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto' }}>
       <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
         <div>
-          <h2>Module 4 — Shielding & Transport Eval (IAEA SSR-6)</h2>
+          <h2>Module 4 — Shielding &amp; Transport Eval (IAEA SSR-6)</h2>
           <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
             IAEA SSR-6 Rev. 1 transport packaging, Transport Index (TI), and multilayer attenuation optimization
           </span>
         </div>
-        <VerificationBadge testId="VTEST-05" standard="IAEA SSR-6" />
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <VerificationBadge testId="VTEST-05" standard="IAEA SSR-6" />
+          <button
+            className="btn btn-secondary"
+            onClick={() => setIsDossierOpen(true)}
+            style={{ fontSize: '0.85rem', fontWeight: 600, padding: '8px 14px' }}
+          >
+            Export Audit Dossier
+          </button>
+        </div>
+      </div>
+
+      {/* Top Tactical HUD Bar */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '12px', marginBottom: '20px' }}>
+        <div className="hud-card">
+          <span className="hud-metric-label">PACKAGE CLASSIFICATION</span>
+          <span className="hud-metric-value" style={{ color: pkgColor }}>
+            {pkgType}
+          </span>
+          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
+            {actTBq.toFixed(4)} TBq ({form === 'special' ? 'Special Form' : 'Normal Form'})
+          </span>
+        </div>
+
+        <div className="hud-card">
+          <span className="hud-metric-label">SURFACE DOSE RATE</span>
+          <span className="hud-metric-value" style={{ color: doseSurf > 2000 ? '#ef4444' : '#00e5ff' }}>
+            {doseSurf < 0.01 ? '<0.01' : doseSurf.toFixed(2)} µSv/h
+          </span>
+          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
+            {doseSurf > 2000 ? 'Exceeds standard 2 mSv/h limit' : 'At package exterior surface'}
+          </span>
+        </div>
+
+        <div className="hud-card">
+          <span className="hud-metric-label">TRANSPORT INDEX (TI)</span>
+          <span className="hud-metric-value" style={{ color: TI > 10 ? '#ef4444' : '#10b981' }}>
+            {TI.toFixed(1)}
+          </span>
+          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
+            1m Rate: {dose1m < 0.01 ? '<0.01' : dose1m.toFixed(2)} µSv/h
+          </span>
+        </div>
+
+        <div className="hud-card">
+          <span className="hud-metric-label">LABEL CATEGORY</span>
+          <span className="hud-metric-value" style={{ color: activeCategoryData.border || '#f59e0b', fontSize: '1.15rem' }}>
+            {activeCategoryData.name}
+          </span>
+          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
+            IAEA SSR-6 / DOT 49 CFR 173
+          </span>
+        </div>
       </div>
 
       <div style={{ display: 'flex', gap: '30px', flexWrap: 'wrap' }}>
@@ -646,6 +750,12 @@ const TransportModule: React.FC = () => {
         </div>
       </div>
 
+      {/* Cryptographic Audit Dossier Modal */}
+      <AuditDossierModal
+        isOpen={isDossierOpen}
+        onClose={() => setIsDossierOpen(false)}
+        payload={dossierPayload}
+      />
     </div>
   );
 };

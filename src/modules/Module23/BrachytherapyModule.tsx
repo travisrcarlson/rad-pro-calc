@@ -2,6 +2,8 @@ import React, { useState, useMemo } from 'react';
 import VerificationBadge from '../../components/VerificationBadge';
 import PlotComponent from 'react-plotly.js';
 import { BlockMath } from 'react-katex';
+import { AuditDossierModal } from '../../components/AuditDossierModal';
+import { type CalculationDossierPayload } from '../../services/auditDossierService';
 
 const Plot = (PlotComponent as any).default || PlotComponent;
 
@@ -232,6 +234,7 @@ const BrachytherapyModule: React.FC = () => {
   const [activeTab, setActiveTab] = useState<ActiveTab>('planner');
   const [selectedModelId, setSelectedModelId] = useState<string>('I-125_6711');
   const [prescribedDoseGy, setPrescribedDoseGy] = useState<number>(145);
+  const [isDossierOpen, setIsDossierOpen] = useState<boolean>(false);
 
   const currentModel = useMemo(() => SEED_MODELS[selectedModelId], [selectedModelId]);
 
@@ -450,16 +453,62 @@ const BrachytherapyModule: React.FC = () => {
     setSeeds(seeds.map((s) => (s.id === id ? { ...s, [field]: val } : s)));
   };
 
+  const dossierPayload: CalculationDossierPayload = useMemo(() => ({
+    reportTitle: 'Clinical Brachytherapy Treatment Plan & DVH Quality Dossier',
+    moduleName: 'Module 23: Medical Physics & AAPM TG-43 Brachytherapy Planner',
+    statuteCitation: 'AAPM TG-43 / TG-43U1 / AAPM TG-64 / 10 CFR 35 Subpart F',
+    verificationTestId: 'VTEST-16',
+    operatorName: 'Therapeutic Medical Physicist',
+    operatorCredentials: 'DABR / Qualified Medical Physicist (QMP)',
+    facility: 'Radiation Oncology & Interstitial Brachytherapy Suite',
+    notes: `Interstitial implant dosimetry for ${currentModel.name} (${seeds.length} seeds). Prescribed dose: ${prescribedDoseGy} Gy. Target coverage V100: ${dvhMetrics.v100Pct.toFixed(1)}%. Target D90: ${dvhMetrics.d90Gy.toFixed(1)} Gy.`,
+    formulaDescription: '\\dot{D}(r,\\theta) = S_K \\cdot \\Lambda \\cdot \\frac{G_L(r,\\theta)}{G_L(r_0,\\theta_0)} \\cdot g_L(r) \\cdot F(r,\\theta)',
+    inputs: [
+      { label: 'Radioactive Seed Source', value: currentModel.name },
+      { label: 'Radionuclide', value: `${currentModel.isotope} (T1/2 = ${currentModel.halfLifeDays} d)` },
+      { label: 'Prescribed Target Dose (Rx)', value: prescribedDoseGy, unit: 'Gy' },
+      { label: 'Total Implanted Seeds', value: seeds.length },
+      { label: 'Total Air-Kerma Strength', value: seeds.reduce((acc, s) => acc + s.airKermaStrength, 0).toFixed(2), unit: 'U' },
+      { label: 'Clinical Target Dimensions', value: `${(targetOrgan.a * 2).toFixed(1)} cm × ${(targetOrgan.b * 2).toFixed(1)} cm` }
+    ],
+    outputs: [
+      { label: 'Target Coverage V100', value: dvhMetrics.v100Pct.toFixed(1), unit: '%', status: dvhMetrics.v100Pct >= 95 ? 'PASS' : 'WARNING' },
+      { label: 'Dose Heterogeneity V150', value: dvhMetrics.v150Pct.toFixed(1), unit: '%', status: dvhMetrics.v150Pct <= 50 ? 'PASS' : 'WARNING' },
+      { label: 'Target Minimum 90% Dose (D90)', value: `${dvhMetrics.d90Gy.toFixed(1)} Gy (${dvhMetrics.d90PctRx.toFixed(1)}% Rx)`, status: 'PASS' },
+      { label: 'Urethra High Dose Volume (UV150)', value: dvhMetrics.uV150Pct.toFixed(1), unit: '%', status: dvhMetrics.uV150Pct <= 10 ? 'PASS' : 'WARNING' },
+      { label: 'Rectum Overdose Volume (RV100)', value: dvhMetrics.rV100Pct.toFixed(1), unit: '%', status: dvhMetrics.rV100Pct <= 5 ? 'PASS' : 'WARNING' }
+    ]
+  }), [currentModel, prescribedDoseGy, seeds, targetOrgan, dvhMetrics]);
+
   return (
     <div className="brachytherapy-module">
       <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
         <div>
-          <h2 style={{ margin: 0 }}>🏥 Medical Physics & AAPM TG-43 Brachytherapy Planner</h2>
+          <h2 style={{ margin: 0 }}>🏥 Medical Physics &amp; AAPM TG-43 Brachytherapy Planner</h2>
           <p style={{ color: 'var(--color-text-muted)', margin: '4px 0 0 0', fontSize: '0.85rem' }}>
             Clinical interstitial radioactive seed implant planning and High Dose Rate (HDR) afterloading using the gold-standard <strong>AAPM TG-43U1</strong> formalism with real-time isodose contours and Dose-Volume Histograms (DVH).
           </p>
         </div>
-        <VerificationBadge testId="VTEST-16" standard="AAPM TG-43U1" />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <button
+            className="btn btn-secondary"
+            onClick={() => setIsDossierOpen(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '0.8rem',
+              padding: '6px 14px',
+              border: '1px solid rgba(0, 229, 255, 0.4)',
+              color: '#00e5ff',
+              background: 'rgba(0, 229, 255, 0.08)'
+            }}
+          >
+            <span>🛡️</span>
+            <span>Audit Dossier (21 CFR Part 11)</span>
+          </button>
+          <VerificationBadge testId="VTEST-16" standard="AAPM TG-43U1" />
+        </div>
       </div>
 
       {/* Main Tabs Header */}
@@ -920,6 +969,12 @@ const BrachytherapyModule: React.FC = () => {
           </div>
         </div>
       )}
+
+      <AuditDossierModal
+        isOpen={isDossierOpen}
+        onClose={() => setIsDossierOpen(false)}
+        payload={dossierPayload}
+      />
     </div>
   );
 };

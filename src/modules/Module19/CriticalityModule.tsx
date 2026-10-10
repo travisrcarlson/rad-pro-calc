@@ -1,6 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import VerificationBadge from '../../components/VerificationBadge';
 import PlotComponent from 'react-plotly.js';
+import { AuditDossierModal } from '../../components/AuditDossierModal';
+import { type CalculationDossierPayload } from '../../services/auditDossierService';
 
 const Plot = (PlotComponent as any).default || PlotComponent;
 
@@ -284,6 +286,7 @@ const CriticalityModule: React.FC = () => {
 
   // Map visualization mode
   const [mapMode, setMapMode] = useState<MapDisplayMode>('FLUX');
+  const [isDossierOpen, setIsDossierOpen] = useState<boolean>(false);
 
   // Filter presets by active tab
   const filteredPresets = useMemo(() => {
@@ -646,16 +649,67 @@ const CriticalityModule: React.FC = () => {
     }
   };
 
+  const dossierPayload: CalculationDossierPayload = useMemo(() => ({
+    reportTitle: 'Reactor Core Criticality & Four-Factor Safety Dossier',
+    moduleName: 'Module 19: Criticality Safety & Reactor Core Simulator',
+    statuteCitation: 'ANSI/ANS-8.1 / IAEA Safety Standards Series No. SSG-27',
+    verificationTestId: 'VTEST-13',
+    operatorName: 'Reactor Physics & Criticality Safety Officer',
+    operatorCredentials: 'Senior Reactor Operator (SRO) / Nuclear Physicist',
+    facility: 'Nuclear Reactor Core Simulation Facility',
+    notes: `Core neutronics calculation for ${activePreset.name} (${moderatorType}). Nominal enrichment: ${enrichmentPct}%. Control insertion: ${controlInsertionPct}%. Soluble boron: ${boronPpm} ppm. Core state: ${math.state}.`,
+    formulaDescription: 'k_{\\text{eff}} = \\frac{\\eta \\cdot \\epsilon \\cdot p \\cdot f}{1 + M^2 B^2}, \\quad \\rho = \\frac{k_{\\text{eff}} - 1}{k_{\\text{eff}}}',
+    inputs: [
+      { label: 'Core Configuration', value: activePreset.name },
+      { label: 'Moderator System', value: moderatorType },
+      { label: 'U-235 Enrichment', value: enrichmentPct, unit: '%' },
+      { label: 'Soluble Boron Concentration', value: boronPpm, unit: 'ppm' },
+      { label: 'Control Rod Bank Insertion', value: controlInsertionPct, unit: '%' },
+      { label: 'Active Core Height', value: coreHeightM, unit: 'm' },
+      { label: 'Lattice Pitch', value: pitchM, unit: 'm' }
+    ],
+    outputs: [
+      { label: 'Effective Multiplication Factor (k_eff)', value: math.kEff.toFixed(5), status: math.kEff >= 1.0 ? 'WARNING' : 'PASS' },
+      { label: 'Infinite Multiplication Factor (k_inf)', value: math.kInf.toFixed(5), status: 'PASS' },
+      { label: 'Reactivity (ρ)', value: math.rhoPcm.toFixed(1), unit: 'pcm', status: math.rhoPcm > 0 ? 'WARNING' : 'PASS' },
+      { label: 'Criticality State', value: math.state, status: math.state === 'Subcritical' ? 'PASS' : 'WARNING' },
+      { label: 'Reactor Period (T)', value: math.reactorPeriodS > 1e4 ? 'Infinite (Stable)' : `${math.reactorPeriodS.toFixed(2)} s`, status: 'PASS' },
+      { label: 'Thermal Fission Factor (η)', value: math.eta.toFixed(4), status: 'PASS' },
+      { label: 'Resonance Escape (p)', value: math.p.toFixed(4), status: 'PASS' },
+      { label: 'Thermal Utilization (f)', value: math.f.toFixed(4), status: 'PASS' },
+      { label: 'Fast Fission Factor (ε)', value: math.epsilon.toFixed(4), status: 'PASS' }
+    ]
+  }), [activePreset, moderatorType, enrichmentPct, boronPpm, controlInsertionPct, coreHeightM, pitchM, math]);
+
   return (
     <div className="criticality-module">
       <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
         <div>
-          <h2 style={{ margin: 0 }}>⚛️ Criticality Safety & Reactor Core Simulator (Multi-Variable Engine)</h2>
+          <h2 style={{ margin: 0 }}>⚛️ Criticality Safety &amp; Reactor Core Simulator (Multi-Variable Engine)</h2>
           <p style={{ color: 'var(--color-text-muted)', margin: '4px 0 0 0', fontSize: '0.85rem' }}>
             Model nuclear criticality, four-factor neutron economy, heterogeneous pin-by-pin variables (burnable poisons, steam voids, enrichment grading), and 2D finite-difference spatial diffusion.
           </p>
         </div>
-        <VerificationBadge testId="VTEST-13" standard="Lamarsh / IAEA" />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <button
+            className="btn btn-secondary"
+            onClick={() => setIsDossierOpen(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '0.8rem',
+              padding: '6px 14px',
+              border: '1px solid rgba(0, 229, 255, 0.4)',
+              color: '#00e5ff',
+              background: 'rgba(0, 229, 255, 0.08)'
+            }}
+          >
+            <span>🛡️</span>
+            <span>Audit Dossier (21 CFR Part 11)</span>
+          </button>
+          <VerificationBadge testId="VTEST-13" standard="Lamarsh / IAEA" />
+        </div>
       </div>
 
       {/* Preset Library Category Tabs */}
@@ -1212,6 +1266,12 @@ const CriticalityModule: React.FC = () => {
           />
         </div>
       </div>
+
+      <AuditDossierModal
+        isOpen={isDossierOpen}
+        onClose={() => setIsDossierOpen(false)}
+        payload={dossierPayload}
+      />
     </div>
   );
 };

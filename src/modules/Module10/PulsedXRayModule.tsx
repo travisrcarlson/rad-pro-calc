@@ -2,6 +2,8 @@ import React, { useState, useMemo } from 'react';
 import VerificationBadge from '../../components/VerificationBadge';
 import PlotComponent from 'react-plotly.js';
 import { BlockMath, InlineMath } from 'react-katex';
+import { AuditDossierModal } from '../../components/AuditDossierModal';
+import { type CalculationDossierPayload } from '../../services/auditDossierService';
 
 const Plot = (PlotComponent as any).default || PlotComponent;
 
@@ -38,6 +40,7 @@ const PulsedXRayModule: React.FC = () => {
   const [activeTab, setActiveTab] = useState<WorkspaceTab>('beam_map');
   const [selectedPresetId, setSelectedPresetId] = useState<string>('xr200');
   const [distanceMeters, setDistanceMeters] = useState<number>(1.0);
+  const [isDossierOpen, setIsDossierOpen] = useState<boolean>(false);
 
   // Custom manual overrides
   const [overrideMode, setOverrideMode] = useState<GeneratorMode>('flash_pulsed');
@@ -146,6 +149,30 @@ const PulsedXRayModule: React.FC = () => {
     };
   }, [calcDoseAtDistance]);
 
+  const dossierPayload: CalculationDossierPayload = useMemo(() => ({
+    reportTitle: 'Pulsed Flash Radiography & Detector Saturation Dossier',
+    moduleName: 'Module 10: Pulsed X-Ray Systems & Detector Saturation Analyzer',
+    statuteCitation: 'ANSI N43.3-2008 / 29 CFR 1910.1096',
+    verificationTestId: 'VTEST-08',
+    operatorName: 'Radiological Safety Officer',
+    operatorCredentials: 'Certified Health Physicist / Radiographer Level III',
+    facility: 'Transient Radiation & NDT Inspection Facility',
+    notes: `Transient dose assessment for ${overrideMode === 'flash_pulsed' ? 'Flash X-Ray Generator' : 'Diagnostic Continuous Tube'} operating at ${customKvp} kVp. Evaluation distance: ${distanceMeters} m.`,
+    formulaDescription: 'D_{\\text{tot}} = N \\cdot D_{\\text{ref}} \\left(\\frac{r_{\\text{ref}}}{r}\\right)^2, \\quad \\dot{D}_{\\text{inst}} = \\frac{D_{\\text{pulse}}}{\\tau_{\\text{pulse}}} \\times 3600',
+    inputs: [
+      { label: 'Operating Mode', value: overrideMode === 'flash_pulsed' ? 'Flash Pulsed Radiography' : 'Diagnostic Continuous Tube' },
+      { label: 'Tube Potential', value: customKvp, unit: 'kVp' },
+      { label: 'Pulse Count / Duration', value: overrideMode === 'flash_pulsed' ? `${customPulses} pulses (${customPulseWidthNs} ns/pulse)` : `${customTime} s (${customMa} mA)` },
+      { label: 'Target Evaluation Distance', value: distanceMeters, unit: 'm' }
+    ],
+    outputs: [
+      { label: 'Accumulated Integrated Dose', value: results.accumulatedDose_uSv.toFixed(3), unit: 'µSv', status: 'PASS' },
+      { label: 'Instantaneous Peak Rate', value: results.instantaneousRate_Sv_H.toFixed(2), unit: 'Sv/h', status: isSaturated ? 'WARNING' : 'PASS' },
+      { label: 'Detector Saturation Status', value: isSaturated ? 'DETECTOR PARALYSIS / BURNOUT' : 'NORMAL LINEAR OPERATION', status: isSaturated ? 'WARNING' : 'PASS' },
+      { label: 'Peak Dose in Corridor', value: maxMapDose.toFixed(2), unit: 'µSv', status: 'PASS' }
+    ]
+  }), [overrideMode, customKvp, customPulses, customPulseWidthNs, customMa, customTime, distanceMeters, results, isSaturated, maxMapDose]);
+
   return (
     <div className="panel" style={{ height: '100%', display: 'flex', flexDirection: 'column', gap: '16px' }}>
       
@@ -163,7 +190,26 @@ const PulsedXRayModule: React.FC = () => {
             Model nanosecond pulsed flash radiography (Golden Engineering XR series) vs. continuous medical beam physics, evaluate detector paralyzation, and plot OSHA exclusion zones.
           </p>
         </div>
-        <VerificationBadge testId="VTEST-08" standard="ANSI N43.3" />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <button
+            className="btn btn-secondary"
+            onClick={() => setIsDossierOpen(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '0.8rem',
+              padding: '6px 14px',
+              border: '1px solid rgba(0, 229, 255, 0.4)',
+              color: '#00e5ff',
+              background: 'rgba(0, 229, 255, 0.08)'
+            }}
+          >
+            <span>🛡️</span>
+            <span>Audit Dossier (21 CFR Part 11)</span>
+          </button>
+          <VerificationBadge testId="VTEST-08" standard="ANSI N43.3" />
+        </div>
       </div>
 
       {/* Top Tactical HUD */}
@@ -548,6 +594,11 @@ const PulsedXRayModule: React.FC = () => {
         )}
       </div>
 
+      <AuditDossierModal
+        isOpen={isDossierOpen}
+        onClose={() => setIsDossierOpen(false)}
+        payload={dossierPayload}
+      />
     </div>
   );
 };

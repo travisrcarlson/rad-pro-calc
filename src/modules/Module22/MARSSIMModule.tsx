@@ -2,6 +2,8 @@ import React, { useState, useMemo } from 'react';
 import VerificationBadge from '../../components/VerificationBadge';
 import PlotComponent from 'react-plotly.js';
 import { BlockMath } from 'react-katex';
+import { AuditDossierModal } from '../../components/AuditDossierModal';
+import { type CalculationDossierPayload } from '../../services/auditDossierService';
 
 const Plot = (PlotComponent as any).default || PlotComponent;
 
@@ -232,6 +234,7 @@ const MARSSIMModule: React.FC = () => {
   // --- STATE FOR HYPOTHESIS DECISION ENGINE (TAB 3) ---
   const [datasetString, setDatasetString] = useState<string>('2400, 3100, 1850, 4200, 2900, 3300, 4800, 2100, 3650, 2750, 3900, 1950, 3200, 2600');
   const [refDatasetString, setRefDatasetString] = useState<string>('35, 42, 38, 55, 40, 48, 52, 39, 44, 46, 50, 37');
+  const [isDossierOpen, setIsDossierOpen] = useState<boolean>(false);
 
   // 1. CALCULATIONS: CURRIE DETECTION LIMITS
   const detectionLimits = useMemo(() => {
@@ -503,16 +506,64 @@ const MARSSIMModule: React.FC = () => {
     setActiveTab('sample_size');
   };
 
+  const dossierPayload: CalculationDossierPayload = useMemo(() => ({
+    reportTitle: 'MARSSIM Final Status Survey & Decommissioning Clearance Dossier',
+    moduleName: 'Module 22: MARSSIM Decommissioning & Statistical Site Release',
+    statuteCitation: 'NUREG-1575 Rev. 1 / NUREG-1757 / 10 CFR Part 20 Subpart E',
+    verificationTestId: 'VTEST-15',
+    operatorName: 'Certified Health Physicist (CHP)',
+    operatorCredentials: 'CHP / Decommissioning Survey Project Manager',
+    facility: 'Commercial Nuclear Facility Decommissioning Site',
+    notes: `Survey unit planning for Class ${classType} area (${surveyAreaM2} m²). Statistical test: ${testType}. DCGL_w: ${dcglW} dpm/100cm². LBGR: ${lbgr} dpm/100cm². Grid spacing: ${surveyPlanning.gridSpacing.toFixed(2)} m.`,
+    formulaDescription: 'N = \\frac{(Z_{1-\\alpha} + Z_{1-\\beta})^2}{4 \\cdot (\\Phi(\\Delta/\\sigma) - 0.5)^2} \\times 1.20, \\quad L = \\sqrt{\\frac{A}{0.866 \\cdot N}}',
+    inputs: [
+      { label: 'Statistical Test Type', value: `${testType} Test` },
+      { label: 'Survey Unit Classification', value: `Class ${classType}` },
+      { label: 'Survey Unit Area', value: surveyAreaM2, unit: 'm²' },
+      { label: 'DCGL_w Release Standard', value: dcglW, unit: 'dpm/100cm²' },
+      { label: 'Lower Bound Gray Region (LBGR)', value: lbgr, unit: 'dpm/100cm²' },
+      { label: 'Standard Deviation (σ)', value: sigma, unit: 'dpm/100cm²' },
+      { label: 'Decision Errors (α, β)', value: `α = ${typeIError}, β = ${typeIIError}` },
+      { label: 'Systematic Grid Layout', value: gridShape }
+    ],
+    outputs: [
+      { label: 'Static Minimum Detectable Concentration (MDC)', value: detectionLimits.mdcDpm100cm2.toFixed(1), unit: 'dpm/100cm²', status: 'PASS' },
+      { label: 'Scan MDC', value: detectionLimits.scanMdcDpm100cm2.toFixed(1), unit: 'dpm/100cm²', status: 'PASS' },
+      { label: 'Currie Critical Level (Lc)', value: detectionLimits.lcCounts.toFixed(1), unit: 'counts', status: 'PASS' },
+      { label: 'Required Sampling Points (N)', value: surveyPlanning.recommendedN, unit: 'locations', status: 'PASS' },
+      { label: 'Grid Node Spacing (L)', value: surveyPlanning.gridSpacing.toFixed(2), unit: 'm', status: 'PASS' }
+    ]
+  }), [testType, classType, surveyAreaM2, dcglW, lbgr, sigma, surveyPlanning, typeIError, typeIIError, gridShape, detectionLimits]);
+
   return (
     <div className="marssim-module">
       <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
         <div>
-          <h2 style={{ margin: 0 }}>🏗️ MARSSIM Decommissioning & Statistical Site Release (NUREG-1575)</h2>
+          <h2 style={{ margin: 0 }}>🏗️ MARSSIM Decommissioning &amp; Statistical Site Release (NUREG-1575)</h2>
           <p style={{ color: 'var(--color-text-muted)', margin: '4px 0 0 0', fontSize: '0.85rem' }}>
             Design and analyze radiological Final Status Surveys (FSS), calculate Currie detection limits (MDA/MDC), plan triangular sample grids, and evaluate Sign/WRS hypothesis tests for license termination.
           </p>
         </div>
-        <VerificationBadge testId="VTEST-15" standard="NUREG-1575" />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <button
+            className="btn btn-secondary"
+            onClick={() => setIsDossierOpen(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '0.8rem',
+              padding: '6px 14px',
+              border: '1px solid rgba(0, 229, 255, 0.4)',
+              color: '#00e5ff',
+              background: 'rgba(0, 229, 255, 0.08)'
+            }}
+          >
+            <span>🛡️</span>
+            <span>Audit Dossier (21 CFR Part 11)</span>
+          </button>
+          <VerificationBadge testId="VTEST-15" standard="NUREG-1575" />
+        </div>
       </div>
 
       {/* Main Tabs Header */}
@@ -1170,8 +1221,14 @@ const MARSSIMModule: React.FC = () => {
               </div>
             ))}
           </div>
-        </div>
+      </div>
       )}
+
+      <AuditDossierModal
+        isOpen={isDossierOpen}
+        onClose={() => setIsDossierOpen(false)}
+        payload={dossierPayload}
+      />
     </div>
   );
 };

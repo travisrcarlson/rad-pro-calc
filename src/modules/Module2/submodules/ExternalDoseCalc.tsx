@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import nuclidesData from '../../../data/nuclides.json';
 import { BlockMath } from 'react-katex';
+import PlotComponent from 'react-plotly.js';
 import equipmentDataRaw from '../../../data/equipment_database.json';
+
+const Plot = (PlotComponent as any).default || PlotComponent;
 import { useRegulatory } from '../../../context/RegulatoryContext';
 import { AuditDossierModal } from '../../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../../services/auditDossierService';
@@ -131,9 +134,32 @@ const ExternalDoseCalc: React.FC = () => {
     ]
   }), [selectedNuclide, activity, unitLabel, distance, gammaSI, currentFramework, doseRate]);
 
+  const navigate = useNavigate();
+
+  // Distance vs Dose Rate and Stay-Time profile (0.1m to 30m)
+  const distanceProfile = useMemo(() => {
+    const pts = 60;
+    const distArr: number[] = [];
+    const doseArr: number[] = [];
+    const stayTimeArr: number[] = []; // hours to 1 mSv (1000 µSv)
+
+    for (let i = 0; i <= pts; i++) {
+      const logMin = Math.log10(0.1);
+      const logMax = Math.log10(30);
+      const r = Math.pow(10, logMin + (i / pts) * (logMax - logMin));
+      distArr.push(r);
+      const rate = (activityMBq * gammaSI) / (r * r);
+      doseArr.push(rate);
+      const st = rate > 0 ? (1000 / rate) : 10000;
+      stayTimeArr.push(Math.min(1000, st));
+    }
+    return { distArr, doseArr, stayTimeArr };
+  }, [activityMBq, gammaSI]);
+
   return (
-    <div className="panel" style={{ display: 'flex', gap: '20px' }}>
-      <div style={{ flex: 1 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <div className="panel" style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
+        <div style={{ flex: '1 1 350px' }}>
         <div style={{ backgroundColor: 'rgba(52, 152, 219, 0.1)', padding: '15px', borderRadius: '8px', border: '1px solid #3498db', marginBottom: '20px' }}>
            <h3 style={{ marginTop: 0, marginBottom: '10px', color: '#3498db', fontSize: '1rem' }}>Import from Catalog</h3>
            <select 
@@ -233,9 +259,95 @@ const ExternalDoseCalc: React.FC = () => {
           <BlockMath math="\dot{H}^*(10) = \frac{A \cdot \Gamma}{d^2}" />
         </div>
       </div>
-      <AuditDossierModal payload={dossierPayload} isOpen={isDossierOpen} onClose={() => setIsDossierOpen(false)} />
     </div>
-  );
+
+    {/* Interactive Falloff Curve & ALARA Stay-Time */}
+    <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+        <div>
+          <h4 style={{ margin: 0, color: 'var(--color-primary)', fontSize: '1.05rem' }}>
+            Inverse-Square Dose Falloff &amp; Stay-Time Profile (0.1m to 30m)
+          </h4>
+          <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+            Logarithmic distance sweep displaying ambient dose rate and stay-time to reach the 1.0 mSv ALARA limit.
+          </p>
+        </div>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button
+            className="btn btn-sm btn-outline-primary"
+            onClick={() => navigate('/shielding')}
+          >
+            🛡️ Multilayer Shielding (Module 14)
+          </button>
+          <button
+            className="btn btn-sm btn-outline-primary"
+            onClick={() => navigate('/internal-dose')}
+          >
+            🫁 Internal MIRD (Module 17)
+          </button>
+        </div>
+      </div>
+
+      <div style={{ height: '360px', width: '100%', border: '1px solid var(--color-border)', borderRadius: '8px', overflow: 'hidden' }}>
+        <Plot
+          data={[
+            {
+              x: distanceProfile.distArr,
+              y: distanceProfile.doseArr,
+              type: 'scatter',
+              mode: 'lines',
+              name: 'Dose Rate (µSv/h)',
+              line: { color: '#00e5ff', width: 2.5 },
+              hovertemplate: 'Distance: %{x:.2f} m<br>Dose Rate: %{y:.2f} µSv/h<extra></extra>'
+            },
+            {
+              x: [distance],
+              y: [doseRate],
+              type: 'scatter',
+              mode: 'markers',
+              name: `Current Target (${distance}m)`,
+              marker: { color: '#ff3366', size: 12, symbol: 'star' }
+            },
+            {
+              x: distanceProfile.distArr,
+              y: distanceProfile.stayTimeArr,
+              yaxis: 'y2',
+              type: 'scatter',
+              mode: 'lines',
+              name: 'Stay-Time to 1 mSv (Hours)',
+              line: { color: '#10b981', dash: 'dash', width: 2 },
+              hovertemplate: 'Distance: %{x:.2f} m<br>Stay-Time to 1 mSv: %{y:.1f} hrs<extra></extra>'
+            }
+          ]}
+          layout={{
+            autosize: true,
+            margin: { l: 65, r: 65, t: 25, b: 45 },
+            paper_bgcolor: 'transparent',
+            plot_bgcolor: 'transparent',
+            font: { color: '#E0E1DD' },
+            xaxis: { title: 'Distance from Source (meters)', type: 'log', gridcolor: '#1e293b' },
+            yaxis: { title: 'Dose Rate (µSv/h)', type: 'log', gridcolor: '#1e293b', titlefont: { color: '#00e5ff' }, tickfont: { color: '#00e5ff' } },
+            yaxis2: {
+              title: 'Stay-Time to 1 mSv (Hours)',
+              type: 'log',
+              overlaying: 'y',
+              side: 'right',
+              titlefont: { color: '#10b981' },
+              tickfont: { color: '#10b981' }
+            },
+            showlegend: true,
+            legend: { orientation: 'h', y: -0.2 }
+          }}
+          useResizeHandler={true}
+          style={{ width: '100%', height: '100%' }}
+          config={{ responsive: true, displayModeBar: false }}
+        />
+      </div>
+    </div>
+
+    <AuditDossierModal payload={dossierPayload} isOpen={isDossierOpen} onClose={() => setIsDossierOpen(false)} />
+  </div>
+);
 };
 
 export default ExternalDoseCalc;
