@@ -1421,12 +1421,197 @@ const METHOD_DOCS: MethodDoc[] = [
     benchmarks: 'Validated against NCRP Report No. 165 Table 3.1 protection factors, FEMA Nuclear Planning Guidance, Glasstone & Dolan Chapter 9 decay data, and VTEST-28.'
   },
 
+  // 26. Module 26: Prompt Nuclear Weapon Effects, Blast & HEMP Simulator
+  {
+    id: 'M26-NukeEffects',
+    moduleId: 'Module 26',
+    moduleName: 'Nuclear Weapon Prompt Effects, Blast & HEMP Simulator',
+    domain: 'Environmental Dispersion & Response',
+    title: 'Kingery-Bulmash Blast Overpressure, Dynamic Wind, Thermal Flashburns & MIL-STD-188-125 HEMP',
+    overview: 'Simulates prompt physical detonation phenomena from nuclear weapons: Brode/Kingery-Bulmash peak incident and dynamic overpressures, Mach stem formation, dual-pulse thermal radiation exposure, retinal flashblindness, prompt initial radiation flash, and stratospheric High-Altitude Electromagnetic Pulse (HEMP).',
+    standards: [
+      { org: 'Glasstone & Dolan', code: 'Effects of Nuclear Weapons 3rd Ed.', year: '1977', title: 'Chapters III, IV, VII, XI: Air Blast, Thermal Radiation, Initial Radiation, and EMP' },
+      { org: 'US Army BRL', code: 'BRL Report 1972', year: '1972', title: 'Kingery-Bulmash Airblast Parameters from TNT Spherical Air Burst and Hemispherical Surface Burst' },
+      { org: 'US DoD', code: 'MIL-STD-188-125-1', year: '2005', title: 'High-Altitude Electromagnetic Pulse (HEMP) Protection for Ground-Based C4I Facilities' },
+      { org: 'IEC', code: 'IEC 61000-2-9', year: '1996', title: 'Electromagnetic Compatibility: Description of HEMP Environment - Radiated Disturbance' }
+    ],
+    primaryFormula: 'Z = \\frac{R}{Y^{1/3}}, \\quad \\Delta P = \\frac{A}{Z^3} + \\frac{B}{Z^2} + \\frac{C}{Z}, \\quad Q(R) = \\frac{\\eta_{\\text{th}} Y}{4\\pi R^2} \\tau_{\\text{atm}}',
+    secondaryFormulas: [
+      { label: 'Dynamic Wind Pressure', formula: 'q(R) = \\frac{5}{2} \\frac{\\Delta P^2}{\\Delta P + 7 P_0}, \\quad P_0 = 14.7\\text{ psi}' },
+      { label: 'Thermal Second-Pulse Maximum Time', formula: 't_{\\max} \\approx 0.0417 \\cdot Y^{0.47} \\quad [\\text{seconds post-detonation}]' },
+      { label: 'Prompt Initial Radiation Flash Dose (60s)', formula: 'D_{\\text{prompt}}(R) = \\frac{D_0 Y}{R^2} e^{-R / \\lambda_{\\text{air}}} B(R)' },
+      { label: 'HEMP Horizon Footprint Radius', formula: 'R_{\\text{horizon}} = \\sqrt{2 R_E h + h^2}, \\quad R_E = 6,371\\text{ km}' }
+    ],
+    derivationSteps: [
+      {
+        stepTitle: '1. Kingery-Bulmash Scaled Distance Invariance',
+        explanation: 'Hopkinson-Cranz cube-root scaling establishes that shockwave blast parameters are geometrically identical at equivalent scaled distance Z = R / Y^(1/3).',
+        math: 'Z = \\frac{R}{Y^{1/3}} \\implies \\Delta P(R, Y) = \\Delta P(Z, 1\\text{ kT})'
+      },
+      {
+        stepTitle: '2. Rankine-Hugoniot Dynamic Wind Pressure',
+        explanation: 'Behind the supersonic shock front, air particles acquire high mass velocity. From the Rankine-Hugoniot shock relations for ideal diatomic gas (gamma = 1.4):',
+        math: 'q = \\frac{1}{2} \\rho_{\\text{shock}} u^2 = \\frac{5 \\Delta P^2}{2 (\\Delta P + 7 P_0)}'
+      },
+      {
+        stepTitle: '3. Dual-Pulse Thermal Fireball Mechanics',
+        explanation: 'Prompt X-rays ionize surrounding air, creating an opaque isothermal sphere. As the shock front cools below 300,000 K, the air becomes transparent, releasing the primary thermal pulse.',
+        math: 'Q(R) = \\int_0^\\infty F_{\\text{thermal}}(t, R) \\, dt = \\frac{\\eta_{\\text{th}} Y}{4\\pi R^2} e^{-R / (2 V_{\\text{vis}})}'
+      }
+    ],
+    variables: [
+      { symbol: 'Y', description: 'Total explosive yield of the nuclear detonation', units: 'kT TNT equivalent' },
+      { symbol: 'Z', description: 'Cube-root scaled distance from detonation epicenter', units: 'm·kt⁻¹/³' },
+      { symbol: '\\Delta P', description: 'Peak incident static overpressure at the shock front', units: 'psi' },
+      { symbol: 'q', description: 'Peak dynamic wind pressure behind the shock front', units: 'psi' },
+      { symbol: 'Q', description: 'Total thermal radiant exposure delivered to target surface', units: 'cal·cm⁻² or J·cm⁻²' },
+      { symbol: '\\eta_{\\text{th}}', description: 'Fraction of weapon energy released as thermal radiation (~0.35)', units: 'dimensionless' }
+    ],
+    assumptions: [
+      'Standard sea-level ambient atmospheric pressure P0 = 14.7 psi and temperature T0 = 288 K.',
+      'Surface burst produces hemispherical blast reflection factor of approximately 1.8 to 2.0.'
+    ],
+    benchmarks: 'Validated against Glasstone & Dolan 3rd Edition Chapter 3 blast curves, BRL Kingery-Bulmash tables, and VTEST-29.'
+  },
+
+  // 27. Module 27: Medical Countermeasures & Actinide Chelation Biokinetics
+  {
+    id: 'M27-MedCountermeasures',
+    moduleId: 'Module 27',
+    moduleName: 'Medical Countermeasures & Actinide Chelation Biokinetics',
+    domain: 'Environmental Dispersion & Response',
+    title: 'Radiopharmaceutical Decorporation Pharmacology, Ca-DTPA, Prussian Blue & Potassium Iodide',
+    overview: 'Clinical toxicological biokinetics for internal radiological decorporation: Ca/Zn-DTPA chelation for actinides (Pu, Am, Cm), Prussian Blue ion exchange for cesium and thallium, Potassium Iodide (KI) thyroid blocking, and Sodium Bicarbonate urinary alkalinization for Uranium nephrotoxicity.',
+    standards: [
+      { org: 'NCRP', code: 'Report No. 166', year: '2010', title: 'Management of Persons Contaminated with Radionuclides' },
+      { org: 'US FDA', code: 'NDA 21-626 / NDA 21-744', year: '2004', title: 'Calcium-DTPA and Zinc-DTPA Approval for Internal Plutonium/Americium Contamination' },
+      { org: 'US FDA', code: 'NDA 21-629', year: '2003', title: 'Radiogardase (Prussian Blue Insoluble Capsules) for Cesium and Thallium Poisoning' },
+      { org: 'WHO', code: 'Guidelines on KI', year: '2017', title: 'Guidelines for Iodine Prophylaxis following Nuclear Accidents' }
+    ],
+    primaryFormula: 'R_{\\text{treated}}(t) = I_0 \\left[ a_1 2^{-t / T_{b1}} + a_2 2^{-t / T_{b2,\\text{treated}}} \\right], \\quad \\Delta H_E = H_{E,\\text{baseline}} - H_{E,\\text{treated}}',
+    secondaryFormulas: [
+      { label: 'Prussian Blue Accelerated Cs-137 Biological Half-Life', formula: 'T_{b2,\\text{PB}} \\approx 30\\text{ days} \\quad [\\text{vs 110 days unchelated baseline}]' },
+      { label: 'Thyroid Iodine-131 Saturation Blocking Window', formula: 'E_{\\text{block}}(t) = \\begin{cases} 99\\% & t_{\\text{admin}} \\le t_{\\text{intake}} \\\\ 90\\% & t_{\\text{admin}} = t_{\\text{intake}} + 2\\text{h} \\\\ 50\\% & t_{\\text{admin}} = t_{\\text{intake}} + 4\\text{h} \\\\ <10\\% & t_{\\text{admin}} > t_{\\text{intake}} + 24\\text{h} \\end{cases}' },
+      { label: 'Urinary Excretion Rate Enhancement Factor', formula: 'M(t) = \\frac{E_{u,\\text{treated}}(t)}{E_{u,\\text{baseline}}(t)} \\ge 10 - 100\\times \\text{ (Early DTPA Therapy)}' }
+    ],
+    derivationSteps: [
+      {
+        stepTitle: '1. Enterohepatic Interruption Kinetics',
+        explanation: 'Cesium is secreted into gut bile and reabsorbed via enterohepatic circulation. Insoluble Prussian Blue binds Cs+ ions irreversibly via crystal lattice potassium exchange, forcing fecal excretion.',
+        math: '\\frac{dC_{\\text{body}}}{dt} = -(\\lambda_{\\text{rad}} + \\lambda_{\\text{renal}} + k_{\\text{PB}} \\lambda_{\\text{fecal}}) C_{\\text{body}}'
+      },
+      {
+        stepTitle: '2. Octadentate Actinide Chelation',
+        explanation: 'Diethylenetriaminepentaacetic acid (DTPA) forms high-affinity 1:1 chelates with quadrivalent actinides (Pu⁴⁺, Am³⁺). The complex exhibits zero tubular reabsorption, clearing via glomerular filtration.',
+        math: '\\text{Pu}^{4+} + \\text{Ca-DTPA}^{3-} \\rightleftharpoons \\text{Pu-DTPA}^- + \\text{Ca}^{2+} \\quad (\\log K_f \\approx 29.5)'
+      }
+    ],
+    variables: [
+      { symbol: 'I_0', description: 'Initial internalized radionuclide intake activity', units: 'Bq or kBq' },
+      { symbol: 'T_{b2}', description: 'Slow-compartment biological elimination half-life', units: 'days' },
+      { symbol: '\\Delta H_E', description: '50-year committed effective dose averted by decorporation therapy', units: 'Sv or Rem' },
+      { symbol: 'M(t)', description: 'Multiplication factor of urinary excretion compared to unchelated baseline', units: 'dimensionless' }
+    ],
+    assumptions: [
+      'Chelation is initiated before systemic deposition into bone mineral matrix is irreversible.',
+      'Patient possesses adequate renal glomerular filtration (serum creatinine monitored).'
+    ],
+    benchmarks: 'Validated against NCRP Report No. 166 biokinetic curves, ICRP 78 systemic models, and VTEST-30.'
+  },
+
+  // 28. Module 28: CAAS & Criticality Accident Excursion Kinetics
+  {
+    id: 'M28-CAAS',
+    moduleId: 'Module 28',
+    moduleName: 'CAAS & Criticality Accident Excursion Kinetics',
+    domain: 'Nuclear Kinetics & Reactivity',
+    title: 'Nordheim-Fuchs Excursion Dynamics, Fission Pulse Yields & ANSI/ANS-8.3 CAAS Coverage',
+    overview: 'Transient point kinetics and prompt-critical burst modeling for fissile solutions and bare-metal assemblies (Godiva). Simulates negative temperature reactivity feedback, prompt neutron/gamma kerma, and compliance with ANSI/ANS-8.3 (0.20 Gy/min at 2m).',
+    standards: [
+      { org: 'ANS', code: 'ANSI/ANS-8.3-1997 (R2017)', year: '2017', title: 'Criticality Accident Alarm System' },
+      { org: 'US NRC', code: '10 CFR Part 70.24', year: '2023', title: 'Criticality Accident Requirements' },
+      { org: 'LANL', code: 'LA-13638', year: '2000', title: 'A Review of Criticality Accidents (2000 Revision)' },
+      { org: 'Hansen & Maier', code: 'LA-UR-77-2400', year: '1977', title: 'Godiva-IV Critical Assembly Benchmark and Kinetics' }
+    ],
+    primaryFormula: 'P(t) = P_{\\max} \\operatorname{sech}^2\\left(\\frac{\\alpha_0 t}{2}\\right), \\quad \\Delta t_{1/2} = \\frac{3.52}{\\alpha_0}, \\quad N_f = \\frac{2 \\alpha_0 C}{\\alpha_T E_f}',
+    secondaryFormulas: [
+      { label: 'Initial Inverse Reactor Period', formula: '\\alpha_0 = \\frac{\\Delta k_p}{\\ell} = \\frac{(\\rho - 1) \\beta}{\\ell} \\quad [\\text{s}^{-1}]' },
+      { label: 'ANSI/ANS-8.3 Mandatory Alarm Trip Criterion', formula: '\\dot{D}_{2\\text{m}} \\ge 0.20 \\text{ Gy/min (20.0 rad/min)} \\quad \\text{within } 0.5\\text{ seconds}' },
+      { label: 'Prompt Flash Distance Kerma (Neutron + Gamma)', formula: 'D(r) = \\frac{N_f}{4\\pi r^2} \\left[ k_\\gamma e^{-x / \\text{HVL}_\\gamma} + k_n e^{-x / \\text{HVL}_n} \\right]' }
+    ],
+    derivationSteps: [
+      {
+        stepTitle: '1. Nordheim-Fuchs Differential Equation',
+        explanation: 'Neglecting delayed neutrons during prompt critical bursts (t << 0.1s), neutron power P(t) obeys dP/dt = (rho_p - alpha_T E) P / l. Differentiating with respect to time yields the hyperbolic secant pulse.',
+        math: '\\frac{d^2 \\ln P}{dt^2} = -\\frac{\\alpha_T}{l} P \\implies P(t) = P_{\\max} \\operatorname{sech}^2\\left(\\frac{\\alpha_0 t}{2}\\right)'
+      },
+      {
+        stepTitle: '2. Integral Fission Yield',
+        explanation: 'Integrating P(t) from -infinity to +infinity yields total energy E = 2 alpha_0 C / alpha_T. Dividing by 3.204e-11 J/fission gives total fissions N_f.',
+        math: 'N_f = \\frac{E_{\\text{total}}}{E_{\\text{fiss}}} = \\frac{2 \\alpha_0 C}{\\alpha_T E_{\\text{fiss}}}'
+      }
+    ],
+    variables: [
+      { symbol: '\\alpha_0', description: 'Initial inverse reactor period post prompt-step insertion', units: 's⁻¹' },
+      { symbol: '\\Delta t_{1/2}', description: 'Full width at half maximum (FWHM) of the prompt power spike', units: 'ms or µs' },
+      { symbol: 'N_f', description: 'Total integrated fissions occurring during excursion', units: 'fissions' },
+      { symbol: '\\ell', description: 'Prompt neutron generation time', units: 's' }
+    ],
+    assumptions: [
+      'Adiabatic heating during the microsecond prompt power spike.',
+      'Linear negative temperature reactivity feedback alpha_T.'
+    ],
+    benchmarks: 'Validated against Godiva-IV bare metal benchmarks, LA-13638 accident summaries, and VTEST-31.'
+  },
+
+  // 29. Module 29: Tactical GIS Map Engine & ATAK / CoT Mesh Hub
+  {
+    id: 'M29-TacticalGIS',
+    moduleId: 'Module 29',
+    moduleName: 'Tactical GIS Map Engine & ATAK / CoT Mesh Hub',
+    domain: 'Environmental Dispersion & Response',
+    title: 'Cursor-on-Target XML Schema, Tactical Geospatial Projections & Multilateration Localization',
+    overview: 'Geospatial operational integration engine translating radiological calculations into DoD Cursor-on-Target (CoT) XML schema v2.0 for WinTAK and ATAK, featuring automated inverse-square sensor mesh multilateration for locating orphan radiation sources.',
+    standards: [
+      { org: 'US DoD / MITRE', code: 'CoT v2.0 Schema', year: '2009', title: 'Cursor-on-Target Message Router Specification' },
+      { org: 'US DoD', code: 'MIL-STD-2525D', year: '2014', title: 'Joint Military Symbology for Tactical Display Systems' },
+      { org: 'IEEE', code: 'IEEE Std 1451.0', year: '2007', title: 'Standard for a Smart Transducer Interface for Sensors and Actuators' }
+    ],
+    primaryFormula: '\\vec{r}_{\\text{source}} = \\frac{\\sum_{i=1}^M w_i \\vec{r}_i}{\\sum_{i=1}^M w_i}, \\quad w_i = \\max(0, \\, \\dot{D}_i - B_0)',
+    secondaryFormulas: [
+      { label: 'DoD Cursor-on-Target (CoT) Event Element', formula: '<\\text{event version}=\"2.0\" \\, \\text{uid}=\"RADPRO-...\" \\, \\text{type}=\"a-f-G-U-C-R\" \\, \\text{how}=\"m-g\">' },
+      { label: 'Confidence Radius of Localization', formula: '\\sigma_r = \\frac{K_{\\text{geom}}}{\\sqrt{\\sum_{i=1}^M (\\dot{D}_i - B_0)}} \\quad [\\text{meters}]' }
+    ],
+    derivationSteps: [
+      {
+        stepTitle: '1. Weighted Spatial Multilateration',
+        explanation: 'In the presence of an isotropic gamma source, detector net dose rates scale inversely with squared distance. A weighted centroid provides robust, real-time spatial convergence even in high-noise field environments.',
+        math: '\\bar{X} = \\frac{\\sum w_i X_i}{\\sum w_i}, \\quad \\bar{Y} = \\frac{\\sum w_i Y_i}{\\sum w_i}'
+      },
+      {
+        stepTitle: '2. ATAK Cursor-on-Target Interoperability',
+        explanation: 'Converts tactical coordinate locations and plume isopleths into CoT XML events transmitted via UDP/TCP broadcast to tactical end-user devices (EUD) across military and civilian incident networks.',
+        math: '\\text{CoT XML Packet } \\longrightarrow \\text{UDP / TCP Multicast Mesh (Port 4242 / 8087)}'
+      }
+    ],
+    variables: [
+      { symbol: '\\vec{r}_i', description: 'Position vector of the i-th autonomous radiological sensor picket', units: 'm' },
+      { symbol: '\\dot{D}_i', description: 'Ambient dose rate recorded by the i-th sensor node', units: 'µSv·h⁻¹' },
+      { symbol: 'w_i', description: 'Statistical weight assigned to the i-th sensor node', units: 'dimensionless' }
+    ],
+    assumptions: [
+      'Sensors are synchronized and report GPS coordinates and ambient rates.',
+      'CoT packets conform to standard MIL-STD-2525D tactical symbol semantics.'
+    ],
+    benchmarks: 'Validated against DoD Cursor-on-Target interoperability test vectors and VTEST-32.'
+  },
+
   // === FORWARD-LOOKING EXPANSION METHODOLOGIES (FUTURE RESEARCH & SPECIFICATIONS) ===
 
   // EXP-1: 10 CFR Part 61 Radioactive Waste Characterization & Disposal
   {
     id: 'EXP-10CFR61',
-    moduleId: 'Module 26 (Expansion)',
+    moduleId: 'Module 30 (Expansion)',
     moduleName: 'Radioactive Waste Characterization (10 CFR 61)',
     domain: 'Regulatory Standards & Transport Security',
     title: '10 CFR Part 61.55 Waste Classification (Class A/B/C/GTCC) & Sum of Fractions Rule',
@@ -1456,41 +1641,10 @@ const METHOD_DOCS: MethodDoc[] = [
     benchmarks: 'Validated against NRC 10 CFR 61.55 Table 1/2 limits and EPRI LLW characterization benchmarks.'
   },
 
-  // EXP-2: ANSI/ANS-8.3 Criticality Accident Alarm System (CAAS)
-  {
-    id: 'EXP-CAAS',
-    moduleId: 'Module 27 (Expansion)',
-    moduleName: 'Criticality Accident Alarm System (ANSI/ANS-8.3)',
-    domain: 'Nuclear Kinetics & Reactivity',
-    title: 'Criticality Accident Alarm Systems (CAAS), Minimum Accident of Concern & 20 rad/min Threshold',
-    overview: 'Models radiation detector coverage zones, prompt gamma/neutron pulse arrival, structural shielding attenuation, and false alarm rejection for nuclear facility CAAS compliance.',
-    isExpansion: true,
-    standards: [
-      { org: 'ANS', code: 'ANSI/ANS-8.3-1997 (R2017)', year: '2017', title: 'Criticality Accident Alarm System' },
-      { org: 'US NRC', code: 'Regulatory Guide 3.71', year: '2010', title: 'Nuclear Criticality Safety Standards for Fuels and Material Facilities' },
-      { org: 'IAEA', code: 'Safety Reports Series No. 91', year: '2017', title: 'Criticality Safety in the Handling of Fissile Material' }
-    ],
-    primaryFormula: '\\dot{D}_{2\\text{m}} = 0.20 \\text{ Gy/min} = 20.0 \\text{ rad/min} \\quad [\\text{Minimum Accident of Concern (MAC) Definition}]',
-    secondaryFormulas: [
-      { label: 'Detector Position Dose Rate (Inverse Square + Barrier)', formula: '\\dot{D}(r) = \\frac{\\dot{D}_{2\\text{m}} \\cdot (2.0)^2}{r^2} \\cdot e^{-\\sum \\mu_i x_i} \\cdot B(\\mu x)' },
-      { label: 'Total Integrated Fission Yield (Accident Excursion)', formula: 'N_{\\text{fiss}} = 10^{17} - 10^{19} \\text{ fissions in initial burst}' }
-    ],
-    variables: [
-      { symbol: '\\dot{D}_{2\\text{m}}', description: 'Absorbed dose rate delivered by the Minimum Accident of Concern at 2 meters', units: 'rad·min⁻¹ (0.20 Gy·min⁻¹)' },
-      { symbol: 'r', description: 'Distance from accident source to CAAS detector station', units: 'm' },
-      { symbol: 'N_{\\text{fiss}}', description: 'Total number of fissions occurring during prompt criticality excursion', units: 'fissions' }
-    ],
-    assumptions: [
-      'Minimum accident produces 20 rad/min of combined neutron and gamma radiation at 2 meters from surface.',
-      'Two-out-of-three (2oo3) detector logic employed to prevent spurious false evacuations.'
-    ],
-    benchmarks: 'Complies with ANSI/ANS-8.3 Section 5.6 and NRC Reg Guide 3.71 CAAS spacing requirements.'
-  },
-
-  // EXP-3: Bethe-Bloch Ion Stopping Power & Bragg Peak
+  // EXP-2: Bethe-Bloch Ion Stopping Power & Bragg Peak
   {
     id: 'EXP-BetheBloch',
-    moduleId: 'Module 28 (Expansion)',
+    moduleId: 'Module 31 (Expansion)',
     moduleName: 'Alpha & Heavy Ion Stopping Power',
     domain: 'Medical & Advanced Expansion',
     title: 'Bethe-Bloch Equation & Bragg Peak Energy Deposition in Matter',
@@ -1520,10 +1674,10 @@ const METHOD_DOCS: MethodDoc[] = [
     benchmarks: 'Matches NIST PSTAR and ASTAR stopping power benchmarks.'
   },
 
-  // EXP-4: Space Radiation & Galactic Cosmic Rays
+  // EXP-3: Space Radiation & Galactic Cosmic Rays
   {
     id: 'EXP-SpaceRad',
-    moduleId: 'Module 29 (Expansion)',
+    moduleId: 'Module 32 (Expansion)',
     moduleName: 'Space Radiation & GCR Transport',
     domain: 'Medical & Advanced Expansion',
     title: 'Badhwar-O\'Neill GCR Model, Solar Modulation Φ & SPE Shielding',
@@ -1631,7 +1785,7 @@ const LiteratureModule: React.FC = () => {
           style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.95rem', padding: '10px 18px', borderBottom: activeTab === 'expansion' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'expansion' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'expansion' ? 'bold' : 'normal' }}
           onClick={() => setActiveTab('expansion')}
         >
-          🚀 Research & Expansion Specifications (Modules 26+)
+          🚀 Research & Expansion Specifications (Modules 30+)
         </button>
         <button
           className={`nav-link ${activeTab === 'standards' ? 'active' : ''}`}
@@ -2084,6 +2238,48 @@ const LiteratureModule: React.FC = () => {
                   <td style={{ padding: '10px' }}>2001</td>
                   <td style={{ padding: '10px' }}>Cytogenetic Analysis for Radiation Dose Assessment: A Manual</td>
                   <td style={{ padding: '10px', color: 'var(--color-text-muted)' }}>Dicentric chromosome aberration calibration curves (linear-quadratic yield) and mass casualty biodosimetry triage.</td>
+                </tr>
+                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  <td style={{ padding: '10px', fontWeight: 'bold', color: '#00E5FF' }}>Glasstone & Dolan (1977)</td>
+                  <td style={{ padding: '10px' }}>US DoD / ERDA</td>
+                  <td style={{ padding: '10px' }}>1977</td>
+                  <td style={{ padding: '10px' }}>The Effects of Nuclear Weapons (3rd Edition)</td>
+                  <td style={{ padding: '10px', color: 'var(--color-text-muted)' }}>Blast overpressure scaling, thermal radiant exposure, prompt radiation flash attenuation, and dynamic pressure.</td>
+                </tr>
+                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  <td style={{ padding: '10px', fontWeight: 'bold', color: '#00E5FF' }}>Kingery-Bulmash (BRL-1972)</td>
+                  <td style={{ padding: '10px' }}>US Army BRL</td>
+                  <td style={{ padding: '10px' }}>1972</td>
+                  <td style={{ padding: '10px' }}>Airblast Parameters from TNT Spherical Air Burst and Hemispherical Surface Burst (BRL Report 1341)</td>
+                  <td style={{ padding: '10px', color: 'var(--color-text-muted)' }}>Polynomial scaled distance curves (Z = R / W^(1/3)) for peak incident overpressure and positive phase blast impulse.</td>
+                </tr>
+                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  <td style={{ padding: '10px', fontWeight: 'bold', color: '#00E5FF' }}>MIL-STD-188-125-1</td>
+                  <td style={{ padding: '10px' }}>US DoD</td>
+                  <td style={{ padding: '10px' }}>2005</td>
+                  <td style={{ padding: '10px' }}>High-Altitude Electromagnetic Pulse (HEMP) Protection for Ground-Based C4I Facilities</td>
+                  <td style={{ padding: '10px', color: 'var(--color-text-muted)' }}>E1 fast prompt (2.5 ns rise, 50 kV/m), E2 intermediate scattered gamma, and E3 magnetohydrodynamic geomagnetically induced currents.</td>
+                </tr>
+                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  <td style={{ padding: '10px', fontWeight: 'bold', color: '#00E5FF' }}>NCRP Report No. 166</td>
+                  <td style={{ padding: '10px' }}>NCRP</td>
+                  <td style={{ padding: '10px' }}>2010</td>
+                  <td style={{ padding: '10px' }}>Population Monitoring and Radionuclide Decorporation Following a Radiological or Nuclear Incident</td>
+                  <td style={{ padding: '10px', color: 'var(--color-text-muted)' }}>Ca/Zn-DTPA chelation for actinides (Pu, Am, Cm), Prussian Blue for radiocesium, and urinary excretion biokinetics.</td>
+                </tr>
+                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  <td style={{ padding: '10px', fontWeight: 'bold', color: '#00E5FF' }}>ANSI/ANS-8.3-1997</td>
+                  <td style={{ padding: '10px' }}>ANSI / ANS</td>
+                  <td style={{ padding: '10px' }}>2003</td>
+                  <td style={{ padding: '10px' }}>Criticality Accident Alarm System (CAAS)</td>
+                  <td style={{ padding: '10px', color: 'var(--color-text-muted)' }}>CAAS 20 rad/min at 2 meters trip criteria, Nordheim-Fuchs prompt excursion kinetics, and evacuation cordon radii.</td>
+                </tr>
+                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  <td style={{ padding: '10px', fontWeight: 'bold', color: '#00E5FF' }}>DoD CoT v2.0</td>
+                  <td style={{ padding: '10px' }}>US DoD / MITRE</td>
+                  <td style={{ padding: '10px' }}>2009</td>
+                  <td style={{ padding: '10px' }}>Cursor-on-Target XML Schema and Mesh Protocol Specification</td>
+                  <td style={{ padding: '10px', color: 'var(--color-text-muted)' }}>Tactical machine-to-machine geospatial radiation telemetry (a-f-G-U-C-rad) and WinTAK/ATAK inter-agency sensor situational awareness.</td>
                 </tr>
               </tbody>
             </table>

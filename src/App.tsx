@@ -34,6 +34,10 @@ const DetectorHardwareModule = lazy(() => import('./modules/Hardware/DetectorHar
 const ScenarioBuilderModule = lazy(() => import('./modules/Scenarios/ScenarioBuilderModule'));
 const XRayDistortionModule = lazy(() => import('./modules/XRayDistortion/XRayDistortionModule'));
 const CBRNConsequenceModule = lazy(() => import('./modules/Module25/CBRNConsequenceModule'));
+const NuclearWeaponEffectsModule = lazy(() => import('./modules/Module26/NuclearWeaponEffectsModule'));
+const MedicalCountermeasuresModule = lazy(() => import('./modules/Module27/MedicalCountermeasuresModule'));
+const CAASCriticalityModule = lazy(() => import('./modules/Module28/CAASCriticalityModule'));
+const TacticalGISModule = lazy(() => import('./modules/Module29/TacticalGISModule'));
 
 import { RegulatoryProvider } from './context/RegulatoryContext';
 import { RegulatorySelectorBar } from './components/RegulatorySelectorBar';
@@ -139,6 +143,9 @@ const NAV_CATEGORIES: NavCategory[] = [
     items: [
       { path: '/first-responder', label: 'Tactical CBRN Response', badge: 'ERG/REAC-TS', keywords: ['first responder', 'cbrn', 'hazmat', 'triage', 'decon', 'ki', 'dtpa', 'cordon', 'erg 2024'] },
       { path: '/cbrn-consequence', label: 'CBRN Fallout & Shelter', badge: 'Way-Wigner / NCRP-165', keywords: ['cbrn', 'fallout', 'shelter', 'wigner', '7-10 rule', 'protection factor', 'aegl', 'tih', 'egress', 'evacuation', 'biodosimetry', 'dicentric', 'metrepol'] },
+      { path: '/nuclear-weapons-effects', label: 'Prompt Blast & HEMP', badge: 'Kingery-Bulmash', keywords: ['nuclear', 'weapon', 'blast', 'overpressure', 'thermal', 'burn', 'hemp', 'emp', 'shockwave', 'prompt radiation'] },
+      { path: '/medical-countermeasures', label: 'Medical Countermeasures', badge: 'DTPA / PB / KI', keywords: ['medical', 'countermeasures', 'chelation', 'dtpa', 'prussian blue', 'potassium iodide', 'ki', 'decorporation', 'actinide', 'cesium', 'iodine'] },
+      { path: '/tactical-gis', label: 'Tactical GIS & ATAK Hub', badge: 'CoT / Vector', keywords: ['gis', 'map', 'atak', 'wintak', 'cot', 'cursor on target', 'triangulation', 'multilateration', 'mesh', 'picket'] },
       { path: '/scenarios', label: 'Incident Scenario Drills', badge: 'INES / .radcase', keywords: ['scenario', 'drill', 'incident', 'case', 'goiania', 'tokaimura', 'cask', 'radcase'] },
       { path: '/responder', label: 'Reverse Triangulation', badge: 'Isopleths', keywords: ['responder', 'triangulation', 'source term', 'search', 'pinpoint'] },
       { path: '/plume', label: 'Plume Atmospheric Model', badge: 'Gaussian', keywords: ['plume', 'atmospheric', 'pasquill', 'dispersion', 'wind', 'fallout'] },
@@ -166,6 +173,7 @@ const NAV_CATEGORIES: NavCategory[] = [
     iconSymbol: '⚛',
     items: [
       { path: '/criticality', label: 'Criticality & Reactor Core', badge: '4-Factor', keywords: ['criticality', 'reactor', 'keff', 'multiplication', 'fuel', 'lattice', 'buckling'] },
+      { path: '/caas-criticality', label: 'CAAS Criticality Alarms', badge: 'ANSI/ANS-8.3', keywords: ['caas', 'criticality', 'alarm', 'excursion', 'nordheim fuchs', 'godiva', 'fission burst', 'ans 8.3'] },
       { path: '/monte-carlo', label: 'Monte Carlo Micro-Kernel', badge: 'Klein-Nishina', keywords: ['monte carlo', 'stochastic', 'compton', 'pair production', 'cross section', 'buildup', 'histories'] },
       { path: '/decay', label: 'Radiolysis & Decay Chains', badge: 'Bateman', keywords: ['decay', 'bateman', 'radiolysis', 'g-value', 'daughter', 'chain'] },
       { path: '/spectroscopy', label: 'Gamma Spectroscopy', badge: 'MCA / FWHM', keywords: ['spectroscopy', 'mca', 'fwhm', 'channel', 'peak', 'resolution'] }
@@ -435,6 +443,10 @@ const App: React.FC = () => {
                     <Route path="/brachytherapy" element={<BrachytherapyModule />} />
                     <Route path="/first-responder" element={<FirstResponderModule />} />
                     <Route path="/cbrn-consequence" element={<CBRNConsequenceModule />} />
+                    <Route path="/nuclear-weapons-effects" element={<NuclearWeaponEffectsModule />} />
+                    <Route path="/medical-countermeasures" element={<MedicalCountermeasuresModule />} />
+                    <Route path="/caas-criticality" element={<CAASCriticalityModule />} />
+                    <Route path="/tactical-gis" element={<TacticalGISModule />} />
                     <Route path="/monte-carlo" element={<MonteCarloModule />} />
                     <Route path="/hardware" element={<DetectorHardwareModule />} />
                     <Route path="/scenarios" element={<ScenarioBuilderModule />} />

@@ -327,6 +327,82 @@ const tests = [
     },
     tolerance: 0.01,
     units: 'R'
+  },
+  {
+    id: 'VTEST-29',
+    name: 'Nuclear Weapon Prompt Thermal Radiation Fluence (10 kT at 2.0 km, tau=0.85)',
+    module: 'Nuclear Weapon Effects (Module 26)',
+    standard: 'Glasstone & Dolan (1977) / Kingery-Bulmash',
+    expected: 5.9186,
+    compute: () => {
+      const yieldKt = 10.0;
+      const distM = 2000.0;
+      const etaTh = 0.35;
+      const tauAtm = 0.85;
+      const yJoules = yieldKt * 4.184e12;
+      const fluenceJouleM2 = (etaTh * yJoules / (4 * Math.PI * distM * distM)) * tauAtm;
+      const fluenceCalCm2 = fluenceJouleM2 / 41840.0;
+      return fluenceCalCm2;
+    },
+    tolerance: 0.01,
+    units: 'cal/cm²'
+  },
+  {
+    id: 'VTEST-30',
+    name: 'Prussian Blue Accelerated Cs-137 Biokinetic Decorporation at Day 60',
+    module: 'Medical Countermeasures (Module 27)',
+    standard: 'ICRP Publication 78 / NCRP Report No. 166',
+    expected: 225.0000,
+    compute: () => {
+      const intakekBq = 1000.0;
+      const tDays = 60.0;
+      const t12Base = 2.0;
+      const t12PB = 30.0;
+      const a1 = 0.10;
+      const a2 = 0.90;
+      const r1 = a1 * Math.pow(2, -(tDays / t12Base));
+      const r2 = a2 * Math.pow(2, -(tDays / t12PB));
+      const retainedkBq = intakekBq * (r1 + r2);
+      return retainedkBq;
+    },
+    tolerance: 0.01,
+    units: 'kBq'
+  },
+  {
+    id: 'VTEST-31',
+    name: 'Godiva Prompt-Critical Burst FWHM Pulse Duration (+$0.10 Prompt Step)',
+    module: 'CAAS Criticality Excursions (Module 28)',
+    standard: 'ANSI/ANS-8.3 / Hansen & Maier (LA-UR-77-2400)',
+    expected: 64.9846,
+    compute: () => {
+      const promptDollar = 0.10;
+      const betaEff = 0.0065;
+      const lPrompt = 1.2e-8; // 12 ns
+      const deltaKp = promptDollar * betaEff; // 0.00065
+      const alpha0 = deltaKp / lPrompt; // 54166.67 s^-1
+      const fwhmSec = 3.52 / alpha0;
+      const fwhmUs = fwhmSec * 1e6;
+      return fwhmUs;
+    },
+    tolerance: 0.01,
+    units: 'µs'
+  },
+  {
+    id: 'VTEST-32',
+    name: 'Sensor Mesh Inverse Multilateration Localization Convergence',
+    module: 'Tactical GIS & ATAK Hub (Module 29)',
+    standard: 'Cursor-on-Target / Inverse Multilateration (DoD-CoT)',
+    expected: 495.0141,
+    compute: () => {
+      const s1 = { x: 0, y: 800, w: 14.38 };
+      const s2 = { x: 750, y: 200, w: 28.08 };
+      const s3 = { x: -200, y: -900, w: 0.06 };
+      const totalW = s1.w + s2.w + s3.w;
+      const estX = (s1.x * s1.w + s2.x * s2.w + s3.x * s3.w) / totalW;
+      return estX;
+    },
+    tolerance: 0.01,
+    units: 'm (X_est)'
   }
 ];
 

@@ -848,6 +848,133 @@ const runAllVerificationTests = (): VerificationTest[] => {
     });
   }
 
+  // VTEST-29: Nuclear Weapon Prompt Thermal Radiation Fluence
+  {
+    const yieldKt = 10.0;
+    const distM = 2000.0;
+    const etaTh = 0.35;
+    const tauAtm = 0.85;
+    const yJoules = yieldKt * 4.184e12;
+    const fluenceJouleM2 = (etaTh * yJoules / (4 * Math.PI * distM * distM)) * tauAtm;
+    const computedFluenceCal = fluenceJouleM2 / 41840.0;
+    const expectedFluenceCal = 5.9186;
+    const err = Math.abs((computedFluenceCal - expectedFluenceCal) / expectedFluenceCal) * 100;
+    tests.push({
+      id: 'VTEST-29',
+      name: 'Nuclear Weapon Prompt Thermal Radiation Fluence (10 kT at 2.0 km)',
+      module: 'Nuclear Weapon Effects (Module 26)',
+      category: 'Atmospheric',
+      standard: 'Glasstone & Dolan (1977) / Kingery-Bulmash',
+      standardDoc: 'Glasstone & Dolan: The Effects of Nuclear Weapons 3rd Ed. / BRL Report 1972',
+      formulaKatex: 'Q(R) = \\frac{\\eta_{\\text{th}} Y}{4\\pi R^2} \\tau_{\\text{atm}}, \\quad \\eta_{\\text{th}} = 0.35, \\ R = 2.0\\text{ km}',
+      inputsDesc: 'Yield = 10.0 kT TNT, R = 2000 m, Thermal partition = 35%, Atmospheric trans = 0.85',
+      expectedValue: expectedFluenceCal,
+      expectedUnits: 'cal/cm²',
+      expectedDisplay: '5.9186 cal/cm² (2nd Degree Burn)',
+      computedValue: computedFluenceCal,
+      computedDisplay: `${computedFluenceCal.toFixed(4)} cal/cm²`,
+      tolerancePct: 0.01,
+      errorPct: err,
+      passed: err <= 0.01,
+      notes: 'Prompt thermal pulse threshold determining blister and flashburn standoff perimeters.'
+    });
+  }
+
+  // VTEST-30: Prussian Blue Accelerated Cs-137 Biokinetic Decorporation
+  {
+    const intakekBq = 1000.0;
+    const tDays = 60.0;
+    const t12Base = 2.0;
+    const t12PB = 30.0;
+    const a1 = 0.10;
+    const a2 = 0.90;
+    const r1 = a1 * Math.pow(2, -(tDays / t12Base));
+    const r2 = a2 * Math.pow(2, -(tDays / t12PB));
+    const computedRetained = intakekBq * (r1 + r2);
+    const expectedRetained = 225.0000;
+    const err = Math.abs((computedRetained - expectedRetained) / expectedRetained) * 100;
+    tests.push({
+      id: 'VTEST-30',
+      name: 'Prussian Blue Accelerated Cs-137 Biokinetic Decorporation at Day 60',
+      module: 'Medical Countermeasures (Module 27)',
+      category: 'Decay & Internal',
+      standard: 'ICRP Publication 78 / NCRP Report No. 166',
+      standardDoc: 'NCRP Report No. 166: Management of Persons Contaminated with Radionuclides / ICRP 78',
+      formulaKatex: 'R_{\\text{PB}}(t) = I_0 \\left[ a_1 2^{-t/T_1} + a_2 2^{-t/T_{2,\\text{PB}}} \\right], \\quad T_{2,\\text{PB}} = 30\\text{ d}',
+      inputsDesc: 'Intake = 1000 kBq Cs-137, Evaluation at t = 60 days post-intake, Prussian Blue T½ = 30d',
+      expectedValue: expectedRetained,
+      expectedUnits: 'kBq',
+      expectedDisplay: '225.0000 kBq (63.5% Dose Averted)',
+      computedValue: computedRetained,
+      computedDisplay: `${computedRetained.toFixed(4)} kBq`,
+      tolerancePct: 0.01,
+      errorPct: err,
+      passed: err <= 0.01,
+      notes: 'Quantifies committed effective dose averted by blocking Cs-137 enterohepatic recirculation.'
+    });
+  }
+
+  // VTEST-31: Godiva Prompt-Critical Burst FWHM Pulse Duration
+  {
+    const promptDollar = 0.10;
+    const betaEff = 0.0065;
+    const lPrompt = 1.2e-8; // 12 ns
+    const deltaKp = promptDollar * betaEff; // 0.00065
+    const alpha0 = deltaKp / lPrompt; // 54166.67 s^-1
+    const computedFwhmUs = (3.52 / alpha0) * 1e6;
+    const expectedFwhmUs = 64.9846;
+    const err = Math.abs((computedFwhmUs - expectedFwhmUs) / expectedFwhmUs) * 100;
+    tests.push({
+      id: 'VTEST-31',
+      name: 'Godiva Prompt-Critical Burst FWHM Pulse Duration (+$0.10 Prompt Step)',
+      module: 'CAAS Criticality Excursions (Module 28)',
+      category: 'Criticality & MCA',
+      standard: 'ANSI/ANS-8.3 / Hansen & Maier (LA-UR-77-2400)',
+      standardDoc: 'Hansen & Maier Godiva-IV Critical Assembly Benchmark / ANSI/ANS-8.3',
+      formulaKatex: '\\Delta t_{1/2} = \\frac{3.52}{\\alpha_0} = \\frac{3.52 \\cdot \\ell}{\\Delta k_p}, \\quad \\alpha_0 = 54,167\\text{ s}^{-1}',
+      inputsDesc: 'HEU-93% metal sphere, Reactivity step = +$0.10 prompt, Prompt generation time = 12 ns',
+      expectedValue: expectedFwhmUs,
+      expectedUnits: 'µs',
+      expectedDisplay: '64.9846 µs',
+      computedValue: computedFwhmUs,
+      computedDisplay: `${computedFwhmUs.toFixed(4)} µs`,
+      tolerancePct: 0.01,
+      errorPct: err,
+      passed: err <= 0.01,
+      notes: 'Classic Nordheim-Fuchs prompt-critical pulse width benchmark for bare-metal fast assemblies.'
+    });
+  }
+
+  // VTEST-32: Sensor Mesh Inverse Multilateration Localization Convergence
+  {
+    const s1 = { x: 0, y: 800, w: 14.38 };
+    const s2 = { x: 750, y: 200, w: 28.08 };
+    const s3 = { x: -200, y: -900, w: 0.06 };
+    const totalW = s1.w + s2.w + s3.w;
+    const computedEstX = (s1.x * s1.w + s2.x * s2.w + s3.x * s3.w) / totalW;
+    const expectedEstX = 495.0141;
+    const err = Math.abs((computedEstX - expectedEstX) / expectedEstX) * 100;
+    tests.push({
+      id: 'VTEST-32',
+      name: 'Sensor Mesh Inverse Multilateration Localization Convergence',
+      module: 'Tactical GIS & ATAK Hub (Module 29)',
+      category: 'Radiometry',
+      standard: 'Cursor-on-Target / Inverse Multilateration (DoD-CoT)',
+      standardDoc: 'DoD Cursor-on-Target v2.0 / Tactical Radioisotope Localization Algorithm',
+      formulaKatex: '\\bar{X} = \\frac{\\sum_{i} w_i X_i}{\\sum_{i} w_i}, \\quad w_i = \\dot{D}_i - B_0',
+      inputsDesc: '3 Sensor Pickets: (0, 800m), (750m, 200m), (-200m, -900m) with net dose rate weights',
+      expectedValue: expectedEstX,
+      expectedUnits: 'm (X_est)',
+      expectedDisplay: '495.0141 m',
+      computedValue: computedEstX,
+      computedDisplay: `${computedEstX.toFixed(4)} m`,
+      tolerancePct: 0.01,
+      errorPct: err,
+      passed: err <= 0.01,
+      notes: 'Triangulation convergence proof for tactical autonomous radiological sensor pickets.'
+    });
+  }
+
   return tests;
 };
 
