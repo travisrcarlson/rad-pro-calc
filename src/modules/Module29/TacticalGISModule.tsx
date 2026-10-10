@@ -15,6 +15,14 @@ interface SensorNode {
   status: 'ONLINE' | 'ALARM' | 'OFFLINE';
 }
 
+const INITIAL_SENSORS: SensorNode[] = [
+  { id: 'SN-01', name: 'Alpha Picket (North Gate)', xM: 0, yM: 800, measuredRate_uSvh: 14.5, batteryPct: 94, status: 'ALARM' },
+  { id: 'SN-02', name: 'Bravo Picket (East Perimeter)', xM: 750, yM: 200, measuredRate_uSvh: 28.2, batteryPct: 88, status: 'ALARM' },
+  { id: 'SN-03', name: 'Charlie Picket (South Highway)', xM: -200, yM: -900, measuredRate_uSvh: 0.18, batteryPct: 98, status: 'ONLINE' },
+  { id: 'SN-04', name: 'Delta Picket (West Ridge)', xM: -850, yM: -100, measuredRate_uSvh: 0.15, batteryPct: 91, status: 'ONLINE' },
+  { id: 'SN-05', name: 'Echo Mobile Recon (Drone-1)', xM: 400, yM: 600, measuredRate_uSvh: 42.0, batteryPct: 76, status: 'ALARM' }
+];
+
 export const TacticalGISModule: React.FC = () => {
   const [activeTab, setActiveTab] = useState<GisTab>('tactical_map');
   const [centerLat, setCenterLat] = useState<number>(38.8977); // Washington DC baseline or custom
@@ -34,13 +42,22 @@ export const TacticalGISModule: React.FC = () => {
   const [showSensors, setShowSensors] = useState<boolean>(true);
 
   // Sensor Picket Mesh Network
-  const [sensors, setSensors] = useState<SensorNode[]>([
-    { id: 'SN-01', name: 'Alpha Picket (North Gate)', xM: 0, yM: 800, measuredRate_uSvh: 14.5, batteryPct: 94, status: 'ALARM' },
-    { id: 'SN-02', name: 'Bravo Picket (East Perimeter)', xM: 750, yM: 200, measuredRate_uSvh: 28.2, batteryPct: 88, status: 'ALARM' },
-    { id: 'SN-03', name: 'Charlie Picket (South Highway)', xM: -200, yM: -900, measuredRate_uSvh: 0.18, batteryPct: 98, status: 'ONLINE' },
-    { id: 'SN-04', name: 'Delta Picket (West Ridge)', xM: -850, yM: -100, measuredRate_uSvh: 0.15, batteryPct: 91, status: 'ONLINE' },
-    { id: 'SN-05', name: 'Echo Mobile Recon (Drone-1)', xM: 400, yM: 600, measuredRate_uSvh: 42.0, batteryPct: 76, status: 'ALARM' }
-  ]);
+  const [sensors, setSensors] = useState<SensorNode[]>(INITIAL_SENSORS);
+
+  // Shift sensors so the triangulated hotspot aligns directly with Ground Zero (0, 0)
+  const handleSnapGZToHotspot = (dx: number, dy: number) => {
+    setSensors((prev) =>
+      prev.map((s) => ({
+        ...s,
+        xM: Math.round(s.xM - dx),
+        yM: Math.round(s.yM - dy)
+      }))
+    );
+  };
+
+  const handleResetSensors = () => {
+    setSensors(INITIAL_SENSORS);
+  };
 
   // Canvas / SVG dragging logic
   const isDragging = useRef<boolean>(false);
@@ -373,24 +390,121 @@ export const TacticalGISModule: React.FC = () => {
                 pointerEvents: 'none'
               }}
             >
-              {/* Downwind Plume Wedge */}
-              {showPlumeWedge && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    width: '0',
-                    height: '0',
-                    borderLeft: `${mToPx(600)}px solid transparent`,
-                    borderRight: `${mToPx(600)}px solid transparent`,
-                    borderBottom: `${mToPx(3500)}px solid rgba(245, 158, 11, 0.18)`,
-                    transformOrigin: '50% 0%',
-                    transform: `rotate(${windDirectionDeg + 180}deg)`,
-                    pointerEvents: 'none'
-                  }}
-                />
+              {/* Downwind Plume Wedge (Rendered via mathematically exact SVG sector anchored at Ground Zero) */}
+              {showPlumeWedge && (() => {
+                const downwindDeg = (windDirectionDeg + 180) % 360;
+                const plumeLengthM = threatType === 'nuclear' ? 4500 : 2500;
+                const plumeRadiusPx = mToPx(plumeLengthM);
+                const halfAngleRad = (18 * Math.PI) / 180;
+                const downwindRad = (downwindDeg * Math.PI) / 180;
+                const theta1 = downwindRad - halfAngleRad;
+                const theta2 = downwindRad + halfAngleRad;
+
+                const p1x = plumeRadiusPx * Math.sin(theta1);
+                const p1y = -plumeRadiusPx * Math.cos(theta1);
+                const p2x = plumeRadiusPx * Math.sin(theta2);
+                const p2y = -plumeRadiusPx * Math.cos(theta2);
+                const centerRayX = plumeRadiusPx * Math.sin(downwindRad);
+                const centerRayY = -plumeRadiusPx * Math.cos(downwindRad);
+
+                return (
+                  <svg
+                    style={{
+                      position: 'absolute',
+                      left: 0,
+                      top: 0,
+                      overflow: 'visible',
+                      pointerEvents: 'none',
+                      zIndex: 2
+                    }}
+                  >
+                    <defs>
+                      <radialGradient id="plumeGrad" cx="0" cy="0" r={plumeRadiusPx} gradientUnits="userSpaceOnUse">
+                        <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.45" />
+                        <stop offset="60%" stopColor="#f59e0b" stopOpacity="0.20" />
+                        <stop offset="100%" stopColor="#f59e0b" stopOpacity="0.03" />
+                      </radialGradient>
+                    </defs>
+
+                    {/* Plume Sector anchored at Ground Zero (0, 0) */}
+                    <path
+                      d={`M 0 0 L ${p1x.toFixed(1)} ${p1y.toFixed(1)} A ${plumeRadiusPx.toFixed(1)} ${plumeRadiusPx.toFixed(1)} 0 0 1 ${p2x.toFixed(1)} ${p2y.toFixed(1)} Z`}
+                      fill="url(#plumeGrad)"
+                      stroke="rgba(245, 158, 11, 0.65)"
+                      strokeWidth="1.5"
+                    />
+
+                    {/* Downwind Centerline Axis */}
+                    <line
+                      x1="0"
+                      y1="0"
+                      x2={centerRayX.toFixed(1)}
+                      y2={centerRayY.toFixed(1)}
+                      stroke="#f59e0b"
+                      strokeWidth="1.5"
+                      strokeDasharray="4 4"
+                    />
+
+                    {/* Plume Bearing Callout */}
+                    <g transform={`translate(${(centerRayX * 1.05).toFixed(1)}, ${(centerRayY * 1.05).toFixed(1)})`}>
+                      <rect x="-42" y="-10" width="84" height="20" rx="4" fill="rgba(0,0,0,0.85)" stroke="#f59e0b" strokeWidth="1" />
+                      <text x="0" y="3" fill="#f59e0b" fontSize="9" fontWeight="bold" textAnchor="middle">
+                        PLUME {downwindDeg}°
+                      </text>
+                    </g>
+                  </svg>
+                );
+              })()}
+
+              {/* Safety Cordons */}
+              {showCordons && (
+                <>
+                  {/* Hot Zone (Exclusion Cordon) - 300m */}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      width: `${mToPx(600)}px`,
+                      height: `${mToPx(600)}px`,
+                      borderRadius: '50%',
+                      border: '1.5px solid #ef4444',
+                      background: 'rgba(239, 68, 68, 0.08)',
+                      transform: 'translate(-50%, -50%)',
+                      zIndex: 3
+                    }}
+                    title="Hot Zone / Exclusion Cordon (300m radius)"
+                  />
+                  {/* Warm Zone (Decontamination Corridor) - 800m */}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      width: `${mToPx(1600)}px`,
+                      height: `${mToPx(1600)}px`,
+                      borderRadius: '50%',
+                      border: '1.5px dashed #f59e0b',
+                      background: 'rgba(245, 158, 11, 0.05)',
+                      transform: 'translate(-50%, -50%)',
+                      zIndex: 3
+                    }}
+                    title="Warm Zone / Decontamination Corridor (800m radius)"
+                  />
+                  {/* Cold Zone (Public Perimeter) - 1800m */}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      width: `${mToPx(3600)}px`,
+                      height: `${mToPx(3600)}px`,
+                      borderRadius: '50%',
+                      border: '1.5px dotted #10b981',
+                      background: 'rgba(16, 185, 129, 0.03)',
+                      transform: 'translate(-50%, -50%)',
+                      zIndex: 3
+                    }}
+                    title="Cold Zone / Public Perimeter (1800m radius)"
+                  />
+                </>
               )}
 
-              {/* Blast Rings (Nuclear) or Cordon Rings */}
+              {/* Blast Rings (Nuclear) */}
               {showBlastRings && (
                 <>
                   {/* 20 psi */}
@@ -402,7 +516,8 @@ export const TacticalGISModule: React.FC = () => {
                       borderRadius: '50%',
                       border: '2px solid #ef4444',
                       background: 'rgba(239, 68, 68, 0.15)',
-                      transform: 'translate(-50%, -50%)'
+                      transform: 'translate(-50%, -50%)',
+                      zIndex: 4
                     }}
                     title="20 psi Blast Ring"
                   />
@@ -415,7 +530,8 @@ export const TacticalGISModule: React.FC = () => {
                       borderRadius: '50%',
                       border: '1.5px dashed #f97316',
                       background: 'rgba(249, 115, 22, 0.08)',
-                      transform: 'translate(-50%, -50%)'
+                      transform: 'translate(-50%, -50%)',
+                      zIndex: 4
                     }}
                     title="5 psi Severe Collapse Ring"
                   />
@@ -427,7 +543,8 @@ export const TacticalGISModule: React.FC = () => {
                       height: `${mToPx(7000)}px`,
                       borderRadius: '50%',
                       border: '1px dotted #eab308',
-                      transform: 'translate(-50%, -50%)'
+                      transform: 'translate(-50%, -50%)',
+                      zIndex: 4
                     }}
                     title="1 psi Glass Shatter Perimeter"
                   />
@@ -438,8 +555,8 @@ export const TacticalGISModule: React.FC = () => {
               <div
                 style={{
                   position: 'absolute',
-                  width: '18px',
-                  height: '18px',
+                  width: '20px',
+                  height: '20px',
                   borderRadius: '50%',
                   background: '#ef4444',
                   boxShadow: '0 0 15px #ef4444',
@@ -449,86 +566,211 @@ export const TacticalGISModule: React.FC = () => {
                   justifyContent: 'center',
                   color: '#fff',
                   fontWeight: 'bold',
-                  fontSize: '10px'
+                  fontSize: '11px',
+                  zIndex: 10
                 }}
+                title="Ground Zero Epicenter (0, 0)"
               >
                 ★
-              </div>
-
-              {/* Sensor Nodes Picket */}
-              {showSensors && sensors.map((s) => (
-                <div
-                  key={s.id}
-                  style={{
-                    position: 'absolute',
-                    left: `${mToPx(s.xM)}px`,
-                    top: `${-mToPx(s.yM)}px`,
-                    transform: 'translate(-50%, -50%)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    pointerEvents: 'auto'
-                  }}
-                >
-                  <div
-                    style={{
-                      width: '12px',
-                      height: '12px',
-                      borderRadius: '50%',
-                      background: s.status === 'ALARM' ? '#ef4444' : '#10b981',
-                      boxShadow: `0 0 8px ${s.status === 'ALARM' ? '#ef4444' : '#10b981'}`
-                    }}
-                  />
-                  <div style={{
-                    background: 'rgba(0,0,0,0.75)',
-                    padding: '2px 5px',
-                    borderRadius: '3px',
-                    fontSize: '9px',
-                    color: s.status === 'ALARM' ? '#ef4444' : '#10b981',
-                    whiteSpace: 'nowrap',
-                    marginTop: '2px',
-                    border: '1px solid rgba(255,255,255,0.1)'
-                  }}>
-                    {s.id}: {s.measuredRate_uSvh} µSv/h
-                  </div>
-                </div>
-              ))}
-
-              {/* Triangulated Source Confidence Ellipse */}
-              <div
-                style={{
-                  position: 'absolute',
-                  left: `${mToPx(triangulationResult.estX)}px`,
-                  top: `${-mToPx(triangulationResult.estY)}px`,
-                  width: `${mToPx(triangulationResult.confidenceRadiusM * 2)}px`,
-                  height: `${mToPx(triangulationResult.confidenceRadiusM * 2)}px`,
-                  borderRadius: '50%',
-                  border: '2px solid #00e5ff',
-                  background: 'rgba(0, 229, 255, 0.2)',
-                  transform: 'translate(-50%, -50%)',
-                  pointerEvents: 'none'
-                }}
-              >
                 <div style={{
                   position: 'absolute',
-                  top: '-16px',
+                  top: '22px',
                   left: '50%',
                   transform: 'translateX(-50%)',
                   fontSize: '9px',
-                  color: '#00e5ff',
                   fontWeight: 'bold',
+                  color: '#ef4444',
+                  background: 'rgba(0,0,0,0.85)',
+                  padding: '1px 6px',
+                  borderRadius: '3px',
+                  border: '1px solid #ef4444',
                   whiteSpace: 'nowrap'
                 }}>
-                  TRIANGULATED TARGET
+                  GROUND ZERO
                 </div>
               </div>
+
+              {/* Sensor Nodes & Triangulation Hotspot (Only rendered when Sensor Nodes layer is enabled) */}
+              {showSensors && (
+                <>
+                  {/* Connecting vector between Ground Zero and Triangulated Hotspot */}
+                  <svg style={{ position: 'absolute', left: 0, top: 0, overflow: 'visible', pointerEvents: 'none', zIndex: 6 }}>
+                    <line
+                      x1="0"
+                      y1="0"
+                      x2={mToPx(triangulationResult.estX)}
+                      y2={-mToPx(triangulationResult.estY)}
+                      stroke="#00e5ff"
+                      strokeWidth="1.5"
+                      strokeDasharray="4 3"
+                      opacity="0.8"
+                    />
+                  </svg>
+
+                  {/* Sensor Nodes Picket */}
+                  {sensors.map((s) => (
+                    <div
+                      key={s.id}
+                      style={{
+                        position: 'absolute',
+                        left: `${mToPx(s.xM)}px`,
+                        top: `${-mToPx(s.yM)}px`,
+                        transform: 'translate(-50%, -50%)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        pointerEvents: 'auto',
+                        zIndex: 8
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: '12px',
+                          height: '12px',
+                          borderRadius: '50%',
+                          background: s.status === 'ALARM' ? '#ef4444' : '#10b981',
+                          boxShadow: `0 0 8px ${s.status === 'ALARM' ? '#ef4444' : '#10b981'}`
+                        }}
+                      />
+                      <div style={{
+                        background: 'rgba(0,0,0,0.75)',
+                        padding: '2px 5px',
+                        borderRadius: '3px',
+                        fontSize: '9px',
+                        color: s.status === 'ALARM' ? '#ef4444' : '#10b981',
+                        whiteSpace: 'nowrap',
+                        marginTop: '2px',
+                        border: '1px solid rgba(255,255,255,0.1)'
+                      }}>
+                        {s.id}: {s.measuredRate_uSvh} µSv/h
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Triangulated Source Confidence Ellipse */}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      left: `${mToPx(triangulationResult.estX)}px`,
+                      top: `${-mToPx(triangulationResult.estY)}px`,
+                      width: `${mToPx(triangulationResult.confidenceRadiusM * 2)}px`,
+                      height: `${mToPx(triangulationResult.confidenceRadiusM * 2)}px`,
+                      borderRadius: '50%',
+                      border: '2px solid #00e5ff',
+                      background: 'rgba(0, 229, 255, 0.2)',
+                      transform: 'translate(-50%, -50%)',
+                      pointerEvents: 'none',
+                      zIndex: 9
+                    }}
+                  >
+                    <div style={{
+                      position: 'absolute',
+                      top: '-18px',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      fontSize: '9px',
+                      color: '#00e5ff',
+                      fontWeight: 'bold',
+                      whiteSpace: 'nowrap',
+                      background: 'rgba(0,0,0,0.85)',
+                      padding: '2px 6px',
+                      borderRadius: '3px',
+                      border: '1px solid #00e5ff'
+                    }}>
+                      🎯 SENSOR HOTSPOT ({triangulationResult.estX >= 0 ? '+' : ''}{triangulationResult.estX.toFixed(0)}m, {triangulationResult.estY >= 0 ? '+' : ''}{triangulationResult.estY.toFixed(0)}m)
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Tactical Map HUD Overlays */}
-            <div style={{ position: 'absolute', top: '12px', left: '14px', background: 'rgba(0,0,0,0.65)', padding: '8px 12px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', fontSize: '0.78rem' }}>
-              <div style={{ color: '#00e5ff', fontWeight: 'bold' }}>TACTICAL GIS HUD</div>
-              <div style={{ color: 'var(--color-text-muted)' }}>Origin: {centerLat.toFixed(4)}°N, {centerLon.toFixed(4)}°W</div>
-              <div style={{ color: 'var(--color-text-muted)' }}>Wind: {windSpeedMps} m/s @ {windDirectionDeg}°</div>
+            <div style={{
+              position: 'absolute',
+              top: '12px',
+              left: '14px',
+              background: 'rgba(0,0,0,0.80)',
+              backdropFilter: 'blur(4px)',
+              padding: '10px 14px',
+              borderRadius: '8px',
+              border: '1px solid rgba(0,229,255,0.25)',
+              fontSize: '0.78rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '4px',
+              zIndex: 20
+            }}>
+              <div style={{ color: '#00e5ff', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span>🛰️ TACTICAL GIS HUD</span>
+                <span style={{ fontSize: '0.7rem', color: '#10b981', background: 'rgba(16,185,129,0.15)', padding: '1px 5px', borderRadius: '3px' }}>LIVE</span>
+              </div>
+              <div style={{ color: '#e2e8f0' }}>Ground Zero: <strong>{centerLat.toFixed(4)}°N, {Math.abs(centerLon).toFixed(4)}°W</strong></div>
+              <div style={{ color: '#f59e0b' }}>
+                Wind: <strong>{windSpeedMps} m/s from {windDirectionDeg}°</strong> → Downwind Plume: <strong>{(windDirectionDeg + 180) % 360}°</strong>
+              </div>
+              {showSensors && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px', paddingTop: '4px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                  <span style={{ color: '#00e5ff', fontSize: '0.74rem' }}>
+                    Hotspot: ({triangulationResult.estX >= 0 ? '+' : ''}{triangulationResult.estX.toFixed(0)}m, {triangulationResult.estY >= 0 ? '+' : ''}{triangulationResult.estY.toFixed(0)}m)
+                  </span>
+                  <button
+                    className="btn btn-secondary"
+                    style={{ padding: '2px 6px', fontSize: '0.7rem', borderColor: '#00e5ff', color: '#00e5ff' }}
+                    onClick={() => handleSnapGZToHotspot(triangulationResult.estX, triangulationResult.estY)}
+                    title="Shift sensor coordinates so Ground Zero aligns with the triangulated hotspot"
+                  >
+                    Align GZ to Hotspot
+                  </button>
+                  <button
+                    className="btn btn-secondary"
+                    style={{ padding: '2px 6px', fontSize: '0.7rem' }}
+                    onClick={handleResetSensors}
+                    title="Reset sensors to default locations"
+                  >
+                    Reset
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Tactical Compass Rose with Downwind Flow Indicator */}
+            <div style={{
+              position: 'absolute',
+              top: '12px',
+              right: '14px',
+              background: 'rgba(0,0,0,0.75)',
+              padding: '8px',
+              borderRadius: '8px',
+              border: '1px solid rgba(255,255,255,0.1)',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              zIndex: 20
+            }}>
+              <svg width="44" height="44" viewBox="-22 -22 44 44">
+                <circle r="20" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="1" />
+                <polygon points="0,-18 -4,-6 4,-6" fill="#ef4444" />
+                <polygon points="0,18 -4,6 4,6" fill="rgba(255,255,255,0.3)" />
+                <text x="0" y="-8" fill="#ef4444" fontSize="8" fontWeight="bold" textAnchor="middle">N</text>
+                <line
+                  x1="0"
+                  y1="0"
+                  x2={(16 * Math.sin(((windDirectionDeg + 180) % 360) * Math.PI / 180)).toFixed(1)}
+                  y2={(-16 * Math.cos(((windDirectionDeg + 180) % 360) * Math.PI / 180)).toFixed(1)}
+                  stroke="#f59e0b"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+                <circle
+                  cx={(16 * Math.sin(((windDirectionDeg + 180) % 360) * Math.PI / 180)).toFixed(1)}
+                  cy={(-16 * Math.cos(((windDirectionDeg + 180) % 360) * Math.PI / 180)).toFixed(1)}
+                  r="2"
+                  fill="#f59e0b"
+                />
+              </svg>
+              <div style={{ fontSize: '0.65rem', color: '#f59e0b', fontWeight: 'bold', marginTop: '2px' }}>
+                {(windDirectionDeg + 180) % 360}° FLOW
+              </div>
             </div>
 
             <div style={{ position: 'absolute', bottom: '12px', right: '14px', background: 'rgba(0,0,0,0.65)', padding: '6px 12px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
