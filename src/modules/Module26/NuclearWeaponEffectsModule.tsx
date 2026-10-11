@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import VerificationBadge from '../../components/VerificationBadge';
 import PlotComponent from 'react-plotly.js';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
@@ -27,6 +28,8 @@ const WEAPON_PRESETS: WeaponPreset[] = [
 ];
 
 export const NuclearWeaponEffectsModule: React.FC = () => {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<NukeTab>('blast');
   const [selectedPresetId, setSelectedPresetId] = useState<string>('hiroshima_15kt');
   const [customYieldKt, setCustomYieldKt] = useState<number>(15.0);
@@ -34,7 +37,27 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
   const [burstAltitudeM, setBurstAltitudeM] = useState<number>(600);
   const [atmosphericVisibilityKm, setAtmosphericVisibilityKm] = useState<number>(20);
   const [targetDistanceKm, setTargetDistanceKm] = useState<number>(2.0);
+  const [hydratedDetonationName, setHydratedDetonationName] = useState<string | null>(null);
   const [isDossierOpen, setIsDossierOpen] = useState<boolean>(false);
+
+  useEffect(() => {
+    const yieldParam = searchParams.get('yieldKt');
+    const burstParam = searchParams.get('burstMode');
+    const nameParam = searchParams.get('name');
+
+    if (yieldParam) {
+      const y = parseFloat(yieldParam);
+      if (!isNaN(y) && y > 0) {
+        setCustomYieldKt(y);
+        const mode = burstParam === 'surface' ? 'surface' : 'air';
+        setBurstMode(mode);
+        setBurstAltitudeM(mode === 'surface' ? 0 : Math.round(140 * Math.pow(y, 1 / 3)));
+        if (nameParam) {
+          setHydratedDetonationName(decodeURIComponent(nameParam));
+        }
+      }
+    }
+  }, [searchParams]);
 
   // Load preset parameters
   const handleSelectPreset = (presetId: string) => {
@@ -352,6 +375,49 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Hydrated Scenario Active Alert Banner */}
+      {hydratedDetonationName && (
+        <div style={{
+          background: 'rgba(239, 68, 68, 0.1)',
+          border: '1px solid rgba(239, 68, 68, 0.4)',
+          borderRadius: '8px',
+          padding: '12px 16px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '10px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '1.3rem' }}>💥</span>
+            <div>
+              <div style={{ fontSize: '0.88rem', color: '#fff', fontWeight: 600 }}>
+                Active Scenario: <span style={{ color: '#f87171' }}>{hydratedDetonationName}</span>
+              </div>
+              <div style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)' }}>
+                Weapon yield ({yieldKt >= 1000 ? `${(yieldKt / 1000).toFixed(2)} Mt` : `${yieldKt} kt`}) and {burstMode} burst parameters automatically loaded from Global Detonations / CTBTO Seismic Inversion
+              </div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              className="btn btn-secondary"
+              onClick={() => navigate(`/global-map?focus=${encodeURIComponent(hydratedDetonationName)}`)}
+              style={{ fontSize: '0.76rem', padding: '5px 10px' }}
+            >
+              🌍 View on 3D Earth Hub
+            </button>
+            <button
+              className="btn btn-secondary"
+              onClick={() => navigate('/cbrn-consequence')}
+              style={{ fontSize: '0.76rem', padding: '5px 10px', color: '#f59e0b', borderColor: '#f59e0b' }}
+            >
+              ☢️ Model Radioactive Fallout ↗
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Preset & Tactical Controls Bar */}
       <div className="panel" style={{ padding: '16px' }}>

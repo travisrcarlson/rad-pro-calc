@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import PlotComponent from 'react-plotly.js';
 import {
   getUnifiedGeospatialPins,
@@ -28,11 +28,18 @@ import {
   type GeologicalMedium,
   type SeismicInversionResult
 } from '../../services/seismicYieldInversionService';
+import {
+  generateEPZGeoJSON,
+  generateEPZKML,
+  generateEPZCursorOnTargetXML,
+  downloadBlob
+} from '../../services/tacticalGisExportService';
 
 const Plot = (PlotComponent as any).default || PlotComponent;
 
 export const GlobalNuclearMapModule: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   // Projection Type State
   const [projectionType, setProjectionType] = useState<'orthographic' | 'natural earth' | 'equirectangular' | 'mercator'>('orthographic');
@@ -154,8 +161,39 @@ export const GlobalNuclearMapModule: React.FC = () => {
     selectedReactorStatus,
     selectedReactorType,
     timelineMode,
-    currentYear
   ]);
+
+  // Hydrate focus/coordinates if navigated from Incident / Plume / Blast modules
+  useEffect(() => {
+    const focusName = searchParams.get('focus');
+    const latParam = searchParams.get('lat');
+    const lonParam = searchParams.get('lon');
+    const tabParam = searchParams.get('tab');
+
+    if (latParam && lonParam) {
+      const lat = parseFloat(latParam);
+      const lon = parseFloat(lonParam);
+      if (!isNaN(lat) && !isNaN(lon)) {
+        setCenterRotation({ lon, lat });
+      }
+    }
+
+    if (tabParam === 'epz') {
+      setActiveWorkspaceTab('epz_planner');
+    } else if (tabParam === 'ctbto' || tabParam === 'seismic') {
+      setActiveWorkspaceTab('seismic_inversion');
+    }
+
+    if (focusName) {
+      const decoded = decodeURIComponent(focusName);
+      setSearchQuery(decoded);
+      const match = pins.find(p => p.name.toLowerCase().includes(decoded.toLowerCase()));
+      if (match) {
+        setSelectedPin(match);
+        setCenterRotation({ lon: match.coordinates.lon, lat: match.coordinates.lat });
+      }
+    }
+  }, [searchParams, pins]);
 
   // Global Aggregate Statistics
   const stats = useMemo(() => {
@@ -303,19 +341,95 @@ export const GlobalNuclearMapModule: React.FC = () => {
     document.body.removeChild(link);
   };
 
-  // Dispatch to Plume Module
-  const handleDispatchPlume = (_pin: UnifiedGeospatialPin) => {
-    navigate('/plume');
+  // Tactical GIS Export Handlers
+  const handleExportGeoJSON = () => {
+    if (!selectedReactorForEPZ || !epzPlan) return;
+    const scenarioInput = {
+      plantName: selectedReactorForEPZ.name,
+      coordinates: selectedReactorForEPZ.coordinates,
+      thermalPowerMWth: selectedReactorForEPZ.thermalMWth || 3000,
+      coreReleaseFraction: epzCoreReleaseFraction,
+      windOriginDegrees: epzWindOriginDeg,
+      windSpeedMps: epzWindSpeedMps,
+      stabilityClass: epzStabilityClass,
+      config: DEFAULT_EPZ_CONFIG
+    };
+    const content = generateEPZGeoJSON(scenarioInput, epzPlan);
+    const filename = `epz_plan_${selectedReactorForEPZ.name.replace(/[^a-zA-Z0-9_-]/g, '_')}.geojson`;
+    downloadBlob(filename, content, 'application/geo+json');
   };
 
-  // Dispatch to Nuclear Weapon Effects Module
-  const handleDispatchNuclearEffects = (_pin: UnifiedGeospatialPin) => {
-    navigate('/nuclear-weapons-effects');
+  const handleExportKML = () => {
+    if (!selectedReactorForEPZ || !epzPlan) return;
+    const scenarioInput = {
+      plantName: selectedReactorForEPZ.name,
+      coordinates: selectedReactorForEPZ.coordinates,
+      thermalPowerMWth: selectedReactorForEPZ.thermalMWth || 3000,
+      coreReleaseFraction: epzCoreReleaseFraction,
+      windOriginDegrees: epzWindOriginDeg,
+      windSpeedMps: epzWindSpeedMps,
+      stabilityClass: epzStabilityClass,
+      config: DEFAULT_EPZ_CONFIG
+    };
+    const content = generateEPZKML(scenarioInput, epzPlan);
+    const filename = `epz_plan_${selectedReactorForEPZ.name.replace(/[^a-zA-Z0-9_-]/g, '_')}.kml`;
+    downloadBlob(filename, content, 'application/vnd.google-earth.kml+xml');
+  };
+
+  const handleExportCoT = () => {
+    if (!selectedReactorForEPZ || !epzPlan) return;
+    const scenarioInput = {
+      plantName: selectedReactorForEPZ.name,
+      coordinates: selectedReactorForEPZ.coordinates,
+      thermalPowerMWth: selectedReactorForEPZ.thermalMWth || 3000,
+      coreReleaseFraction: epzCoreReleaseFraction,
+      windOriginDegrees: epzWindOriginDeg,
+      windSpeedMps: epzWindSpeedMps,
+      stabilityClass: epzStabilityClass,
+      config: DEFAULT_EPZ_CONFIG
+    };
+    const content = generateEPZCursorOnTargetXML(scenarioInput, epzPlan);
+    const filename = `epz_cot_${selectedReactorForEPZ.name.replace(/[^a-zA-Z0-9_-]/g, '_')}.cot`;
+    downloadBlob(filename, content, 'application/xml');
+  };
+
+  // Dispatch to Plume Module with Automated Parameter Hydration
+  const handleDispatchPlume = (pin: UnifiedGeospatialPin) => {
+    let activityCi = 5000;
+    if (pin.rawReactor) {
+      const coreTotalTBq = (pin.rawReactor.fissionInventoryTBq?.i131 || 1.8e6) +
+                           (pin.rawReactor.fissionInventoryTBq?.cs137 || 3.5e5);
+      activityCi = Math.round(coreTotalTBq * epzCoreReleaseFraction * 27);
+    }
+    navigate(`/plume?source=${encodeURIComponent(pin.name)}&lat=${pin.coordinates.lat}&lon=${pin.coordinates.lon}&wind=${epzWindSpeedMps}&windOrigin=${epzWindOriginDeg}&stability=${epzStabilityClass}&activity=${activityCi}&unit=Ci&coreFraction=${epzCoreReleaseFraction}`);
+  };
+
+  // Dispatch from EPZ Planner to Plume Module
+  const handleDispatchEPZToPlume = () => {
+    if (!selectedReactorForEPZ || !epzPlan) return;
+    const coreTotalTBq = (selectedReactorForEPZ.fissionInventoryTBq?.i131 || 1.8e6) +
+                         (selectedReactorForEPZ.fissionInventoryTBq?.cs137 || 3.5e5);
+    const activityCi = Math.round(coreTotalTBq * epzCoreReleaseFraction * 27);
+    navigate(`/plume?source=${encodeURIComponent(selectedReactorForEPZ.name)}&lat=${selectedReactorForEPZ.coordinates.lat}&lon=${selectedReactorForEPZ.coordinates.lon}&wind=${epzWindSpeedMps}&windOrigin=${epzWindOriginDeg}&stability=${epzStabilityClass}&activity=${activityCi}&unit=Ci&coreFraction=${epzCoreReleaseFraction}`);
+  };
+
+  // Dispatch to Nuclear Weapon Effects Module with Automated Parameter Hydration
+  const handleDispatchNuclearEffects = (pin: UnifiedGeospatialPin) => {
+    const yieldKt = pin.rawDetonation?.yieldKt || 15.0;
+    const isAir = (pin.rawDetonation?.testType || pin.rawDetonation?.environment || '').toLowerCase().includes('air') ||
+                  (pin.rawDetonation?.heightOfBurstM ?? 0) > 50;
+    const burstMode = isAir ? 'air' : 'surface';
+    navigate(`/nuclear-weapons-effects?yieldKt=${yieldKt}&burstMode=${burstMode}&name=${encodeURIComponent(pin.name)}&lat=${pin.coordinates.lat}&lon=${pin.coordinates.lon}`);
   };
 
   // Dispatch to Historical Incidents Module
-  const handleDispatchIncidents = (_pin: UnifiedGeospatialPin) => {
-    navigate('/incidents');
+  const handleDispatchIncidents = (pin: UnifiedGeospatialPin) => {
+    navigate(`/incidents?search=${encodeURIComponent(pin.name)}`);
+  };
+
+  // Dispatch to Medical Countermeasures Module
+  const handleDispatchMedical = (drug: 'potassium_iodide' | 'prussian_blue', sourceName: string) => {
+    navigate(`/medical-countermeasures?drug=${drug}&source=${encodeURIComponent(sourceName)}`);
   };
 
   // Construct Plotly Traces by Category with Active Year Flash Highlighting
@@ -1460,13 +1574,22 @@ export const GlobalNuclearMapModule: React.FC = () => {
               )}
 
               {selectedPin.category === 'incident' && (
-                <button
-                  className="btn btn-primary"
-                  onClick={() => handleDispatchIncidents(selectedPin)}
-                  style={{ fontSize: '0.8rem', padding: '6px 10px', width: '100%' }}
-                >
-                  🔬 View Full Forensic Accident Investigation
-                </button>
+                <>
+                  <button
+                    className="btn btn-primary"
+                    onClick={() => handleDispatchIncidents(selectedPin)}
+                    style={{ fontSize: '0.8rem', padding: '6px 10px', width: '100%' }}
+                  >
+                    🔬 View Full Forensic Accident Investigation
+                  </button>
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() => handleDispatchPlume(selectedPin)}
+                    style={{ fontSize: '0.8rem', padding: '6px 10px', width: '100%' }}
+                  >
+                    💨 Model Historical Atmospheric Release
+                  </button>
+                </>
               )}
 
               {/* Set Pin as Distance Target */}
@@ -1765,7 +1888,38 @@ export const GlobalNuclearMapModule: React.FC = () => {
                 </p>
               </div>
 
-              <div style={{ display: 'flex', gap: '8px' }}>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                {/* Tactical GIS Export Toolbar */}
+                <div style={{ display: 'flex', gap: '4px', background: 'rgba(0,0,0,0.35)', padding: '3px 6px', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                  <button
+                    className="btn btn-secondary"
+                    onClick={handleExportGeoJSON}
+                    disabled={!selectedReactorForEPZ || !epzPlan}
+                    style={{ fontSize: '0.74rem', padding: '4px 8px' }}
+                    title="Export standard GeoJSON FeatureCollection (RFC 7946)"
+                  >
+                    🗺️ GeoJSON
+                  </button>
+                  <button
+                    className="btn btn-secondary"
+                    onClick={handleExportKML}
+                    disabled={!selectedReactorForEPZ || !epzPlan}
+                    style={{ fontSize: '0.74rem', padding: '4px 8px' }}
+                    title="Export Google Earth KML with styled polygons"
+                  >
+                    🌍 Google Earth KML
+                  </button>
+                  <button
+                    className="btn btn-secondary"
+                    onClick={handleExportCoT}
+                    disabled={!selectedReactorForEPZ || !epzPlan}
+                    style={{ fontSize: '0.74rem', padding: '4px 8px' }}
+                    title="Export DoD Cursor-on-Target XML for ATAK / WinTAK"
+                  >
+                    📡 ATAK CoT
+                  </button>
+                </div>
+
                 <button
                   className="btn btn-secondary"
                   onClick={handleOpenEPZDossier}
@@ -1776,7 +1930,8 @@ export const GlobalNuclearMapModule: React.FC = () => {
                 </button>
                 <button
                   className="btn btn-primary"
-                  onClick={() => navigate('/plume')}
+                  onClick={handleDispatchEPZToPlume}
+                  disabled={!selectedReactorForEPZ || !epzPlan}
                   style={{ fontSize: '0.78rem', padding: '5px 12px' }}
                 >
                   💨 Dispatch to Plume Module
@@ -1952,14 +2107,38 @@ export const GlobalNuclearMapModule: React.FC = () => {
                         <td style={{ padding: '6px' }}>≥ 5.0 rem (50 mSv)</td>
                         <td style={{ padding: '6px', fontFamily: 'var(--font-mono)' }}>{epzPlan.kiDistributionRadiusKm} km ({(epzPlan.kiDistributionRadiusKm * 0.621371).toFixed(1)} mi)</td>
                         <td style={{ padding: '6px' }}>UPZ (10-mile arc)</td>
-                        <td style={{ padding: '6px', color: '#38bdf8' }}>Rapid distribution of stable Potassium Iodide (KI) to block radioiodine uptake</td>
+                        <td style={{ padding: '6px', color: '#38bdf8' }}>
+                          Rapid distribution of stable Potassium Iodide (KI) to block radioiodine uptake
+                          {selectedReactorForEPZ && (
+                            <button
+                              className="btn"
+                              onClick={() => handleDispatchMedical('potassium_iodide', selectedReactorForEPZ.name)}
+                              style={{ marginLeft: '8px', padding: '2px 6px', fontSize: '0.68rem', background: 'rgba(56, 189, 248, 0.2)', color: '#38bdf8', border: '1px solid #38bdf8' }}
+                              title="Open Potassium Iodide protocol with preloaded reactor parameters"
+                            >
+                              💊 Launch KI Protocol ↗
+                            </button>
+                          )}
+                        </td>
                       </tr>
                       <tr>
                         <td style={{ padding: '6px', color: '#fbbf24', fontWeight: 600 }}>Ingestion Interdiction (IPZ)</td>
                         <td style={{ padding: '6px' }}>≥ 0.5 rem (5 mSv)</td>
                         <td style={{ padding: '6px', fontFamily: 'var(--font-mono)' }}>{epzPlan.interdictionRadiusKm} km ({(epzPlan.interdictionRadiusKm * 0.621371).toFixed(1)} mi)</td>
                         <td style={{ padding: '6px' }}>IPZ (50-mile arc)</td>
-                        <td style={{ padding: '6px', color: '#fbbf24' }}>Embargo milk, produce, livestock grazing, and open reservoir drinking water</td>
+                        <td style={{ padding: '6px', color: '#fbbf24' }}>
+                          Embargo milk, produce, livestock grazing, and open reservoir drinking water
+                          {selectedReactorForEPZ && (
+                            <button
+                              className="btn"
+                              onClick={() => handleDispatchMedical('prussian_blue', selectedReactorForEPZ.name)}
+                              style={{ marginLeft: '8px', padding: '2px 6px', fontSize: '0.68rem', background: 'rgba(245, 158, 11, 0.2)', color: '#fbbf24', border: '1px solid #fbbf24' }}
+                              title="Open Prussian Blue decorporation protocol with preloaded reactor parameters"
+                            >
+                              🫐 Launch Prussian Blue ↗
+                            </button>
+                          )}
+                        </td>
                       </tr>
                     </tbody>
                   </table>
@@ -2059,10 +2238,13 @@ export const GlobalNuclearMapModule: React.FC = () => {
                 </button>
                 <button
                   className="btn btn-primary"
-                  onClick={() => navigate('/nuclear-weapons-effects')}
+                  onClick={() => {
+                    const yieldKt = seismicResult.estimatedYieldKt;
+                    navigate(`/nuclear-weapons-effects?yieldKt=${yieldKt}&burstMode=surface&name=${encodeURIComponent(seismicSiteName)}&lat=${seismicEpicenterCoords.lat}&lon=${seismicEpicenterCoords.lon}&source=ctbto`);
+                  }}
                   style={{ fontSize: '0.78rem', padding: '5px 12px', background: 'linear-gradient(135deg, #ef4444 0%, #f97316 100%)', border: 'none' }}
                 >
-                  💥 Simulate Blast Effects
+                  💥 Simulate Blast Effects ({seismicResult.estimatedYieldKt >= 1000 ? `${(seismicResult.estimatedYieldKt / 1000).toFixed(2)} Mt` : `${seismicResult.estimatedYieldKt.toFixed(1)} kt`})
                 </button>
               </div>
             </div>

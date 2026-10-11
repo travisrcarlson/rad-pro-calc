@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import VerificationBadge from '../../components/VerificationBadge';
 import PlotComponent from 'react-plotly.js';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
@@ -114,6 +115,8 @@ const ISOTOPE_PRESETS: IsotopePreset[] = [
 ];
 
 export const MedicalCountermeasuresModule: React.FC = () => {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<MedTab>('protocol');
   const [selectedIsotopeId, setSelectedIsotopeId] = useState<string>('cs137');
   const [intakeActivitykBq, setIntakeActivitykBq] = useState<number>(2500);
@@ -121,7 +124,37 @@ export const MedicalCountermeasuresModule: React.FC = () => {
   const [timeToTreatmentHours, setTimeToTreatmentHours] = useState<number>(4.0);
   const [patientWeightKg, setPatientWeightKg] = useState<number>(70);
   const [patientAgeGroup, setPatientAgeGroup] = useState<'adult' | 'pediatric'>('adult');
+  const [hydratedSource, setHydratedSource] = useState<string | null>(null);
   const [isDossierOpen, setIsDossierOpen] = useState<boolean>(false);
+
+  useEffect(() => {
+    const drugParam = searchParams.get('drug');
+    const isoParam = searchParams.get('isotope');
+    const sourceParam = searchParams.get('source');
+
+    if (drugParam) {
+      if (drugParam === 'potassium_iodide' || drugParam === 'ki') {
+        setSelectedIsotopeId('i131');
+        setIntakeActivitykBq(1000);
+      } else if (drugParam === 'prussian_blue') {
+        setSelectedIsotopeId('cs137');
+        setIntakeActivitykBq(2500);
+      } else if (drugParam.includes('dtpa')) {
+        setSelectedIsotopeId('pu239');
+        setIntakeActivitykBq(50);
+      }
+    } else if (isoParam) {
+      const match = ISOTOPE_PRESETS.find(p => p.id === isoParam || p.name.toLowerCase().includes(isoParam.toLowerCase()));
+      if (match) {
+        setSelectedIsotopeId(match.id);
+        setIntakeActivitykBq(match.typicalIntakekBq);
+      }
+    }
+
+    if (sourceParam) {
+      setHydratedSource(decodeURIComponent(sourceParam));
+    }
+  }, [searchParams]);
 
   const activeIsotope = useMemo(() => {
     return ISOTOPE_PRESETS.find((x) => x.id === selectedIsotopeId) || ISOTOPE_PRESETS[0];
@@ -277,6 +310,49 @@ export const MedicalCountermeasuresModule: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Hydrated Clinical Scenario Alert Banner */}
+      {hydratedSource && (
+        <div style={{
+          background: 'rgba(56, 189, 248, 0.08)',
+          border: '1px solid rgba(56, 189, 248, 0.35)',
+          borderRadius: '8px',
+          padding: '12px 16px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '10px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '1.3rem' }}>💊</span>
+            <div>
+              <div style={{ fontSize: '0.88rem', color: '#fff', fontWeight: 600 }}>
+                Clinical Protocol Hydrated: <span style={{ color: '#38bdf8' }}>{activeDrug.name}</span> for {hydratedSource}
+              </div>
+              <div style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)' }}>
+                Target Isotope: {activeIsotope.name} // Adult Dose: {activeDrug.adultDose}
+              </div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              className="btn btn-secondary"
+              onClick={() => navigate(`/global-map?focus=${encodeURIComponent(hydratedSource)}`)}
+              style={{ fontSize: '0.76rem', padding: '5px 10px' }}
+            >
+              🌍 View on 3D Earth Hub
+            </button>
+            <button
+              className="btn btn-secondary"
+              onClick={() => navigate(`/plume?source=${encodeURIComponent(hydratedSource)}`)}
+              style={{ fontSize: '0.76rem', padding: '5px 10px', color: '#f59e0b', borderColor: '#f59e0b' }}
+            >
+              💨 View Plume Model ↗
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Triage & Patient Parameters */}
       <div className="panel" style={{ padding: '16px' }}>

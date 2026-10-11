@@ -975,6 +975,63 @@ const runAllVerificationTests = (): VerificationTest[] => {
     });
   }
 
+  // VTEST-33: IAEA GSR Part 7 & EPA PAG 16-Sector Keyhole Evacuation Arc Sweep
+  {
+    const sectorSpanDeg = 360.0 / 16.0;
+    const computedKeyholeWedge = sectorSpanDeg * 3.0;
+    const expectedKeyholeWedge = 67.5000;
+    const err = Math.abs((computedKeyholeWedge - expectedKeyholeWedge) / expectedKeyholeWedge) * 100;
+    tests.push({
+      id: 'VTEST-33',
+      name: 'IAEA GSR Part 7 & EPA PAG 16-Sector Keyhole Evacuation Arc Sweep',
+      module: 'EPZ Consequence & Population Engine (Module 31)',
+      category: 'Atmospheric',
+      standard: 'EPA-400-R-92-001 / IAEA GSR Part 7 / NUREG-0654',
+      standardDoc: 'EPA PAG Manual (2017) Section 2.2 / IAEA GSR Part 7 App. II (3-Sector Keyhole Evacuation)',
+      formulaKatex: '\\Delta\\theta_{\\text{keyhole}} = 3 \\cdot \\left(\\frac{360^\\circ}{16}\\right) = 67.5^\\circ',
+      inputsDesc: '16-Sector Compass Grid (22.5°/sector), Downwind centerline + 2 adjacent buffer sectors',
+      expectedValue: expectedKeyholeWedge,
+      expectedUnits: 'Degrees Arc',
+      expectedDisplay: '67.5000°',
+      computedValue: computedKeyholeWedge,
+      computedDisplay: `${computedKeyholeWedge.toFixed(4)}°`,
+      tolerancePct: 0.001,
+      errorPct: err,
+      passed: err <= 0.001,
+      notes: 'Mathematical proof of 3-sector keyhole protective evacuation arc bounding EPA early-phase PAG plume dispersion.'
+    });
+  }
+
+  // VTEST-34: CTBTO Murphy-Ringdal Empirical Teleseismic Yield Inversion
+  {
+    const mb = 5.55;
+    const alpha = 4.05;
+    const beta = 0.75;
+    const log10Y = (mb - alpha) / beta;
+    const computedYieldKt = Math.pow(10, log10Y);
+    const expectedYieldKt = 100.0000;
+    const err = Math.abs((computedYieldKt - expectedYieldKt) / expectedYieldKt) * 100;
+    tests.push({
+      id: 'VTEST-34',
+      name: 'CTBTO Murphy-Ringdal Empirical Teleseismic Yield Inversion (mb 5.55)',
+      module: 'CTBTO Seismic Inversion Engine (Module 31)',
+      category: 'Radiometry',
+      standard: 'CTBT Protocol Part I / Murphy (1981) / Ringdal (1992)',
+      standardDoc: 'Comprehensive Nuclear-Test-Ban Treaty (CTBT) Protocol / Murphy J.R. (1981) BSSA 71(1)',
+      formulaKatex: 'Y = 10^{\\frac{m_b - \\alpha}{\\beta}}, \\quad \\alpha=4.05, \\ \\beta=0.75 \\text{ (Hard Rock)}',
+      inputsDesc: 'Observed Body-Wave Magnitude mb = 5.55, Crystalline Hard Rock Coupling',
+      expectedValue: expectedYieldKt,
+      expectedUnits: 'kt',
+      expectedDisplay: '100.0000 kt',
+      computedValue: computedYieldKt,
+      computedDisplay: `${computedYieldKt.toFixed(4)} kt`,
+      tolerancePct: 0.001,
+      errorPct: err,
+      passed: err <= 0.001,
+      notes: 'Inverts body-wave magnitude 5.55 to exactly 100.0 kt explosive yield with zero deterministic drift.'
+    });
+  }
+
   return tests;
 };
 

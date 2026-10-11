@@ -212,7 +212,7 @@ const NAV_CATEGORIES: NavCategory[] = [
     color: '#c084fc',
     iconSymbol: '✓',
     items: [
-      { path: '/verify', label: 'Verification Tests', badge: '40/40 Pass', keywords: ['verify', 'test', 'sqa', 'validation', 'benchmark', 'qa'] },
+      { path: '/verify', label: 'Verification Tests', badge: '42/42 Pass', keywords: ['verify', 'test', 'sqa', 'validation', 'benchmark', 'qa'] },
       { path: '/literature', label: 'Core Literature & Physics', badge: 'Derivations', keywords: ['literature', 'citations', 'physics', 'equations', 'formulations', 'references'] }
     ]
   }

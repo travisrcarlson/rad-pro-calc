@@ -1014,7 +1014,14 @@ export const HistoricalIncidentsModule: React.FC = () => {
                 </button>
               ) : <div />}
 
-              <div style={{ display: 'flex', gap: '8px' }}>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <NavLink
+                  to={`/global-map?focus=${encodeURIComponent(inspectedGlobalRecord.title)}`}
+                  className="btn btn-secondary"
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                >
+                  🌍 Locate on Globe
+                </NavLink>
                 <button
                   className="btn btn-secondary"
                   onClick={() => handleOpenGlobalDossier(inspectedGlobalRecord)}
@@ -1350,12 +1357,27 @@ export const HistoricalIncidentsModule: React.FC = () => {
               alignItems: 'center'
             }}>
               <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                Coordinates: {inspectedIncident.coordinates.lat.toFixed(4)}°N, {inspectedIncident.coordinates.lon.toFixed(4)}°E
+                📍 Coordinates: {inspectedIncident.coordinates.lat.toFixed(4)}°N, {inspectedIncident.coordinates.lon.toFixed(4)}°E
               </span>
-              <div style={{ display: 'flex', gap: '8px' }}>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <NavLink
+                  to={`/global-map?focus=${encodeURIComponent(inspectedIncident.name)}&lat=${inspectedIncident.coordinates.lat}&lon=${inspectedIncident.coordinates.lon}&category=incident`}
+                  className="btn btn-secondary"
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem' }}
+                >
+                  🌍 View on 3D Earth Hub
+                </NavLink>
+                <NavLink
+                  to={`/plume?source=${encodeURIComponent(inspectedIncident.name)}&lat=${inspectedIncident.coordinates.lat}&lon=${inspectedIncident.coordinates.lon}&activity=${inspectedIncident.estimatedActivityCi || 1000}&unit=Ci`}
+                  className="btn btn-secondary"
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem' }}
+                >
+                  💨 Model Atmospheric Release
+                </NavLink>
                 <button
                   className="btn btn-primary"
                   onClick={() => handleOpenForensicDossier(inspectedIncident)}
+                  style={{ fontSize: '0.8rem' }}
                 >
                   📜 Sign &amp; Export Audit Dossier
                 </button>

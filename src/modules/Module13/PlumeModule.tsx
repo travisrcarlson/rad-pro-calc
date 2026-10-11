@@ -69,19 +69,28 @@ const PlumeModule: React.FC = () => {
   const [releaseHeight, setReleaseHeight] = useState<number>(10.0); // meters
   const [stability, setStability] = useState<string>('D'); // D is neutral
   const [maxDistance, setMaxDistance] = useState<number>(1000); // meters downwind
+  const [sourceFacility, setSourceFacility] = useState<string | null>(null);
   const [isDossierOpen, setIsDossierOpen] = useState<boolean>(false);
 
   useEffect(() => {
     const actParam = searchParams.get('activity');
     const unitParam = searchParams.get('unit');
-    const windParam = searchParams.get('wind');
+    const windParam = searchParams.get('wind') || searchParams.get('windSpeed');
     const stabParam = searchParams.get('stability');
+    const sourceParam = searchParams.get('source');
+    const heightParam = searchParams.get('height');
 
+    if (sourceParam) {
+      setSourceFacility(decodeURIComponent(sourceParam));
+    }
     if (actParam) {
       const parsed = parseFloat(actParam);
       if (!isNaN(parsed) && parsed > 0) {
         if (unitParam?.toUpperCase() === 'TBQ') {
           setReleaseRate(parseFloat((parsed * 27 * 0.001).toFixed(3)) || 1.0);
+        } else if (unitParam?.toUpperCase() === 'CI') {
+          // If total curies released over 1 hour (3600s)
+          setReleaseRate(parseFloat((parsed / 3600).toFixed(3)) || 1.0);
         } else {
           setReleaseRate(parseFloat((parsed * 0.01).toFixed(3)) || 1.0);
         }
@@ -93,6 +102,10 @@ const PlumeModule: React.FC = () => {
     }
     if (stabParam && STABILITY_CLASSES.includes(stabParam.toUpperCase())) {
       setStability(stabParam.toUpperCase());
+    }
+    if (heightParam) {
+      const h = parseFloat(heightParam);
+      if (!isNaN(h) && h >= 0) setReleaseHeight(h);
     }
   }, [searchParams]);
 
@@ -220,6 +233,49 @@ const PlumeModule: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Incident Scenario Active Alert Banner */}
+      {sourceFacility && (
+        <div style={{
+          background: 'rgba(0, 229, 255, 0.08)',
+          border: '1px solid rgba(0, 229, 255, 0.35)',
+          borderRadius: '8px',
+          padding: '12px 16px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '10px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '1.3rem' }}>⚡</span>
+            <div>
+              <div style={{ fontSize: '0.88rem', color: '#fff', fontWeight: 600 }}>
+                Incident Scenario Active: <span style={{ color: 'var(--color-primary)' }}>{sourceFacility}</span>
+              </div>
+              <div style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)' }}>
+                Atmospheric dispersion parameters automatically loaded from Global Nuclear Map / Incident Database
+              </div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              className="btn btn-secondary"
+              onClick={() => navigate(`/global-map?focus=${encodeURIComponent(sourceFacility)}&tab=epz`)}
+              style={{ fontSize: '0.76rem', padding: '5px 10px' }}
+            >
+              🌍 View on 3D Earth Hub
+            </button>
+            <button
+              className="btn btn-secondary"
+              onClick={() => navigate(`/medical-countermeasures?source=${encodeURIComponent(sourceFacility)}&drug=potassium_iodide`)}
+              style={{ fontSize: '0.76rem', padding: '5px 10px', color: '#38bdf8', borderColor: '#38bdf8' }}
+            >
+              💊 Check KI / Medical Protocol ↗
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Top HUD Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '12px' }}>
