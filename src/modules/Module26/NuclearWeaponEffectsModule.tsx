@@ -73,60 +73,72 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
 
   const yieldKt = customYieldKt;
 
-  // --- TAB 1: Blast Overpressure & Shockwave Model (Brode / Kingery-Bulmash) ---
+  // --- TAB 1: Blast Overpressure & Shockwave Model (Kinney & Graham / Glasstone & Dolan / UFC 3-340-02) ---
   const blastCalculations = useMemo(() => {
     const y = Math.max(0.001, yieldKt);
-    const scaledYieldFactor = Math.pow(y, 1 / 3);
+    const p0 = 14.696; // ambient sea-level atmospheric pressure (psi)
 
-    // Overpressure Radii (Brode analytical approximations for surface/near-surface bursts)
-    // 20 psi (Demolition of reinforced concrete structures, heavy blast wave)
-    const r20psi_km = 0.38 * scaledYieldFactor * (burstMode === 'air' ? 1.15 : 1.0);
-    // 10 psi (Heavy destruction of commercial factories and offices)
-    const r10psi_km = 0.58 * scaledYieldFactor * (burstMode === 'air' ? 1.25 : 1.0);
-    // 5 psi (Universal residential collapse, unreinforced masonry failure, 160 mph wind)
-    const r5psi_km = 0.95 * scaledYieldFactor * (burstMode === 'air' ? 1.35 : 1.0);
-    // 1 psi (Glass shatter, projectile injuries, structural damage)
-    const r1psi_km = 2.45 * scaledYieldFactor * (burstMode === 'air' ? 1.40 : 1.0);
+    // Helper: calculate peak incident overpressure (psi) at ground distance rGroundKm and burst altitude hM
+    // Implements Kinney & Graham (1985) blast shockwave formulation with ground reflection modeling
+    const calcPso = (rGroundKm: number, hM: number): number => {
+      const rM = Math.max(1, rGroundKm * 1000);
+      const slantM = Math.sqrt(rM * rM + hM * hM);
+      // Hemispherical ground reflection: ~1.8x for surface burst, ~2.0x for air burst Mach reflection
+      const refl = burstMode === 'surface' ? 1.8 : 2.0;
+      const wKg = y * 1e6 * refl;
+      const z = slantM / Math.pow(wKg, 1 / 3); // Hopkinson-Cranz scaled distance (m / kg^(1/3))
+
+      const num = 808 * (1 + Math.pow(z / 4.5, 2));
+      const den = Math.sqrt(1 + Math.pow(z / 0.048, 2)) *
+                  Math.sqrt(1 + Math.pow(z / 0.32, 2)) *
+                  Math.sqrt(1 + Math.pow(z / 1.35, 2));
+      return (num / den) * p0;
+    };
+
+    // Fast, robust bisection solver for exact damage contour radii (ground distance in km)
+    // Guarantees 100% mathematical consistency: P(r_Xpsi) === X psi
+    const findRadiusKm = (targetPsi: number): number => {
+      const hM = burstMode === 'surface' ? 0 : Math.max(0, burstAltitudeM);
+      if (calcPso(0, hM) < targetPsi) return 0;
+      let low = 0;
+      let high = 250000;
+      for (let i = 0; i < 40; i++) {
+        const mid = (low + high) / 2;
+        if (calcPso(mid / 1000, hM) > targetPsi) {
+          low = mid;
+        } else {
+          high = mid;
+        }
+      }
+      return low / 1000;
+    };
+
+    const r20psi_km = findRadiusKm(20);
+    const r10psi_km = findRadiusKm(10);
+    const r5psi_km = findRadiusKm(5);
+    const r1psi_km = findRadiusKm(1);
 
     // Blast Overpressure at user target distance
-    const rTargetM = Math.max(10, targetDistanceKm * 1000);
-    const slantDistanceM = Math.sqrt(rTargetM * rTargetM + burstAltitudeM * burstAltitudeM);
-    const zScaled = slantDistanceM / Math.pow(y, 1 / 3); // m / kt^(1/3)
+    const hM = burstMode === 'surface' ? 0 : Math.max(0, burstAltitudeM);
+    const overpressurePsi = Math.max(0.001, calcPso(targetDistanceKm, hM));
 
-    // Kingery-Bulmash / Brode equation for overpressure:
-    // For intermediate distances (z in m / kt^(1/3)):
-    let overpressurePsi = 0;
-    if (zScaled > 0) {
-      if (zScaled < 100) {
-        overpressurePsi = (3300 / Math.pow(zScaled, 3)) + (1050 / Math.pow(zScaled, 2)) + (55.4 / zScaled);
-      } else {
-        overpressurePsi = (1.407 / (zScaled / 1000)) + (0.536 / Math.pow(zScaled / 1000, 2));
-      }
-    }
-    overpressurePsi = Math.max(0.01, overpressurePsi);
-
-    // Dynamic pressure q = 2.5 * P^2 / (P + 7 * P0), P0 = 14.7 psi
-    const p0 = 14.7;
+    // Dynamic pressure q = 2.5 * P^2 / (P + 7 * P0), P0 = 14.7 psi (Rankine-Hugoniot)
     const dynamicPressurePsi = (2.5 * overpressurePsi * overpressurePsi) / (overpressurePsi + 7 * p0);
-    // Wind velocity ~ 50 * sqrt(dynamicPressurePsi) mph
-    const windSpeedMph = Math.min(2000, Math.round(45 * Math.sqrt(dynamicPressurePsi * 10)));
 
-    // Generate curve for plot
-    const maxR = r1psi_km * 1.5;
-    const steps = 80;
+    // Rankine-Hugoniot exact shockwave induced particle wind speed (Glasstone & Dolan 1977 Eq. 3.55.2)
+    // u = (5 * P * c0) / [ 7 * P0 * sqrt(1 + 6*P / (7*P0)) ]
+    const c0Mph = 761.2; // Speed of sound at sea level (15°C) in mph
+    const windSpeedMph = Math.round((5 * overpressurePsi * c0Mph) / (7 * p0 * Math.sqrt(1 + (6 * overpressurePsi) / (7 * p0))));
+
+    // Generate smooth monotonic curve for plot from 0 to 1.35x r1psi_km
+    const maxR = Math.max(targetDistanceKm * 1.25, r1psi_km * 1.35, 1.0);
+    const steps = 100;
     const curvePoints: { rKm: number; overpressurePsi: number; dynamicPsi: number }[] = [];
     for (let i = 1; i <= steps; i++) {
       const r = (i / steps) * maxR;
-      const sM = Math.sqrt((r * 1000) * (r * 1000) + burstAltitudeM * burstAltitudeM);
-      const z = sM / Math.pow(y, 1 / 3);
-      let p = 0;
-      if (z < 100) {
-        p = (3300 / Math.pow(z, 3)) + (1050 / Math.pow(z, 2)) + (55.4 / z);
-      } else {
-        p = (1.407 / (z / 1000)) + (0.536 / Math.pow(z / 1000, 2));
-      }
+      const p = calcPso(r, hM);
       const q = (2.5 * p * p) / (p + 7 * p0);
-      curvePoints.push({ rKm: r, overpressurePsi: Math.min(500, p), dynamicPsi: Math.min(300, q) });
+      curvePoints.push({ rKm: r, overpressurePsi: Math.min(2500, p), dynamicPsi: Math.min(2500, q) });
     }
 
     return {
@@ -289,8 +301,9 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
     };
 
     const traces: any[] = [
-      makeCircle(blastCalculations.r20psi_km, `20 psi Blast Ring (${blastCalculations.r20psi_km.toFixed(2)} km)`, '#ef4444'),
-      makeCircle(blastCalculations.r5psi_km, `5 psi Residential Collapse (${blastCalculations.r5psi_km.toFixed(2)} km)`, '#f97316'),
+      makeCircle(blastCalculations.r20psi_km, `20 psi Heavy Demolition (${blastCalculations.r20psi_km.toFixed(2)} km)`, '#ef4444'),
+      makeCircle(blastCalculations.r10psi_km, `10 psi Factory Collapse (${blastCalculations.r10psi_km.toFixed(2)} km)`, '#f97316', 'dash'),
+      makeCircle(blastCalculations.r5psi_km, `5 psi Residential Flattening (${blastCalculations.r5psi_km.toFixed(2)} km)`, '#eab308'),
       makeCircle(blastCalculations.r1psi_km, `1 psi Glass Breakage (${blastCalculations.r1psi_km.toFixed(2)} km)`, '#eab308', 'dash'),
       makeCircle(thermalCalculations.r3rdBurn_km, `3rd Degree Burn Standoff (${thermalCalculations.r3rdBurn_km.toFixed(2)} km)`, '#ff4d4d'),
       makeCircle(thermalCalculations.r1stBurn_km, `1st Degree Burn Perimeter (${thermalCalculations.r1stBurn_km.toFixed(2)} km)`, '#facc15', 'dot'),
@@ -330,7 +343,7 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
       operatorCredentials: 'CHP / CBRN Consequence Manager',
       facility: 'Tactical Defense Operations Center / Threat Assessment Unit',
       notes: `Prompt weapons effects simulation for ${yieldKt} kT (${burstMode} burst at ${burstAltitudeM}m). Target distance: ${targetDistanceKm} km. Overpressure: ${blastCalculations.targetOverpressurePsi.toFixed(2)} psi. Thermal: ${thermalCalculations.targetFluenceCalCm2.toFixed(1)} cal/cm².`,
-      formulaDescription: 'Z = \\frac{R}{Y^{1/3}}, \\quad \\Delta P = \\frac{A}{Z^3} + \\frac{B}{Z^2} + \\frac{C}{Z}, \\quad Q = \\frac{\\eta_{\\text{th}} Y}{4\\pi R^2} \\tau_{\\text{atm}}',
+      formulaDescription: 'Z = \\frac{R}{W^{1/3}}, \\quad \\frac{\\Delta P}{P_0} = \\frac{808[1+(Z/4.5)^2]}{\\sqrt{1+(Z/0.048)^2}\\sqrt{1+(Z/0.32)^2}\\sqrt{1+(Z/1.35)^2}}, \\quad u = \\frac{5 P c_0}{7 P_0 \\sqrt{1 + 6P/(7P_0)}}',
       inputs: [
         { label: 'Weapon Yield', value: yieldKt, unit: 'kT' },
         { label: 'Detonation Mode', value: burstMode === 'air' ? 'Air Burst' : 'Surface Burst' },
