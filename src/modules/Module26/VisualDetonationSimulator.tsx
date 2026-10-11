@@ -27,27 +27,22 @@ const CITY_PRESETS: CityPreset[] = [
   { id: 'hiroshima', name: 'Hiroshima (A-Bomb Dome)', country: 'Japan', lat: 34.3955, lon: 132.4536, popDensityPerKm2: 4200 }
 ];
 
-interface Particle {
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  size: number;
-  opacity: number;
-  color: string;
-  life: number;
-  maxLife: number;
-  isEmber: boolean;
+export type OutriderEffectType = 'fireball' | 'radiation' | 'shockwave' | 'thermal';
+
+interface SmokeLobe {
+  relX: number; // -1 to 1 across cap width
+  relY: number; // -1 to 1 across cap height
+  baseRadius: number; // relative size
+  phase: number;
+  speed: number;
+  vortexRadius: number;
+  layer: 'back' | 'core' | 'front';
 }
 
 // Procedural audio synthesizer for nuclear detonation boom and rumbling shockwave
 class DetonationSoundEngine {
   private ctx: AudioContext | null = null;
   private isMuted: boolean = false;
-
-  constructor() {
-    // Lazy initialize upon user gesture
-  }
 
   public setMuted(muted: boolean) {
     this.isMuted = muted;
@@ -71,31 +66,31 @@ class DetonationSoundEngine {
       }
 
       const now = this.ctx.currentTime;
-      const duration = Math.min(8.0, 2.5 + Math.log10(Math.max(1, yieldKt)) * 1.2);
+      const duration = Math.min(9.0, 2.5 + Math.log10(Math.max(1, yieldKt)) * 1.4);
 
-      // 1. Initial High-Frequency Flash & Pressure Crack
+      // 1. Initial Shock Wavefront Crack
       const crackOsc = this.ctx.createOscillator();
       const crackGain = this.ctx.createGain();
-      crackOsc.type = 'triangle';
-      crackOsc.frequency.setValueAtTime(140, now);
-      crackOsc.frequency.exponentialRampToValueAtTime(35, now + 0.3);
-      crackGain.gain.setValueAtTime(0.5, now);
-      crackGain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+      crackOsc.type = 'sawtooth';
+      crackOsc.frequency.setValueAtTime(160, now);
+      crackOsc.frequency.exponentialRampToValueAtTime(30, now + 0.35);
+      crackGain.gain.setValueAtTime(0.6, now);
+      crackGain.gain.exponentialRampToValueAtTime(0.01, now + 0.45);
       crackOsc.connect(crackGain);
       crackGain.connect(this.ctx.destination);
       crackOsc.start(now);
-      crackOsc.stop(now + 0.45);
+      crackOsc.stop(now + 0.5);
 
-      // 2. Deep Sub-Bass Explosive Core (15 Hz to 45 Hz)
+      // 2. Heavy Sub-Bass Core Rumble (15 Hz to 45 Hz)
       const subOsc = this.ctx.createOscillator();
       const subGain = this.ctx.createGain();
       subOsc.type = 'sine';
-      subOsc.frequency.setValueAtTime(55, now);
-      subOsc.frequency.exponentialRampToValueAtTime(22, now + 1.5);
+      subOsc.frequency.setValueAtTime(60, now);
+      subOsc.frequency.exponentialRampToValueAtTime(24, now + 1.8);
       subOsc.frequency.exponentialRampToValueAtTime(15, now + duration);
 
-      subGain.gain.setValueAtTime(0.7, now + 0.05);
-      subGain.gain.exponentialRampToValueAtTime(0.9, now + 0.35);
+      subGain.gain.setValueAtTime(0.75, now + 0.05);
+      subGain.gain.exponentialRampToValueAtTime(0.95, now + 0.4);
       subGain.gain.exponentialRampToValueAtTime(0.001, now + duration);
 
       subOsc.connect(subGain);
@@ -103,7 +98,7 @@ class DetonationSoundEngine {
       subOsc.start(now);
       subOsc.stop(now + duration);
 
-      // 3. Brown Noise Atmospheric Shockwave Reverberation
+      // 3. Brown-Noise Convective Atmospheric Rumbling
       const bufferSize = this.ctx.sampleRate * duration;
       const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
       const output = noiseBuffer.getChannelData(0);
@@ -112,7 +107,7 @@ class DetonationSoundEngine {
         const white = Math.random() * 2 - 1;
         output[i] = (lastOut + 0.02 * white) / 1.02;
         lastOut = output[i];
-        output[i] *= 3.5; // Boost brown noise volume
+        output[i] *= 3.8;
       }
 
       const noiseSource = this.ctx.createBufferSource();
@@ -120,12 +115,12 @@ class DetonationSoundEngine {
 
       const noiseFilter = this.ctx.createBiquadFilter();
       noiseFilter.type = 'lowpass';
-      noiseFilter.frequency.setValueAtTime(120, now);
-      noiseFilter.frequency.exponentialRampToValueAtTime(30, now + duration);
+      noiseFilter.frequency.setValueAtTime(140, now);
+      noiseFilter.frequency.exponentialRampToValueAtTime(35, now + duration);
 
       const noiseGain = this.ctx.createGain();
       noiseGain.gain.setValueAtTime(0.01, now);
-      noiseGain.gain.linearRampToValueAtTime(0.8, now + 0.25);
+      noiseGain.gain.linearRampToValueAtTime(0.85, now + 0.3);
       noiseGain.gain.exponentialRampToValueAtTime(0.001, now + duration);
 
       noiseSource.connect(noiseFilter);
@@ -135,12 +130,15 @@ class DetonationSoundEngine {
       noiseSource.start(now);
       noiseSource.stop(now + duration);
     } catch {
-      // AudioContext policy suppression gracefully handled
+      // Audio suppression handled
     }
   }
 }
 
 const soundEngine = new DetonationSoundEngine();
+
+// Cache for loaded CartoDB Dark Matter map tiles
+const tileImageCache = new Map<string, HTMLImageElement>();
 
 export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
   yieldKt,
@@ -152,24 +150,30 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
   // Simulator View Mode: 'profile' (Mushroom Cloud Elevation), 'map' (Outrider Blast Zones), 'split' (Dual)
   const [viewMode, setViewMode] = useState<'profile' | 'map' | 'split'>('profile');
 
+  // Selected Effect for Outrider Card Inspection
+  const [selectedEffect, setSelectedEffect] = useState<OutriderEffectType | null>(null);
+
+  // Unit of Measurement: Imperial (miles/ft) vs Metric (km/m)
+  const [unitMode, setUnitMode] = useState<'imperial' | 'metric'>('imperial');
+
   // Simulation Clock & Animation State
   const [simTimeSeconds, setSimTimeSeconds] = useState<number>(0.0);
   const [isPlaying, setIsPlaying] = useState<boolean>(true);
   const [playSpeed, setPlaySpeed] = useState<number>(1.0);
   const [isAudioMuted, setIsAudioMuted] = useState<boolean>(false);
   const [flashIntensity, setFlashIntensity] = useState<number>(0.0);
+  const [shakeIntensity, setShakeIntensity] = useState<number>(0.0);
 
-  // Selected City Preset for Casualties
+  // Selected City Preset for Casualties & Map Center
   const [selectedCityId, setSelectedCityId] = useState<string>('regina');
 
-  // Interactive Canvas References
+  // Canvas References
   const profileCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const mapCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const lastTimestampRef = useRef<number | null>(null);
-  const particlesRef = useRef<Particle[]>([]);
 
-  // Track the selected city
+  // Current City
   const currentCity = useMemo(() => {
     return CITY_PRESETS.find(c => c.id === selectedCityId) || CITY_PRESETS[0];
   }, [selectedCityId]);
@@ -181,11 +185,9 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
     // 1. Fireball Maximum Radius (Glasstone & Dolan Eq. 2.110: R ~ 70 * Y^0.38 m)
     const rFireballM = Math.round(70 * Math.pow(y, 0.38));
     const rFireballKm = rFireballM / 1000.0;
+    const rFireballMiles = rFireballKm * 0.621371;
 
     // 2. Cloud Top Height (H_top in km)
-    // Low yield (<=20 kt): H_top ~ 10 * Y^0.20 km (15 kt -> 12.0 km)
-    // Medium yield (20 - 1000 kt): H_top ~ 12 * (Y / 20)^0.23 km (100 kt -> 16.5 km; 1.2 MT -> 25.5 km)
-    // Megaton yield (>1000 kt): H_top ~ 25 * (Y / 1000)^0.22 km (15 MT -> 40 km; 50 MT Tsar -> 64 km)
     let hTopKm = 12.0;
     if (y <= 20) {
       hTopKm = 10.0 * Math.pow(y, 0.20);
@@ -194,55 +196,71 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
     } else {
       hTopKm = 25.0 * Math.pow(y / 1000.0, 0.22);
     }
+    const hTopMiles = hTopKm * 0.621371;
+    const hTopFeet = hTopKm * 3280.84;
 
     // 3. Cloud Base Height (H_base in km)
-    // Base of the mushroom cap is typically 55% - 65% of top height
     const hBaseFraction = Math.max(0.48, Math.min(0.68, 0.62 - 0.04 * Math.log10(Math.max(1, y / 20.0))));
     const hBaseKm = hTopKm * hBaseFraction;
+    const hBaseMiles = hBaseKm * 0.621371;
 
     // 4. Cloud Cap Diameter (D_cap in km)
-    // 15 kt -> ~5.5 km; 100 kt -> ~10.5 km; 1.2 MT -> ~22 km; 15 MT -> ~45 km; 50 MT -> ~95 km
     let dCapKm = 5.5;
     if (y <= 20) {
       dCapKm = 5.5 * Math.pow(y / 15.0, 0.35);
     } else {
       dCapKm = 6.0 * Math.pow(y / 20.0, 0.38);
     }
+    const dCapMiles = dCapKm * 0.621371;
 
     // 5. Cloud Stem Diameter (D_stem in km)
-    const dStemKm = Math.max(0.2, dCapKm * 0.18);
+    const dStemKm = Math.max(0.25, dCapKm * 0.20);
+    const dStemMiles = dStemKm * 0.621371;
 
     // 6. Buoyant Ascent Half-Time & Stabilization Time
-    const tRiseHalf = Math.max(12, Math.round(25 * Math.pow(y, 0.22))); // seconds to half height
+    const tRiseHalf = Math.max(14, Math.round(28 * Math.pow(y, 0.22))); // seconds to half height
     const tStabilize = Math.max(180, Math.round(240 * Math.pow(y, 0.15))); // ~4-8 minutes
 
     // 7. Outrider 4-Tier Damage Zones (Exact Kinematic Formulations)
-    // Zone 1: Fireball Radius (km)
+    // Zone 1: Fireball Radius
     const rZone1_FireballKm = rFireballKm;
+    const rZone1_FireballMiles = rFireballMiles;
 
-    // Zone 2: Radiation / Heavy Blast (20 psi) Radius (km)
-    // Kinney-Graham 20 psi shockwave contour
+    // Zone 2: Radiation / Heavy Blast (20 psi) Radius
     const rZone2_Heavy20psiKm = Math.max(rFireballKm * 1.15, 0.38 * Math.pow(y, 0.33));
+    const rZone2_Heavy20psiMiles = rZone2_Heavy20psiKm * 0.621371;
 
-    // Zone 3: Moderate Blast (5 psi) Radius (km)
+    // Zone 3: Moderate Blast (5 psi) Radius
     const rZone3_Mod5psiKm = Math.max(rZone2_Heavy20psiKm * 1.8, 0.95 * Math.pow(y, 0.33));
+    const rZone3_Mod5psiMiles = rZone3_Mod5psiKm * 0.621371;
 
-    // Zone 4: Thermal Radiation (3rd Degree Burns, 10 cal/cm²) Radius (km)
+    // Zone 4: Thermal Radiation (3rd Degree Burns) Radius
     const rZone4_Thermal3rdKm = Math.max(rZone3_Mod5psiKm * 1.1, 0.82 * Math.pow(y, 0.41));
+    const rZone4_Thermal3rdMiles = rZone4_Thermal3rdKm * 0.621371;
 
     return {
       rFireballKm,
       rFireballM,
+      rFireballMiles,
       hTopKm,
+      hTopMiles,
+      hTopFeet,
       hBaseKm,
+      hBaseMiles,
       dCapKm,
+      dCapMiles,
       dStemKm,
+      dStemMiles,
       tRiseHalf,
       tStabilize,
       rZone1_FireballKm,
+      rZone1_FireballMiles,
       rZone2_Heavy20psiKm,
+      rZone2_Heavy20psiMiles,
       rZone3_Mod5psiKm,
-      rZone4_Thermal3rdKm
+      rZone3_Mod5psiMiles,
+      rZone4_Thermal3rdKm,
+      rZone4_Thermal3rdMiles
     };
   }, [yieldKt]);
 
@@ -251,47 +269,80 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
     const density = currentCity.popDensityPerKm2;
     const { rZone1_FireballKm, rZone2_Heavy20psiKm, rZone3_Mod5psiKm, rZone4_Thermal3rdKm } = cloudPhysics;
 
-    // Concentric Annulus Areas (km²)
-    const areaFireball = Math.PI * rZone1_FireballKm * rZone1_FireballKm;
-    const area20psi = Math.PI * rZone2_Heavy20psiKm * rZone2_Heavy20psiKm;
-    const area5psi = Math.PI * rZone3_Mod5psiKm * rZone3_Mod5psiKm;
-    const areaThermal = Math.PI * rZone4_Thermal3rdKm * rZone4_Thermal3rdKm;
+    const areaFireballKm2 = Math.PI * rZone1_FireballKm * rZone1_FireballKm;
+    const area20psiKm2 = Math.PI * rZone2_Heavy20psiKm * rZone2_Heavy20psiKm;
+    const area5psiKm2 = Math.PI * rZone3_Mod5psiKm * rZone3_Mod5psiKm;
+    const areaThermalKm2 = Math.PI * rZone4_Thermal3rdKm * rZone4_Thermal3rdKm;
 
-    // 100% fatalities in 20 psi zone
-    const fatZone2 = area20psi * density * 0.98;
-    // 50% fatalities, 40% injuries in 5 psi to 20 psi annulus
-    const annulus5psi = Math.max(0, area5psi - area20psi);
+    const fatZone2 = area20psiKm2 * density * 0.98;
+    const annulus5psi = Math.max(0, area5psiKm2 - area20psiKm2);
     const fatZone3 = annulus5psi * density * 0.50;
     const injZone3 = annulus5psi * density * 0.40;
 
-    // 15% fatalities (incendiary firestorms), 55% injuries in thermal annulus
-    const annulusThermal = Math.max(0, areaThermal - area5psi);
+    const annulusThermal = Math.max(0, areaThermalKm2 - area5psiKm2);
     const fatZone4 = annulusThermal * density * 0.15;
     const injZone4 = annulusThermal * density * 0.55;
 
     const totalFatalities = Math.round(fatZone2 + fatZone3 + fatZone4);
     const totalInjuries = Math.round(injZone3 + injZone4);
-    const totalImpactAreaKm2 = Math.round(areaThermal);
-    const totalImpactAreaSqMi = Math.round(areaThermal * 0.386102);
+    const totalImpactAreaKm2 = Math.round(areaThermalKm2);
+    const totalImpactAreaSqMi = Math.round(areaThermalKm2 * 0.386102);
 
     return {
       totalFatalities,
       totalInjuries,
       totalImpactAreaKm2,
       totalImpactAreaSqMi,
-      areaFireball: areaFireball.toFixed(2),
-      area20psi: area20psi.toFixed(2),
-      area5psi: area5psi.toFixed(2),
-      areaThermal: areaThermal.toFixed(2)
+      areaFireballKm2: areaFireballKm2.toFixed(2),
+      areaFireballSqMi: (areaFireballKm2 * 0.386102).toFixed(2),
+      area20psiKm2: area20psiKm2.toFixed(2),
+      area20psiSqMi: (area20psiKm2 * 0.386102).toFixed(2),
+      area5psiKm2: area5psiKm2.toFixed(2),
+      area5psiSqMi: (area5psiKm2 * 0.386102).toFixed(2),
+      areaThermalKm2: areaThermalKm2.toFixed(2),
+      areaThermalSqMi: (areaThermalKm2 * 0.386102).toFixed(2),
+      fatalitiesRadiation: Math.round(fatZone2),
+      fatalitiesBlast: Math.round(fatZone3),
+      injuriesBlast: Math.round(injZone3),
+      fatalitiesThermal: Math.round(fatZone4),
+      injuriesThermal: Math.round(injZone4)
     };
   }, [cloudPhysics, currentCity]);
+
+  // Pre-generate Volumetric Smoke Lobes for Organic Mushroom Cap
+  const smokeLobes = useMemo<SmokeLobe[]>(() => {
+    const lobes: SmokeLobe[] = [];
+    const count = 75;
+    for (let i = 0; i < count; i++) {
+      const angle = (i / count) * Math.PI * 2;
+      const dist = Math.sqrt(Math.random()) * 0.95;
+      const relX = Math.cos(angle) * dist;
+      // Flatten the top of the anvil
+      const relY = Math.sin(angle) * dist * 0.55;
+      const baseRadius = 0.18 + Math.random() * 0.16;
+      const phase = Math.random() * Math.PI * 2;
+      const speed = 0.4 + Math.random() * 0.8;
+      const layer = Math.abs(relX) > 0.65 ? 'front' : (relY > 0 ? 'core' : 'back');
+
+      lobes.push({
+        relX,
+        relY,
+        baseRadius,
+        phase,
+        speed,
+        vortexRadius: dist,
+        layer
+      });
+    }
+    return lobes;
+  }, []);
 
   // --- TRIGGER DETONATION EVENT ---
   const triggerDetonation = useCallback(() => {
     setSimTimeSeconds(0.0);
     setIsPlaying(true);
     setFlashIntensity(1.0);
-    particlesRef.current = [];
+    setShakeIntensity(1.0);
     soundEngine.playDetonation(yieldKt);
   }, [yieldKt]);
 
@@ -314,11 +365,12 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
       if (isPlaying && active) {
         setSimTimeSeconds((prev) => {
           const next = prev + deltaSec * playSpeed;
-          return Math.min(600, next); // cap at 10 minutes
+          return Math.min(600, next);
         });
 
-        // Flash decay
-        setFlashIntensity((prev) => Math.max(0, prev - deltaSec * 1.8));
+        // Flash and camera shake decay
+        setFlashIntensity((prev) => Math.max(0, prev - deltaSec * 1.6));
+        setShakeIntensity((prev) => Math.max(0, prev - deltaSec * 1.2));
       }
 
       animationFrameRef.current = requestAnimationFrame(tick);
@@ -333,12 +385,50 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
     };
   }, [isPlaying, playSpeed]);
 
-  // Trigger on initial mount
+  // Initial detonation trigger
   useEffect(() => {
     triggerDetonation();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // --- CANVAS 1: ATMOSPHERIC PROFILE & MUSHROOM CLOUD ELEVATION SIMULATOR ---
+  // --- PRELOAD CARTO-DB DARK MAP TILES FOR SELECTED CITY ---
+  useEffect(() => {
+    const { rZone4_Thermal3rdKm } = cloudPhysics;
+    // Choose appropriate zoom level so the thermal zone fits nicely on canvas
+    let zoom = 11;
+    if (rZone4_Thermal3rdKm < 2.5) zoom = 13;
+    else if (rZone4_Thermal3rdKm < 6.0) zoom = 12;
+    else if (rZone4_Thermal3rdKm < 15.0) zoom = 11;
+    else if (rZone4_Thermal3rdKm < 35.0) zoom = 10;
+    else if (rZone4_Thermal3rdKm < 80.0) zoom = 9;
+    else zoom = 8;
+
+    const n = Math.pow(2, zoom);
+    const centerTileX = Math.floor(((currentCity.lon + 180.0) / 360.0) * n);
+    const latRad = (currentCity.lat * Math.PI) / 180.0;
+    const centerTileY = Math.floor(
+      ((1.0 - Math.log(Math.tan(latRad) + 1.0 / Math.cos(latRad)) / Math.PI) / 2.0) * n
+    );
+
+    // Preload a 5x5 grid of surrounding map tiles
+    for (let dx = -2; dx <= 2; dx++) {
+      for (let dy = -2; dy <= 2; dy++) {
+        const tx = centerTileX + dx;
+        const ty = centerTileY + dy;
+        const tileKey = `${zoom}/${tx}/${ty}`;
+        if (!tileImageCache.has(tileKey)) {
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          img.src = `https://basemaps.cartocdn.com/dark_all/${zoom}/${tx}/${ty}.png`;
+          img.onload = () => {
+            tileImageCache.set(tileKey, img);
+          };
+          tileImageCache.set(tileKey, img);
+        }
+      }
+    }
+  }, [currentCity, cloudPhysics]);
+
+  // --- CANVAS 1: VOLUMETRIC ATMOSPHERIC PROFILE & MUSHROOM CLOUD SIMULATOR ---
   useEffect(() => {
     const canvas = profileCanvasRef.current;
     if (!canvas) return;
@@ -349,141 +439,218 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
     const height = canvas.height;
 
     // Viewport altitude range: 0 km to max(40 km, hTopKm * 1.35)
-    const maxAltKm = Math.max(35, Math.ceil((cloudPhysics.hTopKm * 1.25) / 10) * 10);
-    const groundY = height - 50; // 50px for ground terrain
+    const maxAltKm = Math.max(35, Math.ceil((cloudPhysics.hTopKm * 1.3) / 10) * 10);
+    const groundY = height - 55;
 
     const kmToY = (altKm: number) => {
       const frac = altKm / maxAltKm;
-      return groundY - frac * (groundY - 30);
+      return groundY - frac * (groundY - 35);
     };
 
     const kmToPixelsX = (distKm: number) => {
-      // Map horizontal width relative to cap diameter
-      const visibleWidthKm = Math.max(cloudPhysics.dCapKm * 2.8, 30);
-      return (distKm / visibleWidthKm) * (width * 0.85);
+      const visibleWidthKm = Math.max(cloudPhysics.dCapKm * 3.2, 35);
+      return (distKm / visibleWidthKm) * (width * 0.82);
     };
 
-    // 1. Clear & Atmospheric Gradient
-    const skyGradient = ctx.createLinearGradient(0, 0, 0, groundY);
-    skyGradient.addColorStop(0.0, '#020307'); // Deep Space / Mesosphere
-    skyGradient.addColorStop(0.35, '#050c1e'); // Upper Stratosphere
-    skyGradient.addColorStop(0.65, '#0d1d3a'); // Lower Stratosphere / Ozone
-    skyGradient.addColorStop(0.85, '#132a4e'); // Tropopause
-    skyGradient.addColorStop(1.0, '#1c3d6d'); // Troposphere
-    ctx.fillStyle = skyGradient;
-    ctx.fillRect(0, 0, width, height);
-
-    // 2. Stars in Upper Stratosphere / Mesosphere
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-    for (let s = 0; s < 40; s++) {
-      const starX = (s * 83.17) % width;
-      const starY = (s * 37.49) % (groundY * 0.45);
-      ctx.fillRect(starX, starY, 1.2, 1.2);
+    // Camera Shake Offset during detonation
+    let shakeX = 0, shakeY = 0;
+    if (shakeIntensity > 0.01) {
+      shakeX = (Math.random() - 0.5) * 8 * shakeIntensity;
+      shakeY = (Math.random() - 0.5) * 8 * shakeIntensity;
     }
 
-    // 3. Atmospheric Layer Boundaries & Dashed Lines
+    ctx.save();
+    ctx.translate(shakeX, shakeY);
+
+    // 1. Atmospheric Sky Gradient
+    const skyGradient = ctx.createLinearGradient(0, 0, 0, groundY);
+    skyGradient.addColorStop(0.0, '#020307'); // Deep Space / Mesosphere
+    skyGradient.addColorStop(0.35, '#050b18'); // Upper Stratosphere
+    skyGradient.addColorStop(0.65, '#0c1a32'); // Stratospheric Ozone
+    skyGradient.addColorStop(0.85, '#13284a'); // Tropopause Inversion
+    skyGradient.addColorStop(1.0, '#1a3a66'); // Troposphere Twilight
+    ctx.fillStyle = skyGradient;
+    ctx.fillRect(-20, -20, width + 40, height + 40);
+
+    // 2. High-Altitude Stars
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+    for (let s = 0; s < 50; s++) {
+      const sx = (s * 79.19) % width;
+      const sy = (s * 31.41) % (groundY * 0.4);
+      ctx.fillRect(sx, sy, 1.2, 1.2);
+    }
+
+    // 3. Atmospheric Boundary Markings
     const tropopauseY = kmToY(12.0);
-    ctx.strokeStyle = 'rgba(0, 229, 255, 0.25)';
-    ctx.setLineDash([4, 4]);
+    ctx.strokeStyle = 'rgba(0, 229, 255, 0.22)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 6]);
     ctx.beginPath();
-    ctx.moveTo(70, tropopauseY);
+    ctx.moveTo(65, tropopauseY);
     ctx.lineTo(width - 20, tropopauseY);
     ctx.stroke();
     ctx.setLineDash([]);
 
-    ctx.fillStyle = 'rgba(0, 229, 255, 0.6)';
+    ctx.fillStyle = 'rgba(0, 229, 255, 0.65)';
     ctx.font = '10px Inter, sans-serif';
-    ctx.fillText('TROPOPAUSE INVERSION BOUNDARY (12 km)', 80, tropopauseY - 5);
+    ctx.fillText('TROPOPAUSE BOUNDARY (12 km / 39,000 ft)', 75, tropopauseY - 5);
 
     if (maxAltKm >= 50) {
       const stratopauseY = kmToY(50.0);
       ctx.strokeStyle = 'rgba(245, 158, 11, 0.2)';
       ctx.setLineDash([3, 5]);
       ctx.beginPath();
-      ctx.moveTo(70, stratopauseY);
+      ctx.moveTo(65, stratopauseY);
       ctx.lineTo(width - 20, stratopauseY);
       ctx.stroke();
       ctx.setLineDash([]);
-      ctx.fillStyle = 'rgba(245, 158, 11, 0.6)';
-      ctx.fillText('STRATOPAUSE (50 km)', 80, stratopauseY - 5);
+      ctx.fillStyle = 'rgba(245, 158, 11, 0.65)';
+      ctx.fillText('STRATOPAUSE (50 km / 164,000 ft)', 75, stratopauseY - 5);
     }
 
-    // 4. Ground Terrain & Horizon
-    const groundGrad = ctx.createLinearGradient(0, groundY, 0, height);
-    groundGrad.addColorStop(0.0, '#101720');
-    groundGrad.addColorStop(1.0, '#060a0f');
-    ctx.fillStyle = groundGrad;
-    ctx.fillRect(0, groundY, width, height - groundY);
+    // 4. Distant Mountain Silhouette Ranges
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.7)';
+    ctx.beginPath();
+    ctx.moveTo(0, groundY);
+    for (let mx = 0; mx <= width; mx += 30) {
+      const my = groundY - 10 - Math.sin(mx * 0.015) * 8 - Math.cos(mx * 0.04) * 6;
+      ctx.lineTo(mx, my);
+    }
+    ctx.lineTo(width, groundY);
+    ctx.closePath();
+    ctx.fill();
 
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+    // 5. Ground Line & Terrain
+    const groundGrad = ctx.createLinearGradient(0, groundY, 0, height);
+    groundGrad.addColorStop(0.0, '#0f172a');
+    groundGrad.addColorStop(1.0, '#020617');
+    ctx.fillStyle = groundGrad;
+    ctx.fillRect(-20, groundY, width + 40, height - groundY + 40);
+
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+    ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(0, groundY);
     ctx.lineTo(width, groundY);
     ctx.stroke();
 
-    // 5. Left Altitude Scale (Ruler)
-    ctx.fillStyle = 'rgba(148, 163, 184, 0.8)';
+    // 6. Left Altitude Ruler
+    ctx.fillStyle = 'rgba(148, 163, 184, 0.75)';
     ctx.font = '10px JetBrains Mono, monospace';
     ctx.textAlign = 'right';
     const altStep = maxAltKm >= 60 ? 10 : 5;
     for (let alt = 0; alt <= maxAltKm; alt += altStep) {
       const yPos = kmToY(alt);
-      ctx.fillText(`${alt} km`, 50, yPos + 3);
+      const label = unitMode === 'imperial'
+        ? `${Math.round(alt * 0.621371)} mi`
+        : `${alt} km`;
+      ctx.fillText(label, 52, yPos + 3);
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
       ctx.beginPath();
-      ctx.moveTo(54, yPos);
-      ctx.lineTo(60, yPos);
+      ctx.moveTo(56, yPos);
+      ctx.lineTo(62, yPos);
       ctx.stroke();
     }
     ctx.textAlign = 'left';
 
-    // 6. Height Reference Landmarks (Mt Everest, Airliner, Burj Khalifa)
-    // Burj Khalifa (0.83 km)
+    // 7. REALISTIC LANDMARK SILHOUETTES
+    // A. Burj Khalifa (828 m)
     const burjY = kmToY(0.83);
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
-    ctx.fillRect(80, burjY, 2, groundY - burjY);
-    ctx.fillText('Burj Khalifa (828m)', 85, burjY + 10);
+    const burjX = 72;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+    ctx.fillRect(burjX, burjY + 12, 3, groundY - burjY - 12);
+    ctx.fillRect(burjX - 1, burjY + 22, 5, groundY - burjY - 22);
+    // Spire
+    ctx.fillRect(burjX + 1, burjY, 1, 12);
+    ctx.font = '9px Inter, sans-serif';
+    ctx.fillText('Burj Khalifa (828m)', burjX + 7, burjY + 12);
 
-    // Mt. Everest (8.85 km)
+    // B. Mt. Everest (8.85 km) with Snowy Ridge Crags
     const everestY = kmToY(8.85);
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+    const everestX = 110;
     ctx.beginPath();
-    ctx.moveTo(75, groundY);
-    ctx.lineTo(105, everestY);
-    ctx.lineTo(135, groundY);
+    ctx.moveTo(everestX - 35, groundY);
+    ctx.lineTo(everestX - 8, everestY + 15);
+    ctx.lineTo(everestX, everestY);
+    ctx.lineTo(everestX + 12, everestY + 22);
+    ctx.lineTo(everestX + 40, groundY);
     ctx.closePath();
-    ctx.fillStyle = 'rgba(100, 116, 139, 0.25)';
+    ctx.fillStyle = 'rgba(71, 85, 105, 0.45)';
     ctx.fill();
-    ctx.strokeStyle = 'rgba(148, 163, 184, 0.5)';
+    ctx.strokeStyle = 'rgba(148, 163, 184, 0.6)';
     ctx.stroke();
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-    ctx.fillText('▲ Mt. Everest (8.85 km)', 110, everestY + 5);
 
-    // Commercial Airliner (11 km)
-    const planeY = kmToY(11.0);
-    ctx.fillStyle = 'rgba(56, 189, 248, 0.7)';
-    ctx.fillText('✈ Commercial Airliner (11 km)', 85, planeY - 4);
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.3)';
-    ctx.setLineDash([2, 4]);
+    // Snow Cap on Everest
     ctx.beginPath();
-    ctx.moveTo(85, planeY);
-    ctx.lineTo(240, planeY);
-    ctx.stroke();
-    ctx.setLineDash([]);
+    ctx.moveTo(everestX - 12, everestY + 25);
+    ctx.lineTo(everestX, everestY);
+    ctx.lineTo(everestX + 10, everestY + 20);
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+    ctx.fill();
 
-    // 7. DETONATION & MUSHROOM CLOUD PHYSICS SIMULATION
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+    ctx.font = '10px Inter, sans-serif';
+    ctx.fillText('▲ Mt. Everest (8.85 km / 29,032 ft)', everestX - 15, everestY - 5);
+
+    // C. Commercial Jetliner (11 km) with Contrail
+    const planeY = kmToY(11.0);
+    const planeX = 120;
+    // Contrail
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(planeX - 50, planeY);
+    ctx.lineTo(planeX, planeY);
+    ctx.stroke();
+
+    // Airplane Silhouette
+    ctx.fillStyle = '#38bdf8';
+    ctx.beginPath();
+    ctx.moveTo(planeX + 10, planeY); // nose
+    ctx.lineTo(planeX + 2, planeY - 1.5);
+    ctx.lineTo(planeX - 2, planeY - 6); // wing top
+    ctx.lineTo(planeX - 4, planeY - 1.5);
+    ctx.lineTo(planeX - 10, planeY - 1);
+    ctx.lineTo(planeX - 14, planeY - 4); // tail fin
+    ctx.lineTo(planeX - 14, planeY);
+    ctx.lineTo(planeX - 4, planeY + 1.5);
+    ctx.lineTo(planeX - 2, planeY + 6); // wing bottom
+    ctx.lineTo(planeX + 2, planeY + 1.5);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = 'rgba(56, 189, 248, 0.85)';
+    ctx.font = '10px Inter, sans-serif';
+    ctx.fillText('✈ Airliner Cruising (11 km / 36,000 ft)', planeX + 18, planeY + 3);
+
+    // D. SR-71 Blackbird / U-2 Spyplane (24 km)
+    if (maxAltKm >= 30) {
+      const spyY = kmToY(24.0);
+      const spyX = 160;
+      ctx.fillStyle = '#a855f7';
+      ctx.beginPath();
+      ctx.moveTo(spyX + 8, spyY);
+      ctx.lineTo(spyX - 4, spyY - 4);
+      ctx.lineTo(spyX - 10, spyY);
+      ctx.lineTo(spyX - 4, spyY + 4);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = 'rgba(168, 85, 247, 0.8)';
+      ctx.fillText('⚡ SR-71 Blackbird (24 km / 80,000 ft)', spyX + 14, spyY + 3);
+    }
+
+    // 8. NUCLEAR DETONATION & MUSHROOM CLOUD PHYSICS SIMULATION
     const centerX = width * 0.58;
     const t = simTimeSeconds;
-
-    // Growth progression formulas
     const { hTopKm, hBaseKm, dCapKm, dStemKm, rFireballKm, tRiseHalf } = cloudPhysics;
 
-    // Fractional heights at time t
-    const currentGrowth = t / (t + tRiseHalf); // 0.0 to 1.0 smooth sigmoidal
-    const currentTopKm = Math.max(rFireballKm * 1.5, hTopKm * currentGrowth);
-    const currentBaseKm = Math.max(rFireballKm * 0.5, hBaseKm * Math.pow(currentGrowth, 1.2));
-    const currentCapWidthKm = Math.max(rFireballKm * 2.0, dCapKm * Math.pow(currentGrowth, 0.8));
-    const currentStemWidthKm = Math.max(rFireballKm * 0.6, dStemKm * Math.pow(currentGrowth, 0.6));
+    // Fractional heights & dimensions
+    const currentGrowth = t / (t + tRiseHalf);
+    const currentTopKm = Math.max(rFireballKm * 1.4, hTopKm * currentGrowth);
+    const currentBaseKm = Math.max(rFireballKm * 0.5, hBaseKm * Math.pow(currentGrowth, 1.25));
+    const currentCapWidthKm = Math.max(rFireballKm * 1.8, dCapKm * Math.pow(currentGrowth, 0.8));
+    const currentStemWidthKm = Math.max(rFireballKm * 0.5, dStemKm * Math.pow(currentGrowth, 0.6));
 
     const topY = kmToY(currentTopKm);
     const baseY = kmToY(currentBaseKm);
@@ -493,14 +660,14 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
     // Initial Flash & Fireball Phase (t < 4.0s)
     if (t < 4.0) {
       const fbFrac = Math.min(1.0, t / 1.5);
-      const fbRadPx = kmToPixelsX(rFireballKm * fbFrac * 1.2);
+      const fbRadPx = kmToPixelsX(rFireballKm * fbFrac * 1.25);
       const fbY = burstMode === 'air' ? kmToY(burstAltitudeM / 1000.0) : groundY;
 
       const fbGrad = ctx.createRadialGradient(centerX, fbY, 0, centerX, fbY, fbRadPx);
       fbGrad.addColorStop(0.0, 'rgba(255, 255, 255, 1.0)');
-      fbGrad.addColorStop(0.25, 'rgba(254, 240, 138, 0.95)');
-      fbGrad.addColorStop(0.55, 'rgba(249, 115, 22, 0.85)');
-      fbGrad.addColorStop(0.85, 'rgba(239, 68, 68, 0.6)');
+      fbGrad.addColorStop(0.2, 'rgba(254, 240, 138, 0.98)');
+      fbGrad.addColorStop(0.5, 'rgba(249, 115, 22, 0.9)');
+      fbGrad.addColorStop(0.85, 'rgba(239, 68, 68, 0.7)');
       fbGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0.0)');
 
       ctx.fillStyle = fbGrad;
@@ -508,169 +675,164 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
       ctx.arc(centerX, fbY, fbRadPx, 0, Math.PI * 2);
       ctx.fill();
 
-      // Expanding Shockwave Ring (Supersonic Wavefront)
-      const shockSpeedKmS = 1.2; // hypersonic early shock speed
-      const shockRadiusPx = kmToPixelsX(t * shockSpeedKmS * 4.0);
-      ctx.strokeStyle = `rgba(255, 255, 255, ${Math.max(0, 0.8 - t * 0.2)})`;
+      // Supersonic Shockwave Ring
+      const shockSpeedKmS = 1.3;
+      const shockRadiusPx = kmToPixelsX(t * shockSpeedKmS * 4.2);
+      ctx.strokeStyle = `rgba(255, 255, 255, ${Math.max(0, 0.85 - t * 0.2)})`;
       ctx.lineWidth = 3;
       ctx.beginPath();
       ctx.arc(centerX, fbY, shockRadiusPx, 0, Math.PI * 2);
       ctx.stroke();
 
-      // Wilson Cloud Condensation Ring
-      if (t > 0.4 && t < 2.5) {
-        ctx.strokeStyle = `rgba(224, 242, 254, ${0.45 * (1 - t / 2.5)})`;
-        ctx.lineWidth = 12;
+      // Wilson Condensation Disc (Rarefaction Shock Collar)
+      if (t > 0.35 && t < 2.8) {
+        const wilsonGrad = ctx.createRadialGradient(centerX, fbY, shockRadiusPx * 0.75, centerX, fbY, shockRadiusPx * 0.98);
+        wilsonGrad.addColorStop(0.0, 'rgba(224, 242, 254, 0.0)');
+        wilsonGrad.addColorStop(0.5, `rgba(224, 242, 254, ${0.45 * (1 - t / 2.8)})`);
+        wilsonGrad.addColorStop(1.0, 'rgba(224, 242, 254, 0.0)');
+        ctx.fillStyle = wilsonGrad;
         ctx.beginPath();
-        ctx.arc(centerX, fbY, shockRadiusPx * 0.92, 0, Math.PI * 2);
-        ctx.stroke();
+        ctx.ellipse(centerX, fbY, shockRadiusPx * 0.98, shockRadiusPx * 0.45, 0, 0, Math.PI * 2);
+        ctx.fill();
       }
     }
 
-    // Mushroom Cloud Construction (t >= 0.8s)
+    // Volumetric Organic Mushroom Cloud (t >= 0.8s)
     if (t >= 0.8) {
-      const cloudAlpha = Math.min(1.0, (t - 0.8) / 1.5);
+      const cloudAlpha = Math.min(1.0, (t - 0.8) / 1.6);
+      const capCenterY = (topY + baseY) / 2;
+      const capRadiusY = Math.max(18, (baseY - topY) / 2);
+      const capRadiusX = Math.max(28, capWidthPx / 2);
 
-      // A. Suction Debris Stem (from ground zero upward into cap base)
-      const stemGrad = ctx.createLinearGradient(centerX - stemWidthPx / 2, 0, centerX + stemWidthPx / 2, 0);
-      if (burstMode === 'surface') {
-        // Surface burst: dark brown/charred radioactive pulverized earth
-        stemGrad.addColorStop(0.0, `rgba(40, 25, 20, ${0.75 * cloudAlpha})`);
-        stemGrad.addColorStop(0.3, `rgba(75, 50, 40, ${0.88 * cloudAlpha})`);
-        stemGrad.addColorStop(0.5, `rgba(180, 80, 30, ${0.85 * cloudAlpha})`); // glowing core updraft
-        stemGrad.addColorStop(0.7, `rgba(75, 50, 40, ${0.88 * cloudAlpha})`);
-        stemGrad.addColorStop(1.0, `rgba(40, 25, 20, ${0.75 * cloudAlpha})`);
-      } else {
-        // Air burst: cleaner, lighter condensed water vapor and smoke
-        stemGrad.addColorStop(0.0, `rgba(70, 75, 85, ${0.6 * cloudAlpha})`);
-        stemGrad.addColorStop(0.5, `rgba(120, 125, 140, ${0.8 * cloudAlpha})`);
-        stemGrad.addColorStop(1.0, `rgba(70, 75, 85, ${0.6 * cloudAlpha})`);
-      }
+      // A. Suction Debris Stem (from ground upward)
+      const stemSegments = 16;
+      for (let s = 0; s < stemSegments; s++) {
+        const segFrac = s / stemSegments;
+        const segY = groundY - segFrac * (groundY - (baseY + 10));
+        // Flared base, narrowing mid-throat, expanding into cap base
+        const throatCurve = Math.sin(segFrac * Math.PI);
+        const segWidth = stemWidthPx * (1.1 - throatCurve * 0.35);
+        const wiggle = Math.sin(segFrac * 6 + t * 0.5) * 4;
 
-      ctx.fillStyle = stemGrad;
-      ctx.beginPath();
-      // Flared base suction column
-      ctx.moveTo(centerX - stemWidthPx * 0.9, groundY);
-      ctx.quadraticCurveTo(centerX - stemWidthPx * 0.45, (groundY + baseY) / 2, centerX - stemWidthPx * 0.5, baseY + 10);
-      ctx.lineTo(centerX + stemWidthPx * 0.5, baseY + 10);
-      ctx.quadraticCurveTo(centerX + stemWidthPx * 0.45, (groundY + baseY) / 2, centerX + stemWidthPx * 0.9, groundY);
-      ctx.closePath();
-      ctx.fill();
+        const stemPuffGrad = ctx.createRadialGradient(
+          centerX + wiggle, segY, 0,
+          centerX + wiggle, segY, segWidth * 0.8
+        );
 
-      // B. Ground Debris Base Surge Skirt (for surface bursts)
-      if (burstMode === 'surface') {
-        const surgeRadiusPx = stemWidthPx * 1.8;
-        const surgeGrad = ctx.createRadialGradient(centerX, groundY, 0, centerX, groundY, surgeRadiusPx);
-        surgeGrad.addColorStop(0.0, `rgba(90, 60, 45, ${0.8 * cloudAlpha})`);
-        surgeGrad.addColorStop(0.7, `rgba(50, 35, 25, ${0.5 * cloudAlpha})`);
-        surgeGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
-        ctx.fillStyle = surgeGrad;
+        if (burstMode === 'surface') {
+          // Pulverized soil and dark charred debris
+          stemPuffGrad.addColorStop(0.0, `rgba(80, 50, 35, ${0.85 * cloudAlpha})`);
+          stemPuffGrad.addColorStop(0.5, `rgba(55, 38, 28, ${0.88 * cloudAlpha})`);
+          stemPuffGrad.addColorStop(1.0, 'rgba(20, 15, 12, 0.0)');
+        } else {
+          // Condensed water droplets and atmospheric soot
+          stemPuffGrad.addColorStop(0.0, `rgba(110, 115, 125, ${0.75 * cloudAlpha})`);
+          stemPuffGrad.addColorStop(0.6, `rgba(60, 65, 75, ${0.8 * cloudAlpha})`);
+          stemPuffGrad.addColorStop(1.0, 'rgba(25, 28, 35, 0.0)');
+        }
+
+        ctx.fillStyle = stemPuffGrad;
         ctx.beginPath();
-        ctx.ellipse(centerX, groundY, surgeRadiusPx, surgeRadiusPx * 0.35, 0, 0, Math.PI * 2);
+        ctx.arc(centerX + wiggle, segY, segWidth * 0.8, 0, Math.PI * 2);
         ctx.fill();
       }
 
-      // C. Toroidal Mushroom Cap (The Anvil / Vortex Head)
-      // Cap height spans between baseY and topY
-      const capCenterY = (topY + baseY) / 2;
-      const capRadiusY = Math.max(15, (baseY - topY) / 2);
-      const capRadiusX = Math.max(25, capWidthPx / 2);
+      // Internal Thermal Updraft Streak in Stem Throat
+      if (t < 90) {
+        const thermalAlpha = Math.max(0, 1.0 - t / 75.0);
+        const streakGrad = ctx.createLinearGradient(0, groundY, 0, baseY);
+        streakGrad.addColorStop(0.0, `rgba(255, 230, 150, ${0.8 * thermalAlpha})`);
+        streakGrad.addColorStop(0.5, `rgba(249, 115, 22, ${0.65 * thermalAlpha})`);
+        streakGrad.addColorStop(1.0, `rgba(220, 38, 38, ${0.2 * thermalAlpha})`);
+        ctx.fillStyle = streakGrad;
+        ctx.beginPath();
+        ctx.moveTo(centerX - stemWidthPx * 0.25, groundY);
+        ctx.lineTo(centerX - stemWidthPx * 0.15, baseY + 10);
+        ctx.lineTo(centerX + stemWidthPx * 0.15, baseY + 10);
+        ctx.lineTo(centerX + stemWidthPx * 0.25, groundY);
+        ctx.closePath();
+        ctx.fill();
+      }
 
-      // Core incandescent thermal glow inside the torus
-      if (t < 120) {
-        const fireAlpha = Math.max(0, 1.0 - t / 90.0);
-        const coreFireGrad = ctx.createRadialGradient(centerX, capCenterY, 0, centerX, capCenterY, capRadiusX * 0.65);
-        coreFireGrad.addColorStop(0.0, `rgba(255, 245, 200, ${fireAlpha * 0.95})`);
-        coreFireGrad.addColorStop(0.35, `rgba(249, 115, 22, ${fireAlpha * 0.85})`);
-        coreFireGrad.addColorStop(0.75, `rgba(185, 28, 28, ${fireAlpha * 0.5})`);
+      // B. Ground Debris Base Surge (for surface bursts)
+      if (burstMode === 'surface') {
+        const surgeRadiusPx = Math.min(width * 0.35, stemWidthPx * 2.2 * Math.min(2.0, t * 0.2));
+        const surgeGrad = ctx.createRadialGradient(centerX, groundY, 0, centerX, groundY, surgeRadiusPx);
+        surgeGrad.addColorStop(0.0, `rgba(90, 60, 40, ${0.85 * cloudAlpha})`);
+        surgeGrad.addColorStop(0.6, `rgba(65, 42, 30, ${0.65 * cloudAlpha})`);
+        surgeGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = surgeGrad;
+        ctx.beginPath();
+        ctx.ellipse(centerX, groundY, surgeRadiusPx, surgeRadiusPx * 0.3, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // C. Internal Incandescent Core (Fireball remnants glowing inside torus)
+      if (t < 150) {
+        const fireAlpha = Math.max(0, 1.0 - t / 110.0);
+        const coreFireGrad = ctx.createRadialGradient(
+          centerX, capCenterY, 0,
+          centerX, capCenterY, capRadiusX * 0.55
+        );
+        coreFireGrad.addColorStop(0.0, `rgba(255, 255, 220, ${fireAlpha * 0.95})`);
+        coreFireGrad.addColorStop(0.3, `rgba(251, 146, 60, ${fireAlpha * 0.9})`);
+        coreFireGrad.addColorStop(0.7, `rgba(220, 38, 38, ${fireAlpha * 0.6})`);
         coreFireGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
 
         ctx.fillStyle = coreFireGrad;
         ctx.beginPath();
-        ctx.ellipse(centerX, capCenterY, capRadiusX * 0.7, capRadiusY * 0.7, 0, 0, Math.PI * 2);
+        ctx.ellipse(centerX, capCenterY, capRadiusX * 0.6, capRadiusY * 0.6, 0, 0, Math.PI * 2);
         ctx.fill();
       }
 
-      // Outer Toroidal Smoke Anvil
-      const capGrad = ctx.createRadialGradient(centerX, capCenterY - capRadiusY * 0.2, capRadiusX * 0.2, centerX, capCenterY, capRadiusX);
-      capGrad.addColorStop(0.0, `rgba(140, 145, 155, ${0.9 * cloudAlpha})`);
-      capGrad.addColorStop(0.5, `rgba(90, 95, 105, ${0.92 * cloudAlpha})`);
-      capGrad.addColorStop(0.85, `rgba(50, 55, 65, ${0.95 * cloudAlpha})`);
-      capGrad.addColorStop(1.0, `rgba(30, 32, 38, ${0.85 * cloudAlpha})`);
+      // D. Volumetric Organic Smoke Lobes (Toroidal Convection Roll)
+      smokeLobes.forEach((lobe) => {
+        // Toroidal circulation rotation
+        const currentPhase = lobe.phase + (t * lobe.speed * 0.35);
+        const rollFrac = Math.sin(currentPhase);
+        const lobeX = centerX + lobe.relX * capRadiusX + rollFrac * 6;
+        const lobeY = capCenterY + lobe.relY * capRadiusY;
+        const lobeRadius = lobe.baseRadius * capRadiusX;
 
-      ctx.fillStyle = capGrad;
+        // Spherical 3D Volumetric Lighting Gradient: Light from fiery core below, dark smoke above
+        const lobeGrad = ctx.createRadialGradient(
+          lobeX, lobeY - lobeRadius * 0.25, lobeRadius * 0.1,
+          lobeX, lobeY, lobeRadius
+        );
+
+        if (lobe.layer === 'core') {
+          // Warmer internal core lobes
+          lobeGrad.addColorStop(0.0, `rgba(180, 160, 145, ${0.9 * cloudAlpha})`);
+          lobeGrad.addColorStop(0.4, `rgba(120, 95, 80, ${0.92 * cloudAlpha})`);
+          lobeGrad.addColorStop(0.85, `rgba(55, 45, 40, ${0.95 * cloudAlpha})`);
+          lobeGrad.addColorStop(1.0, 'rgba(25, 20, 20, 0.0)');
+        } else {
+          // Outer dense cauliflower lobes
+          lobeGrad.addColorStop(0.0, `rgba(145, 150, 160, ${0.88 * cloudAlpha})`);
+          lobeGrad.addColorStop(0.5, `rgba(80, 85, 95, ${0.92 * cloudAlpha})`);
+          lobeGrad.addColorStop(0.9, `rgba(38, 40, 48, ${0.95 * cloudAlpha})`);
+          lobeGrad.addColorStop(1.0, 'rgba(15, 18, 24, 0.0)');
+        }
+
+        ctx.fillStyle = lobeGrad;
+        ctx.beginPath();
+        ctx.arc(lobeX, lobeY, lobeRadius, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // E. Flattened Stratospheric Anvil Cap Shelf
+      const shelfGrad = ctx.createLinearGradient(0, topY, 0, topY + capRadiusY * 0.5);
+      shelfGrad.addColorStop(0.0, `rgba(175, 180, 190, ${0.65 * cloudAlpha})`);
+      shelfGrad.addColorStop(1.0, 'rgba(60, 65, 75, 0.0)');
+      ctx.fillStyle = shelfGrad;
       ctx.beginPath();
-      // Anvil profile: flattened top, rounded billowing lobes
-      ctx.ellipse(centerX, capCenterY, capRadiusX, capRadiusY, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Billowing lateral edge lobes (Toroidal Roll)
-      const leftLobeX = centerX - capRadiusX * 0.65;
-      const rightLobeX = centerX + capRadiusX * 0.65;
-      const lobeRadius = capRadiusY * 0.75;
-
-      ctx.fillStyle = `rgba(70, 75, 85, ${0.8 * cloudAlpha})`;
-      ctx.beginPath();
-      ctx.arc(leftLobeX, capCenterY + capRadiusY * 0.1, lobeRadius, 0, Math.PI * 2);
-      ctx.arc(rightLobeX, capCenterY + capRadiusY * 0.1, lobeRadius, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Top flattening anvil shelf
-      ctx.fillStyle = `rgba(180, 185, 195, ${0.5 * cloudAlpha})`;
-      ctx.beginPath();
-      ctx.ellipse(centerX, topY + 5, capRadiusX * 0.95, capRadiusY * 0.35, 0, 0, Math.PI * 2);
+      ctx.ellipse(centerX, topY + 4, capRadiusX * 0.95, capRadiusY * 0.35, 0, 0, Math.PI * 2);
       ctx.fill();
     }
 
-    // 8. Dynamic Swirling Smoke & Ember Particles
-    if (particlesRef.current.length < 180 && t > 0.5) {
-      for (let p = 0; p < 4; p++) {
-        const isEmber = Math.random() < 0.25 && t < 60;
-        particlesRef.current.push({
-          x: centerX + (Math.random() - 0.5) * stemWidthPx * 0.8,
-          y: groundY - Math.random() * 20,
-          vx: (Math.random() - 0.5) * 1.5,
-          vy: - (1.5 + Math.random() * 3.5),
-          size: isEmber ? 1.5 + Math.random() * 2 : 4 + Math.random() * 8,
-          opacity: 0.9,
-          color: isEmber ? '#ffedd5' : '#475569',
-          life: 0,
-          maxLife: 60 + Math.random() * 80,
-          isEmber
-        });
-      }
-    }
-
-    // Update & draw particles
-    const aliveParticles: Particle[] = [];
-    particlesRef.current.forEach((part) => {
-      part.life++;
-      part.x += part.vx;
-      part.y += part.vy;
-      part.opacity = Math.max(0, 1 - part.life / part.maxLife);
-
-      // Convective updraft toward cap, then roll outward
-      if (part.y < baseY && part.y > topY) {
-        part.vx += part.x < centerX ? -0.05 : 0.05; // Toroidal outward roll
-      }
-
-      ctx.fillStyle = part.isEmber
-        ? `rgba(254, 215, 170, ${part.opacity})`
-        : `rgba(71, 85, 105, ${part.opacity * 0.5})`;
-      ctx.beginPath();
-      ctx.arc(part.x, part.y, part.size, 0, Math.PI * 2);
-      ctx.fill();
-
-      if (part.life < part.maxLife && part.y > topY - 30) {
-        aliveParticles.push(part);
-      }
-    });
-    particlesRef.current = aliveParticles;
-
-    // 9. Dimension Annotation Arrows & Callouts
+    // 9. Dimension Annotation Arrows & Labels
     if (t >= 2.0) {
-      // Top Height Arrow
-      const arrowX = centerX + capWidthPx / 2 + 35;
+      const arrowX = centerX + capWidthPx / 2 + 40;
       ctx.strokeStyle = '#00e5ff';
       ctx.lineWidth = 1.5;
       ctx.beginPath();
@@ -678,7 +840,7 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
       ctx.lineTo(arrowX, topY);
       ctx.stroke();
 
-      // Top arrowhead
+      // Top Arrowhead
       ctx.fillStyle = '#00e5ff';
       ctx.beginPath();
       ctx.moveTo(arrowX - 4, topY + 8);
@@ -687,22 +849,31 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
       ctx.closePath();
       ctx.fill();
 
-      // Dimension Label
+      // Dimension Readouts
       ctx.font = 'bold 11px JetBrains Mono, monospace';
-      ctx.fillText(`Cloud Top: ${currentTopKm.toFixed(1)} km`, arrowX + 8, (groundY + topY) / 2);
+      const topLabel = unitMode === 'imperial'
+        ? `Cloud Top: ${(currentTopKm * 0.621371).toFixed(1)} mi (${Math.round(currentTopKm * 3280.84).toLocaleString()} ft)`
+        : `Cloud Top: ${currentTopKm.toFixed(1)} km`;
+      ctx.fillText(topLabel, arrowX + 8, (groundY + topY) / 2);
+
+      const capLabel = unitMode === 'imperial'
+        ? `Cap Width: ${(currentCapWidthKm * 0.621371).toFixed(1)} mi`
+        : `Cap Width: ${currentCapWidthKm.toFixed(1)} km`;
       ctx.font = '10px Inter, sans-serif';
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-      ctx.fillText(`Cap Width: ${currentCapWidthKm.toFixed(1)} km`, arrowX + 8, (groundY + topY) / 2 + 14);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+      ctx.fillText(capLabel, arrowX + 8, (groundY + topY) / 2 + 15);
     }
 
     // 10. Blinding Flash Overlay
     if (flashIntensity > 0.01) {
       ctx.fillStyle = `rgba(255, 255, 255, ${flashIntensity})`;
-      ctx.fillRect(0, 0, width, height);
+      ctx.fillRect(-20, -20, width + 40, height + 40);
     }
-  }, [simTimeSeconds, cloudPhysics, flashIntensity, burstMode, burstAltitudeM]);
 
-  // --- CANVAS 2: OUTRIDER-STYLE GEOSPATIAL BLAST DAMAGE MAP ---
+    ctx.restore();
+  }, [simTimeSeconds, cloudPhysics, flashIntensity, shakeIntensity, burstMode, burstAltitudeM, smokeLobes, unitMode]);
+
+  // --- CANVAS 2: OUTRIDER REAL-CITY DARK MATTER MAP & BLAST RADIUS SIMULATOR ---
   useEffect(() => {
     const canvas = mapCanvasRef.current;
     if (!canvas) return;
@@ -721,141 +892,189 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
       rZone4_Thermal3rdKm
     } = cloudPhysics;
 
-    // Viewport scale: fit 1.35x of outermost zone
-    const maxRadarKm = Math.max(rZone4_Thermal3rdKm * 1.35, 5.0);
-    const kmToMapPx = (km: number) => (km / maxRadarKm) * (Math.min(width, height) * 0.45);
+    // Viewport scale & Mapbox-style tile projection
+    let zoom = 11;
+    if (rZone4_Thermal3rdKm < 2.5) zoom = 13;
+    else if (rZone4_Thermal3rdKm < 6.0) zoom = 12;
+    else if (rZone4_Thermal3rdKm < 15.0) zoom = 11;
+    else if (rZone4_Thermal3rdKm < 35.0) zoom = 10;
+    else if (rZone4_Thermal3rdKm < 80.0) zoom = 9;
+    else zoom = 8;
 
-    // 1. Dark Map Background & Grid
-    ctx.fillStyle = '#070b12';
+    const n = Math.pow(2, zoom);
+    const centerTileX = ((currentCity.lon + 180.0) / 360.0) * n;
+    const latRad = (currentCity.lat * Math.PI) / 180.0;
+    const centerTileY =
+      ((1.0 - Math.log(Math.tan(latRad) + 1.0 / Math.cos(latRad)) / Math.PI) / 2.0) * n;
+
+    // Meters per pixel at this latitude
+    const metersPerPixel = (156543.03 * Math.cos(latRad)) / n;
+    const kmToMapPx = (km: number) => (km * 1000.0) / metersPerPixel;
+
+    // 1. Dark Base Map Background
+    ctx.fillStyle = '#06090e';
     ctx.fillRect(0, 0, width, height);
 
-    // Concentric Range Rings & Compass Grids
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.07)';
-    ctx.lineWidth = 1;
-    const gridSteps = 4;
-    for (let g = 1; g <= gridSteps; g++) {
-      const rKm = (maxRadarKm / gridSteps) * g;
-      const rPx = kmToMapPx(rKm);
-      ctx.beginPath();
-      ctx.arc(centerX, centerY, rPx, 0, Math.PI * 2);
-      ctx.stroke();
+    // 2. Render CartoDB Dark Matter City Map Tiles (Streets, Rivers, Buildings)
+    const tileSize = 256;
+    const minTileX = Math.floor(centerTileX - width / (2 * tileSize)) - 1;
+    const maxTileX = Math.floor(centerTileX + width / (2 * tileSize)) + 1;
+    const minTileY = Math.floor(centerTileY - height / (2 * tileSize)) - 1;
+    const maxTileY = Math.floor(centerTileY + height / (2 * tileSize)) + 1;
 
-      ctx.fillStyle = 'rgba(148, 163, 184, 0.5)';
-      ctx.font = '9px JetBrains Mono, monospace';
-      ctx.fillText(`${rKm.toFixed(1)} km`, centerX + 4, centerY - rPx + 11);
+    let tilesLoaded = 0;
+    for (let tx = minTileX; tx <= maxTileX; tx++) {
+      for (let ty = minTileY; ty <= maxTileY; ty++) {
+        const tileKey = `${zoom}/${tx}/${ty}`;
+        const img = tileImageCache.get(tileKey);
+        if (img && img.complete && img.naturalWidth > 0) {
+          const posX = centerX + (tx - centerTileX) * tileSize;
+          const posY = centerY + (ty - centerTileY) * tileSize;
+          ctx.drawImage(img, posX, posY, tileSize, tileSize);
+          tilesLoaded++;
+        }
+      }
     }
 
-    // Crosshairs
-    ctx.beginPath();
-    ctx.moveTo(centerX, 15);
-    ctx.lineTo(centerX, height - 15);
-    ctx.moveTo(15, centerY);
-    ctx.lineTo(width - 15, centerY);
-    ctx.stroke();
+    // Procedural Dark Vector Radar Overlay if tiles are still fetching
+    if (tilesLoaded === 0) {
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+      ctx.lineWidth = 1;
+      const maxRadarKm = rZone4_Thermal3rdKm * 1.35;
+      for (let g = 1; g <= 4; g++) {
+        const rKm = (maxRadarKm / 4) * g;
+        const rPx = kmToMapPx(rKm);
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, rPx, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.beginPath();
+      ctx.moveTo(centerX, 20);
+      ctx.lineTo(centerX, height - 20);
+      ctx.moveTo(20, centerY);
+      ctx.lineTo(width - 20, centerY);
+      ctx.stroke();
+    }
 
-    // 2. OUTRIDER 4-TIER GLOWING CONCENTRIC DAMAGE ZONES
-    // Zone 4: Thermal Radiation (3rd Degree Burns) - Cyan / Violet / Soft Amber
+    // 3. OUTRIDER 4-TIER GLOWING TRANSLUCENT ENERGY ZONES
+    // Zone 4: Heat / Thermal Radiation (3rd Degree Burns) - Amber
     const rZ4Px = kmToMapPx(rZone4_Thermal3rdKm);
-    const gradZ4 = ctx.createRadialGradient(centerX, centerY, kmToMapPx(rZone3_Mod5psiKm), centerX, centerY, rZ4Px);
-    gradZ4.addColorStop(0.0, 'rgba(245, 158, 11, 0.12)');
-    gradZ4.addColorStop(1.0, 'rgba(245, 158, 11, 0.28)');
-    ctx.fillStyle = gradZ4;
+    const isZ4Focused = selectedEffect === 'thermal' || selectedEffect === null;
+    ctx.save();
+    ctx.fillStyle = isZ4Focused ? 'rgba(245, 158, 11, 0.22)' : 'rgba(245, 158, 11, 0.08)';
     ctx.beginPath();
     ctx.arc(centerX, centerY, rZ4Px, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = '#f59e0b';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = isZ4Focused ? 2.5 : 1.2;
+    ctx.shadowColor = '#f59e0b';
+    ctx.shadowBlur = isZ4Focused ? 12 : 4;
     ctx.stroke();
+    ctx.restore();
 
-    // Zone 3: Moderate Blast (5 psi) - Amber Orange
+    // Zone 3: Shockwave / Moderate Blast (5 psi) - Electric Cyan / Sky Blue
     const rZ3Px = kmToMapPx(rZone3_Mod5psiKm);
-    const gradZ3 = ctx.createRadialGradient(centerX, centerY, kmToMapPx(rZone2_Heavy20psiKm), centerX, centerY, rZ3Px);
-    gradZ3.addColorStop(0.0, 'rgba(249, 115, 22, 0.22)');
-    gradZ3.addColorStop(1.0, 'rgba(249, 115, 22, 0.42)');
-    ctx.fillStyle = gradZ3;
+    const isZ3Focused = selectedEffect === 'shockwave' || selectedEffect === null;
+    ctx.save();
+    ctx.fillStyle = isZ3Focused ? 'rgba(0, 229, 255, 0.25)' : 'rgba(0, 229, 255, 0.08)';
     ctx.beginPath();
     ctx.arc(centerX, centerY, rZ3Px, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = '#f97316';
-    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = '#00e5ff';
+    ctx.lineWidth = isZ3Focused ? 2.5 : 1.2;
+    ctx.shadowColor = '#00e5ff';
+    ctx.shadowBlur = isZ3Focused ? 12 : 4;
     ctx.stroke();
+    ctx.restore();
 
-    // Zone 2: Heavy Blast & Prompt Radiation (20 psi) - Crimson Red
+    // Zone 2: Prompt Radiation / Heavy Blast (20 psi) - Neon Magenta / Crimson
     const rZ2Px = kmToMapPx(rZone2_Heavy20psiKm);
-    const gradZ2 = ctx.createRadialGradient(centerX, centerY, kmToMapPx(rZone1_FireballKm), centerX, centerY, rZ2Px);
-    gradZ2.addColorStop(0.0, 'rgba(239, 68, 68, 0.35)');
-    gradZ2.addColorStop(1.0, 'rgba(239, 68, 68, 0.55)');
-    ctx.fillStyle = gradZ2;
+    const isZ2Focused = selectedEffect === 'radiation' || selectedEffect === null;
+    ctx.save();
+    ctx.fillStyle = isZ2Focused ? 'rgba(224, 36, 94, 0.38)' : 'rgba(224, 36, 94, 0.12)';
     ctx.beginPath();
     ctx.arc(centerX, centerY, rZ2Px, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = '#ef4444';
-    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = '#e0245e';
+    ctx.lineWidth = isZ2Focused ? 3 : 1.5;
+    ctx.shadowColor = '#e0245e';
+    ctx.shadowBlur = isZ2Focused ? 14 : 5;
     ctx.stroke();
+    ctx.restore();
 
     // Zone 1: Fireball Core - Incandescent Gold / Bright Orange
     const rZ1Px = kmToMapPx(rZone1_FireballKm);
-    const gradZ1 = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, rZ1Px);
-    gradZ1.addColorStop(0.0, 'rgba(255, 255, 255, 0.98)');
-    gradZ1.addColorStop(0.4, 'rgba(254, 240, 138, 0.95)');
-    gradZ1.addColorStop(0.8, 'rgba(245, 158, 11, 0.9)');
-    gradZ1.addColorStop(1.0, 'rgba(220, 38, 38, 0.85)');
-    ctx.fillStyle = gradZ1;
+    const isZ1Focused = selectedEffect === 'fireball' || selectedEffect === null;
+    ctx.save();
+    const fbGrad = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, rZ1Px);
+    fbGrad.addColorStop(0.0, 'rgba(255, 255, 255, 0.98)');
+    fbGrad.addColorStop(0.4, 'rgba(254, 240, 138, 0.95)');
+    fbGrad.addColorStop(0.75, 'rgba(234, 86, 0, 0.92)');
+    fbGrad.addColorStop(1.0, 'rgba(220, 38, 38, 0.85)');
+    ctx.fillStyle = fbGrad;
     ctx.beginPath();
     ctx.arc(centerX, centerY, rZ1Px, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = '#fef08a';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = isZ1Focused ? 2.5 : 1.2;
+    ctx.shadowColor = '#ea5600';
+    ctx.shadowBlur = isZ1Focused ? 18 : 6;
     ctx.stroke();
+    ctx.restore();
 
-    // 3. Real-Time Propagating Shockwave Wavefront Circle
-    // Speed of sound c0 ~ 0.343 km/s
+    // 4. Real-Time Propagating Shockwave Wavefront Circle
     const shockDistKm = simTimeSeconds * 0.343;
-    if (shockDistKm <= maxRadarKm) {
+    const maxViewKm = (width / 2 * metersPerPixel) / 1000.0;
+    if (shockDistKm <= maxViewKm) {
       const shockWavePx = kmToMapPx(shockDistKm);
-      ctx.strokeStyle = 'rgba(0, 229, 255, 0.85)';
-      ctx.lineWidth = 3;
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.95)';
+      ctx.lineWidth = 2.5;
       ctx.shadowColor = '#00e5ff';
-      ctx.shadowBlur = 10;
+      ctx.shadowBlur = 12;
       ctx.beginPath();
       ctx.arc(centerX, centerY, shockWavePx, 0, Math.PI * 2);
       ctx.stroke();
-      ctx.shadowBlur = 0; // reset
+      ctx.restore();
     }
 
-    // 4. Ground Zero Marker Pin
+    // 5. Ground Zero Tactical Pin
     ctx.fillStyle = '#ffffff';
     ctx.beginPath();
-    ctx.arc(centerX, centerY, 4, 0, Math.PI * 2);
+    ctx.arc(centerX, centerY, 4.5, 0, Math.PI * 2);
     ctx.fill();
 
     // City & Coordinates Label Overlay
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 12px Inter, sans-serif';
+    ctx.font = 'bold 13px Inter, sans-serif';
     ctx.fillText(`📍 ${currentCity.name}, ${currentCity.country}`, 20, 30);
-    ctx.fillStyle = 'rgba(148, 163, 184, 0.8)';
+    ctx.fillStyle = 'rgba(148, 163, 184, 0.9)';
     ctx.font = '10px JetBrains Mono, monospace';
-    ctx.fillText(`${currentCity.lat.toFixed(4)}° N, ${Math.abs(currentCity.lon).toFixed(4)}° W | Urban Density: ${currentCity.popDensityPerKm2.toLocaleString()} / km²`, 20, 46);
-  }, [simTimeSeconds, cloudPhysics, currentCity]);
+    ctx.fillText(
+      `${currentCity.lat.toFixed(4)}° N, ${Math.abs(currentCity.lon).toFixed(4)}° W | Pop Density: ${currentCity.popDensityPerKm2.toLocaleString()} / km²`,
+      20,
+      46
+    );
+  }, [simTimeSeconds, cloudPhysics, currentCity, selectedEffect]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-      {/* Top Interactive Toolbar & Presets Bar */}
-      <div className="panel" style={{ padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '1.2rem' }}>🌋</span>
+      {/* Top Outrider Header & Quick Control Bar */}
+      <div className="panel" style={{ padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '1.4rem' }}>🌋</span>
             <div>
-              <strong style={{ fontSize: '0.95rem', color: '#fff' }}>Outrider Detonation &amp; Mushroom Cloud Simulator</strong>
-              <div style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)' }}>
-                Atmospheric cloud profile, toroidal vortex ascent, supersonic Wilson ring, and 4-tier damage footprints
+              <strong style={{ fontSize: '1.05rem', color: '#fff' }}>Outrider Visual Detonation &amp; Mushroom Cloud Simulator</strong>
+              <div style={{ fontSize: '0.76rem', color: 'var(--color-text-muted)' }}>
+                Atmospheric cloud profile, volumetric toroidal vortex, Wilson condensation shock collar, and dark-matter city cartography
               </div>
             </div>
           </div>
 
           {/* Quick Yield Presets & Burst Mode Toggles */}
           {onYieldChange && (
-            <div style={{ display: 'flex', gap: '4px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '4px', alignItems: 'center', flexWrap: 'wrap', marginLeft: '6px' }}>
               <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>Quick Yield:</span>
               {[
                 { label: '15 kT', y: 15 },
@@ -876,9 +1095,9 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
                   style={{
                     padding: '3px 8px',
                     fontSize: '0.72rem',
-                    background: Math.abs(yieldKt - opt.y) < 0.1 ? 'rgba(239, 68, 68, 0.25)' : 'rgba(255,255,255,0.05)',
-                    color: Math.abs(yieldKt - opt.y) < 0.1 ? '#f87171' : '#94a3b8',
-                    border: Math.abs(yieldKt - opt.y) < 0.1 ? '1px solid #ef4444' : '1px solid rgba(255,255,255,0.1)',
+                    background: Math.abs(yieldKt - opt.y) < 0.1 ? 'rgba(234, 86, 0, 0.3)' : 'rgba(255,255,255,0.05)',
+                    color: Math.abs(yieldKt - opt.y) < 0.1 ? '#ea5600' : '#94a3b8',
+                    border: Math.abs(yieldKt - opt.y) < 0.1 ? '1px solid #ea5600' : '1px solid rgba(255,255,255,0.1)',
                     borderRadius: '4px'
                   }}
                 >
@@ -899,9 +1118,9 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
               style={{
                 padding: '3px 10px',
                 fontSize: '0.72rem',
-                background: burstMode === 'air' ? 'rgba(0, 229, 255, 0.2)' : 'rgba(249, 115, 22, 0.2)',
-                color: burstMode === 'air' ? '#00e5ff' : '#f97316',
-                border: `1px solid ${burstMode === 'air' ? '#00e5ff' : '#f97316'}`,
+                background: burstMode === 'air' ? 'rgba(0, 229, 255, 0.2)' : 'rgba(234, 86, 0, 0.2)',
+                color: burstMode === 'air' ? '#00e5ff' : '#ea5600',
+                border: `1px solid ${burstMode === 'air' ? '#00e5ff' : '#ea5600'}`,
                 borderRadius: '4px'
               }}
             >
@@ -910,95 +1129,144 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
           )}
         </div>
 
-        {/* View Mode Switcher */}
-        <div style={{ display: 'flex', background: 'rgba(0,0,0,0.4)', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', padding: '2px' }}>
-          <button
-            type="button"
-            className="btn"
-            onClick={() => setViewMode('profile')}
-            style={{
-              padding: '6px 14px',
-              fontSize: '0.78rem',
-              fontWeight: viewMode === 'profile' ? 700 : 500,
-              background: viewMode === 'profile' ? 'rgba(0, 229, 255, 0.2)' : 'transparent',
-              color: viewMode === 'profile' ? '#00e5ff' : 'var(--color-text-muted)',
-              border: 'none',
-              borderRadius: '4px'
-            }}
-          >
-            ☁️ Cloud Profile (Elevation)
-          </button>
-          <button
-            type="button"
-            className="btn"
-            onClick={() => setViewMode('map')}
-            style={{
-              padding: '6px 14px',
-              fontSize: '0.78rem',
-              fontWeight: viewMode === 'map' ? 700 : 500,
-              background: viewMode === 'map' ? 'rgba(249, 115, 22, 0.2)' : 'transparent',
-              color: viewMode === 'map' ? '#f97316' : 'var(--color-text-muted)',
-              border: 'none',
-              borderRadius: '4px'
-            }}
-          >
-            🗺️ Blast Footprint (Outrider Map)
-          </button>
-          <button
-            type="button"
-            className="btn"
-            onClick={() => setViewMode('split')}
-            style={{
-              padding: '6px 14px',
-              fontSize: '0.78rem',
-              fontWeight: viewMode === 'split' ? 700 : 500,
-              background: viewMode === 'split' ? 'rgba(16, 185, 129, 0.2)' : 'transparent',
-              color: viewMode === 'split' ? '#10b981' : 'var(--color-text-muted)',
-              border: 'none',
-              borderRadius: '4px'
-            }}
-          >
-            🔲 Dual View
-          </button>
+        {/* View Mode & Unit Toggle */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ display: 'flex', background: 'rgba(0,0,0,0.4)', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', padding: '2px' }}>
+            <button
+              type="button"
+              className="btn"
+              onClick={() => setUnitMode('imperial')}
+              style={{
+                padding: '4px 10px',
+                fontSize: '0.72rem',
+                fontWeight: unitMode === 'imperial' ? 700 : 500,
+                background: unitMode === 'imperial' ? 'rgba(255,255,255,0.15)' : 'transparent',
+                color: unitMode === 'imperial' ? '#fff' : 'var(--color-text-muted)',
+                border: 'none',
+                borderRadius: '4px'
+              }}
+            >
+              MILES
+            </button>
+            <button
+              type="button"
+              className="btn"
+              onClick={() => setUnitMode('metric')}
+              style={{
+                padding: '4px 10px',
+                fontSize: '0.72rem',
+                fontWeight: unitMode === 'metric' ? 700 : 500,
+                background: unitMode === 'metric' ? 'rgba(255,255,255,0.15)' : 'transparent',
+                color: unitMode === 'metric' ? '#fff' : 'var(--color-text-muted)',
+                border: 'none',
+                borderRadius: '4px'
+              }}
+            >
+              KM
+            </button>
+          </div>
+
+          <div style={{ display: 'flex', background: 'rgba(0,0,0,0.4)', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', padding: '2px' }}>
+            <button
+              type="button"
+              className="btn"
+              onClick={() => setViewMode('profile')}
+              style={{
+                padding: '6px 14px',
+                fontSize: '0.78rem',
+                fontWeight: viewMode === 'profile' ? 700 : 500,
+                background: viewMode === 'profile' ? 'rgba(0, 229, 255, 0.2)' : 'transparent',
+                color: viewMode === 'profile' ? '#00e5ff' : 'var(--color-text-muted)',
+                border: 'none',
+                borderRadius: '4px'
+              }}
+            >
+              ☁️ Cloud Profile
+            </button>
+            <button
+              type="button"
+              className="btn"
+              onClick={() => setViewMode('map')}
+              style={{
+                padding: '6px 14px',
+                fontSize: '0.78rem',
+                fontWeight: viewMode === 'map' ? 700 : 500,
+                background: viewMode === 'map' ? 'rgba(234, 86, 0, 0.25)' : 'transparent',
+                color: viewMode === 'map' ? '#ea5600' : 'var(--color-text-muted)',
+                border: 'none',
+                borderRadius: '4px'
+              }}
+            >
+              🗺️ Outrider City Map
+            </button>
+            <button
+              type="button"
+              className="btn"
+              onClick={() => setViewMode('split')}
+              style={{
+                padding: '6px 14px',
+                fontSize: '0.78rem',
+                fontWeight: viewMode === 'split' ? 700 : 500,
+                background: viewMode === 'split' ? 'rgba(16, 185, 129, 0.2)' : 'transparent',
+                color: viewMode === 'split' ? '#10b981' : 'var(--color-text-muted)',
+                border: 'none',
+                borderRadius: '4px'
+              }}
+            >
+              🔲 Dual View
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Main Visual Display Stage */}
       <div style={{ display: 'grid', gridTemplateColumns: viewMode === 'split' ? '1fr 1fr' : '1fr', gap: '14px' }}>
-        {/* VIEW 1: Atmospheric Mushroom Cloud Profile Canvas */}
+        {/* VIEW 1: Volumetric Atmospheric Mushroom Cloud Profile Canvas */}
         {(viewMode === 'profile' || viewMode === 'split') && (
-          <div className="panel" style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px', position: 'relative' }}>
+          <div className="panel" style={{ padding: '14px', display: 'flex', flexDirection: 'column', gap: '8px', position: 'relative' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 6px' }}>
-              <span style={{ fontSize: '0.8rem', color: '#38bdf8', fontWeight: 600 }}>
-                Atmospheric Elevation Cross-Section (0–{Math.max(35, Math.ceil((cloudPhysics.hTopKm * 1.25) / 10) * 10)} km)
+              <span style={{ fontSize: '0.82rem', color: '#38bdf8', fontWeight: 600 }}>
+                Volumetric Atmospheric Elevation Cross-Section (0–{Math.max(35, Math.ceil((cloudPhysics.hTopKm * 1.3) / 10) * 10)} km)
               </span>
-              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                T½ Rise: {cloudPhysics.tRiseHalf}s | Stabilize: {(cloudPhysics.tStabilize / 60).toFixed(1)}m
+              <span style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)' }}>
+                Scale Markers: Mt. Everest (8.85 km) • Airliner (11 km) • SR-71 (24 km) • Tropopause Inversion (12 km)
               </span>
             </div>
-            <div style={{ position: 'relative', width: '100%', height: '420px', borderRadius: '8px', overflow: 'hidden' }}>
+            <div style={{ position: 'relative', width: '100%', height: '480px', borderRadius: '8px', overflow: 'hidden' }}>
               <canvas
                 ref={profileCanvasRef}
-                width={700}
-                height={420}
+                width={800}
+                height={480}
                 style={{ width: '100%', height: '100%', display: 'block', background: '#020307' }}
               />
             </div>
           </div>
         )}
 
-        {/* VIEW 2: Outrider-Style Blast Footprint Radar Map Canvas */}
+        {/* VIEW 2: Outrider-Style Real City Dark Matter Map Canvas */}
         {(viewMode === 'map' || viewMode === 'split') && (
-          <div className="panel" style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px', position: 'relative' }}>
+          <div className="panel" style={{ padding: '14px', display: 'flex', flexDirection: 'column', gap: '8px', position: 'relative' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 6px', flexWrap: 'wrap', gap: '6px' }}>
-              <span style={{ fontSize: '0.8rem', color: '#f97316', fontWeight: 600 }}>
-                Outrider 4-Tier Detonation Damage Footprint &amp; Casualties
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '0.82rem', color: '#ea5600', fontWeight: 600 }}>
+                  Real-City Dark Matter Blast Footprint
+                </span>
+                {selectedEffect && (
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={() => setSelectedEffect(null)}
+                    style={{ fontSize: '0.7rem', padding: '2px 6px', background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', borderRadius: '3px' }}
+                  >
+                    ✕ Clear Filter ({selectedEffect.toUpperCase()})
+                  </button>
+                )}
+              </div>
               <select
                 className="form-control"
                 value={selectedCityId}
                 onChange={(e) => setSelectedCityId(e.target.value)}
-                style={{ fontSize: '0.76rem', padding: '3px 8px', maxWidth: '210px' }}
+                style={{ fontSize: '0.78rem', padding: '4px 10px', maxWidth: '240px' }}
               >
                 {CITY_PRESETS.map((city) => (
                   <option key={city.id} value={city.id}>
@@ -1007,12 +1275,12 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
                 ))}
               </select>
             </div>
-            <div style={{ position: 'relative', width: '100%', height: '420px', borderRadius: '8px', overflow: 'hidden' }}>
+            <div style={{ position: 'relative', width: '100%', height: '480px', borderRadius: '8px', overflow: 'hidden' }}>
               <canvas
                 ref={mapCanvasRef}
-                width={700}
-                height={420}
-                style={{ width: '100%', height: '100%', display: 'block', background: '#070b12' }}
+                width={800}
+                height={480}
+                style={{ width: '100%', height: '100%', display: 'block', background: '#06090e' }}
               />
             </div>
           </div>
@@ -1020,7 +1288,7 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
       </div>
 
       {/* Detonation Control Room & Timeline Scrubber Bar */}
-      <div className="panel" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+      <div className="panel" style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
           {/* Big Detonate Action Button */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -1029,13 +1297,13 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
               className="btn btn-primary"
               onClick={triggerDetonation}
               style={{
-                background: 'linear-gradient(135deg, #ef4444, #dc2626)',
-                borderColor: '#ef4444',
+                background: 'linear-gradient(135deg, #ea5600, #c2410c)',
+                borderColor: '#ea5600',
                 color: '#fff',
-                fontSize: '0.9rem',
+                fontSize: '0.92rem',
                 fontWeight: 700,
-                padding: '8px 20px',
-                boxShadow: '0 0 15px rgba(239, 68, 68, 0.4)',
+                padding: '8px 22px',
+                boxShadow: '0 0 16px rgba(234, 86, 0, 0.45)',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px'
@@ -1074,8 +1342,8 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
           </div>
 
           {/* Time & Speed Controls */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'JetBrains Mono, monospace', fontSize: '1.1rem', color: '#00e5ff', fontWeight: 'bold' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'JetBrains Mono, monospace', fontSize: '1.15rem', color: '#00e5ff', fontWeight: 'bold' }}>
               T+ {simTimeSeconds.toFixed(1)}s <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>({(simTimeSeconds / 60).toFixed(2)} min)</span>
             </div>
 
@@ -1106,10 +1374,10 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.74rem', color: 'var(--color-text-muted)' }}>
             <span>0.0s (Detonation Flash)</span>
-            <span>15s (Initial Fireball Roll)</span>
+            <span>15s (Initial Fireball Rise)</span>
             <span>1 min (Toroidal Cap Anvil)</span>
             <span>5 min (Stabilized Cloud)</span>
-            <span>10 min (Final Cloud Dimensions)</span>
+            <span>10 min (Final Dimensions)</span>
           </div>
           <input
             type="range"
@@ -1118,118 +1386,192 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
             step="0.5"
             value={simTimeSeconds}
             onChange={(e) => setSimTimeSeconds(parseFloat(e.target.value))}
-            style={{ width: '100%', cursor: 'pointer', accentColor: '#00e5ff' }}
+            style={{ width: '100%', cursor: 'pointer', accentColor: '#ea5600' }}
           />
         </div>
       </div>
 
-      {/* Outrider 4-Tier Interactive Damage Breakdown & Physical Metrics */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px' }}>
-        {/* Tier 1: Fireball */}
-        <div style={{ background: 'rgba(254, 240, 138, 0.06)', border: '1px solid #fef08a', borderRadius: '8px', padding: '14px' }}>
+      {/* OUTRIDER 4-TIER INTERACTIVE EFFECT CARDS */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '14px' }}>
+        {/* Card 1: Fireball */}
+        <div
+          onClick={() => setSelectedEffect(selectedEffect === 'fireball' ? null : 'fireball')}
+          style={{
+            background: selectedEffect === 'fireball' ? 'rgba(234, 86, 0, 0.18)' : 'rgba(234, 86, 0, 0.06)',
+            border: `1px solid ${selectedEffect === 'fireball' ? '#ea5600' : 'rgba(234, 86, 0, 0.35)'}`,
+            borderRadius: '8px',
+            padding: '16px',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            boxShadow: selectedEffect === 'fireball' ? '0 0 16px rgba(234, 86, 0, 0.35)' : 'none'
+          }}
+        >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <strong style={{ color: '#fef08a', fontSize: '0.86rem' }}>1. FIREBALL CORE</strong>
-            <span className="badge" style={{ background: 'rgba(254, 240, 138, 0.2)', color: '#fef08a' }}>Vaporization</span>
+            <strong style={{ color: '#ea5600', fontSize: '0.88rem', letterSpacing: '0.05em' }}>FIREBALL</strong>
+            <span style={{ fontSize: '0.7rem', padding: '2px 6px', background: 'rgba(234, 86, 0, 0.2)', color: '#ea5600', borderRadius: '4px', fontWeight: 600 }}>
+              {selectedEffect === 'fireball' ? 'ACTIVE' : 'CLICK TO VIEW'}
+            </span>
           </div>
-          <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#fef08a', marginTop: '6px' }}>
-            {cloudPhysics.rFireballM} m <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>radius</span>
+          <div style={{ fontSize: '1.6rem', fontWeight: 'bold', color: '#fef08a', marginTop: '8px' }}>
+            {unitMode === 'imperial'
+              ? `${cloudPhysics.rZone1_FireballMiles.toFixed(2)} mi`
+              : `${cloudPhysics.rZone1_FireballKm.toFixed(2)} km`}
+            <span style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginLeft: '6px' }}>radius</span>
           </div>
           <div style={{ fontSize: '0.76rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
-            Diameter: {(cloudPhysics.rFireballKm * 2).toFixed(2)} km | Area: {casualties.areaFireball} km²
+            Area: {unitMode === 'imperial' ? `${casualties.areaFireballSqMi} sq mi` : `${casualties.areaFireballKm2} km²`}
           </div>
-          <p style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)', marginTop: '8px', lineHeight: 1.4 }}>
-            Temperatures reach tens of millions of degrees at ground zero. All structures, soil, and human bodies are instantaneously vaporized.
+          <p style={{ fontSize: '0.74rem', color: '#cbd5e1', marginTop: '10px', lineHeight: 1.45 }}>
+            A nuclear fireball begins the moment the weapon detonates. The light and heat are so intense that it can ignite fires several miles away. Anything or anyone inside the fireball is instantly vaporized.
           </p>
         </div>
 
-        {/* Tier 2: Heavy Blast (20 psi) & Radiation */}
-        <div style={{ background: 'rgba(239, 68, 68, 0.06)', border: '1px solid #ef4444', borderRadius: '8px', padding: '14px' }}>
+        {/* Card 2: Radiation */}
+        <div
+          onClick={() => setSelectedEffect(selectedEffect === 'radiation' ? null : 'radiation')}
+          style={{
+            background: selectedEffect === 'radiation' ? 'rgba(224, 36, 94, 0.18)' : 'rgba(224, 36, 94, 0.06)',
+            border: `1px solid ${selectedEffect === 'radiation' ? '#e0245e' : 'rgba(224, 36, 94, 0.35)'}`,
+            borderRadius: '8px',
+            padding: '16px',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            boxShadow: selectedEffect === 'radiation' ? '0 0 16px rgba(224, 36, 94, 0.35)' : 'none'
+          }}
+        >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <strong style={{ color: '#ef4444', fontSize: '0.86rem' }}>2. HEAVY BLAST (20 PSI)</strong>
-            <span className="badge" style={{ background: 'rgba(239, 68, 68, 0.2)', color: '#ef4444' }}>100% Fatal</span>
+            <strong style={{ color: '#e0245e', fontSize: '0.88rem', letterSpacing: '0.05em' }}>RADIATION</strong>
+            <span style={{ fontSize: '0.7rem', padding: '2px 6px', background: 'rgba(224, 36, 94, 0.2)', color: '#e0245e', borderRadius: '4px', fontWeight: 600 }}>
+              {selectedEffect === 'radiation' ? 'ACTIVE' : 'CLICK TO VIEW'}
+            </span>
           </div>
-          <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#ef4444', marginTop: '6px' }}>
-            {cloudPhysics.rZone2_Heavy20psiKm.toFixed(2)} km <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>radius</span>
+          <div style={{ fontSize: '1.6rem', fontWeight: 'bold', color: '#f472b6', marginTop: '8px' }}>
+            {unitMode === 'imperial'
+              ? `${cloudPhysics.rZone2_Heavy20psiMiles.toFixed(2)} mi`
+              : `${cloudPhysics.rZone2_Heavy20psiKm.toFixed(2)} km`}
+            <span style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginLeft: '6px' }}>radius</span>
           </div>
           <div style={{ fontSize: '0.76rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
-            Area: {casualties.area20psi} km² | Wind: &gt;500 mph
+            Area: {unitMode === 'imperial' ? `${casualties.area20psiSqMi} sq mi` : `${casualties.area20psiKm2} km²`}
           </div>
-          <p style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)', marginTop: '8px', lineHeight: 1.4 }}>
-            Heavy reinforced concrete buildings are pulverized. Prompt ionizing radiation exceeds 500 rem (5 Gy), guaranteeing 100% human mortality.
+          <p style={{ fontSize: '0.74rem', color: '#cbd5e1', marginTop: '10px', lineHeight: 1.45 }}>
+            Nuclear weapons release lethal prompt ionizing radiation (neutrons and gamma rays). In this zone, radiation is so intense that between 50% and 90% of people will die within hours to a few weeks without ICU intervention.
           </p>
         </div>
 
-        {/* Tier 3: Moderate Blast (5 psi) */}
-        <div style={{ background: 'rgba(249, 115, 22, 0.06)', border: '1px solid #f97316', borderRadius: '8px', padding: '14px' }}>
+        {/* Card 3: Shockwave */}
+        <div
+          onClick={() => setSelectedEffect(selectedEffect === 'shockwave' ? null : 'shockwave')}
+          style={{
+            background: selectedEffect === 'shockwave' ? 'rgba(0, 229, 255, 0.18)' : 'rgba(0, 229, 255, 0.06)',
+            border: `1px solid ${selectedEffect === 'shockwave' ? '#00e5ff' : 'rgba(0, 229, 255, 0.35)'}`,
+            borderRadius: '8px',
+            padding: '16px',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            boxShadow: selectedEffect === 'shockwave' ? '0 0 16px rgba(0, 229, 255, 0.35)' : 'none'
+          }}
+        >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <strong style={{ color: '#f97316', fontSize: '0.86rem' }}>3. MODERATE BLAST (5 PSI)</strong>
-            <span className="badge" style={{ background: 'rgba(249, 115, 22, 0.2)', color: '#f97316' }}>Widespread</span>
+            <strong style={{ color: '#00e5ff', fontSize: '0.88rem', letterSpacing: '0.05em' }}>SHOCKWAVE</strong>
+            <span style={{ fontSize: '0.7rem', padding: '2px 6px', background: 'rgba(0, 229, 255, 0.2)', color: '#00e5ff', borderRadius: '4px', fontWeight: 600 }}>
+              {selectedEffect === 'shockwave' ? 'ACTIVE' : 'CLICK TO VIEW'}
+            </span>
           </div>
-          <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#f97316', marginTop: '6px' }}>
-            {cloudPhysics.rZone3_Mod5psiKm.toFixed(2)} km <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>radius</span>
+          <div style={{ fontSize: '1.6rem', fontWeight: 'bold', color: '#38bdf8', marginTop: '8px' }}>
+            {unitMode === 'imperial'
+              ? `${cloudPhysics.rZone3_Mod5psiMiles.toFixed(2)} mi`
+              : `${cloudPhysics.rZone3_Mod5psiKm.toFixed(2)} km`}
+            <span style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginLeft: '6px' }}>radius</span>
           </div>
           <div style={{ fontSize: '0.76rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
-            Area: {casualties.area5psi} km² | Wind: 160 mph
+            Area: {unitMode === 'imperial' ? `${casualties.area5psiSqMi} sq mi` : `${casualties.area5psiKm2} km²`}
           </div>
-          <p style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)', marginTop: '8px', lineHeight: 1.4 }}>
-            Most residential and commercial structures collapse completely. Extreme debris-induced fatalities and widespread injuries.
+          <p style={{ fontSize: '0.74rem', color: '#cbd5e1', marginTop: '10px', lineHeight: 1.45 }}>
+            The nuclear blast creates a wall of compressed air that expands at supersonic speed. Most residential buildings are leveled, commercial structures severely damaged, and winds reach hurricane speeds over 160 mph.
           </p>
         </div>
 
-        {/* Tier 4: Thermal Radiation (3rd Degree Burns) */}
-        <div style={{ background: 'rgba(245, 158, 11, 0.06)', border: '1px solid #f59e0b', borderRadius: '8px', padding: '14px' }}>
+        {/* Card 4: Heat */}
+        <div
+          onClick={() => setSelectedEffect(selectedEffect === 'thermal' ? null : 'thermal')}
+          style={{
+            background: selectedEffect === 'thermal' ? 'rgba(245, 158, 11, 0.18)' : 'rgba(245, 158, 11, 0.06)',
+            border: `1px solid ${selectedEffect === 'thermal' ? '#f59e0b' : 'rgba(245, 158, 11, 0.35)'}`,
+            borderRadius: '8px',
+            padding: '16px',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            boxShadow: selectedEffect === 'thermal' ? '0 0 16px rgba(245, 158, 11, 0.35)' : 'none'
+          }}
+        >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <strong style={{ color: '#f59e0b', fontSize: '0.86rem' }}>4. THERMAL (3RD BURNS)</strong>
-            <span className="badge" style={{ background: 'rgba(245, 158, 11, 0.2)', color: '#f59e0b' }}>Incendiary</span>
+            <strong style={{ color: '#f59e0b', fontSize: '0.88rem', letterSpacing: '0.05em' }}>HEAT (THERMAL)</strong>
+            <span style={{ fontSize: '0.7rem', padding: '2px 6px', background: 'rgba(245, 158, 11, 0.2)', color: '#f59e0b', borderRadius: '4px', fontWeight: 600 }}>
+              {selectedEffect === 'thermal' ? 'ACTIVE' : 'CLICK TO VIEW'}
+            </span>
           </div>
-          <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#f59e0b', marginTop: '6px' }}>
-            {cloudPhysics.rZone4_Thermal3rdKm.toFixed(2)} km <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>radius</span>
+          <div style={{ fontSize: '1.6rem', fontWeight: 'bold', color: '#fbbf24', marginTop: '8px' }}>
+            {unitMode === 'imperial'
+              ? `${cloudPhysics.rZone4_Thermal3rdMiles.toFixed(2)} mi`
+              : `${cloudPhysics.rZone4_Thermal3rdKm.toFixed(2)} km`}
+            <span style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginLeft: '6px' }}>radius</span>
           </div>
           <div style={{ fontSize: '0.76rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
-            Area: {casualties.areaThermal} km² | Fluence: 10 cal/cm²
+            Area: {unitMode === 'imperial' ? `${casualties.areaThermalSqMi} sq mi` : `${casualties.areaThermalKm2} km²`}
           </div>
-          <p style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)', marginTop: '8px', lineHeight: 1.4 }}>
-            Full-thickness 3rd degree burns to all exposed skin. Flammable timber, curtains, and plastics ignite, forming city-scale firestorms.
+          <p style={{ fontSize: '0.74rem', color: '#cbd5e1', marginTop: '10px', lineHeight: 1.45 }}>
+            Thermal radiation causes third-degree flash burns to exposed skin, destroys pain-sensing nerve endings, and ignites dry wood, gas mains, and draperies, creating a catastrophic city-scale firestorm.
           </p>
         </div>
       </div>
 
       {/* Human Casualties & Impact Summary (Outrider Style) */}
-      <div className="panel" style={{ padding: '16px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)' }}>
-        <h4 style={{ margin: '0 0 10px 0', color: '#fff', fontSize: '0.92rem' }}>
-          Casualty Projections for {currentCity.name} ({yieldKt >= 1000 ? `${(yieldKt / 1000).toFixed(2)} MT` : `${yieldKt} kT`} {burstMode} burst)
-        </h4>
+      <div className="panel" style={{ padding: '16px 20px', background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(255,255,255,0.1)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+          <h4 style={{ margin: 0, color: '#fff', fontSize: '0.95rem' }}>
+            Casualty &amp; Damage Projections for {currentCity.name} ({yieldKt >= 1000 ? `${(yieldKt / 1000).toFixed(2)} MT` : `${yieldKt} kT`} {burstMode} burst)
+          </h4>
+          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+            Urban Population Density: {currentCity.popDensityPerKm2.toLocaleString()} people / km²
+          </span>
+        </div>
+
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px' }}>
-          <div style={{ background: 'rgba(239, 68, 68, 0.1)', padding: '12px', borderRadius: '6px', borderLeft: '3px solid #ef4444' }}>
-            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>ESTIMATED FATALITIES</div>
-            <div style={{ fontSize: '1.6rem', fontWeight: 'bold', color: '#f87171' }}>
+          <div style={{ background: 'rgba(239, 68, 68, 0.1)', padding: '12px 16px', borderRadius: '6px', borderLeft: '3px solid #ef4444' }}>
+            <div style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)' }}>ESTIMATED FATALITIES</div>
+            <div style={{ fontSize: '1.65rem', fontWeight: 'bold', color: '#f87171' }}>
               {casualties.totalFatalities.toLocaleString()}
             </div>
-            <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>Instant / prompt deaths</div>
+            <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>Instant / acute deaths</div>
           </div>
 
-          <div style={{ background: 'rgba(249, 115, 22, 0.1)', padding: '12px', borderRadius: '6px', borderLeft: '3px solid #f97316' }}>
-            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>ESTIMATED INJURIES</div>
-            <div style={{ fontSize: '1.6rem', fontWeight: 'bold', color: '#fb923c' }}>
+          <div style={{ background: 'rgba(249, 115, 22, 0.1)', padding: '12px 16px', borderRadius: '6px', borderLeft: '3px solid #f97316' }}>
+            <div style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)' }}>ESTIMATED INJURIES</div>
+            <div style={{ fontSize: '1.65rem', fontWeight: 'bold', color: '#fb923c' }}>
               {casualties.totalInjuries.toLocaleString()}
             </div>
-            <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>Severe trauma &amp; burns</div>
+            <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>Severe trauma &amp; flash burns</div>
           </div>
 
-          <div style={{ background: 'rgba(0, 229, 255, 0.1)', padding: '12px', borderRadius: '6px', borderLeft: '3px solid #00e5ff' }}>
-            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>TOTAL IMPACT AREA</div>
-            <div style={{ fontSize: '1.6rem', fontWeight: 'bold', color: '#38bdf8' }}>
-              {casualties.totalImpactAreaKm2.toLocaleString()} km²
+          <div style={{ background: 'rgba(0, 229, 255, 0.1)', padding: '12px 16px', borderRadius: '6px', borderLeft: '3px solid #00e5ff' }}>
+            <div style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)' }}>TOTAL IMPACT AREA</div>
+            <div style={{ fontSize: '1.65rem', fontWeight: 'bold', color: '#38bdf8' }}>
+              {unitMode === 'imperial'
+                ? `${casualties.totalImpactAreaSqMi.toLocaleString()} sq mi`
+                : `${casualties.totalImpactAreaKm2.toLocaleString()} km²`}
             </div>
-            <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>~{casualties.totalImpactAreaSqMi.toLocaleString()} sq miles</div>
+            <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>Full damage footprint</div>
           </div>
 
-          <div style={{ background: 'rgba(16, 185, 129, 0.1)', padding: '12px', borderRadius: '6px', borderLeft: '3px solid #10b981' }}>
-            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>CLOUD TOP ALTITUDE</div>
-            <div style={{ fontSize: '1.6rem', fontWeight: 'bold', color: '#34d399' }}>
-              {cloudPhysics.hTopKm.toFixed(1)} km
+          <div style={{ background: 'rgba(16, 185, 129, 0.1)', padding: '12px 16px', borderRadius: '6px', borderLeft: '3px solid #10b981' }}>
+            <div style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)' }}>STABILIZED CLOUD TOP</div>
+            <div style={{ fontSize: '1.65rem', fontWeight: 'bold', color: '#34d399' }}>
+              {unitMode === 'imperial'
+                ? `${cloudPhysics.hTopMiles.toFixed(1)} mi`
+                : `${cloudPhysics.hTopKm.toFixed(1)} km`}
             </div>
-            <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>{(cloudPhysics.hTopKm * 3280.84).toLocaleString()} ft ASL</div>
+            <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>{Math.round(cloudPhysics.hTopFeet).toLocaleString()} ft ASL</div>
           </div>
         </div>
       </div>
