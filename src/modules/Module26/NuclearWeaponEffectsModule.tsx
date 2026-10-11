@@ -420,7 +420,35 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
       )}
 
       {/* Preset & Tactical Controls Bar */}
-      <div className="panel" style={{ padding: '16px' }}>
+      <div className="panel" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        {/* Quick Weapon Preset Chips */}
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '10px' }}>
+          <span style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)', marginRight: '4px' }}>Quick Weapon Presets:</span>
+          {WEAPON_PRESETS.map((p) => {
+            const isSelected = selectedPresetId === p.id;
+            return (
+              <button
+                key={p.id}
+                type="button"
+                className="btn"
+                onClick={() => handleSelectPreset(p.id)}
+                style={{
+                  padding: '4px 10px',
+                  fontSize: '0.75rem',
+                  fontWeight: isSelected ? 700 : 500,
+                  background: isSelected ? 'rgba(239, 68, 68, 0.25)' : 'rgba(255, 255, 255, 0.04)',
+                  color: isSelected ? '#f87171' : '#94a3b8',
+                  border: isSelected ? '1px solid #ef4444' : '1px solid rgba(255, 255, 255, 0.08)',
+                  borderRadius: '5px'
+                }}
+                title={p.description}
+              >
+                {p.name.split('(')[0].trim()}
+              </button>
+            );
+          })}
+        </div>
+
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
           <div>
             <label style={{ fontSize: '0.82rem', fontWeight: 600 }}>Standard Weapon Preset:</label>
@@ -555,6 +583,54 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
           <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
             Diameter: {(fireballRadiusM * 2 / 1000).toFixed(2)} km
           </div>
+        </div>
+      </div>
+
+      {/* Tactical Consequence Tier Assessment Banner */}
+      <div style={{
+        background: blastCalculations.targetOverpressurePsi >= 20 ? 'rgba(239, 68, 68, 0.15)' :
+                    blastCalculations.targetOverpressurePsi >= 5 ? 'rgba(249, 115, 22, 0.15)' :
+                    blastCalculations.targetOverpressurePsi >= 1 ? 'rgba(234, 179, 8, 0.12)' : 'rgba(16, 185, 129, 0.1)',
+        border: `1px solid ${blastCalculations.targetOverpressurePsi >= 20 ? '#ef4444' : blastCalculations.targetOverpressurePsi >= 5 ? '#f97316' : blastCalculations.targetOverpressurePsi >= 1 ? '#facc15' : '#10b981'}`,
+        borderRadius: '8px',
+        padding: '12px 18px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '12px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <span style={{ fontSize: '1.4rem' }}>
+            {blastCalculations.targetOverpressurePsi >= 20 ? '☠️' : blastCalculations.targetOverpressurePsi >= 5 ? '🏚️' : blastCalculations.targetOverpressurePsi >= 1 ? '🪟' : '🛡️'}
+          </span>
+          <div>
+            <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#fff' }}>
+              Target Assessment at {targetDistanceKm} km: {' '}
+              <span style={{ color: blastCalculations.targetOverpressurePsi >= 20 ? '#ef4444' : blastCalculations.targetOverpressurePsi >= 5 ? '#f97316' : blastCalculations.targetOverpressurePsi >= 1 ? '#facc15' : '#34d399' }}>
+                {blastCalculations.targetOverpressurePsi >= 20 ? 'TOTAL REINFORCED STRUCTURE DEMOLITION' :
+                 blastCalculations.targetOverpressurePsi >= 5 ? 'HEAVY RESIDENTIAL COLLAPSE (5+ PSI)' :
+                 blastCalculations.targetOverpressurePsi >= 1 ? 'MODERATE DAMAGE / FLYING GLASS HAZARD (1+ PSI)' :
+                 'STAND-OFF PERIMETER (SAFE OVERPRESSURE)'}
+              </span>
+            </div>
+            <div style={{ fontSize: '0.78rem', color: '#cbd5e1', marginTop: '2px' }}>
+              Overpressure: <strong style={{ color: '#fff' }}>{blastCalculations.targetOverpressurePsi.toFixed(2)} psi</strong> // Wind: <strong style={{ color: '#38bdf8' }}>{blastCalculations.targetWindSpeedMph} mph</strong> // Thermal: <strong style={{ color: '#fbbf24' }}>{thermalCalculations.targetFluenceCalCm2.toFixed(1)} cal/cm²</strong> // Initial Dose: <strong style={{ color: '#a855f7' }}>{promptRadCalculations.targetPromptDoseGy.toFixed(2)} Gy</strong>
+            </div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: '6px' }}>
+          <span style={{
+            padding: '4px 10px',
+            borderRadius: '4px',
+            fontSize: '0.75rem',
+            fontWeight: 700,
+            background: 'rgba(0,0,0,0.3)',
+            color: '#ecf0f1',
+            border: '1px solid rgba(255,255,255,0.1)'
+          }}>
+            Slant Range: {Math.sqrt(targetDistanceKm * targetDistanceKm + (burstAltitudeM / 1000) * (burstAltitudeM / 1000)).toFixed(2)} km
+          </span>
         </div>
       </div>
 

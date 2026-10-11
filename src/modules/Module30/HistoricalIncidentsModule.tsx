@@ -281,7 +281,143 @@ export const HistoricalIncidentsModule: React.FC = () => {
           </div>
 
           {/* Global Register Filter Console */}
-          <div className="panel" style={{ padding: '16px' }}>
+          <div className="panel" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {/* Quick-Filter Chips */}
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '10px' }}>
+              <span style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)', marginRight: '4px' }}>Quick Triage:</span>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => {
+                  setGlobalSearch('');
+                  setGlobalInes('all');
+                  setGlobalClassification('all');
+                  setGlobalFatalitiesOnly(false);
+                  setGlobalDecade('all');
+                  setGlobalCountry('all');
+                  setCurrentPage(1);
+                }}
+                style={{
+                  padding: '4px 10px',
+                  fontSize: '0.75rem',
+                  background: globalSearch === '' && globalInes === 'all' && !globalFatalitiesOnly ? 'rgba(0, 229, 255, 0.2)' : 'rgba(255,255,255,0.04)',
+                  color: globalSearch === '' && globalInes === 'all' && !globalFatalitiesOnly ? '#00e5ff' : '#94a3b8',
+                  border: globalSearch === '' && globalInes === 'all' && !globalFatalitiesOnly ? '1px solid #00e5ff' : '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: '5px'
+                }}
+              >
+                All Events ({allGlobalRecords.length})
+              </button>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => {
+                  setGlobalInes(7);
+                  setCurrentPage(1);
+                }}
+                style={{
+                  padding: '4px 10px',
+                  fontSize: '0.75rem',
+                  background: globalInes === 7 ? 'rgba(239, 68, 68, 0.25)' : 'rgba(255,255,255,0.04)',
+                  color: globalInes === 7 ? '#ef4444' : '#94a3b8',
+                  border: globalInes === 7 ? '1px solid #ef4444' : '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: '5px'
+                }}
+              >
+                🔥 INES 7 Major Disasters
+              </button>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => {
+                  setGlobalSearch('criticality');
+                  setCurrentPage(1);
+                }}
+                style={{
+                  padding: '4px 10px',
+                  fontSize: '0.75rem',
+                  background: globalSearch === 'criticality' ? 'rgba(245, 158, 11, 0.25)' : 'rgba(255,255,255,0.04)',
+                  color: globalSearch === 'criticality' ? '#fbbf24' : '#94a3b8',
+                  border: globalSearch === 'criticality' ? '1px solid #f59e0b' : '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: '5px'
+                }}
+              >
+                ⚠️ Criticality Accidents
+              </button>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => {
+                  setGlobalSearch('radiotherapy');
+                  setCurrentPage(1);
+                }}
+                style={{
+                  padding: '4px 10px',
+                  fontSize: '0.75rem',
+                  background: globalSearch === 'radiotherapy' ? 'rgba(168, 85, 247, 0.25)' : 'rgba(255,255,255,0.04)',
+                  color: globalSearch === 'radiotherapy' ? '#c084fc' : '#94a3b8',
+                  border: globalSearch === 'radiotherapy' ? '1px solid #a855f7' : '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: '5px'
+                }}
+              >
+                🏥 Medical &amp; Therapy
+              </button>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => {
+                  setGlobalSearch('source');
+                  setCurrentPage(1);
+                }}
+                style={{
+                  padding: '4px 10px',
+                  fontSize: '0.75rem',
+                  background: globalSearch === 'source' ? 'rgba(56, 189, 248, 0.25)' : 'rgba(255,255,255,0.04)',
+                  color: globalSearch === 'source' ? '#38bdf8' : '#94a3b8',
+                  border: globalSearch === 'source' ? '1px solid #38bdf8' : '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: '5px'
+                }}
+              >
+                ☢️ Orphan Sources
+              </button>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => {
+                  setGlobalFatalitiesOnly(!globalFatalitiesOnly);
+                  setCurrentPage(1);
+                }}
+                style={{
+                  padding: '4px 10px',
+                  fontSize: '0.75rem',
+                  background: globalFatalitiesOnly ? 'rgba(239, 68, 68, 0.25)' : 'rgba(255,255,255,0.04)',
+                  color: globalFatalitiesOnly ? '#f87171' : '#94a3b8',
+                  border: globalFatalitiesOnly ? '1px solid #ef4444' : '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: '5px'
+                }}
+              >
+                💀 Fatal Incidents ({globalStats.fatalitiesEventsCount})
+              </button>
+              {(globalSearch !== '' || globalInes !== 'all' || globalFatalitiesOnly || globalClassification !== 'all') && (
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    setGlobalSearch('');
+                    setGlobalInes('all');
+                    setGlobalClassification('all');
+                    setGlobalFatalitiesOnly(false);
+                    setGlobalDecade('all');
+                    setGlobalCountry('all');
+                    setCurrentPage(1);
+                  }}
+                  style={{ padding: '4px 8px', fontSize: '0.72rem', marginLeft: 'auto' }}
+                >
+                  🔄 Reset
+                </button>
+              )}
+            </div>
+
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', alignItems: 'end' }}>
               
               {/* Search Field */}

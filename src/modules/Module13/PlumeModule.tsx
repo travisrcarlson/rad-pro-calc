@@ -198,6 +198,125 @@ const PlumeModule: React.FC = () => {
     ]
   }), [releaseRate, releaseHeight, windSpeed, stability, maxDistance, centerlineData]);
 
+  // Persistent Meteorological & Dispersion Quick-Bar
+  const renderQuickControls = () => (
+    <div style={{
+      background: 'rgba(5, 10, 18, 0.75)',
+      border: '1px solid rgba(0, 229, 255, 0.25)',
+      borderRadius: '8px',
+      padding: '12px 16px',
+      display: 'flex',
+      flexWrap: 'wrap',
+      gap: '16px',
+      alignItems: 'center',
+      justifyContent: 'space-between'
+    }}>
+      {/* Wind Speed Control */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '160px', flex: '1 1 160px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.74rem' }}>
+          <span style={{ color: 'var(--color-text-muted)' }}>Wind Speed:</span>
+          <strong style={{ color: '#00e5ff', fontFamily: 'var(--font-mono)' }}>{windSpeed} m/s ({(windSpeed * 2.237).toFixed(1)} mph)</strong>
+        </div>
+        <input
+          type="range"
+          min="0.5"
+          max="15"
+          step="0.5"
+          value={windSpeed}
+          onChange={(e) => setWindSpeed(parseFloat(e.target.value))}
+          style={{ accentColor: '#00e5ff' }}
+        />
+      </div>
+
+      {/* Release Height Control */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '150px', flex: '1 1 150px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.74rem' }}>
+          <span style={{ color: 'var(--color-text-muted)' }}>Release Height (H):</span>
+          <strong style={{ color: '#facc15', fontFamily: 'var(--font-mono)' }}>{releaseHeight} m</strong>
+        </div>
+        <input
+          type="range"
+          min="0"
+          max="100"
+          step="5"
+          value={releaseHeight}
+          onChange={(e) => setReleaseHeight(parseFloat(e.target.value))}
+          style={{ accentColor: '#facc15' }}
+        />
+      </div>
+
+      {/* Source Release Rate Control */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '160px', flex: '1 1 160px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.74rem' }}>
+          <span style={{ color: 'var(--color-text-muted)' }}>Release Rate (Q):</span>
+          <strong style={{ color: '#34d399', fontFamily: 'var(--font-mono)' }}>{releaseRate} Ci/s</strong>
+        </div>
+        <input
+          type="range"
+          min="0.1"
+          max="20"
+          step="0.1"
+          value={releaseRate}
+          onChange={(e) => setReleaseRate(parseFloat(e.target.value))}
+          style={{ accentColor: '#34d399' }}
+        />
+      </div>
+
+      {/* Pasquill Stability Class Button Pills */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '220px' }}>
+        <div style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)' }}>
+          Pasquill Stability: <strong style={{ color: '#fff' }}>Class {stability}</strong> ({STABILITY_INFO[stability]?.label.split('—')[1]?.trim() || ''})
+        </div>
+        <div style={{ display: 'flex', gap: '4px' }}>
+          {STABILITY_CLASSES.map((cls) => (
+            <button
+              key={cls}
+              type="button"
+              className="btn"
+              onClick={() => setStability(cls)}
+              style={{
+                flex: 1,
+                padding: '4px 6px',
+                fontSize: '0.76rem',
+                fontWeight: stability === cls ? 'bold' : 'normal',
+                background: stability === cls ? 'rgba(0, 229, 255, 0.25)' : 'rgba(255, 255, 255, 0.04)',
+                color: stability === cls ? '#00e5ff' : '#94a3b8',
+                border: stability === cls ? '1px solid #00e5ff' : '1px solid rgba(255, 255, 255, 0.08)'
+              }}
+              title={STABILITY_INFO[cls]?.desc}
+            >
+              {cls}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Downwind Horizon */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '130px' }}>
+        <div style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)' }}>Horizon:</div>
+        <div style={{ display: 'flex', gap: '4px' }}>
+          {[500, 1000, 2500, 5000].map((dist) => (
+            <button
+              key={dist}
+              type="button"
+              className="btn"
+              onClick={() => setMaxDistance(dist)}
+              style={{
+                padding: '4px 6px',
+                fontSize: '0.72rem',
+                background: maxDistance === dist ? 'rgba(16, 185, 129, 0.25)' : 'rgba(255, 255, 255, 0.04)',
+                color: maxDistance === dist ? '#34d399' : '#94a3b8',
+                border: maxDistance === dist ? '1px solid #10b981' : '1px solid rgba(255, 255, 255, 0.08)'
+              }}
+            >
+              {dist >= 1000 ? `${dist / 1000}k` : `${dist}m`}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="panel" style={{ height: '100%', display: 'flex', flexDirection: 'column', gap: '16px' }}>
       
@@ -354,6 +473,7 @@ const PlumeModule: React.FC = () => {
         {/* TAB 1: Ground Isopleth Footprint */}
         {activeTab === 'footprint' && (
           <div style={{ height: '100%', minHeight: '480px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {renderQuickControls()}
             <div style={{ flex: 1, border: '1px solid var(--color-border)', borderRadius: '8px', overflow: 'hidden', minHeight: '440px', backgroundColor: 'rgba(5, 10, 18, 0.6)' }}>
               <Plot
                 data={[
@@ -391,6 +511,7 @@ const PlumeModule: React.FC = () => {
         {/* TAB 2: Centerline Profile */}
         {activeTab === 'centerline' && (
           <div style={{ height: '100%', minHeight: '480px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {renderQuickControls()}
             <div style={{ height: '360px', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '10px', backgroundColor: 'rgba(5, 10, 18, 0.6)' }}>
               <Plot
                 data={[

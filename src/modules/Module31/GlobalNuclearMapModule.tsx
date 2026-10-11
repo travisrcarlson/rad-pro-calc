@@ -34,6 +34,7 @@ import {
   generateEPZCursorOnTargetXML,
   downloadBlob
 } from '../../services/tacticalGisExportService';
+import { TacticalCompassRose } from '../../components/TacticalCompassRose';
 
 const Plot = (PlotComponent as any).default || PlotComponent;
 
@@ -90,6 +91,15 @@ export const GlobalNuclearMapModule: React.FC = () => {
 
   // Selected Pin for Inspector
   const [selectedPin, setSelectedPin] = useState<UnifiedGeospatialPin | null>(null);
+
+  // Split-Screen Workspace Mode ('split' | 'stacked')
+  const [layoutMode, setLayoutMode] = useState<'split' | 'stacked'>('split');
+
+  // EPZ Consequence Table Sub-Tab ('pag_matrix' | 'dose_curve')
+  const [epzTableTab, setEpzTableTab] = useState<'pag_matrix' | 'dose_curve'>('pag_matrix');
+
+  // Inspector Sub-tab ('telemetry' | 'units_effects' | 'narrative')
+  const [inspectorTab, setInspectorTab] = useState<'telemetry' | 'units_effects' | 'narrative'>('telemetry');
 
   // Distance Measurement Tool State
   const [distancePinA, setDistancePinA] = useState<UnifiedGeospatialPin | null>(null);
@@ -635,6 +645,401 @@ export const GlobalNuclearMapModule: React.FC = () => {
     return traces;
   }, [pins, timelineMode, currentYear, distancePinA, distancePinB, isEPZOverlayActive, epzPlan, selectedReactorForEPZ]);
 
+  // Render Tactical Distance Measurement Banner
+  const renderDistanceBanner = () => {
+    if (!distancePinA || !distancePinB || measuredDistanceKm === null) return null;
+    return (
+      <div
+        className="panel"
+        style={{
+          padding: '12px 18px',
+          background: 'rgba(0, 229, 255, 0.08)',
+          border: '1px solid rgba(0, 229, 255, 0.4)',
+          borderRadius: '6px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '10px'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '0.86rem', color: '#ecf0f1' }}>
+            📏 Great Circle Distance between <strong>{distancePinA.name}</strong> and <strong>{distancePinB.name}</strong>:
+          </span>
+          <span style={{ fontSize: '1.15rem', fontWeight: 'bold', color: 'var(--color-primary)', fontFamily: 'var(--font-mono)' }}>
+            {measuredDistanceKm.toLocaleString(undefined, { maximumFractionDigits: 1 })} km
+          </span>
+          <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
+            ({(measuredDistanceKm * 0.539957).toFixed(1)} Nautical Miles)
+          </span>
+          <span style={{ fontSize: '0.8rem', color: '#f59e0b', fontWeight: 600 }}>
+            ⚡ Shockwave transit: ~{(measuredDistanceKm / 0.34).toFixed(0)}s (air speed)
+          </span>
+        </div>
+        <button
+          className="btn btn-secondary"
+          onClick={() => {
+            setDistancePinA(null);
+            setDistancePinB(null);
+          }}
+          style={{ fontSize: '0.76rem', padding: '4px 10px' }}
+        >
+          Clear Measurement
+        </button>
+      </div>
+    );
+  };
+
+  // Render Tactical Inspector Flyout Panel with Enhanced Hierarchy
+  const renderInspector = (pin: UnifiedGeospatialPin) => (
+    <div
+      className="panel"
+      style={{
+        padding: '16px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '12px',
+        background: 'rgba(5, 10, 18, 0.95)',
+        border: `1px solid ${pin.color}`,
+        boxShadow: `0 8px 30px rgba(0,0,0,0.6), 0 0 15px ${pin.color}22`,
+        borderRadius: '8px',
+        maxHeight: layoutMode === 'split' ? 'none' : '620px',
+        overflowY: 'auto'
+      }}
+    >
+      {/* Header Bar */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '10px' }}>
+        <div>
+          <span
+            style={{
+              fontSize: '0.7rem',
+              fontWeight: 'bold',
+              padding: '2px 8px',
+              borderRadius: '4px',
+              background: `${pin.color}22`,
+              color: pin.color,
+              border: `1px solid ${pin.color}`
+            }}
+          >
+            {pin.category === 'reactor' ? '⚛️ NUCLEAR REACTOR' : pin.category === 'detonation' ? '💥 NUCLEAR DETONATION' : pin.category === 'ctbto' ? '📡 CTBTO IMS STATION' : '⚠️ INES ACCIDENT'}
+          </span>
+          <h3 style={{ margin: '6px 0 2px 0', fontSize: '1.2rem', color: '#fff', lineHeight: 1.25 }}>
+            {pin.name}
+          </h3>
+          <div style={{ fontSize: '0.8rem', color: 'var(--color-primary)' }}>
+            📍 {pin.location}
+          </div>
+        </div>
+        <button
+          className="btn btn-secondary"
+          onClick={() => setSelectedPin(null)}
+          style={{ padding: '2px 8px', fontSize: '0.8rem' }}
+          title="Close Inspector"
+        >
+          ✕
+        </button>
+      </div>
+
+      {/* 2x2 Key Telemetry Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
+        <div style={{ background: 'rgba(0,0,0,0.35)', padding: '8px 10px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.06)' }}>
+          <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Coordinates</span>
+          <div style={{ fontSize: '0.82rem', color: '#00e5ff', fontFamily: 'var(--font-mono)', fontWeight: 600 }}>
+            {pin.coordinates.lat.toFixed(4)}°, {pin.coordinates.lon.toFixed(4)}°
+          </div>
+        </div>
+        <div style={{ background: 'rgba(0,0,0,0.35)', padding: '8px 10px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.06)' }}>
+          <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Date / Era</span>
+          <div style={{ fontSize: '0.82rem', color: '#ecf0f1', fontWeight: 600 }}>
+            {pin.dateOrYear}
+          </div>
+        </div>
+        <div style={{ background: 'rgba(0,0,0,0.35)', padding: '8px 10px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.06)' }}>
+          <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Key Metric</span>
+          <div style={{ fontSize: '0.82rem', color: pin.color, fontWeight: 700 }}>
+            {pin.primaryMetric}
+          </div>
+        </div>
+        <div style={{ background: 'rgba(0,0,0,0.35)', padding: '8px 10px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.06)' }}>
+          <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Classification</span>
+          <div style={{ fontSize: '0.82rem', color: '#cbd5e1', fontWeight: 600 }}>
+            {pin.typeOrClassification}
+          </div>
+        </div>
+      </div>
+
+      {/* Inspector Sub-Tabs */}
+      <div style={{ display: 'flex', gap: '6px', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '6px' }}>
+        <button
+          type="button"
+          className="btn"
+          onClick={() => setInspectorTab('telemetry')}
+          style={{
+            padding: '3px 10px',
+            fontSize: '0.74rem',
+            background: inspectorTab === 'telemetry' ? 'rgba(0, 229, 255, 0.2)' : 'transparent',
+            color: inspectorTab === 'telemetry' ? '#00e5ff' : '#94a3b8',
+            border: inspectorTab === 'telemetry' ? '1px solid #00e5ff' : '1px solid transparent'
+          }}
+        >
+          📊 Telemetry
+        </button>
+        <button
+          type="button"
+          className="btn"
+          onClick={() => setInspectorTab('units_effects')}
+          style={{
+            padding: '3px 10px',
+            fontSize: '0.74rem',
+            background: inspectorTab === 'units_effects' ? 'rgba(0, 229, 255, 0.2)' : 'transparent',
+            color: inspectorTab === 'units_effects' ? '#00e5ff' : '#94a3b8',
+            border: inspectorTab === 'units_effects' ? '1px solid #00e5ff' : '1px solid transparent'
+          }}
+        >
+          {pin.category === 'reactor' ? '⚙️ Units Roster' : pin.category === 'detonation' ? '💥 Effects Radii' : '📡 IMS Signatures'}
+        </button>
+        <button
+          type="button"
+          className="btn"
+          onClick={() => setInspectorTab('narrative')}
+          style={{
+            padding: '3px 10px',
+            fontSize: '0.74rem',
+            background: inspectorTab === 'narrative' ? 'rgba(0, 229, 255, 0.2)' : 'transparent',
+            color: inspectorTab === 'narrative' ? '#00e5ff' : '#94a3b8',
+            border: inspectorTab === 'narrative' ? '1px solid #00e5ff' : '1px solid transparent'
+          }}
+        >
+          📝 Briefing
+        </button>
+      </div>
+
+      {/* Sub-Tab 1: Telemetry */}
+      {inspectorTab === 'telemetry' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {pin.rawReactor && (
+            <div style={{ background: 'rgba(16, 185, 129, 0.08)', borderLeft: '3px solid #10b981', padding: '10px', borderRadius: '4px', fontSize: '0.78rem' }}>
+              <div style={{ color: '#34d399', fontWeight: 'bold', marginBottom: '4px' }}>Core Equilibrium Screening Inventory:</div>
+              <div style={{ color: '#cbd5e1', lineHeight: 1.4 }}>
+                • I-131: {((pin.rawReactor.fissionInventoryTBq.i131 || pin.rawReactor.fissionInventoryTBq.I131 || 0) / 1e6).toFixed(2)}M TBq<br />
+                • Cs-137: {((pin.rawReactor.fissionInventoryTBq.cs137 || pin.rawReactor.fissionInventoryTBq.Cs137 || 0) / 1e6).toFixed(2)}M TBq<br />
+                • Xe-133: {((pin.rawReactor.fissionInventoryTBq.xe133 || pin.rawReactor.fissionInventoryTBq.Xe133 || 0) / 1e6).toFixed(2)}M TBq
+              </div>
+              <div style={{ marginTop: '6px', color: 'var(--color-text-muted)', fontSize: '0.72rem' }}>
+                Operator: {pin.rawReactor.operator} // Context: {pin.secondaryMetric}
+              </div>
+            </div>
+          )}
+
+          {pin.rawDetonation && (
+            <div style={{ background: 'rgba(239, 68, 68, 0.08)', borderLeft: '3px solid #ef4444', padding: '10px', borderRadius: '4px', fontSize: '0.78rem' }}>
+              <div style={{ color: '#f87171', fontWeight: 'bold', marginBottom: '4px' }}>Prompt Weapon Effects Radii:</div>
+              <div style={{ color: '#cbd5e1', lineHeight: 1.4 }}>
+                • Fireball Radius: {pin.rawDetonation.fireballRadiusM} m<br />
+                • 5-psi Blast Overpressure: {pin.rawDetonation.promptEffects.blast5psiRadiusKm ?? ((pin.rawDetonation.promptEffects.blast5psiRadiusM || 0) / 1000).toFixed(2)} km<br />
+                • 3rd Degree Thermal Burns: {pin.rawDetonation.promptEffects.thermalRadiusKm_3rdDeg ?? ((pin.rawDetonation.promptEffects.thermalBurn3rdDegRadiusM || 0) / 1000).toFixed(2)} km<br />
+                • 1.0 Sv Prompt Dose: {pin.rawDetonation.promptEffects.promptRadiation1SvRadiusKm ?? ((pin.rawDetonation.promptEffects.prompt1SvDoseRadiusM || 0) / 1000).toFixed(2)} km
+              </div>
+              {pin.rawDetonation.operationSeries && (
+                <div style={{ marginTop: '6px', color: 'var(--color-primary)', fontSize: '0.72rem' }}>
+                  Series: {pin.rawDetonation.operationSeries}
+                </div>
+              )}
+            </div>
+          )}
+
+          {pin.rawCTBTO && (
+            <div style={{ background: 'rgba(56, 189, 248, 0.08)', borderLeft: '3px solid #38bdf8', padding: '10px', borderRadius: '4px', fontSize: '0.78rem' }}>
+              <div style={{ color: '#38bdf8', fontWeight: 'bold', marginBottom: '4px' }}>IMS Technical Profile:</div>
+              <div style={{ color: '#cbd5e1', lineHeight: 1.4 }}>
+                • Station Code: {pin.rawCTBTO.stationCode}<br />
+                • Technology: {pin.rawCTBTO.technology}<br />
+                • Status: {pin.rawCTBTO.status}<br />
+                • Noble Gas Detection: {pin.rawCTBTO.nobleGasEquipped ? 'Certified High Sensitivity Xe-133/Xe-135 Detector' : 'Particulate Radionuclide Detector'}<br />
+                • Monitored Signatures: {pin.rawCTBTO.targetIsotopes.join(', ') || 'Teleseismic Waveforms'}
+              </div>
+            </div>
+          )}
+
+          {pin.rawIncident && (
+            <div style={{ background: 'rgba(245, 158, 11, 0.08)', borderLeft: '3px solid #f59e0b', padding: '10px', borderRadius: '4px', fontSize: '0.78rem' }}>
+              <div style={{ color: '#fbbf24', fontWeight: 'bold', marginBottom: '4px' }}>INES {pin.rawIncident.inesLevel} Forensic Summary:</div>
+              <div style={{ color: '#cbd5e1', lineHeight: 1.4 }}>
+                {pin.rawIncident.summary}
+              </div>
+              <div style={{ marginTop: '6px', color: '#f87171', fontSize: '0.72rem' }}>
+                Fatalities: {pin.rawIncident.fatalities} // ARS Cases: {pin.rawIncident.arsCases}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Sub-Tab 2: Units / Effects Roster */}
+      {inspectorTab === 'units_effects' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {pin.rawReactor?.units && pin.rawReactor.units.length > 0 ? (
+            <div style={{ background: 'rgba(0,0,0,0.3)', padding: '10px', borderRadius: '6px', fontSize: '0.75rem' }}>
+              <div style={{ color: '#ecf0f1', fontWeight: 600, marginBottom: '6px' }}>
+                Operational Units at this Site ({pin.rawReactor.units.length}):
+              </div>
+              <div style={{ maxHeight: '130px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                {pin.rawReactor.units.map(u => (
+                  <div key={u.unitName} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 6px', background: 'rgba(255,255,255,0.03)', borderRadius: '3px' }}>
+                    <span style={{ color: '#38bdf8' }}>{u.unitName} ({u.model})</span>
+                    <span style={{ color: u.status === 'Operational' ? '#10b981' : '#f59e0b' }}>{u.capacityMWe > 0 ? `${u.capacityMWe} MWe` : u.status}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : pin.rawDetonation ? (
+            <div style={{ background: 'rgba(0,0,0,0.3)', padding: '10px', borderRadius: '6px', fontSize: '0.75rem', color: '#cbd5e1' }}>
+              <div>Yield: <strong>{pin.rawDetonation.yieldKt} kT TNT</strong></div>
+              <div>Detonation Regime: {(pin.rawDetonation.testType || pin.rawDetonation.environment || 'Air Burst')} (HOB: {pin.rawDetonation.heightOfBurstM}m)</div>
+              <div style={{ marginTop: '4px' }}>Equivalent Earthquake Magnitude: ~<strong>{(4.0 + 0.75 * Math.log10(pin.rawDetonation.yieldKt)).toFixed(2)} mb</strong></div>
+            </div>
+          ) : (
+            <div style={{ fontSize: '0.76rem', color: 'var(--color-text-muted)', padding: '10px' }}>
+              No additional unit sub-records for this facility.
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Sub-Tab 3: Narrative Briefing */}
+      {inspectorTab === 'narrative' && (
+        <div style={{ background: 'rgba(0,0,0,0.3)', padding: '10px', borderRadius: '6px', fontSize: '0.78rem', color: '#cbd5e1', lineHeight: 1.45, maxHeight: '140px', overflowY: 'auto' }}>
+          {pin.rawReactor?.notes || pin.rawDetonation?.historicalSignificance || pin.rawCTBTO?.notes || pin.rawIncident?.summary || 'No narrative notes available.'}
+        </div>
+      )}
+
+      {/* Action Footer Toolbar */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: 'auto', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+        <div style={{ fontSize: '0.72rem', fontWeight: 'bold', color: 'var(--color-primary)' }}>
+          🚀 Launch Tactical Dispatchers:
+        </div>
+
+        {pin.category === 'reactor' && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+            <button
+              className="btn btn-primary"
+              onClick={() => handleDispatchPlume(pin)}
+              style={{ fontSize: '0.76rem', padding: '5px 8px' }}
+            >
+              💨 Model Plume
+            </button>
+            <button
+              className="btn"
+              onClick={() => {
+                setEpzTargetReactorId(pin.id);
+                setActiveWorkspaceTab('epz_planner');
+              }}
+              style={{
+                fontSize: '0.76rem',
+                padding: '5px 8px',
+                background: 'rgba(234, 179, 8, 0.15)',
+                color: '#facc15',
+                border: '1px solid #facc15'
+              }}
+            >
+              🚨 Plan EPZ Arc
+            </button>
+          </div>
+        )}
+
+        {pin.category === 'detonation' && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+            <button
+              className="btn btn-primary"
+              onClick={() => handleDispatchNuclearEffects(pin)}
+              style={{ fontSize: '0.76rem', padding: '5px 8px', background: 'linear-gradient(135deg, #ef4444 0%, #f97316 100%)', border: 'none' }}
+            >
+              💥 Blast &amp; HEMP
+            </button>
+            <button
+              className="btn"
+              onClick={() => {
+                setSeismicSiteName(pin.name);
+                setSeismicEpicenterCoords(pin.coordinates);
+                if (pin.rawDetonation?.yieldKt) {
+                  const expected = calculateExpectedMbFromYield(pin.rawDetonation.yieldKt);
+                  setSeismicObservedMb(expected);
+                }
+                setActiveWorkspaceTab('seismic_inversion');
+              }}
+              style={{
+                fontSize: '0.76rem',
+                padding: '5px 8px',
+                background: 'rgba(56, 189, 248, 0.15)',
+                color: '#38bdf8',
+                border: '1px solid #38bdf8'
+              }}
+            >
+              📡 CTBTO Seismic
+            </button>
+          </div>
+        )}
+
+        {pin.category === 'ctbto' && (
+          <button
+            className="btn btn-primary"
+            onClick={() => setActiveWorkspaceTab('seismic_inversion')}
+            style={{ fontSize: '0.76rem', padding: '5px 8px', background: 'linear-gradient(135deg, #0284c7 0%, #38bdf8 100%)', border: 'none' }}
+          >
+            📡 Launch Seismic Inversion Analysis
+          </button>
+        )}
+
+        {pin.category === 'incident' && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+            <button
+              className="btn btn-primary"
+              onClick={() => handleDispatchIncidents(pin)}
+              style={{ fontSize: '0.76rem', padding: '5px 8px' }}
+            >
+              🔬 View Incident
+            </button>
+            <button
+              className="btn btn-secondary"
+              onClick={() => handleDispatchPlume(pin)}
+              style={{ fontSize: '0.76rem', padding: '5px 8px' }}
+            >
+              💨 Model Plume
+            </button>
+          </div>
+        )}
+
+        {/* Set Pin as Distance Target */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginTop: '2px' }}>
+          <button
+            className={`btn ${distancePinA?.id === pin.id ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setDistancePinA(pin)}
+            style={{ fontSize: '0.72rem', padding: '4px 6px' }}
+          >
+            📍 Set Point A
+          </button>
+          <button
+            className={`btn ${distancePinB?.id === pin.id ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setDistancePinB(pin)}
+            style={{ fontSize: '0.72rem', padding: '4px 6px' }}
+          >
+            🎯 Set Point B
+          </button>
+        </div>
+
+        {/* Part 11 Audit Dossier */}
+        <button
+          className="btn btn-secondary"
+          onClick={() => handleOpenDossier(pin)}
+          style={{ fontSize: '0.74rem', padding: '5px 8px', marginTop: '2px' }}
+        >
+          📜 Generate Signed Part 11 Dossier
+        </button>
+      </div>
+    </div>
+  );
+
   // Handle click on map markers
   const handlePlotClick = (data: any) => {
     if (data.points && data.points.length > 0) {
@@ -714,6 +1119,39 @@ export const GlobalNuclearMapModule: React.FC = () => {
                 }}
               >
                 🧭 Mercator
+              </button>
+            </div>
+
+            {/* Workspace Layout Toggle */}
+            <div style={{ display: 'flex', gap: '5px', alignItems: 'center', background: 'rgba(0,0,0,0.35)', padding: '4px 8px', borderRadius: '6px', border: '1px solid rgba(0, 229, 255, 0.2)' }}>
+              <span style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)', marginRight: '4px' }}>Workspace:</span>
+              <button
+                className="btn"
+                onClick={() => setLayoutMode('split')}
+                style={{
+                  padding: '4px 10px',
+                  fontSize: '0.78rem',
+                  background: layoutMode === 'split' ? 'rgba(0, 229, 255, 0.2)' : 'transparent',
+                  color: layoutMode === 'split' ? '#00e5ff' : '#94a3b8',
+                  border: layoutMode === 'split' ? '1px solid #00e5ff' : '1px solid transparent'
+                }}
+                title="Side-by-side 3D Globe and Command & Analysis Center"
+              >
+                🖥️ Split View
+              </button>
+              <button
+                className="btn"
+                onClick={() => setLayoutMode('stacked')}
+                style={{
+                  padding: '4px 10px',
+                  fontSize: '0.78rem',
+                  background: layoutMode === 'stacked' ? 'rgba(0, 229, 255, 0.2)' : 'transparent',
+                  color: layoutMode === 'stacked' ? '#00e5ff' : '#94a3b8',
+                  border: layoutMode === 'stacked' ? '1px solid #00e5ff' : '1px solid transparent'
+                }}
+                title="Full-width stacked view"
+              >
+                ⛶ Stacked View
               </button>
             </div>
 
@@ -1260,415 +1698,133 @@ export const GlobalNuclearMapModule: React.FC = () => {
         </div>
       </div>
 
-      {/* 5. MAIN GEOSPATIAL WORKSPACE (GLOBE CANVAS + INSPECTOR PANEL) */}
-      <div style={{ display: 'grid', gridTemplateColumns: selectedPin ? '1fr 410px' : '1fr', gap: '18px', minHeight: '580px', flexShrink: 0 }}>
-        
-        {/* Globe Visualization Canvas */}
+      {/* 5. MAIN GEOSPATIAL WORKSPACE (SPLIT OR STACKED MODE) */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: layoutMode === 'split' ? 'minmax(480px, 1.25fr) minmax(420px, 1fr)' : '1fr',
+          gap: '18px',
+          alignItems: 'start',
+          flexShrink: 0
+        }}
+      >
+        {/* LEFT PANE: 3D GLOBE + (INSPECTOR IF SELECTED) + DISTANCE BANNER */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: layoutMode === 'stacked' && selectedPin ? '1fr 420px' : '1fr',
+              gap: '14px'
+            }}
+          >
+            {/* Globe Visualization Canvas */}
+            <div
+              className="panel"
+              style={{
+                position: 'relative',
+                padding: 0,
+                overflow: 'hidden',
+                display: 'flex',
+                flexDirection: 'column',
+                background: '#070b14',
+                border: '1px solid rgba(0, 229, 255, 0.25)',
+                borderRadius: '8px',
+                height: layoutMode === 'split' ? '640px' : '580px'
+              }}
+            >
+              {/* Top Floating Helper Tag */}
+              <div style={{
+                position: 'absolute',
+                top: '12px',
+                left: '14px',
+                zIndex: 10,
+                background: 'rgba(5, 10, 18, 0.88)',
+                backdropFilter: 'blur(4px)',
+                border: '1px solid rgba(0, 229, 255, 0.2)',
+                borderRadius: '6px',
+                padding: '6px 12px',
+                fontSize: '0.76rem',
+                color: 'var(--color-text-muted)'
+              }}>
+                🖱️ <strong>Click &amp; Drag</strong> to rotate 3D Globe // <strong>Scroll</strong> to zoom // <strong>Click marker</strong> to inspect ({pins.length} active)
+              </div>
+
+              <Plot
+                data={plotData}
+                layout={{
+                  autosize: true,
+                  height: layoutMode === 'split' ? 640 : 580,
+                  margin: { t: 0, b: 0, l: 0, r: 0 },
+                  paper_bgcolor: 'transparent',
+                  plot_bgcolor: 'transparent',
+                  geo: {
+                    projection: {
+                      type: projectionType as any,
+                      rotation: projectionType === 'orthographic' ? centerRotation : undefined
+                    },
+                    showland: true,
+                    landcolor: '#111827',
+                    showocean: true,
+                    oceancolor: '#070b14',
+                    showcountries: true,
+                    countrycolor: 'rgba(0, 229, 255, 0.25)',
+                    countrywidth: 0.8,
+                    showcoastlines: true,
+                    coastlinecolor: 'rgba(0, 229, 255, 0.4)',
+                    coastlinewidth: 1.0,
+                    showlakes: true,
+                    lakecolor: '#070b14',
+                    bgcolor: 'transparent'
+                  },
+                  showlegend: true,
+                  legend: {
+                    x: 0.02,
+                    y: 0.05,
+                    bgcolor: 'rgba(5, 10, 18, 0.88)',
+                    bordercolor: 'rgba(0, 229, 255, 0.3)',
+                    borderwidth: 1,
+                    font: { color: '#ecf0f1', size: 11 }
+                  }
+                }}
+                config={{
+                  responsive: true,
+                  displayModeBar: true,
+                  displaylogo: false,
+                  modeBarButtonsToRemove: ['select2d', 'lasso2d']
+                }}
+                onClick={handlePlotClick}
+                style={{ width: '100%', height: '100%' }}
+              />
+            </div>
+
+            {/* In Stacked Mode: Inspector sits beside the Globe */}
+            {layoutMode === 'stacked' && selectedPin && renderInspector(selectedPin)}
+          </div>
+
+          {/* In Split Mode: Inspector sits cleanly below the Globe in the Left Column */}
+          {layoutMode === 'split' && selectedPin && renderInspector(selectedPin)}
+
+          {/* Great Circle Distance Measurement Banner */}
+          {renderDistanceBanner()}
+        </div>
+
+        {/* RIGHT PANE: COMMAND & ANALYSIS CENTER */}
         <div
           className="panel"
           style={{
-            position: 'relative',
-            padding: 0,
-            overflow: 'hidden',
+            padding: '16px 20px',
+            flexShrink: 0,
             display: 'flex',
             flexDirection: 'column',
-            background: '#070b14',
-            border: '1px solid rgba(0, 229, 255, 0.25)',
-            borderRadius: '8px',
-            minHeight: '580px'
-          }}
-        >
-          {/* Top Floating Helper Tag */}
-          <div style={{
-            position: 'absolute',
-            top: '12px',
-            left: '14px',
-            zIndex: 10,
-            background: 'rgba(5, 10, 18, 0.88)',
-            backdropFilter: 'blur(4px)',
-            border: '1px solid rgba(0, 229, 255, 0.2)',
-            borderRadius: '6px',
-            padding: '6px 12px',
-            fontSize: '0.76rem',
-            color: 'var(--color-text-muted)'
-          }}>
-            🖱️ <strong>Click &amp; Drag</strong> to rotate 3D Globe // <strong>Scroll</strong> to zoom // <strong>Click marker</strong> to inspect ({pins.length} active)
-          </div>
-
-          <Plot
-            data={plotData}
-            layout={{
-              autosize: true,
-              height: 580,
-              margin: { t: 0, b: 0, l: 0, r: 0 },
-              paper_bgcolor: 'transparent',
-              plot_bgcolor: 'transparent',
-              geo: {
-                projection: {
-                  type: projectionType as any,
-                  rotation: projectionType === 'orthographic' ? centerRotation : undefined
-                },
-                showland: true,
-                landcolor: '#111827',
-                showocean: true,
-                oceancolor: '#070b14',
-                showcountries: true,
-                countrycolor: 'rgba(0, 229, 255, 0.25)',
-                countrywidth: 0.8,
-                showcoastlines: true,
-                coastlinecolor: 'rgba(0, 229, 255, 0.4)',
-                coastlinewidth: 1.0,
-                showlakes: true,
-                lakecolor: '#070b14',
-                bgcolor: 'transparent'
-              },
-              showlegend: true,
-              legend: {
-                x: 0.02,
-                y: 0.05,
-                bgcolor: 'rgba(5, 10, 18, 0.88)',
-                bordercolor: 'rgba(0, 229, 255, 0.3)',
-                borderwidth: 1,
-                font: { color: '#ecf0f1', size: 11 }
-              }
-            }}
-            config={{
-              responsive: true,
-              displayModeBar: true,
-              displaylogo: false,
-              modeBarButtonsToRemove: ['select2d', 'lasso2d']
-            }}
-            onClick={handlePlotClick}
-            style={{ width: '100%', height: '100%' }}
-          />
-        </div>
-
-        {/* Tactical Inspector Flyout Panel */}
-        {selectedPin && (
-          <div
-            className="panel"
-            style={{
-              padding: '16px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '12px',
-              background: 'rgba(5, 10, 18, 0.92)',
-              border: `1px solid ${selectedPin.color}`,
-              boxShadow: '0 8px 30px rgba(0,0,0,0.6)',
+            gap: '14px',
+            ...(layoutMode === 'split' ? {
+              maxHeight: 'calc(100vh - 120px)',
               overflowY: 'auto',
-              maxHeight: '620px'
-            }}
-          >
-            {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div>
-                <span
-                  style={{
-                    fontSize: '0.7rem',
-                    fontWeight: 'bold',
-                    padding: '2px 8px',
-                    borderRadius: '4px',
-                    background: `${selectedPin.color}22`,
-                    color: selectedPin.color,
-                    border: `1px solid ${selectedPin.color}`
-                  }}
-                >
-                  {selectedPin.category === 'reactor' ? '⚛️ NUCLEAR REACTOR' : selectedPin.category === 'detonation' ? '💥 NUCLEAR DETONATION' : selectedPin.category === 'ctbto' ? '📡 CTBTO IMS STATION' : '⚠️ INES ACCIDENT'}
-                </span>
-                <h3 style={{ margin: '6px 0 2px 0', fontSize: '1.15rem', color: '#fff', lineHeight: 1.25 }}>
-                  {selectedPin.name}
-                </h3>
-                <div style={{ fontSize: '0.8rem', color: 'var(--color-primary)' }}>
-                  📍 {selectedPin.location}
-                </div>
-              </div>
-              <button
-                className="btn btn-secondary"
-                onClick={() => setSelectedPin(null)}
-                style={{ padding: '2px 8px', fontSize: '0.8rem' }}
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Coordinates & Date */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', background: 'rgba(0,0,0,0.3)', padding: '8px 10px', borderRadius: '6px' }}>
-              <div>
-                <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>Coordinates</span>
-                <div style={{ fontSize: '0.78rem', color: '#ecf0f1', fontFamily: 'var(--font-mono)' }}>
-                  {selectedPin.coordinates.lat.toFixed(4)}°, {selectedPin.coordinates.lon.toFixed(4)}°
-                </div>
-              </div>
-              <div>
-                <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>Date / Grid</span>
-                <div style={{ fontSize: '0.78rem', color: '#ecf0f1' }}>
-                  {selectedPin.dateOrYear}
-                </div>
-              </div>
-            </div>
-
-            {/* Technical Specifications */}
-            <div style={{ background: 'rgba(0,0,0,0.3)', padding: '10px', borderRadius: '6px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
-                <span style={{ color: 'var(--color-text-muted)' }}>Specification:</span>
-                <strong style={{ color: selectedPin.color }}>{selectedPin.primaryMetric}</strong>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
-                <span style={{ color: 'var(--color-text-muted)' }}>Classification:</span>
-                <strong style={{ color: '#fff' }}>{selectedPin.typeOrClassification}</strong>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
-                <span style={{ color: 'var(--color-text-muted)' }}>Status / Context:</span>
-                <span style={{ color: '#cbd5e1' }}>{selectedPin.secondaryMetric}</span>
-              </div>
-            </div>
-
-            {/* Specific Reactor Details */}
-            {selectedPin.rawReactor && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <div style={{ background: 'rgba(16, 185, 129, 0.08)', borderLeft: '3px solid #10b981', padding: '10px', borderRadius: '4px', fontSize: '0.8rem' }}>
-                  <div style={{ color: '#34d399', fontWeight: 'bold', marginBottom: '4px' }}>Core Equilibrium Screening Inventory:</div>
-                  <div style={{ color: '#cbd5e1', lineHeight: 1.4 }}>
-                    • I-131: {((selectedPin.rawReactor.fissionInventoryTBq.i131 || selectedPin.rawReactor.fissionInventoryTBq.I131 || 0) / 1e6).toFixed(2)}M TBq<br />
-                    • Cs-137: {((selectedPin.rawReactor.fissionInventoryTBq.cs137 || selectedPin.rawReactor.fissionInventoryTBq.Cs137 || 0) / 1e6).toFixed(2)}M TBq<br />
-                    • Xe-133: {((selectedPin.rawReactor.fissionInventoryTBq.xe133 || selectedPin.rawReactor.fissionInventoryTBq.Xe133 || 0) / 1e6).toFixed(2)}M TBq
-                  </div>
-                  <div style={{ marginTop: '6px', color: 'var(--color-text-muted)', fontSize: '0.74rem' }}>
-                    Operator: {selectedPin.rawReactor.operator}
-                  </div>
-                </div>
-
-                {/* Individual Units Breakdown (PRIS Roster) */}
-                {selectedPin.rawReactor.units && selectedPin.rawReactor.units.length > 0 && (
-                  <div style={{ background: 'rgba(0,0,0,0.3)', padding: '10px', borderRadius: '6px', fontSize: '0.75rem' }}>
-                    <div style={{ color: '#ecf0f1', fontWeight: 600, marginBottom: '6px' }}>
-                      Operational Units at this Site ({selectedPin.rawReactor.units.length}):
-                    </div>
-                    <div style={{ maxHeight: '110px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      {selectedPin.rawReactor.units.map(u => (
-                        <div key={u.unitName} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 6px', background: 'rgba(255,255,255,0.03)', borderRadius: '3px' }}>
-                          <span style={{ color: '#38bdf8' }}>{u.unitName} ({u.model})</span>
-                          <span style={{ color: u.status === 'Operational' ? '#10b981' : '#f59e0b' }}>{u.capacityMWe > 0 ? `${u.capacityMWe} MWe` : u.status}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Specific Detonation Details */}
-            {selectedPin.rawDetonation && (
-              <div style={{ background: 'rgba(239, 68, 68, 0.08)', borderLeft: '3px solid #ef4444', padding: '10px', borderRadius: '4px', fontSize: '0.8rem' }}>
-                <div style={{ color: '#f87171', fontWeight: 'bold', marginBottom: '4px' }}>Prompt Weapon Effects Radii:</div>
-                <div style={{ color: '#cbd5e1', lineHeight: 1.4 }}>
-                  • Fireball Radius: {selectedPin.rawDetonation.fireballRadiusM} m<br />
-                  • 5-psi Blast Overpressure: {selectedPin.rawDetonation.promptEffects.blast5psiRadiusKm ?? ((selectedPin.rawDetonation.promptEffects.blast5psiRadiusM || 0) / 1000).toFixed(2)} km<br />
-                  • 3rd Degree Thermal Burns: {selectedPin.rawDetonation.promptEffects.thermalRadiusKm_3rdDeg ?? ((selectedPin.rawDetonation.promptEffects.thermalBurn3rdDegRadiusM || 0) / 1000).toFixed(2)} km<br />
-                  • 1.0 Sv Prompt Dose: {selectedPin.rawDetonation.promptEffects.promptRadiation1SvRadiusKm ?? ((selectedPin.rawDetonation.promptEffects.prompt1SvDoseRadiusM || 0) / 1000).toFixed(2)} km
-                </div>
-                {selectedPin.rawDetonation.operationSeries && (
-                  <div style={{ marginTop: '6px', color: 'var(--color-primary)', fontSize: '0.74rem' }}>
-                    Series: {selectedPin.rawDetonation.operationSeries}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Specific CTBTO Details */}
-            {selectedPin.rawCTBTO && (
-              <div style={{ background: 'rgba(56, 189, 248, 0.08)', borderLeft: '3px solid #38bdf8', padding: '10px', borderRadius: '4px', fontSize: '0.8rem' }}>
-                <div style={{ color: '#38bdf8', fontWeight: 'bold', marginBottom: '4px' }}>International Monitoring System (IMS):</div>
-                <div style={{ color: '#cbd5e1', lineHeight: 1.4 }}>
-                  • Station Code: {selectedPin.rawCTBTO.stationCode}<br />
-                  • Technology: {selectedPin.rawCTBTO.technology}<br />
-                  • Station Status: {selectedPin.rawCTBTO.status}<br />
-                  • Noble Gas Detection: {selectedPin.rawCTBTO.nobleGasEquipped ? 'Certified High Sensitivity Xe-133/Xe-135 Detector' : 'Particulate Radionuclide Detector'}<br />
-                  • Monitored Signatures: {selectedPin.rawCTBTO.targetIsotopes.join(', ') || 'Teleseismic Waveforms'}
-                </div>
-              </div>
-            )}
-
-            {/* Description Notes */}
-            <p style={{ margin: 0, fontSize: '0.82rem', color: '#cbd5e1', lineHeight: 1.45 }}>
-              {selectedPin.rawReactor?.notes || selectedPin.rawDetonation?.historicalSignificance || selectedPin.rawCTBTO?.notes || selectedPin.rawIncident?.summary}
-            </p>
-
-            {/* Cross-Module Calculation Launchers */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: 'auto', paddingTop: '8px' }}>
-              <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--color-primary)' }}>
-                🚀 Launch Scenario Dispatchers:
-              </div>
-
-              {selectedPin.category === 'reactor' && (
-                <>
-                  <button
-                    className="btn btn-primary"
-                    onClick={() => handleDispatchPlume(selectedPin)}
-                    style={{ fontSize: '0.8rem', padding: '6px 10px', width: '100%' }}
-                  >
-                    💨 Model Atmospheric Plume from Plant
-                  </button>
-                  <button
-                    className="btn"
-                    onClick={() => {
-                      setEpzTargetReactorId(selectedPin.id);
-                      setActiveWorkspaceTab('epz_planner');
-                    }}
-                    style={{
-                      fontSize: '0.8rem',
-                      padding: '6px 10px',
-                      width: '100%',
-                      background: 'rgba(234, 179, 8, 0.15)',
-                      color: '#facc15',
-                      border: '1px solid #facc15'
-                    }}
-                  >
-                    🚨 Plan EPZ Evacuation Arc & PAG Checklist
-                  </button>
-                </>
-              )}
-
-              {selectedPin.category === 'detonation' && (
-                <>
-                  <button
-                    className="btn btn-primary"
-                    onClick={() => handleDispatchNuclearEffects(selectedPin)}
-                    style={{ fontSize: '0.8rem', padding: '6px 10px', width: '100%', background: 'linear-gradient(135deg, #ef4444 0%, #f97316 100%)', border: 'none' }}
-                  >
-                    💥 Simulate Weapon Blast & HEMP Profile
-                  </button>
-                  <button
-                    className="btn"
-                    onClick={() => {
-                      setSeismicSiteName(selectedPin.name);
-                      setSeismicEpicenterCoords(selectedPin.coordinates);
-                      if (selectedPin.rawDetonation?.yieldKt) {
-                        const expected = calculateExpectedMbFromYield(selectedPin.rawDetonation.yieldKt);
-                        setSeismicObservedMb(expected);
-                      }
-                      setActiveWorkspaceTab('seismic_inversion');
-                    }}
-                    style={{
-                      fontSize: '0.8rem',
-                      padding: '6px 10px',
-                      width: '100%',
-                      background: 'rgba(56, 189, 248, 0.15)',
-                      color: '#38bdf8',
-                      border: '1px solid #38bdf8'
-                    }}
-                  >
-                    📡 Invert Seismic Waveform Yield (CTBTO)
-                  </button>
-                </>
-              )}
-
-              {selectedPin.category === 'ctbto' && (
-                <button
-                  className="btn btn-primary"
-                  onClick={() => setActiveWorkspaceTab('seismic_inversion')}
-                  style={{ fontSize: '0.8rem', padding: '6px 10px', width: '100%', background: 'linear-gradient(135deg, #0284c7 0%, #38bdf8 100%)', border: 'none' }}
-                >
-                  📡 Launch Seismic Inversion Analysis
-                </button>
-              )}
-
-              {selectedPin.category === 'incident' && (
-                <>
-                  <button
-                    className="btn btn-primary"
-                    onClick={() => handleDispatchIncidents(selectedPin)}
-                    style={{ fontSize: '0.8rem', padding: '6px 10px', width: '100%' }}
-                  >
-                    🔬 View Full Forensic Accident Investigation
-                  </button>
-                  <button
-                    className="btn btn-secondary"
-                    onClick={() => handleDispatchPlume(selectedPin)}
-                    style={{ fontSize: '0.8rem', padding: '6px 10px', width: '100%' }}
-                  >
-                    💨 Model Historical Atmospheric Release
-                  </button>
-                </>
-              )}
-
-              {/* Set Pin as Distance Target */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginTop: '4px' }}>
-                <button
-                  className={`btn ${distancePinA?.id === selectedPin.id ? 'btn-primary' : 'btn-secondary'}`}
-                  onClick={() => setDistancePinA(selectedPin)}
-                  style={{ fontSize: '0.74rem', padding: '4px 6px' }}
-                >
-                  📍 Set Point A
-                </button>
-                <button
-                  className={`btn ${distancePinB?.id === selectedPin.id ? 'btn-primary' : 'btn-secondary'}`}
-                  onClick={() => setDistancePinB(selectedPin)}
-                  style={{ fontSize: '0.74rem', padding: '4px 6px' }}
-                >
-                  🎯 Set Point B
-                </button>
-              </div>
-
-              {/* Part 11 Audit Dossier */}
-              <button
-                className="btn btn-secondary"
-                onClick={() => handleOpenDossier(selectedPin)}
-                style={{ fontSize: '0.78rem', padding: '6px 10px', marginTop: '4px' }}
-              >
-                📜 Generate Signed Part 11 Dossier
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* 6. DISTANCE MEASUREMENT BANNER (WHEN ACTIVE) */}
-      {distancePinA && distancePinB && measuredDistanceKm !== null && (
-        <div
-          className="panel"
-          style={{
-            padding: '12px 18px',
-            background: 'rgba(0, 229, 255, 0.08)',
-            border: '1px solid rgba(0, 229, 255, 0.4)',
-            borderRadius: '6px',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            gap: '10px',
-            flexShrink: 0
+              position: 'sticky',
+              top: '16px'
+            } : {})
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '0.86rem', color: '#ecf0f1' }}>
-              📏 Great Circle Distance between <strong>{distancePinA.name}</strong> and <strong>{distancePinB.name}</strong>:
-            </span>
-            <span style={{ fontSize: '1.15rem', fontWeight: 'bold', color: 'var(--color-primary)', fontFamily: 'var(--font-mono)' }}>
-              {measuredDistanceKm.toLocaleString(undefined, { maximumFractionDigits: 1 })} km
-            </span>
-            <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
-              ({(measuredDistanceKm * 0.539957).toFixed(1)} Nautical Miles)
-            </span>
-            <span style={{ fontSize: '0.8rem', color: '#f59e0b', fontWeight: 600 }}>
-              ⚡ Shockwave transit: ~{(measuredDistanceKm / 0.34).toFixed(0)}s (air speed)
-            </span>
-          </div>
-          <button
-            className="btn btn-secondary"
-            onClick={() => {
-              setDistancePinA(null);
-              setDistancePinB(null);
-            }}
-            style={{ fontSize: '0.76rem', padding: '4px 10px' }}
-          >
-            Clear Measurement
-          </button>
-        </div>
-      )}
-
-      {/* 7. BOTTOM COMMAND & ANALYSIS CENTER (MULTI-TABBED) */}
-      <div className="panel" style={{ padding: '16px 20px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '14px' }}>
         
         {/* Workspace Mode Tabs */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '12px', flexWrap: 'wrap', gap: '10px' }}>
@@ -1965,21 +2121,46 @@ export const GlobalNuclearMapModule: React.FC = () => {
                 </select>
               </div>
 
-              {/* Wind Direction Slider */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem' }}>
-                  <span style={{ color: 'var(--color-text-muted)' }}>Wind Origin Bearing:</span>
-                  <strong style={{ color: '#facc15' }}>{epzWindOriginDeg}° (Origin) ➔ Downwind: {epzPlan?.plumeCenterlineBearingDeg}° ({epzPlan?.keyholeCenterSector})</strong>
-                </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="359"
-                  step="5"
+              {/* Tactical Wind Origin Bearing & Plume Keyhole Dial */}
+              <div style={{
+                gridColumn: '1 / -1',
+                background: 'rgba(0,0,0,0.4)',
+                border: '1px solid rgba(234, 179, 8, 0.25)',
+                borderRadius: '8px',
+                padding: '12px 14px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '14px'
+              }}>
+                <TacticalCompassRose
                   value={epzWindOriginDeg}
-                  onChange={(e) => setEpzWindOriginDeg(parseInt(e.target.value, 10))}
-                  style={{ accentColor: '#facc15' }}
+                  onChange={setEpzWindOriginDeg}
+                  size={150}
+                  label="Atmospheric Wind Vector & Plume Sector"
+                  showSnapButtons={true}
+                  sectorArcSweepDeg={67.5}
                 />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: '1 1 240px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.74rem' }}>
+                    <span style={{ color: 'var(--color-text-muted)' }}>Fine Bearing Adjustment:</span>
+                    <strong style={{ color: '#facc15', fontFamily: 'var(--font-mono)' }}>{epzWindOriginDeg}° (Origin)</strong>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="359"
+                    step="1"
+                    value={epzWindOriginDeg}
+                    onChange={(e) => setEpzWindOriginDeg(parseInt(e.target.value, 10))}
+                    style={{ accentColor: '#facc15', width: '100%' }}
+                  />
+                  <div style={{ fontSize: '0.73rem', color: '#94a3b8', lineHeight: 1.35 }}>
+                    Downwind Plume Bearing: <strong style={{ color: '#facc15' }}>{epzPlan?.plumeCenterlineBearingDeg}° ({epzPlan?.keyholeCenterSector})</strong>.
+                    Sweeps 3 protective action sectors: <strong style={{ color: '#38bdf8' }}>{epzPlan?.affectedSectors.join(', ')}</strong>.
+                  </div>
+                </div>
               </div>
 
               {/* Wind Speed Slider */}
@@ -2077,8 +2258,46 @@ export const GlobalNuclearMapModule: React.FC = () => {
               </div>
             )}
 
-            {/* EPA Protective Action Guides (PAG 2017) Threshold Matrix */}
+            {/* EPZ Consequence Table Sub-Tabs */}
             {epzPlan && (
+              <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '6px', marginTop: '4px' }}>
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => setEpzTableTab('pag_matrix')}
+                  style={{
+                    padding: '5px 14px',
+                    fontSize: '0.78rem',
+                    fontWeight: epzTableTab === 'pag_matrix' ? 700 : 500,
+                    background: epzTableTab === 'pag_matrix' ? 'rgba(234, 179, 8, 0.2)' : 'rgba(255,255,255,0.03)',
+                    color: epzTableTab === 'pag_matrix' ? '#facc15' : '#94a3b8',
+                    border: epzTableTab === 'pag_matrix' ? '1px solid #facc15' : '1px solid rgba(255,255,255,0.08)',
+                    borderRadius: '5px'
+                  }}
+                >
+                  🛡️ EPA PAG Threshold Matrix
+                </button>
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => setEpzTableTab('dose_curve')}
+                  style={{
+                    padding: '5px 14px',
+                    fontSize: '0.78rem',
+                    fontWeight: epzTableTab === 'dose_curve' ? 700 : 500,
+                    background: epzTableTab === 'dose_curve' ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255,255,255,0.03)',
+                    color: epzTableTab === 'dose_curve' ? '#38bdf8' : '#94a3b8',
+                    border: epzTableTab === 'dose_curve' ? '1px solid #38bdf8' : '1px solid rgba(255,255,255,0.08)',
+                    borderRadius: '5px'
+                  }}
+                >
+                  📉 Radial Distance Dose Curve ({epzPlan.doseCurve.length} Points)
+                </button>
+              </div>
+            )}
+
+            {/* EPA Protective Action Guides (PAG 2017) Threshold Matrix */}
+            {epzPlan && epzTableTab === 'pag_matrix' && (
               <div style={{ background: 'rgba(0,0,0,0.25)', padding: '12px', borderRadius: '6px' }}>
                 <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#ecf0f1', marginBottom: '8px' }}>
                   EPA-400-R-92-001 / IAEA GSR Part 7 Early-Phase Protective Action Thresholds:
@@ -2147,12 +2366,12 @@ export const GlobalNuclearMapModule: React.FC = () => {
             )}
 
             {/* Radial Distance Attenuation Table */}
-            {epzPlan && (
+            {epzPlan && epzTableTab === 'dose_curve' && (
               <div style={{ background: 'rgba(0,0,0,0.25)', padding: '12px', borderRadius: '6px' }}>
                 <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#ecf0f1', marginBottom: '8px' }}>
                   Plume Centerline Projected Dose Curve vs Radial Distance:
                 </div>
-                <div style={{ overflowX: 'auto', maxHeight: '180px' }}>
+                <div style={{ overflowX: 'auto', maxHeight: '220px' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.74rem' }}>
                     <thead>
                       <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', color: '#94a3b8', textAlign: 'left' }}>
@@ -2497,6 +2716,7 @@ export const GlobalNuclearMapModule: React.FC = () => {
           </div>
         )}
 
+      </div>
       </div>
 
       {/* 8. UNIVERSAL 21 CFR PART 11 AUDIT DOSSIER MODAL */}
