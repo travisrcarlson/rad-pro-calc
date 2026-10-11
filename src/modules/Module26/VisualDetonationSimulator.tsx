@@ -6,6 +6,7 @@ export interface VisualDetonationProps {
   burstAltitudeM: number;
   onYieldChange?: (y: number) => void;
   onBurstModeChange?: (mode: 'surface' | 'air') => void;
+  initialCityId?: string;
 }
 
 interface CityPreset {
@@ -15,16 +16,55 @@ interface CityPreset {
   lat: number;
   lon: number;
   popDensityPerKm2: number;
+  category?: 'city' | 'historical_test_site';
+  flag?: string;
+  suggestedYieldKt?: number;
+  burstMode?: 'air' | 'surface';
+  historicalTestName?: string;
+  historicalYear?: number;
+  description?: string;
 }
 
 const CITY_PRESETS: CityPreset[] = [
-  { id: 'regina', name: 'Regina, Saskatchewan', country: 'Canada', lat: 50.448906, lon: -104.6108, popDensityPerKm2: 2250 },
-  { id: 'nyc', name: 'New York City (Manhattan)', country: 'United States', lat: 40.7128, lon: -74.0060, popDensityPerKm2: 11300 },
-  { id: 'dc', name: 'Washington D.C. (The Capitol)', country: 'United States', lat: 38.8899, lon: -77.0090, popDensityPerKm2: 4400 },
-  { id: 'london', name: 'London (Westminster)', country: 'United Kingdom', lat: 51.5074, lon: -0.1278, popDensityPerKm2: 5700 },
-  { id: 'tokyo', name: 'Tokyo (Shinjuku)', country: 'Japan', lat: 35.6895, lon: 139.6917, popDensityPerKm2: 15400 },
-  { id: 'kyiv', name: 'Kyiv (Maidan)', country: 'Ukraine', lat: 50.4501, lon: 30.5234, popDensityPerKm2: 3500 },
-  { id: 'hiroshima', name: 'Hiroshima (A-Bomb Dome)', country: 'Japan', lat: 34.3955, lon: 132.4536, popDensityPerKm2: 4200 }
+  // 1. Populated Metropolitan Centers
+  { id: 'regina', name: 'Regina, Saskatchewan', country: 'Canada', category: 'city', flag: '🇨🇦', lat: 50.448906, lon: -104.6108, popDensityPerKm2: 2250, description: 'Capital city of Saskatchewan, Canadian Prairies' },
+  { id: 'nyc', name: 'New York City (Manhattan)', country: 'United States', category: 'city', flag: '🇺🇸', lat: 40.7128, lon: -74.0060, popDensityPerKm2: 11300, description: 'Financial district and dense urban center' },
+  { id: 'dc', name: 'Washington D.C. (The Capitol)', country: 'United States', category: 'city', flag: '🇺🇸', lat: 38.8899, lon: -77.0090, popDensityPerKm2: 4400, description: 'National government and federal installations' },
+  { id: 'london', name: 'London (Westminster)', country: 'United Kingdom', category: 'city', flag: '🇬🇧', lat: 51.5074, lon: -0.1278, popDensityPerKm2: 5700, description: 'Central London metropolitan area' },
+  { id: 'tokyo', name: 'Tokyo (Shinjuku)', country: 'Japan', category: 'city', flag: '🇯🇵', lat: 35.6895, lon: 139.6917, popDensityPerKm2: 15400, description: 'World\'s most populous metropolitan agglomeration' },
+  { id: 'kyiv', name: 'Kyiv (Maidan)', country: 'Ukraine', category: 'city', flag: '🇺🇦', lat: 50.4501, lon: 30.5234, popDensityPerKm2: 3500, description: 'Capital of Ukraine, Dnipro river basin' },
+  { id: 'hiroshima', name: 'Hiroshima (Ground Zero)', country: 'Japan', category: 'city', flag: '🇯🇵', lat: 34.3955, lon: 132.4536, popDensityPerKm2: 4200, suggestedYieldKt: 15, burstMode: 'air', historicalTestName: 'Little Boy combat drop', historicalYear: 1945, description: 'First wartime atomic bombing (August 6, 1945)' },
+  { id: 'nagasaki', name: 'Nagasaki (Hypocenter)', country: 'Japan', category: 'city', flag: '🇯🇵', lat: 32.7702, lon: 129.8657, popDensityPerKm2: 3800, suggestedYieldKt: 21, burstMode: 'air', historicalTestName: 'Fat Man combat drop', historicalYear: 1945, description: 'Second wartime atomic bombing (August 9, 1945)' },
+
+  // 2. Historical Nuclear Proving Grounds & Detonations (By Sovereign Nation)
+  // United States 🇺🇸
+  { id: 'trinity', name: 'Trinity Site (Alamogordo, NM)', country: 'United States', category: 'historical_test_site', flag: '🇺🇸', lat: 33.6753, lon: -106.4747, popDensityPerKm2: 3, suggestedYieldKt: 21, burstMode: 'surface', historicalTestName: 'Trinity (Manhattan Project)', historicalYear: 1945, description: 'World\'s first nuclear explosion (July 16, 1945)' },
+  { id: 'nts_sedan', name: 'Nevada Test Site (Sedan Crater, NV)', country: 'United States', category: 'historical_test_site', flag: '🇺🇸', lat: 37.1769, lon: -116.0461, popDensityPerKm2: 1, suggestedYieldKt: 104, burstMode: 'surface', historicalTestName: 'Storax Sedan (Plowshare)', historicalYear: 1962, description: 'Largest excavation crater in North America (104 kt, 390m diameter)' },
+  { id: 'castle_bravo', name: 'Bikini Atoll (Castle Bravo, Marshall Islands)', country: 'United States', category: 'historical_test_site', flag: '🇺🇸', lat: 11.6972, lon: 165.2719, popDensityPerKm2: 1, suggestedYieldKt: 15000, burstMode: 'surface', historicalTestName: 'Castle Bravo Thermonuclear Test', historicalYear: 1954, description: 'Largest US nuclear detonation (15 MT, 2.5x expected design yield)' },
+
+  // Soviet Union 🇷🇺
+  { id: 'semipalatinsk', name: 'Semipalatinsk Polygon (RDS-1, Kazakhstan)', country: 'Soviet Union', category: 'historical_test_site', flag: '🇷🇺', lat: 50.4375, lon: 78.4319, popDensityPerKm2: 2, suggestedYieldKt: 22, burstMode: 'surface', historicalTestName: 'RDS-1 ("First Lightning" / Joe-1)', historicalYear: 1949, description: 'First Soviet atomic bomb detonation (August 29, 1949)' },
+  { id: 'novaya_zemlya', name: 'Novaya Zemlya (Tsar Bomba, Arctic)', country: 'Soviet Union', category: 'historical_test_site', flag: '🇷🇺', lat: 73.8500, lon: 54.5000, popDensityPerKm2: 1, suggestedYieldKt: 50000, burstMode: 'air', historicalTestName: 'Tsar Bomba / RDS-220 (50 MT)', historicalYear: 1961, description: 'Largest human-made explosion in history (50 Megatons, Oct 30, 1961)' },
+
+  // United Kingdom 🇬🇧
+  { id: 'montebello', name: 'Montebello Islands (Operation Hurricane, Australia)', country: 'United Kingdom', category: 'historical_test_site', flag: '🇬🇧', lat: -20.4417, lon: 115.5667, popDensityPerKm2: 1, suggestedYieldKt: 25, burstMode: 'surface', historicalTestName: 'Operation Hurricane (HMS Plym hull)', historicalYear: 1952, description: 'First British atomic test inside warship frigate hull (25 kt)' },
+  { id: 'grapple_kiritimati', name: 'Christmas Island / Kiritimati (Grapple Y)', country: 'United Kingdom', category: 'historical_test_site', flag: '🇬🇧', lat: 1.8700, lon: -157.4300, popDensityPerKm2: 2, suggestedYieldKt: 3000, burstMode: 'air', historicalTestName: 'Operation Grapple Y Two-Stage H-Bomb', historicalYear: 1958, description: 'Largest successful British thermonuclear test (3.0 Megatons)' },
+
+  // France 🇫🇷
+  { id: 'reggane', name: 'Reggane Proving Ground (Gerboise Bleue, Algeria)', country: 'France', category: 'historical_test_site', flag: '🇫🇷', lat: 26.3139, lon: -0.0556, popDensityPerKm2: 2, suggestedYieldKt: 70, burstMode: 'surface', historicalTestName: 'Gerboise Bleue ("Blue Jerboa")', historicalYear: 1960, description: 'First French atomic bomb test in Sahara Desert (70 kt, Feb 13, 1960)' },
+  { id: 'canopus_fangataufa', name: 'Fangataufa Atoll (Canopus, French Polynesia)', country: 'France', category: 'historical_test_site', flag: '🇫🇷', lat: -22.2500, lon: -138.7500, popDensityPerKm2: 1, suggestedYieldKt: 2600, burstMode: 'air', historicalTestName: 'Canopus Thermonuclear Test', historicalYear: 1968, description: 'First French two-stage thermonuclear detonation (2.6 Megatons)' },
+
+  // China 🇨🇳
+  { id: 'lop_nur', name: 'Lop Nur Test Base (Project 596, Xinjiang)', country: 'China', category: 'historical_test_site', flag: '🇨🇳', lat: 40.8100, lon: 89.7800, popDensityPerKm2: 2, suggestedYieldKt: 22, burstMode: 'surface', historicalTestName: 'Project 596 ("Chic-1")', historicalYear: 1964, description: 'First Chinese atomic bomb test at Lop Nur tower (22 kt, Oct 16, 1964)' },
+
+  // India 🇮🇳
+  { id: 'pokhran', name: 'Pokhran Test Range (Smiling Buddha, Rajasthan)', country: 'India', category: 'historical_test_site', flag: '🇮🇳', lat: 27.0800, lon: 71.7500, popDensityPerKm2: 8, suggestedYieldKt: 12, burstMode: 'surface', historicalTestName: 'Operation Smiling Buddha (Pokhran-I)', historicalYear: 1974, description: 'India\'s first peaceful nuclear explosion underground (12 kt, May 18, 1974)' },
+
+  // Pakistan 🇵🇰
+  { id: 'chagai', name: 'Ras Koh Hills (Chagai-I, Balochistan)', country: 'Pakistan', category: 'historical_test_site', flag: '🇵🇰', lat: 28.7900, lon: 64.9500, popDensityPerKm2: 4, suggestedYieldKt: 40, burstMode: 'surface', historicalTestName: 'Operation Chagai-I (Ras Koh mountain tunnel)', historicalYear: 1998, description: 'Pakistan\'s first underground nuclear tests (May 28, 1998)' },
+
+  // North Korea 🇰🇵
+  { id: 'punggye_ri', name: 'Punggye-ri Test Site (Mt. Mantap, North Korea)', country: 'North Korea', category: 'historical_test_site', flag: '🇰🇵', lat: 41.2800, lon: 129.0800, popDensityPerKm2: 6, suggestedYieldKt: 250, burstMode: 'surface', historicalTestName: '2017 Thermonuclear Test (Tunnel 2)', historicalYear: 2017, description: 'Deep horizontal tunnel test under Mt. Mantap (250 kt, mb 6.30)' }
 ];
 
 export type OutriderEffectType = 'fireball' | 'radiation' | 'shockwave' | 'thermal';
@@ -145,7 +185,8 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
   burstMode,
   burstAltitudeM,
   onYieldChange,
-  onBurstModeChange
+  onBurstModeChange,
+  initialCityId
 }) => {
   // Simulator View Mode: 'profile' (Mushroom Cloud Elevation), 'map' (Outrider Blast Zones), 'split' (Dual)
   const [viewMode, setViewMode] = useState<'profile' | 'map' | 'split'>('profile');
@@ -165,7 +206,26 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
   const [shakeIntensity, setShakeIntensity] = useState<number>(0.0);
 
   // Selected City Preset for Casualties & Map Center
-  const [selectedCityId, setSelectedCityId] = useState<string>('regina');
+  const [selectedCityId, setSelectedCityId] = useState<string>(() => {
+    if (initialCityId && CITY_PRESETS.some(c => c.id === initialCityId)) {
+      return initialCityId;
+    }
+    return 'regina';
+  });
+
+  // Sync if initialCityId prop updates dynamically
+  useEffect(() => {
+    if (initialCityId && CITY_PRESETS.some(c => c.id === initialCityId)) {
+      setSelectedCityId(initialCityId);
+      const match = CITY_PRESETS.find(c => c.id === initialCityId);
+      if (match?.suggestedYieldKt && onYieldChange) {
+        onYieldChange(match.suggestedYieldKt);
+      }
+      if (match?.burstMode && onBurstModeChange) {
+        onBurstModeChange(match.burstMode);
+      }
+    }
+  }, [initialCityId, onYieldChange, onBurstModeChange]);
 
   // Canvas References
   const profileCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -418,7 +478,7 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
         if (!tileImageCache.has(tileKey)) {
           const img = new Image();
           img.crossOrigin = 'anonymous';
-          img.src = `https://basemaps.cartocdn.com/dark_all/${zoom}/${tx}/${ty}.png`;
+          img.src = `https://services.arcgisonline.com/arcgis/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/${zoom}/${ty}/${tx}`;
           img.onload = () => {
             tileImageCache.set(tileKey, img);
           };
@@ -1262,18 +1322,53 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
                   </button>
                 )}
               </div>
-              <select
-                className="form-control"
-                value={selectedCityId}
-                onChange={(e) => setSelectedCityId(e.target.value)}
-                style={{ fontSize: '0.78rem', padding: '4px 10px', maxWidth: '240px' }}
-              >
-                {CITY_PRESETS.map((city) => (
-                  <option key={city.id} value={city.id}>
-                    {city.name} ({city.country})
-                  </option>
-                ))}
-              </select>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end' }}>
+                <select
+                  className="form-control"
+                  value={selectedCityId}
+                  onChange={(e) => {
+                    const newId = e.target.value;
+                    setSelectedCityId(newId);
+                    const chosen = CITY_PRESETS.find(c => c.id === newId);
+                    if (chosen && chosen.suggestedYieldKt && onYieldChange) {
+                      onYieldChange(chosen.suggestedYieldKt);
+                    }
+                    if (chosen && chosen.burstMode && onBurstModeChange) {
+                      onBurstModeChange(chosen.burstMode);
+                    }
+                  }}
+                  style={{ fontSize: '0.78rem', padding: '4px 10px', maxWidth: '340px' }}
+                >
+                  <optgroup label="🏙️ Populated Metropolitan Centers">
+                    {CITY_PRESETS.filter(c => c.category === 'city').map((city) => (
+                      <option key={city.id} value={city.id}>
+                        {city.flag || '📍'} {city.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="☢️ Historical Detonation Sites (By Sovereign Nation)">
+                    {CITY_PRESETS.filter(c => c.category === 'historical_test_site').map((site) => (
+                      <option key={site.id} value={site.id}>
+                        {site.flag || '☢️'} [{site.country}] {site.name} {site.suggestedYieldKt ? `(${site.suggestedYieldKt >= 1000 ? `${site.suggestedYieldKt/1000} MT` : `${site.suggestedYieldKt} kt`})` : ''}
+                      </option>
+                    ))}
+                  </optgroup>
+                </select>
+                {currentCity.category === 'historical_test_site' && (
+                  <div style={{
+                    fontSize: '0.70rem',
+                    color: '#f97316',
+                    background: 'rgba(249, 115, 22, 0.12)',
+                    border: '1px solid rgba(249, 115, 22, 0.3)',
+                    borderRadius: '4px',
+                    padding: '3px 8px',
+                    maxWidth: '420px',
+                    textAlign: 'right'
+                  }}>
+                    {currentCity.flag} <b>{currentCity.country}:</b> {currentCity.historicalTestName} ({currentCity.historicalYear}) — {currentCity.description}
+                  </div>
+                )}
+              </div>
             </div>
             <div style={{ position: 'relative', width: '100%', height: '480px', borderRadius: '8px', overflow: 'hidden' }}>
               <canvas

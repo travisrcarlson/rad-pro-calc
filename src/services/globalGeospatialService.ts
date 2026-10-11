@@ -105,6 +105,222 @@ export interface UnifiedGeospatialPin {
   rawCTBTO?: CTBTOStationRecord;
 }
 
+export interface NuclearWeaponStateMeta {
+  country: string;
+  flag: string;
+  shortCode: string;
+  color: string;
+  testCount: number;
+  totalMegatons: number;
+  firstTestYear: number;
+  lastTestYear: number;
+  atmosphericCount: number;
+  undergroundCount: number;
+  maxYieldDisplay: string;
+  maxYieldTestName: string;
+  primaryProvingGrounds: string[];
+  focusCoordinates: { lat: number; lon: number };
+  authority: string;
+  nptStatus: string;
+}
+
+export const NUCLEAR_WEAPON_STATES: Record<string, NuclearWeaponStateMeta> = {
+  'United States': {
+    country: 'United States',
+    flag: '🇺🇸',
+    shortCode: 'USA',
+    color: '#38bdf8', // Light Dodger Blue / Cyan
+    testCount: 1032,
+    totalMegatons: 180.7,
+    firstTestYear: 1945,
+    lastTestYear: 1992,
+    atmosphericCount: 218,
+    undergroundCount: 812,
+    maxYieldDisplay: '15,000 kt (15 MT)',
+    maxYieldTestName: 'Castle Bravo (1954)',
+    primaryProvingGrounds: [
+      'Nevada Test Site (NNSS / NTS, NV)',
+      'Pacific Proving Grounds (Bikini & Enewetak, Marshall Islands)',
+      'Johnston Atoll (Central Pacific)',
+      'Alamogordo / Trinity Site (NM)',
+      'Amchitka Island (Aleutian Islands, AK)'
+    ],
+    focusCoordinates: { lat: 37.15, lon: -116.05 },
+    authority: 'Manhattan Project / US Atomic Energy Commission (AEC) / DOE-NNSA',
+    nptStatus: 'NPT Recognized Nuclear-Weapon State (NWS)'
+  },
+  'Soviet Union': {
+    country: 'Soviet Union',
+    flag: '🇷🇺',
+    shortCode: 'USSR',
+    color: '#ef4444', // Crimson Red
+    testCount: 714,
+    totalMegatons: 264.0,
+    firstTestYear: 1949,
+    lastTestYear: 1990,
+    atmosphericCount: 213,
+    undergroundCount: 494,
+    maxYieldDisplay: '50,000 kt (50 MT)',
+    maxYieldTestName: 'Tsar Bomba / RDS-220 (1961)',
+    primaryProvingGrounds: [
+      'Semipalatinsk Test Site ("The Polygon", Kazakhstan)',
+      'Novaya Zemlya (Mityushikha Bay & Matochkin Shar, Arctic)',
+      'Kapustin Yar (Astrakhan Oblast)',
+      'Totskoye Range (Orenburg Oblast)',
+      'Azgir & Astrakhan (PNE Cavity Sites)'
+    ],
+    focusCoordinates: { lat: 50.44, lon: 78.43 },
+    authority: 'Minsredmash / First Chief Directorate / Kurchatov Institute / VNIIEF',
+    nptStatus: 'NPT Recognized Nuclear-Weapon State (NWS)'
+  },
+  'France': {
+    country: 'France',
+    flag: '🇫🇷',
+    shortCode: 'FRA',
+    color: '#818cf8', // Royal Violet / Indigo
+    testCount: 204,
+    totalMegatons: 13.5,
+    firstTestYear: 1960,
+    lastTestYear: 1996,
+    atmosphericCount: 50,
+    undergroundCount: 154,
+    maxYieldDisplay: '2,600 kt (2.6 MT)',
+    maxYieldTestName: 'Canopus (1968, Fangataufa)',
+    primaryProvingGrounds: [
+      'Moruroa Atoll (Tuamotu Archipelago, French Polynesia)',
+      'Fangataufa Atoll (French Polynesia)',
+      'Reggane Center for Military Experiments (CSEM, Algerian Sahara)',
+      'In Ekker Underground Proving Ground (CEMO, Hoggar, Algeria)'
+    ],
+    focusCoordinates: { lat: -21.84, lon: -138.91 },
+    authority: 'Commissariat à l\'énergie atomique (CEA / DAM - Direction des Applications Militaires)',
+    nptStatus: 'NPT Recognized Nuclear-Weapon State (NWS)'
+  },
+  'United Kingdom': {
+    country: 'United Kingdom',
+    flag: '🇬🇧',
+    shortCode: 'GBR',
+    color: '#06b6d4', // Teal Cyan
+    testCount: 45,
+    totalMegatons: 9.0,
+    firstTestYear: 1952,
+    lastTestYear: 1991,
+    atmosphericCount: 21,
+    undergroundCount: 24,
+    maxYieldDisplay: '3,000 kt (3.0 MT)',
+    maxYieldTestName: 'Operation Grapple Y (1958)',
+    primaryProvingGrounds: [
+      'Montebello Islands (Western Australia)',
+      'Maralinga Proving Ground (Woomera, South Australia)',
+      'Emu Field (South Australia)',
+      'Christmas Island / Kiritimati (Line Islands)',
+      'Malden Island (Central Pacific)',
+      'Nevada Test Site (Joint UK-US underground testing)'
+    ],
+    focusCoordinates: { lat: -20.44, lon: 115.57 },
+    authority: 'Atomic Weapons Research Establishment (AWRE Aldermaston) / Ministry of Supply',
+    nptStatus: 'NPT Recognized Nuclear-Weapon State (NWS)'
+  },
+  'China': {
+    country: 'China',
+    flag: '🇨🇳',
+    shortCode: 'CHN',
+    color: '#f59e0b', // Amber Gold
+    testCount: 38,
+    totalMegatons: 19.4,
+    firstTestYear: 1964,
+    lastTestYear: 1996,
+    atmosphericCount: 23,
+    undergroundCount: 15,
+    maxYieldDisplay: '4,000 kt (4.0 MT)',
+    maxYieldTestName: 'Test No. 6 (1967) / 1976 Lop Nor Test',
+    primaryProvingGrounds: [
+      'Lop Nur Nuclear Weapon Test Base (Base 21 / Malan, Xinjiang)',
+      'Qinghai Nuclear Weapon Factory (Plant 221 / Ninth Academy)'
+    ],
+    focusCoordinates: { lat: 40.81, lon: 89.78 },
+    authority: 'Ninth Academy / China Academy of Engineering Physics (CAEP) / PLA COSTIND',
+    nptStatus: 'NPT Recognized Nuclear-Weapon State (NWS)'
+  },
+  'India': {
+    country: 'India',
+    flag: '🇮🇳',
+    shortCode: 'IND',
+    color: '#fb923c', // Saffron Orange
+    testCount: 2,
+    totalMegatons: 0.057,
+    firstTestYear: 1974,
+    lastTestYear: 1998,
+    atmosphericCount: 0,
+    undergroundCount: 2,
+    maxYieldDisplay: '45 kt',
+    maxYieldTestName: 'Operation Shakti / Shakti-I (1998)',
+    primaryProvingGrounds: [
+      'Pokhran Test Range (Khetolai, Thar Desert, Jaisalmer, Rajasthan)'
+    ],
+    focusCoordinates: { lat: 27.08, lon: 71.75 },
+    authority: 'Bhabha Atomic Research Centre (BARC) / DRDO / Dept. of Atomic Energy (DAE)',
+    nptStatus: 'Non-NPT Nuclear-Armed Sovereign State'
+  },
+  'Pakistan': {
+    country: 'Pakistan',
+    flag: '🇵🇰',
+    shortCode: 'PAK',
+    color: '#10b981', // Emerald Green
+    testCount: 1,
+    totalMegatons: 0.040,
+    firstTestYear: 1998,
+    lastTestYear: 1998,
+    atmosphericCount: 0,
+    undergroundCount: 1,
+    maxYieldDisplay: '40 kt',
+    maxYieldTestName: 'Chagai-I (Ras Koh Tests, 1998)',
+    primaryProvingGrounds: [
+      'Ras Koh Hills Test Site (Koh Kambaran, Chagai District, Balochistan)',
+      'Kharan Desert (Chagai-II site, Balochistan)'
+    ],
+    focusCoordinates: { lat: 28.79, lon: 64.95 },
+    authority: 'Pakistan Atomic Energy Commission (PAEC) / Khan Research Laboratories (KRL)',
+    nptStatus: 'Non-NPT Nuclear-Armed Sovereign State'
+  },
+  'North Korea': {
+    country: 'North Korea',
+    flag: '🇰🇵',
+    shortCode: 'PRK',
+    color: '#ec4899', // Hot Pink / Fuchsia
+    testCount: 2,
+    totalMegatons: 0.250,
+    firstTestYear: 2006,
+    lastTestYear: 2017,
+    atmosphericCount: 0,
+    undergroundCount: 2,
+    maxYieldDisplay: '250 kt',
+    maxYieldTestName: 'Punggye-ri 2017 Thermonuclear Test',
+    primaryProvingGrounds: [
+      'Punggye-ri Nuclear Test Site (Mount Mantap, Kilju County, North Hamgyong Province)'
+    ],
+    focusCoordinates: { lat: 41.28, lon: 129.08 },
+    authority: 'Nuclear Weapons Institute / Ministry of Atomic Energy Industry / KPA',
+    nptStatus: 'Nuclear-Armed State (Withdrew from NPT 2003)'
+  }
+};
+
+export function getNuclearWeaponStates(): NuclearWeaponStateMeta[] {
+  return Object.values(NUCLEAR_WEAPON_STATES);
+}
+
+export function getDetonationCountryColor(country: string): string {
+  return NUCLEAR_WEAPON_STATES[country]?.color || '#f87171';
+}
+
+export function getDetonationCountryFlag(country: string): string {
+  return NUCLEAR_WEAPON_STATES[country]?.flag || '☢️';
+}
+
+export function getDetonationCountryShortCode(country: string): string {
+  return NUCLEAR_WEAPON_STATES[country]?.shortCode || country.slice(0, 3).toUpperCase();
+}
+
 const REACTORS: GlobalReactorRecord[] = reactorsDataRaw as unknown as GlobalReactorRecord[];
 const DETONATIONS: NuclearDetonationRecord[] = detonationsDataRaw as unknown as NuclearDetonationRecord[];
 const INCIDENTS: any[] = incidentsDataRaw as any[];
@@ -247,6 +463,7 @@ export interface GeospatialFilterOptions {
   reactorType?: string | 'all';
   timelineMode?: 'off' | 'cumulative' | 'single';
   timelineYear?: number;
+  detonationColorMode?: 'country' | 'yield';
 }
 
 export function getUnifiedGeospatialPins(options: GeospatialFilterOptions = {}): UnifiedGeospatialPin[] {
@@ -264,7 +481,8 @@ export function getUnifiedGeospatialPins(options: GeospatialFilterOptions = {}):
     reactorStatus = 'all',
     reactorType = 'all',
     timelineMode = 'off',
-    timelineYear = 2024
+    timelineYear = 2024,
+    detonationColorMode = 'country'
   } = options;
 
   const pins: UnifiedGeospatialPin[] = [];
@@ -357,7 +575,9 @@ export function getUnifiedGeospatialPins(options: GeospatialFilterOptions = {}):
         isCurrentYear,
         typeOrClassification: d.testType,
         color: isCurrentYear
-          ? '#facc15' // Brilliant bright sunburst gold for current year tests!
+          ? '#facc15' // Brilliant bright sunburst gold for active year tests!
+          : detonationColorMode === 'country'
+          ? getDetonationCountryColor(d.country)
           : d.yieldKt >= 1000
           ? '#ef4444'
           : d.yieldKt >= 100

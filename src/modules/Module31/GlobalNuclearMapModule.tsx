@@ -9,6 +9,10 @@ import {
   exportGeospatialPinsToCSV,
   exportGeospatialPinsToJSON,
   getTimelineYearStats,
+  NUCLEAR_WEAPON_STATES,
+  getNuclearWeaponStates,
+  getDetonationCountryColor,
+  getDetonationCountryFlag,
   type UnifiedGeospatialPin,
   type GeospatialCategory
 } from '../../services/globalGeospatialService';
@@ -37,6 +41,363 @@ import {
 import { TacticalCompassRose } from '../../components/TacticalCompassRose';
 
 const Plot = (PlotComponent as any).default || PlotComponent;
+
+export interface HistoricalProvingGround {
+  id: string;
+  name: string;
+  country: string;
+  flag: string;
+  shortCode: string;
+  color: string;
+  region: string;
+  coordinates: { lat: number; lon: number };
+  operationalEra: string;
+  totalTests: string;
+  environment: string;
+  significance: string;
+  notableTests: { name: string; yield: string; year: number; type: string }[];
+  visualSimYieldKt?: number;
+  visualSimCityId?: string;
+}
+
+export const HISTORICAL_PROVING_GROUNDS: HistoricalProvingGround[] = [
+  {
+    id: 'nevada',
+    name: 'Nevada National Security Site (NNSS / NTS)',
+    country: 'United States',
+    flag: '🇺🇸',
+    shortCode: 'USA',
+    color: '#38bdf8',
+    region: 'Nye County, Nevada, United States',
+    coordinates: { lat: 37.15, lon: -116.05 },
+    operationalEra: '1951 – 1992',
+    totalTests: '928 Tests (100 Atmospheric, 828 Underground)',
+    environment: 'Desert basin alluvium (Yucca Flat), volcanic tuff tunnels (Rainier Mesa)',
+    significance: 'Continental test range for US deterrent development, weapon physics validation, Plowshare peaceful nuclear excavation, and modern subcritical hydrodynamic experiments.',
+    notableTests: [
+      { name: 'Sedan (Plowshare)', yield: '104 kt', year: 1962, type: 'Crater Excavation (390m diameter, 100m deep)' },
+      { name: 'Rainier', yield: '1.7 kt', year: 1957, type: 'First Fully Contained Underground Test' },
+      { name: 'Priscilla (Plumbbob)', yield: '37 kt', year: 1957, type: 'Atmospheric Balloon Tethered Burst' },
+      { name: 'Divider', yield: '<20 kt', year: 1992, type: 'Final US Underground Nuclear Test' }
+    ],
+    visualSimYieldKt: 104,
+    visualSimCityId: 'nts_sedan'
+  },
+  {
+    id: 'pacific_proving_grounds',
+    name: 'Pacific Proving Grounds (Bikini & Enewetak Atolls)',
+    country: 'United States',
+    flag: '🇺🇸',
+    shortCode: 'USA',
+    color: '#38bdf8',
+    region: 'Ralik Chain, Marshall Islands, Central Pacific',
+    coordinates: { lat: 11.58, lon: 165.38 },
+    operationalEra: '1946 – 1958',
+    totalTests: '67 Tests (42 Enewetak, 23 Bikini, 2 Open Ocean)',
+    environment: 'Oceanic coral atolls, lagoons, deep ocean barge moorings',
+    significance: 'Proving grounds for high-yield multi-megaton thermonuclear weapons. Site of the catastrophic Castle Bravo radiological fallout event that contaminated the Lucky Dragon No. 5.',
+    notableTests: [
+      { name: 'Castle Bravo', yield: '15,000 kt (15 MT)', year: 1954, type: 'Dry-Fuel Thermonuclear (Shrimp Device)' },
+      { name: 'Ivy Mike', yield: '10,400 kt (10.4 MT)', year: 1952, type: 'First Thermonuclear Device (Cryogenic Sausage)' },
+      { name: 'Crossroads Baker', yield: '21 kt', year: 1946, type: 'Underwater Target Fleet Detonation (27m depth)' },
+      { name: 'Ivy King', yield: '500 kt', year: 1952, type: 'Largest Pure-Fission Weapon Ever Tested' }
+    ],
+    visualSimYieldKt: 15000,
+    visualSimCityId: 'castle_bravo'
+  },
+  {
+    id: 'alamogordo_trinity',
+    name: 'Trinity Site (White Sands Missile Range)',
+    country: 'United States',
+    flag: '🇺🇸',
+    shortCode: 'USA',
+    color: '#38bdf8',
+    region: 'Socorro County, New Mexico, United States',
+    coordinates: { lat: 33.677, lon: -106.475 },
+    operationalEra: 'July 16, 1945',
+    totalTests: '1 Test (The Gadget)',
+    environment: 'Jornada del Muerto desert plain',
+    significance: 'Birth of the nuclear age. Manhattan Project implosion test of a plutonium-239 core that validated the implosion geometry and synthesized trinitite glass.',
+    notableTests: [
+      { name: 'Trinity (The Gadget)', yield: '21 kt', year: 1945, type: '100-foot Steel Tower Detonation' }
+    ],
+    visualSimYieldKt: 21,
+    visualSimCityId: 'trinity'
+  },
+  {
+    id: 'amchitka_island',
+    name: 'Amchitka Island Proving Ground',
+    country: 'United States',
+    flag: '🇺🇸',
+    shortCode: 'USA',
+    color: '#38bdf8',
+    region: 'Rat Islands, Aleutian Chain, Alaska, United States',
+    coordinates: { lat: 51.47, lon: 179.18 },
+    operationalEra: '1965 – 1971',
+    totalTests: '3 Underground Tests (Long Shot, Milrow, Cannikin)',
+    environment: 'Volcanic andesite rock, deep subterranean shafts',
+    significance: 'Proving ground for extreme-yield underground warhead calibration. Cannikin tested the 5 MT W71 Spartan ABM warhead at 1,870 meters depth, lifting the island surface by over 6 meters.',
+    notableTests: [
+      { name: 'Cannikin', yield: '4,800 – 5,000 kt (~5 MT)', year: 1971, type: 'Deep Vertical Shaft (1,870m depth)' },
+      { name: 'Milrow', yield: '1,000 kt (1 MT)', year: 1969, type: 'Calibration Shot for Cannikin (1,219m depth)' },
+      { name: 'Long Shot', yield: '80 kt', year: 1965, type: 'Vela Uniform Seismic Decoupling Analysis' }
+    ],
+    visualSimYieldKt: 4800,
+    visualSimCityId: 'nts_sedan'
+  },
+  {
+    id: 'semipalatinsk_polygon',
+    name: 'Semipalatinsk Test Site ("The Polygon")',
+    country: 'Soviet Union',
+    flag: '🇷🇺',
+    shortCode: 'USSR',
+    color: '#ef4444',
+    region: 'Steppes of Kazakh SSR (now Kazakhstan)',
+    coordinates: { lat: 50.44, lon: 78.43 },
+    operationalEra: '1949 – 1989',
+    totalTests: '456 Tests (116 Atmospheric, 340 Underground)',
+    environment: 'Open steppe plain, Degelen Mountain tunnels, Balapan borehole field',
+    significance: 'Primary Soviet testing center where the USSR broke the US atomic monopoly with RDS-1 in 1949. Closed by Kazakh presidential decree in 1991, founding the UN International Day against Nuclear Tests.',
+    notableTests: [
+      { name: 'RDS-1 (Joe-1 / Pervaya Molniya)', yield: '22 kt', year: 1949, type: '30m Tower (First Soviet A-Bomb)' },
+      { name: 'RDS-37', yield: '1,600 kt (1.6 MT)', year: 1955, type: 'First Soviet Two-Stage Thermonuclear Airburst' },
+      { name: 'Chagan (PNE Reservoir)', yield: '140 kt', year: 1965, type: 'Nuclear Excavation (100m deep "Atomic Lake")' },
+      { name: 'RDS-6s (Joe-4 / Sloika)', yield: '400 kt', year: 1953, type: 'Single-Stage Layer Cake Thermonuclear' }
+    ],
+    visualSimYieldKt: 1600,
+    visualSimCityId: 'semipalatinsk'
+  },
+  {
+    id: 'novaya_zemlya',
+    name: 'Novaya Zemlya Northern Test Site (Object 700)',
+    country: 'Soviet Union',
+    flag: '🇷🇺',
+    shortCode: 'USSR',
+    color: '#ef4444',
+    region: 'Arctic Ocean Archipelago, Arkhangelsk Oblast, Russia',
+    coordinates: { lat: 73.85, lon: 54.58 },
+    operationalEra: '1955 – 1990',
+    totalTests: '130 Tests (88 Atmospheric, 3 Underwater, 39 Underground)',
+    environment: 'Arctic permafrost, Matochkin Shar fjord adits, Mityushikha Bay',
+    significance: 'Dedicated Soviet proving ground for high-yield megaton-class thermonuclear weapons, accounting for 94% of all Soviet megatonnage and the largest detonation in human history.',
+    notableTests: [
+      { name: 'Tsar Bomba (RDS-220)', yield: '50,000 kt (50 MT)', year: 1961, type: 'Parachute Drop Airburst (4,000m AGL)' },
+      { name: 'Test 219 (Dry Nose Super-Bomb)', yield: '24,200 kt (24.2 MT)', year: 1962, type: 'Thermonuclear Airburst' },
+      { name: 'Test 147', yield: '19,100 kt (19.1 MT)', year: 1962, type: 'Thermonuclear Airburst' },
+      { name: 'Site A Subsea Torpedo Test', yield: '3.5 kt', year: 1955, type: 'First Soviet Underwater Detonation' }
+    ],
+    visualSimYieldKt: 50000,
+    visualSimCityId: 'novaya_zemlya'
+  },
+  {
+    id: 'moruroa_atoll',
+    name: 'Moruroa Atoll Proving Ground',
+    country: 'France',
+    flag: '🇫🇷',
+    shortCode: 'FRA',
+    color: '#818cf8',
+    region: 'Tuamotu Archipelago, French Polynesia',
+    coordinates: { lat: -21.84, lon: -138.91 },
+    operationalEra: '1966 – 1996',
+    totalTests: '181 Tests (41 Atmospheric, 140 Underground)',
+    environment: 'South Pacific coral atoll, deep vertical boreholes drilled into lagoon basalt',
+    significance: 'Primary testing location for the French airborne and submarine nuclear force (Force de Frappe) for three decades; site of extensive global radiological monitoring.',
+    notableTests: [
+      { name: 'Aldebaran', yield: '28 kt', year: 1966, type: 'First French Polynesian Test (Lagoon Barge)' },
+      { name: 'Centaure', yield: '4 kt', year: 1974, type: 'Last French Atmospheric Nuclear Test' },
+      { name: 'Xouthos', yield: '60 kt', year: 1996, type: 'Final French Nuclear Test Before Moratorium' }
+    ],
+    visualSimYieldKt: 60,
+    visualSimCityId: 'canopus_fangataufa'
+  },
+  {
+    id: 'fangataufa_atoll',
+    name: 'Fangataufa Atoll Proving Ground',
+    country: 'France',
+    flag: '🇫🇷',
+    shortCode: 'FRA',
+    color: '#818cf8',
+    region: 'Tuamotu Archipelago, French Polynesia',
+    coordinates: { lat: -22.24, lon: -138.75 },
+    operationalEra: '1966 – 1996',
+    totalTests: '14 Tests (5 Atmospheric, 9 Underground)',
+    environment: 'Closed coral atoll rim, deep volcanic foundation',
+    significance: 'Auxiliary firing ground reserved for high-yield megaton thermonuclear weapons to avoid seismic fracturing and subsidence of Moruroa.',
+    notableTests: [
+      { name: 'Canopus', yield: '2,600 kt (2.6 MT)', year: 1968, type: 'First French Thermonuclear H-Bomb (Tethered Balloon)' },
+      { name: 'Rigel', yield: '150 kt', year: 1966, type: 'Airburst Barge Detonation' }
+    ],
+    visualSimYieldKt: 2600,
+    visualSimCityId: 'canopus_fangataufa'
+  },
+  {
+    id: 'reggane_in_ekker',
+    name: 'Reggane & In Ekker Centers (CSEM / CEMO)',
+    country: 'France',
+    flag: '🇫🇷',
+    shortCode: 'FRA',
+    color: '#818cf8',
+    region: 'Tanezrouft & Hoggar Mountains, Algerian Sahara',
+    coordinates: { lat: 26.72, lon: 0.28 },
+    operationalEra: '1960 – 1966',
+    totalTests: '17 Tests (4 Atmospheric at Reggane, 13 Underground at In Ekker)',
+    environment: 'Sahara Desert hamada plateau, granite massifs of Taourirt Tan Afella',
+    significance: 'Established France as the fourth nuclear weapon state with Gerboise Bleue in 1960. The Béryl accident of 1962 breached the mountain tunnel, venting radioactive lava and fission gases.',
+    notableTests: [
+      { name: 'Gerboise Bleue', yield: '70 kt', year: 1960, type: '105m Tower (First French Atomic Bomb)' },
+      { name: 'Gerboise Blanche', yield: '<5 kt', year: 1960, type: 'Surface Ground Detonation' },
+      { name: 'Béryl', yield: '<30 kt', year: 1962, type: 'Underground Horizontal Adit (Venting Incident)' }
+    ],
+    visualSimYieldKt: 70,
+    visualSimCityId: 'reggane'
+  },
+  {
+    id: 'montebello_islands',
+    name: 'Montebello Islands Proving Ground',
+    country: 'United Kingdom',
+    flag: '🇬🇧',
+    shortCode: 'GBR',
+    color: '#06b6d4',
+    region: 'Pilbara Coast, Western Australia',
+    coordinates: { lat: -20.44, lon: 115.57 },
+    operationalEra: '1952 – 1956',
+    totalTests: '3 Atmospheric Tests (Hurricane, Mosaic G1, Mosaic G2)',
+    environment: 'Uninhabited coral archipelago in the Indian Ocean',
+    significance: 'Site where the United Kingdom became the third nuclear weapon state on October 3, 1952. Operation Hurricane was detonated inside the hull of frigate HMS Plym to investigate harbor sabotage.',
+    notableTests: [
+      { name: 'Operation Hurricane', yield: '25 kt', year: 1952, type: 'Detonated Inside Frigate HMS Plym Hull' },
+      { name: 'Mosaic G2', yield: '60 kt', year: 1956, type: '30m Tower (Thermonuclear Booster Test)' }
+    ],
+    visualSimYieldKt: 25,
+    visualSimCityId: 'montebello'
+  },
+  {
+    id: 'maralinga_emu',
+    name: 'Maralinga Proving Ground & Emu Field',
+    country: 'United Kingdom',
+    flag: '🇬🇧',
+    shortCode: 'GBR',
+    color: '#06b6d4',
+    region: 'Woomera Prohibited Area, South Australia',
+    coordinates: { lat: -30.16, lon: 131.58 },
+    operationalEra: '1953 – 1963',
+    totalTests: '9 Major Atomic Tests (Totem, Buffalo, Antler) + 500+ Minor Trials',
+    environment: 'Semi-arid outback scrubland, Great Victoria Desert',
+    significance: 'Permanent British nuclear proving ground in continental Australia. Vixen safety trials dispersed ~22 kg of plutonium dust, necessitating extensive multi-decade soil remediation.',
+    notableTests: [
+      { name: 'Buffalo Round 1 (One Tree)', yield: '12.9 kt', year: 1956, type: '31m Steel Tower' },
+      { name: 'Antler Round 2 (Biak)', yield: '5.6 kt', year: 1957, type: 'Tower Detonation' },
+      { name: 'Totem 1 (Emu Field)', yield: '9.1 kt', year: 1953, type: 'Ground Burst (Black Mist Fallout)' }
+    ],
+    visualSimYieldKt: 13,
+    visualSimCityId: 'montebello'
+  },
+  {
+    id: 'christmas_island',
+    name: 'Christmas Island (Kiritimati) & Malden Island',
+    country: 'United Kingdom',
+    flag: '🇬🇧',
+    shortCode: 'GBR',
+    color: '#06b6d4',
+    region: 'Line Islands, Central Pacific Ocean',
+    coordinates: { lat: 1.87, lon: -157.36 },
+    operationalEra: '1957 – 1962',
+    totalTests: '9 British Tests (Operation Grapple) + 24 US Tests (Operation Dominic)',
+    environment: 'Equatorial Pacific coral atolls',
+    significance: 'Field location for the development of Great Britain\'s independent megaton-range two-stage thermonuclear deterrent, dropped from RAF Vickers Valiant bombers.',
+    notableTests: [
+      { name: 'Operation Grapple Y', yield: '3,000 kt (3.0 MT)', year: 1958, type: 'Airburst from Vickers Valiant Bomber' },
+      { name: 'Grapple X', yield: '1,800 kt (1.8 MT)', year: 1957, type: 'First British Megaton Detonation' }
+    ],
+    visualSimYieldKt: 3000,
+    visualSimCityId: 'grapple_kiritimati'
+  },
+  {
+    id: 'lop_nur',
+    name: 'Lop Nur Nuclear Test Base (Base 21 / Malan)',
+    country: 'China',
+    flag: '🇨🇳',
+    shortCode: 'CHN',
+    color: '#f59e0b',
+    region: 'Tarim Basin & Lop Desert, Xinjiang Uyghur Autonomous Region',
+    coordinates: { lat: 40.81, lon: 89.78 },
+    operationalEra: '1964 – 1996',
+    totalTests: '45 Tests (23 Atmospheric, 22 Underground)',
+    environment: 'Hyper-arid desert salt playa, Kuruktag mountain tunnels',
+    significance: 'Birthplace of China\'s Two Bombs, One Satellite strategic program. Holds the record for the fastest sprint from fission to fusion (32 months between Project 596 and Test No. 6).',
+    notableTests: [
+      { name: 'Project 596 (Chic-1)', yield: '22 kt', year: 1964, type: '102m Tower (First Chinese Atomic Bomb)' },
+      { name: 'Test No. 6 (Chic-6)', yield: '3,300 kt (3.3 MT)', year: 1967, type: 'Tu-16 Parachute Airburst (First Full H-Bomb)' },
+      { name: 'Test No. 21', yield: '4,000 kt (4.0 MT)', year: 1976, type: 'Largest Chinese Atmospheric Detonation' },
+      { name: 'Final Chinese Test', yield: '1 – 5 kt', year: 1996, type: 'Underground Tunnel Detonation' }
+    ],
+    visualSimYieldKt: 3300,
+    visualSimCityId: 'lop_nur'
+  },
+  {
+    id: 'pokhran_range',
+    name: 'Pokhran Nuclear Test Range (Khetolai)',
+    country: 'India',
+    flag: '🇮🇳',
+    shortCode: 'IND',
+    color: '#fb923c',
+    region: 'Jaisalmer District, Thar Desert, Rajasthan, India',
+    coordinates: { lat: 27.08, lon: 71.75 },
+    operationalEra: '1974 & 1998',
+    totalTests: '6 Underground Tests (1 PNE in 1974, 5 in Operation Shakti 1998)',
+    environment: 'Thar Desert sand dunes, dense sandstone and shale subsurface',
+    significance: 'Broke the monopoly of the 5 UN Security Council permanent members. The 1974 test triggered creation of the Nuclear Suppliers Group (NSG) and global export control regimes.',
+    notableTests: [
+      { name: 'Smiling Buddha (Pokhran-I)', yield: '12 kt', year: 1974, type: 'Peaceful Nuclear Explosion (107m vertical shaft)' },
+      { name: 'Shakti-I (Pokhran-II)', yield: '45 kt', year: 1998, type: 'Two-Stage Thermonuclear Device' },
+      { name: 'Shakti-II', yield: '15 kt', year: 1998, type: 'Standard Fission Implosion Core' },
+      { name: 'Shakti-III, IV, V', yield: 'Sub-kiloton', year: 1998, type: 'Tactical Low-Yield / Subcritical Shots' }
+    ],
+    visualSimYieldKt: 45,
+    visualSimCityId: 'pokhran'
+  },
+  {
+    id: 'chagai_ras_koh',
+    name: 'Ras Koh Hills & Kharan Proving Ground',
+    country: 'Pakistan',
+    flag: '🇵🇰',
+    shortCode: 'PAK',
+    color: '#10b981',
+    region: 'Chagai District, Balochistan Province, Pakistan',
+    coordinates: { lat: 28.79, lon: 64.95 },
+    operationalEra: 'May 1998',
+    totalTests: '6 Underground Tests (5 at Ras Koh, 1 at Kharan)',
+    environment: 'Arid granite mountain massif (Mount Ras Koh) & desert alluvium',
+    significance: 'Established Pakistan as the world\'s 7th declared nuclear-armed state. Ras Koh\'s 1-km horizontal adit caused the mountain granite face to turn visibly white due to shock decompression.',
+    notableTests: [
+      { name: 'Chagai-I (5 Shots)', yield: '40 – 43 kt Total', year: 1998, type: 'Simultaneous Horizontal Adit Detonation' },
+      { name: 'Chagai-II (Kharan)', yield: '12 – 20 kt', year: 1998, type: 'Vertical Shaft in Desert Alluvium' }
+    ],
+    visualSimYieldKt: 40,
+    visualSimCityId: 'chagai'
+  },
+  {
+    id: 'punggye_ri',
+    name: 'Punggye-ri Nuclear Test Site',
+    country: 'North Korea',
+    flag: '🇰🇵',
+    shortCode: 'PRK',
+    color: '#ec4899',
+    region: 'Mount Mantap, Kilju County, North Hamgyong Province, DPRK',
+    coordinates: { lat: 41.28, lon: 129.08 },
+    operationalEra: '2006 – 2017',
+    totalTests: '6 Underground Tests (East, North, and West Tunnels)',
+    environment: 'Deep horizontal adits in hard crystalline diorite/granite mountain',
+    significance: 'The sole site where nuclear weapons have been tested in the 21st century. Peak 2017 test created an mb 6.3 earthquake and geological deformation detected by CTBTO stations globally.',
+    notableTests: [
+      { name: '2017 Thermonuclear Test', yield: '150 – 250 kt', year: 2017, type: 'North Tunnel (mb 6.3 - Mountain Collapse)' },
+      { name: 'September 2016 Test', yield: '20 – 30 kt', year: 2016, type: 'Standard Warhead Design (mb 5.3)' },
+      { name: '2006 Inaugural Test', yield: '<1 kt (Fissile Fizzle)', year: 2006, type: 'East Tunnel (mb 4.3)' }
+    ],
+    visualSimYieldKt: 250,
+    visualSimCityId: 'punggye_ri'
+  }
+];
 
 export const GlobalNuclearMapModule: React.FC = () => {
   const navigate = useNavigate();
@@ -67,9 +428,24 @@ export const GlobalNuclearMapModule: React.FC = () => {
   const [selectedReactorStatus, setSelectedReactorStatus] = useState<string>('all');
   const [selectedReactorType, setSelectedReactorType] = useState<string>('all');
   const [selectedCTBTOTech, setSelectedCTBTOTech] = useState<string>('all');
+  const [detonationColorMode, setDetonationColorMode] = useState<'country' | 'yield'>('country');
 
   // Bottom Command & Analysis Center Active Tab
-  const [activeWorkspaceTab, setActiveWorkspaceTab] = useState<'directory' | 'epz_planner' | 'seismic_inversion'>('directory');
+  const [activeWorkspaceTab, setActiveWorkspaceTab] = useState<'directory' | 'epz_planner' | 'seismic_inversion' | 'nuclear_nations'>('directory');
+
+  // Proving Grounds Atlas Search and Country Filter
+  const [provingGroundSearchQuery, setProvingGroundSearchQuery] = useState<string>('');
+  const [provingGroundCountryFilter, setProvingGroundCountryFilter] = useState<string>('all');
+
+  const focusProvingGround = (lat: number, lon: number, country?: string) => {
+    setCenterRotation({ lon, lat });
+    if (country) {
+      setSelectedCountry(country);
+    }
+    setActiveCategoryFilter('detonation');
+    setShowDetonations(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   // EPZ Evacuation Planning State
   const [isEPZOverlayActive, setIsEPZOverlayActive] = useState<boolean>(true);
@@ -155,7 +531,8 @@ export const GlobalNuclearMapModule: React.FC = () => {
       reactorStatus: selectedReactorStatus,
       reactorType: selectedReactorType,
       timelineMode,
-      timelineYear: currentYear
+      timelineYear: currentYear,
+      detonationColorMode
     });
   }, [
     showReactors,
@@ -171,7 +548,24 @@ export const GlobalNuclearMapModule: React.FC = () => {
     selectedReactorStatus,
     selectedReactorType,
     timelineMode,
+    currentYear,
   ]);
+
+  // Filtered Proving Grounds for Tab 4 Atlas
+  const filteredProvingGrounds = useMemo(() => {
+    return HISTORICAL_PROVING_GROUNDS.filter(pg => {
+      const matchCountry = provingGroundCountryFilter === 'all' || pg.country === provingGroundCountryFilter;
+      const q = provingGroundSearchQuery.toLowerCase().trim();
+      const matchQuery = !q ||
+        pg.name.toLowerCase().includes(q) ||
+        pg.country.toLowerCase().includes(q) ||
+        pg.region.toLowerCase().includes(q) ||
+        pg.environment.toLowerCase().includes(q) ||
+        pg.significance.toLowerCase().includes(q) ||
+        pg.notableTests.some(t => t.name.toLowerCase().includes(q));
+      return matchCountry && matchQuery;
+    });
+  }, [provingGroundCountryFilter, provingGroundSearchQuery]);
 
   // Hydrate focus/coordinates if navigated from Incident / Plume / Blast modules
   useEffect(() => {
@@ -475,31 +869,86 @@ export const GlobalNuclearMapModule: React.FC = () => {
       });
     }
 
-    // 2. Historical Past Detonations (Cumulative timeline prior years)
+    // 2. Historical Detonations (Grouped by Sovereign Nation or Single Trace)
     if (pastDetonationPins.length > 0) {
-      traces.push({
-        type: 'scattergeo',
-        mode: 'markers',
-        name: timelineMode !== 'off' ? `Past Tests (${pastDetonationPins.length})` : `Detonations (${pastDetonationPins.length})`,
-        lat: pastDetonationPins.map(p => p.coordinates.lat),
-        lon: pastDetonationPins.map(p => p.coordinates.lon),
-        text: pastDetonationPins.map(p => `<b>${p.name}</b><br>${p.location}<br>${p.primaryMetric}<br>${p.dateOrYear} // ${p.secondaryMetric}`),
-        hoverinfo: 'text',
-        marker: {
-          size: pastDetonationPins.map(p => {
-            const y = p.rawDetonation?.yieldKt || 20;
-            if (y >= 1000) return 12;
-            if (y >= 100) return 9;
-            if (y >= 10) return 6;
-            return 4.5;
-          }),
-          color: pastDetonationPins.map(p => p.color),
-          opacity: 0.75,
-          symbol: 'diamond',
-          line: { width: 0.8, color: '#f87171' }
-        },
-        customdata: pastDetonationPins
-      });
+      if (detonationColorMode === 'country') {
+        const NWS_ORDER = [
+          'United States',
+          'Soviet Union',
+          'France',
+          'United Kingdom',
+          'China',
+          'India',
+          'Pakistan',
+          'North Korea'
+        ];
+        const presentCountries = Array.from(new Set(pastDetonationPins.map(p => p.country)));
+        const sortedCountries = [
+          ...NWS_ORDER.filter(c => presentCountries.includes(c)),
+          ...presentCountries.filter(c => !NWS_ORDER.includes(c))
+        ];
+
+        sortedCountries.forEach(country => {
+          const countryPins = pastDetonationPins.filter(p => p.country === country);
+          if (countryPins.length === 0) return;
+          const nwsMeta = NUCLEAR_WEAPON_STATES[country];
+          const flag = nwsMeta?.flag || getDetonationCountryFlag(country);
+          const color = nwsMeta?.color || getDetonationCountryColor(country);
+
+          traces.push({
+            type: 'scattergeo',
+            mode: 'markers',
+            name: `${flag} ${country} (${countryPins.length})`,
+            lat: countryPins.map(p => p.coordinates.lat),
+            lon: countryPins.map(p => p.coordinates.lon),
+            text: countryPins.map(p =>
+              `<b>${flag} ${p.country}: ${p.name}</b><br>` +
+              `📍 ${p.location}<br>` +
+              `💥 Yield: <b>${p.primaryMetric}</b><br>` +
+              `📅 ${p.dateOrYear} // ${p.secondaryMetric}`
+            ),
+            hoverinfo: 'text',
+            marker: {
+              size: countryPins.map(p => {
+                const y = p.rawDetonation?.yieldKt || 20;
+                if (y >= 1000) return 13;
+                if (y >= 100) return 9.5;
+                if (y >= 10) return 6.5;
+                return 4.5;
+              }),
+              color: color,
+              opacity: 0.85,
+              symbol: 'diamond',
+              line: { width: 0.8, color: '#ffffff' }
+            },
+            customdata: countryPins
+          });
+        });
+      } else {
+        traces.push({
+          type: 'scattergeo',
+          mode: 'markers',
+          name: timelineMode !== 'off' ? `Past Tests (${pastDetonationPins.length})` : `Detonations (${pastDetonationPins.length})`,
+          lat: pastDetonationPins.map(p => p.coordinates.lat),
+          lon: pastDetonationPins.map(p => p.coordinates.lon),
+          text: pastDetonationPins.map(p => `<b>${getDetonationCountryFlag(p.country)} ${p.country}: ${p.name}</b><br>${p.location}<br>${p.primaryMetric}<br>${p.dateOrYear} // ${p.secondaryMetric}`),
+          hoverinfo: 'text',
+          marker: {
+            size: pastDetonationPins.map(p => {
+              const y = p.rawDetonation?.yieldKt || 20;
+              if (y >= 1000) return 12;
+              if (y >= 100) return 9;
+              if (y >= 10) return 6;
+              return 4.5;
+            }),
+            color: pastDetonationPins.map(p => p.color),
+            opacity: 0.75,
+            symbol: 'diamond',
+            line: { width: 0.8, color: '#f87171' }
+          },
+          customdata: pastDetonationPins
+        });
+      }
     }
 
     // 3. Current Year Active Explosions (Flashing Highlight Effect)
@@ -510,7 +959,10 @@ export const GlobalNuclearMapModule: React.FC = () => {
         name: `💥 Year ${currentYear} Blasts (${currentYearDetonationPins.length})`,
         lat: currentYearDetonationPins.map(p => p.coordinates.lat),
         lon: currentYearDetonationPins.map(p => p.coordinates.lon),
-        text: currentYearDetonationPins.map(p => `<b>💥 ${p.name} (${p.dateOrYear})</b><br>${p.location}<br><b>${p.primaryMetric}</b><br>${p.secondaryMetric}`),
+        text: currentYearDetonationPins.map(p => {
+          const flag = getDetonationCountryFlag(p.country);
+          return `<b>💥 ${flag} ${p.country}: ${p.name} (${p.dateOrYear})</b><br>📍 ${p.location}<br><b>${p.primaryMetric}</b><br>${p.secondaryMetric}`;
+        }),
         hoverinfo: 'text',
         marker: {
           size: currentYearDetonationPins.map(p => {
@@ -834,6 +1286,47 @@ export const GlobalNuclearMapModule: React.FC = () => {
 
           {pin.rawDetonation && (
             <div style={{ background: 'rgba(239, 68, 68, 0.08)', borderLeft: '3px solid #ef4444', padding: '10px', borderRadius: '4px', fontSize: '0.78rem' }}>
+              {/* Sovereign Country Attribution Header */}
+              {(() => {
+                const nws = NUCLEAR_WEAPON_STATES[pin.country];
+                const flag = nws?.flag || getDetonationCountryFlag(pin.country);
+                const color = nws?.color || getDetonationCountryColor(pin.country);
+                return (
+                  <div style={{ marginBottom: '10px', paddingBottom: '8px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                      <span style={{ fontSize: '0.86rem', fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span>{flag}</span>
+                        <span style={{ color }}>{pin.country}</span>
+                      </span>
+                      <span style={{ fontSize: '0.66rem', padding: '1px 6px', borderRadius: '3px', background: `${color}22`, color, border: `1px solid ${color}` }}>
+                        {nws?.nptStatus || 'Nuclear-Armed State'}
+                      </span>
+                    </div>
+                    {nws && (
+                      <div style={{ fontSize: '0.72rem', color: '#94a3b8', lineHeight: 1.35 }}>
+                        <div><b>Authority:</b> {nws.authority}</div>
+                        <div><b>Testing History:</b> {nws.testCount.toLocaleString()} tests ({nws.firstTestYear}–{nws.lastTestYear}) | ~{nws.totalMegatons} MT</div>
+                        <div><b>National Record Yield:</b> {nws.maxYieldTestName} ({nws.maxYieldDisplay})</div>
+                      </div>
+                    )}
+                    <div style={{ marginTop: '8px' }}>
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={() => {
+                          setSelectedCountry(pin.country);
+                          setActiveCategoryFilter('detonation');
+                          setShowDetonations(true);
+                        }}
+                        style={{ fontSize: '0.70rem', padding: '3px 8px', width: '100%', borderColor: color, color }}
+                      >
+                        🎯 Isolate All {pin.country} Tests ({nws?.testCount || 'All'})
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
+
               <div style={{ color: '#f87171', fontWeight: 'bold', marginBottom: '4px' }}>Prompt Weapon Effects Radii:</div>
               <div style={{ color: '#cbd5e1', lineHeight: 1.4 }}>
                 • Fireball Radius: {pin.rawDetonation.fireballRadiusM} m<br />
@@ -1603,6 +2096,78 @@ export const GlobalNuclearMapModule: React.FC = () => {
           </button>
         </div>
 
+        {/* Row 1B: Nuclear Weapon States Quick-Filter & Sovereign Focus Bar */}
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '8px' }}>
+          <span style={{ fontSize: '0.72rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 600 }}>
+            💥 Nuclear Powers:
+          </span>
+          <button
+            type="button"
+            onClick={() => setSelectedCountry('all')}
+            style={{
+              fontSize: '0.74rem',
+              padding: '3px 8px',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              background: selectedCountry === 'all' ? 'rgba(0, 229, 255, 0.2)' : 'rgba(255,255,255,0.04)',
+              color: selectedCountry === 'all' ? '#00e5ff' : '#94a3b8',
+              border: `1px solid ${selectedCountry === 'all' ? '#00e5ff' : 'rgba(255,255,255,0.1)'}`
+            }}
+          >
+            🌐 All Nations
+          </button>
+          {getNuclearWeaponStates().map(nws => (
+            <button
+              key={nws.country}
+              type="button"
+              onClick={() => {
+                setSelectedCountry(nws.country);
+                setCenterRotation(nws.focusCoordinates);
+                setActiveCategoryFilter('detonation');
+                setShowDetonations(true);
+              }}
+              style={{
+                fontSize: '0.74rem',
+                padding: '3px 8px',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                background: selectedCountry === nws.country ? `${nws.color}25` : 'rgba(255,255,255,0.03)',
+                color: selectedCountry === nws.country ? '#fff' : '#cbd5e1',
+                border: `1px solid ${selectedCountry === nws.country ? nws.color : 'rgba(255,255,255,0.08)'}`,
+                borderLeft: `3px solid ${nws.color}`,
+                fontWeight: selectedCountry === nws.country ? 700 : 500,
+                boxShadow: selectedCountry === nws.country ? `0 0 10px ${nws.color}33` : 'none'
+              }}
+              title={`Filter tests by ${nws.country} (${nws.testCount} tests, ~${nws.totalMegatons} MT) and focus primary proving grounds`}
+            >
+              <span>{nws.flag} {nws.shortCode}</span>
+              <span style={{ fontSize: '0.68rem', opacity: 0.8, marginLeft: '4px' }}>({nws.testCount})</span>
+            </button>
+          ))}
+
+          {/* Color-Coding Mode Toggle */}
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ fontSize: '0.70rem', color: '#94a3b8' }}>Detonation Color:</span>
+            <button
+              type="button"
+              onClick={() => setDetonationColorMode(prev => prev === 'country' ? 'yield' : 'country')}
+              style={{
+                fontSize: '0.72rem',
+                padding: '3px 9px',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                background: detonationColorMode === 'country' ? 'rgba(56, 189, 248, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                color: detonationColorMode === 'country' ? '#38bdf8' : '#f59e0b',
+                border: `1px solid ${detonationColorMode === 'country' ? 'rgba(56, 189, 248, 0.4)' : 'rgba(245, 158, 11, 0.4)'}`,
+                fontWeight: 600
+              }}
+              title="Toggle detonation marker coloring between Sovereign Nation and Yield Magnitude"
+            >
+              {detonationColorMode === 'country' ? '🎨 Sovereign Nation' : '💥 Yield Magnitude'}
+            </button>
+          </div>
+        </div>
+
         {/* Row 2: Deep Drilldown Dropdowns */}
         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '10px' }}>
           
@@ -1894,12 +2459,35 @@ export const GlobalNuclearMapModule: React.FC = () => {
                 Murphy-Ringdal
               </span>
             </button>
+
+            <button
+              onClick={() => setActiveWorkspaceTab('nuclear_nations')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '7px 14px',
+                fontSize: '0.84rem',
+                fontWeight: activeWorkspaceTab === 'nuclear_nations' ? 700 : 500,
+                background: activeWorkspaceTab === 'nuclear_nations' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255,255,255,0.03)',
+                color: activeWorkspaceTab === 'nuclear_nations' ? '#f87171' : '#94a3b8',
+                border: activeWorkspaceTab === 'nuclear_nations' ? '1px solid #ef4444' : '1px solid rgba(255,255,255,0.08)',
+                borderRadius: '6px',
+                cursor: 'pointer'
+              }}
+            >
+              <span>💥 Testing Nations & Proving Grounds</span>
+              <span style={{ fontSize: '0.68rem', padding: '1px 5px', borderRadius: '3px', background: 'rgba(239, 68, 68, 0.25)', color: '#f87171', fontWeight: 'bold' }}>
+                8 Powers
+              </span>
+            </button>
           </div>
 
           <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
             {activeWorkspaceTab === 'directory' && `${pins.length} Facilities & Events Filtered`}
             {activeWorkspaceTab === 'epz_planner' && (selectedReactorForEPZ ? `Active Plant: ${selectedReactorForEPZ.name}` : 'Select a reactor')}
             {activeWorkspaceTab === 'seismic_inversion' && `Active Event: ${seismicSiteName}`}
+            {activeWorkspaceTab === 'nuclear_nations' && `Global Proving Grounds Atlas & Sovereign Testing Matrix (2,038 Detonations)`}
           </div>
         </div>
 
@@ -2711,6 +3299,522 @@ export const GlobalNuclearMapModule: React.FC = () => {
                   </tbody>
                 </table>
               </div>
+            </div>
+
+          </div>
+        )}
+
+        {/* TAB 4: SOVEREIGN TESTING NATIONS & GLOBAL PROVING GROUNDS ATLAS */}
+        {activeWorkspaceTab === 'nuclear_nations' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            
+            {/* Header / Sovereign Ledger Synopsis Banner */}
+            <div style={{
+              background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.12) 0%, rgba(15, 23, 42, 0.6) 100%)',
+              border: '1px solid rgba(239, 68, 68, 0.35)',
+              borderRadius: '8px',
+              padding: '16px 20px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px' }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{ fontSize: '1.4rem' }}>💥</span>
+                    <h3 style={{ margin: 0, fontSize: '1.15rem', color: '#fff' }}>
+                      Sovereign Nuclear Weapon Testing Ledger &amp; Global Proving Grounds Atlas
+                    </h3>
+                  </div>
+                  <p style={{ margin: '6px 0 0 0', fontSize: '0.82rem', color: 'var(--color-text-muted)', maxWidth: '900px' }}>
+                    Peer-reviewed historical compilation of all 2,038 confirmed nuclear explosions conducted between July 16, 1945 (Trinity) and September 3, 2017 (Punggye-ri). Explore sovereign testing doctrines, cumulative megatonnage, and continental/island proving grounds across the 8 nuclear powers.
+                  </p>
+                </div>
+
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedCountry('all');
+                      setActiveCategoryFilter('detonation');
+                      setShowDetonations(true);
+                      setDetonationColorMode('country');
+                    }}
+                    style={{
+                      fontSize: '0.78rem',
+                      padding: '6px 12px',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      background: 'rgba(56, 189, 248, 0.2)',
+                      color: '#38bdf8',
+                      border: '1px solid #38bdf8',
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    <span>🌐 Show All 2,038 Tests (Sovereign Colors)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/nuclear-weapons-effects')}
+                    style={{
+                      fontSize: '0.78rem',
+                      padding: '6px 12px',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      background: 'rgba(239, 68, 68, 0.2)',
+                      color: '#f87171',
+                      border: '1px solid #ef4444',
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    <span>🌋 Launch Visual Detonation Simulator ↗</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* High-Level Global Statistics Strip */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+                gap: '8px',
+                paddingTop: '6px',
+                borderTop: '1px solid rgba(255,255,255,0.08)'
+              }}>
+                <div style={{ background: 'rgba(0,0,0,0.3)', padding: '8px 12px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                  <div style={{ fontSize: '0.68rem', color: '#94a3b8' }}>TOTAL CONFIRMED TESTS</div>
+                  <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#f87171' }}>2,038</div>
+                  <div style={{ fontSize: '0.66rem', color: '#64748b' }}>1945 – 2017</div>
+                </div>
+
+                <div style={{ background: 'rgba(0,0,0,0.3)', padding: '8px 12px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                  <div style={{ fontSize: '0.68rem', color: '#94a3b8' }}>ATMOSPHERIC &amp; SUBSEA</div>
+                  <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#fb923c' }}>502</div>
+                  <div style={{ fontSize: '0.66rem', color: '#64748b' }}>High fallout release</div>
+                </div>
+
+                <div style={{ background: 'rgba(0,0,0,0.3)', padding: '8px 12px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                  <div style={{ fontSize: '0.68rem', color: '#94a3b8' }}>UNDERGROUND CONTAINED</div>
+                  <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#38bdf8' }}>1,536</div>
+                  <div style={{ fontSize: '0.66rem', color: '#64748b' }}>Post-PTBT 1963 shafts</div>
+                </div>
+
+                <div style={{ background: 'rgba(0,0,0,0.3)', padding: '8px 12px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                  <div style={{ fontSize: '0.68rem', color: '#94a3b8' }}>CUMULATIVE YIELD</div>
+                  <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#facc15' }}>~510 Megatons</div>
+                  <div style={{ fontSize: '0.66rem', color: '#64748b' }}>~34,000× Hiroshima</div>
+                </div>
+
+                <div style={{ background: 'rgba(0,0,0,0.3)', padding: '8px 12px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                  <div style={{ fontSize: '0.68rem', color: '#94a3b8' }}>NUCLEAR TESTING POWERS</div>
+                  <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#34d399' }}>8 Nations</div>
+                  <div style={{ fontSize: '0.66rem', color: '#64748b' }}>5 NPT + 3 Non-NPT</div>
+                </div>
+              </div>
+            </div>
+
+            {/* SECTION 1: COMPARATIVE SOVEREIGN TESTING LEDGER TABLE */}
+            <div className="panel" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                <h4 style={{ margin: 0, fontSize: '0.95rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>🏛️ Sovereign Nuclear Testing Matrix</span>
+                  <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 400 }}>
+                    (Audit of official national records, SIPRI, and US DOE NV-209 archives)
+                  </span>
+                </h4>
+                <div style={{ fontSize: '0.74rem', color: '#94a3b8' }}>
+                  Click <strong style={{ color: '#38bdf8' }}>[🎯 Show on Globe]</strong> to isolate a country's tests and orbit to its primary proving grounds.
+                </div>
+              </div>
+
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', color: '#94a3b8', textAlign: 'left' }}>
+                      <th style={{ padding: '8px 10px' }}>Sovereign Power</th>
+                      <th style={{ padding: '8px 10px' }}>Color &amp; Code</th>
+                      <th style={{ padding: '8px 10px' }}>Total Tests</th>
+                      <th style={{ padding: '8px 10px' }}>Atmospheric / Underground</th>
+                      <th style={{ padding: '8px 10px' }}>Total Megatons</th>
+                      <th style={{ padding: '8px 10px' }}>Testing Era</th>
+                      <th style={{ padding: '8px 10px' }}>Max Yield Device</th>
+                      <th style={{ padding: '8px 10px' }}>Responsible Authority</th>
+                      <th style={{ padding: '8px 10px' }}>NPT Status</th>
+                      <th style={{ padding: '8px 10px', textAlign: 'center' }}>Map Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {getNuclearWeaponStates().map((nws) => {
+                      const isSelected = selectedCountry === nws.country;
+                      return (
+                        <tr
+                          key={nws.country}
+                          style={{
+                            borderBottom: '1px solid rgba(255,255,255,0.05)',
+                            background: isSelected ? 'rgba(56, 189, 248, 0.1)' : 'transparent',
+                            transition: 'background 0.15s ease'
+                          }}
+                        >
+                          <td style={{ padding: '10px', fontWeight: 700, color: '#fff', whiteSpace: 'nowrap' }}>
+                            <span style={{ marginRight: '6px', fontSize: '1.05rem' }}>{nws.flag}</span>
+                            {nws.country}
+                          </td>
+                          <td style={{ padding: '10px', whiteSpace: 'nowrap' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <span
+                                style={{
+                                  display: 'inline-block',
+                                  width: '12px',
+                                  height: '12px',
+                                  borderRadius: '50%',
+                                  background: nws.color,
+                                  boxShadow: `0 0 6px ${nws.color}`
+                                }}
+                              />
+                              <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: nws.color }}>
+                                {nws.shortCode}
+                              </span>
+                            </div>
+                          </td>
+                          <td style={{ padding: '10px', fontFamily: 'var(--font-mono)', fontWeight: 800, color: '#fff', fontSize: '0.86rem' }}>
+                            {nws.testCount.toLocaleString()}
+                          </td>
+                          <td style={{ padding: '10px', whiteSpace: 'nowrap' }}>
+                            <span style={{ color: '#fb923c', fontWeight: 600 }}>{nws.atmosphericCount} atm</span>
+                            <span style={{ color: '#64748b', margin: '0 4px' }}>/</span>
+                            <span style={{ color: '#38bdf8', fontWeight: 600 }}>{nws.undergroundCount} ug</span>
+                          </td>
+                          <td style={{ padding: '10px', fontFamily: 'var(--font-mono)', color: '#facc15', fontWeight: 700 }}>
+                            ~{nws.totalMegatons.toFixed(1)} MT
+                          </td>
+                          <td style={{ padding: '10px', fontFamily: 'var(--font-mono)', color: '#cbd5e1', whiteSpace: 'nowrap' }}>
+                            {nws.firstTestYear} – {nws.lastTestYear}
+                          </td>
+                          <td style={{ padding: '10px', color: '#e2e8f0' }}>
+                            <div style={{ fontWeight: 600, color: '#f87171' }}>{nws.maxYieldDisplay}</div>
+                            <div style={{ fontSize: '0.70rem', color: '#94a3b8' }}>{nws.maxYieldTestName}</div>
+                          </td>
+                          <td style={{ padding: '10px', color: '#94a3b8', fontSize: '0.72rem', maxWidth: '200px' }}>
+                            {nws.authority}
+                          </td>
+                          <td style={{ padding: '10px' }}>
+                            <span style={{
+                              fontSize: '0.66rem',
+                              padding: '2px 6px',
+                              borderRadius: '4px',
+                              fontWeight: 600,
+                              background: nws.nptStatus.includes('NWS') ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                              color: nws.nptStatus.includes('NWS') ? '#34d399' : '#f87171',
+                              border: `1px solid ${nws.nptStatus.includes('NWS') ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
+                              whiteSpace: 'nowrap'
+                            }}>
+                              {nws.nptStatus.includes('NWS') ? 'NPT NWS' : 'Non-NPT'}
+                            </span>
+                          </td>
+                          <td style={{ padding: '10px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                            <button
+                              type="button"
+                              onClick={() => focusProvingGround(nws.focusCoordinates.lat, nws.focusCoordinates.lon, nws.country)}
+                              style={{
+                                fontSize: '0.72rem',
+                                padding: '4px 10px',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                background: isSelected ? nws.color : 'rgba(255,255,255,0.06)',
+                                color: isSelected ? '#000' : '#fff',
+                                border: `1px solid ${nws.color}`,
+                                fontWeight: 700
+                              }}
+                              title={`Rotate 3D Earth to ${nws.country} and show all ${nws.testCount} detonations`}
+                            >
+                              🎯 Show on Globe
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* SECTION 2: GLOBAL PROVING GROUNDS ATLAS */}
+            <div className="panel" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                <div>
+                  <h4 style={{ margin: 0, fontSize: '0.98rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span>📍 Global Proving Grounds &amp; Test Sites Atlas</span>
+                    <span style={{ fontSize: '0.74rem', color: '#38bdf8', padding: '1px 6px', borderRadius: '4px', background: 'rgba(56, 189, 248, 0.15)', fontWeight: 600 }}>
+                      {filteredProvingGrounds.length} Historical Proving Grounds
+                    </span>
+                  </h4>
+                  <p style={{ margin: '4px 0 0 0', fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
+                    Detailed geospatial catalog of primary continental and maritime proving grounds with launch capabilities into the Visual Detonation Simulator.
+                  </p>
+                </div>
+
+                {/* Country Filter Chips for Atlas */}
+                <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={() => setProvingGroundCountryFilter('all')}
+                    style={{
+                      fontSize: '0.72rem',
+                      padding: '3px 8px',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      background: provingGroundCountryFilter === 'all' ? 'rgba(0, 229, 255, 0.2)' : 'rgba(255,255,255,0.04)',
+                      color: provingGroundCountryFilter === 'all' ? 'var(--color-primary)' : '#94a3b8',
+                      border: `1px solid ${provingGroundCountryFilter === 'all' ? 'var(--color-primary)' : 'rgba(255,255,255,0.08)'}`,
+                      fontWeight: provingGroundCountryFilter === 'all' ? 700 : 500
+                    }}
+                  >
+                    All Grounds ({HISTORICAL_PROVING_GROUNDS.length})
+                  </button>
+                  {getNuclearWeaponStates().map((nws) => (
+                    <button
+                      key={nws.country}
+                      type="button"
+                      onClick={() => setProvingGroundCountryFilter(nws.country)}
+                      style={{
+                        fontSize: '0.72rem',
+                        padding: '3px 8px',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        background: provingGroundCountryFilter === nws.country ? `${nws.color}25` : 'rgba(255,255,255,0.03)',
+                        color: provingGroundCountryFilter === nws.country ? '#fff' : '#cbd5e1',
+                        border: `1px solid ${provingGroundCountryFilter === nws.country ? nws.color : 'rgba(255,255,255,0.08)'}`,
+                        borderLeft: `3px solid ${nws.color}`,
+                        fontWeight: provingGroundCountryFilter === nws.country ? 700 : 500
+                      }}
+                    >
+                      <span>{nws.flag} {nws.shortCode}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Search Input for Proving Grounds */}
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input
+                  type="text"
+                  placeholder="Search proving grounds by name, region, geology, or notable test (e.g. Sedan, Castle Bravo, Tsar Bomba, Canopus, Pokhran)..."
+                  value={provingGroundSearchQuery}
+                  onChange={(e) => setProvingGroundSearchQuery(e.target.value)}
+                  style={{
+                    flex: 1,
+                    background: 'rgba(0, 0, 0, 0.35)',
+                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                    borderRadius: '6px',
+                    padding: '8px 12px',
+                    color: '#fff',
+                    fontSize: '0.82rem'
+                  }}
+                />
+                {provingGroundSearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setProvingGroundSearchQuery('')}
+                    style={{
+                      background: 'rgba(255,255,255,0.08)',
+                      border: '1px solid rgba(255,255,255,0.15)',
+                      borderRadius: '6px',
+                      padding: '0 12px',
+                      color: '#94a3b8',
+                      cursor: 'pointer',
+                      fontSize: '0.78rem'
+                    }}
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+
+              {/* Proving Grounds Cards Grid */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))',
+                gap: '14px'
+              }}>
+                {filteredProvingGrounds.map((pg) => {
+                  return (
+                    <div
+                      key={pg.id}
+                      style={{
+                        background: 'rgba(15, 23, 42, 0.55)',
+                        border: '1px solid rgba(255, 255, 255, 0.08)',
+                        borderLeft: `4px solid ${pg.color}`,
+                        borderRadius: '8px',
+                        padding: '14px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        gap: '12px',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+                      }}
+                    >
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {/* Card Header: Flag, Country & Era */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ fontSize: '1.1rem' }}>{pg.flag}</span>
+                            <span style={{
+                              fontSize: '0.70rem',
+                              fontWeight: 700,
+                              color: pg.color,
+                              padding: '1px 6px',
+                              borderRadius: '4px',
+                              background: `${pg.color}15`,
+                              border: `1px solid ${pg.color}33`
+                            }}>
+                              {pg.country} ({pg.shortCode})
+                            </span>
+                          </div>
+                          <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontFamily: 'var(--font-mono)' }}>
+                            {pg.operationalEra}
+                          </span>
+                        </div>
+
+                        {/* Title & Region */}
+                        <div>
+                          <h5 style={{ margin: 0, fontSize: '0.94rem', color: '#fff', lineHeight: 1.3 }}>
+                            {pg.name}
+                          </h5>
+                          <div style={{ fontSize: '0.74rem', color: '#cbd5e1', marginTop: '2px' }}>
+                            📍 {pg.region}
+                          </div>
+                        </div>
+
+                        {/* Key Metrics Badges */}
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                          <span style={{
+                            fontSize: '0.68rem',
+                            padding: '2px 6px',
+                            borderRadius: '3px',
+                            background: 'rgba(239, 68, 68, 0.15)',
+                            color: '#f87171',
+                            fontWeight: 600,
+                            border: '1px solid rgba(239, 68, 68, 0.3)'
+                          }}>
+                            {pg.totalTests}
+                          </span>
+                          <span style={{
+                            fontSize: '0.68rem',
+                            padding: '2px 6px',
+                            borderRadius: '3px',
+                            background: 'rgba(56, 189, 248, 0.12)',
+                            color: '#38bdf8',
+                            fontFamily: 'var(--font-mono)',
+                            border: '1px solid rgba(56, 189, 248, 0.25)'
+                          }}>
+                            {pg.coordinates.lat >= 0 ? `${pg.coordinates.lat.toFixed(2)}°N` : `${Math.abs(pg.coordinates.lat).toFixed(2)}°S`},{' '}
+                            {pg.coordinates.lon >= 0 ? `${pg.coordinates.lon.toFixed(2)}°E` : `${Math.abs(pg.coordinates.lon).toFixed(2)}°W`}
+                          </span>
+                        </div>
+
+                        {/* Geology & Environment */}
+                        <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                          <strong style={{ color: '#cbd5e1' }}>Geology:</strong> {pg.environment}
+                        </div>
+
+                        {/* Historical Significance */}
+                        <p style={{ margin: 0, fontSize: '0.74rem', color: '#cbd5e1', lineHeight: 1.45 }}>
+                          {pg.significance}
+                        </p>
+
+                        {/* Notable Tests Tags */}
+                        <div>
+                          <div style={{ fontSize: '0.68rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px', fontWeight: 600 }}>
+                            Notable Detonations:
+                          </div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                            {pg.notableTests.map((test, idx) => (
+                              <span
+                                key={idx}
+                                style={{
+                                  fontSize: '0.68rem',
+                                  padding: '2px 6px',
+                                  borderRadius: '3px',
+                                  background: 'rgba(255,255,255,0.05)',
+                                  border: '1px solid rgba(255,255,255,0.1)',
+                                  color: '#e2e8f0'
+                                }}
+                                title={`${test.name} (${test.year}) - Yield: ${test.yield} - ${test.type}`}
+                              >
+                                <strong style={{ color: '#facc15' }}>{test.name}</strong> ({test.yield})
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Card Action Buttons */}
+                      <div style={{ display: 'flex', gap: '8px', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                        <button
+                          type="button"
+                          onClick={() => focusProvingGround(pg.coordinates.lat, pg.coordinates.lon, pg.country)}
+                          style={{
+                            flex: 1,
+                            fontSize: '0.72rem',
+                            padding: '6px 10px',
+                            borderRadius: '5px',
+                            cursor: 'pointer',
+                            background: 'rgba(56, 189, 248, 0.15)',
+                            color: '#38bdf8',
+                            border: '1px solid #38bdf8',
+                            fontWeight: 700,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '5px'
+                          }}
+                          title={`Rotate 3D Earth to ${pg.name} and display all ${pg.country} detonations`}
+                        >
+                          <span>🎯 Rotate Globe Here</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const presetParam = pg.visualSimCityId ? `&preset=${pg.visualSimCityId}` : '';
+                            const yieldParam = pg.visualSimYieldKt ? `&yieldKt=${pg.visualSimYieldKt}` : '';
+                            const nameParam = `&name=${encodeURIComponent(pg.name)}`;
+                            navigate(`/nuclear-weapons-effects?${yieldParam}${presetParam}${nameParam}`);
+                          }}
+                          style={{
+                            fontSize: '0.72rem',
+                            padding: '6px 10px',
+                            borderRadius: '5px',
+                            cursor: 'pointer',
+                            background: 'rgba(239, 68, 68, 0.15)',
+                            color: '#f87171',
+                            border: '1px solid #ef4444',
+                            fontWeight: 600,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '4px'
+                          }}
+                          title={`Simulate detonation physics and mushroom cloud at ${pg.name} in Module 26`}
+                        >
+                          <span>🌋 Simulate Blast ↗</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {filteredProvingGrounds.length === 0 && (
+                <div style={{ textAlign: 'center', padding: '30px', color: '#94a3b8', fontSize: '0.85rem' }}>
+                  No historical proving grounds match "{provingGroundSearchQuery}". Try searching for Nevada, Bikini, Semipalatinsk, Novaya Zemlya, or Lop Nur.
+                </div>
+              )}
             </div>
 
           </div>

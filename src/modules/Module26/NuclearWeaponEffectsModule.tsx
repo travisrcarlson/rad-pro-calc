@@ -42,6 +42,9 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
   const [targetDistanceKm, setTargetDistanceKm] = useState<number>(2.0);
   const [hydratedDetonationName, setHydratedDetonationName] = useState<string | null>(null);
   const [isDossierOpen, setIsDossierOpen] = useState<boolean>(false);
+  const initialCityPresetId = useMemo(() => {
+    return searchParams.get('city') || searchParams.get('preset') || undefined;
+  }, [searchParams]);
 
   useEffect(() => {
     const yieldParam = searchParams.get('yieldKt');
@@ -768,6 +771,7 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
           burstAltitudeM={burstAltitudeM}
           onYieldChange={setCustomYieldKt}
           onBurstModeChange={setBurstMode}
+          initialCityId={initialCityPresetId}
         />
       )}
 
