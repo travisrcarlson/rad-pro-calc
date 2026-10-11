@@ -720,7 +720,39 @@ export const CBRNConsequenceModule: React.FC = () => {
               </div>
 
               <div className="form-group">
-                <label style={{ fontSize: '0.82rem', fontWeight: 600 }}>Active Shelter Type (FEMA / NCRP-165):</label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                  <label style={{ fontSize: '0.82rem', fontWeight: 600, margin: 0 }}>Active Shelter Type (FEMA / NCRP-165):</label>
+                  <span style={{ fontSize: '0.74rem', color: '#00e5ff', fontWeight: 700 }}>
+                    PF = {activeShelter.pf} (-{activeShelter.doseReductionPct}%)
+                  </span>
+                </div>
+
+                {/* Quick Shelter Pills */}
+                <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', marginBottom: '8px' }}>
+                  {SHELTER_TYPES.map((st) => {
+                    const isSelected = selectedShelterId === st.id;
+                    return (
+                      <button
+                        key={st.id}
+                        type="button"
+                        onClick={() => setSelectedShelterId(st.id)}
+                        style={{
+                          padding: '3px 8px',
+                          fontSize: '0.72rem',
+                          borderRadius: '4px',
+                          border: isSelected ? '1px solid #00e5ff' : '1px solid rgba(255, 255, 255, 0.1)',
+                          background: isSelected ? 'rgba(0, 229, 255, 0.2)' : 'rgba(255, 255, 255, 0.03)',
+                          color: isSelected ? '#00e5ff' : '#94a3b8',
+                          cursor: 'pointer',
+                          fontWeight: isSelected ? 700 : 400
+                        }}
+                      >
+                        {st.name.split(' (')[0]} (PF {st.pf})
+                      </button>
+                    );
+                  })}
+                </div>
+
                 <select
                   className="form-control"
                   value={selectedShelterId}
@@ -1377,6 +1409,44 @@ export const CBRNConsequenceModule: React.FC = () => {
               Gold standard IAEA TRS-405 dicentric chromosome analysis, Andrews lymphocyte kinetics, and METREPOL mass casualty clinical triage categorization.
             </p>
 
+            {/* Quick Clinical Presets */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '16px' }}>
+              <span style={{ fontSize: '0.74rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                ⚡ Quick Clinical ARS Presets:
+              </span>
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                {[
+                  { label: '🟢 Sub-Clinical / Mild (< 1 Gy)', cells: 100, dic: 2, alc: 1850, base: 2000, emesis: 360 },
+                  { label: '🟡 Moderate ARS (2–4 Gy)', cells: 100, dic: 16, alc: 850, base: 2000, emesis: 120 },
+                  { label: '🟠 Severe ARS / GI (4–8 Gy)', cells: 100, dic: 38, alc: 350, base: 2000, emesis: 45 },
+                  { label: '🔴 Supralethal (> 8 Gy)', cells: 100, dic: 85, alc: 80, base: 2000, emesis: 15 }
+                ].map((cp, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => {
+                      setScoredCells(cp.cells);
+                      setObservedDicentrics(cp.dic);
+                      setCurrentAlc(cp.alc);
+                      setBaselineAlc(cp.base);
+                      setTimeToEmesisMin(cp.emesis);
+                    }}
+                    style={{
+                      padding: '4px 10px',
+                      fontSize: '0.74rem',
+                      borderRadius: '5px',
+                      border: '1px solid rgba(255, 255, 255, 0.12)',
+                      background: 'rgba(255, 255, 255, 0.04)',
+                      color: '#cbd5e1',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {cp.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '20px' }}>
               <div>
                 <label style={{ fontSize: '0.82rem', fontWeight: 600 }}>DCA Metaphase Cells Scored:</label>
@@ -1491,10 +1561,34 @@ export const CBRNConsequenceModule: React.FC = () => {
 
               <div style={{ marginTop: '12px', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '10px' }}>
                 <div style={{ fontSize: '0.82rem', fontWeight: 'bold', color: 'var(--color-text)', marginBottom: '4px' }}>
-                  Clinical Action & Medical Countermeasures:
+                  Clinical Action &amp; Medical Countermeasures:
                 </div>
                 <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', lineHeight: '1.5' }}>
                   {cytogeneticDose.triageAction}
+                </div>
+
+                {/* Visual METREPOL Progression Meter */}
+                <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.70rem', color: '#94a3b8' }}>
+                    <span style={{ color: cytogeneticDose.compositeGy < 2 ? '#10b981' : '#64748b', fontWeight: cytogeneticDose.compositeGy < 2 ? 700 : 400 }}>
+                      RC-1: Mild (&lt;2 Gy)
+                    </span>
+                    <span style={{ color: cytogeneticDose.compositeGy >= 2 && cytogeneticDose.compositeGy < 4 ? '#eab308' : '#64748b', fontWeight: cytogeneticDose.compositeGy >= 2 && cytogeneticDose.compositeGy < 4 ? 700 : 400 }}>
+                      RC-2: Moderate (2-4 Gy)
+                    </span>
+                    <span style={{ color: cytogeneticDose.compositeGy >= 4 && cytogeneticDose.compositeGy < 8 ? '#f97316' : '#64748b', fontWeight: cytogeneticDose.compositeGy >= 4 && cytogeneticDose.compositeGy < 8 ? 700 : 400 }}>
+                      RC-3: Severe (4-8 Gy)
+                    </span>
+                    <span style={{ color: cytogeneticDose.compositeGy >= 8 ? '#ef4444' : '#64748b', fontWeight: cytogeneticDose.compositeGy >= 8 ? 700 : 400 }}>
+                      RC-4: Lethal (&gt;8 Gy)
+                    </span>
+                  </div>
+                  <div style={{ height: '8px', background: 'rgba(255,255,255,0.08)', borderRadius: '4px', overflow: 'hidden', display: 'flex' }}>
+                    <div style={{ width: '25%', background: '#10b981', opacity: cytogeneticDose.compositeGy < 2 ? 1 : 0.25 }} />
+                    <div style={{ width: '25%', background: '#eab308', opacity: cytogeneticDose.compositeGy >= 2 && cytogeneticDose.compositeGy < 4 ? 1 : 0.25 }} />
+                    <div style={{ width: '25%', background: '#f97316', opacity: cytogeneticDose.compositeGy >= 4 && cytogeneticDose.compositeGy < 8 ? 1 : 0.25 }} />
+                    <div style={{ width: '25%', background: '#ef4444', opacity: cytogeneticDose.compositeGy >= 8 ? 1 : 0.25 }} />
+                  </div>
                 </div>
               </div>
 

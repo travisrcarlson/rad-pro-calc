@@ -44,6 +44,7 @@ const GlobalNuclearMapModule = lazyWithRetry(() => import('./modules/Module31/Gl
 
 import { RegulatoryProvider } from './context/RegulatoryContext';
 import { RegulatorySelectorBar } from './components/RegulatorySelectorBar';
+import { CommandPalette } from './components/CommandPalette';
 import ErrorBoundary from './ErrorBoundary';
 
 const ModuleLoadingSkeleton: React.FC = () => (
@@ -218,7 +219,13 @@ const NAV_CATEGORIES: NavCategory[] = [
   }
 ];
 
-const Sidebar = () => {
+const TOTAL_TOOLS_COUNT = NAV_CATEGORIES.reduce((acc, cat) => acc + cat.items.length, 0);
+
+interface SidebarProps {
+  onOpenCommandPalette?: () => void;
+}
+
+const Sidebar: React.FC<SidebarProps> = ({ onOpenCommandPalette }) => {
   const location = useLocation();
   const [searchTerm, setSearchTerm] = useState('');
   
@@ -308,11 +315,11 @@ const Sidebar = () => {
           <input
             type="text"
             className="sidebar-search-input"
-            placeholder="Search 27 tools & topics..."
+            placeholder={`Search ${TOTAL_TOOLS_COUNT} tools (Ctrl+K)...`}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
-          {searchTerm && (
+          {searchTerm ? (
             <button
               className="sidebar-search-clear"
               title="Clear search"
@@ -320,10 +327,27 @@ const Sidebar = () => {
             >
               ✕
             </button>
+          ) : (
+            <button
+              className="sidebar-search-clear"
+              title="Open Command Palette (Ctrl+K / ⌘K)"
+              onClick={onOpenCommandPalette}
+              style={{
+                fontSize: '0.68rem',
+                color: 'var(--color-primary)',
+                padding: '2px 4px',
+                borderRadius: '3px',
+                background: 'rgba(0, 229, 255, 0.1)',
+                border: '1px solid rgba(0, 229, 255, 0.25)',
+                lineHeight: 1
+              }}
+            >
+              ⌘K
+            </button>
           )}
         </div>
         <div className="sidebar-search-meta">
-          <span>{query ? `Showing ${totalMatches} of 27 tools` : '7 Categories (27 Tools)'}</span>
+          <span>{query ? `Showing ${totalMatches} of ${TOTAL_TOOLS_COUNT} tools` : `7 Categories (${TOTAL_TOOLS_COUNT} Tools)`}</span>
           {!query && (
             <button className="sidebar-toggle-all-btn" onClick={toggleAll}>
               {allExpanded ? 'Collapse All' : 'Expand All'}
@@ -393,6 +417,7 @@ const Sidebar = () => {
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState<boolean>(false);
 
   useEffect(() => {
     // Check if they already logged in during this session
@@ -400,6 +425,24 @@ const App: React.FC = () => {
     if (authFlag === 'true') {
       setIsAuthenticated(true);
     }
+  }, []);
+
+  // Global Ctrl+K / Cmd+K and custom event listener
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsCommandPaletteOpen((prev) => !prev);
+      }
+    };
+    const handleCustomOpen = () => setIsCommandPaletteOpen(true);
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('open-command-palette', handleCustomOpen);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('open-command-palette', handleCustomOpen);
+    };
   }, []);
 
   const handleLogin = () => {
@@ -415,9 +458,10 @@ const App: React.FC = () => {
     <RegulatoryProvider>
       <Router>
         <div className="app-container">
-          <Sidebar />
+          <Sidebar onOpenCommandPalette={() => setIsCommandPaletteOpen(true)} />
           <main className="main-content" style={{ padding: 0, display: 'flex', flexDirection: 'column' }}>
-            <RegulatorySelectorBar />
+            <RegulatorySelectorBar onOpenCommandPalette={() => setIsCommandPaletteOpen(true)} />
+            <CommandPalette isOpen={isCommandPaletteOpen} onClose={() => setIsCommandPaletteOpen(false)} />
             <div style={{ flex: 1, padding: '20px 30px', overflowY: 'auto' }}>
               <ErrorBoundary>
                 <Suspense fallback={<ModuleLoadingSkeleton />}>

@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
 import { useRegulatory } from '../context/RegulatoryContext';
 
-export const RegulatorySelectorBar: React.FC = () => {
+interface RegulatorySelectorBarProps {
+  onOpenCommandPalette?: () => void;
+}
+
+export const RegulatorySelectorBar: React.FC<RegulatorySelectorBarProps> = ({ onOpenCommandPalette }) => {
   const { currentFramework, frameworkId, setFrameworkId, allFrameworks } = useRegulatory();
   const [isOpen, setIsOpen] = useState(false);
   const [currentTheme, setCurrentThemeState] = useState<'standard' | 'tactical' | 'night_vision'>(() => {
@@ -73,6 +77,41 @@ export const RegulatorySelectorBar: React.FC = () => {
           <span>Life-Saving: <strong style={{ color: '#f59e0b' }}>{currentFramework.limits.emergencyLifeSaving_mSv} mSv</strong></span>
         </div>
       </div>
+
+      {/* Center: Command Palette Spotlight Launcher */}
+      <button
+        onClick={() => {
+          if (onOpenCommandPalette) onOpenCommandPalette();
+          else window.dispatchEvent(new CustomEvent('open-command-palette'));
+        }}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          background: 'rgba(0, 229, 255, 0.06)',
+          border: '1px solid rgba(0, 229, 255, 0.25)',
+          borderRadius: '6px',
+          padding: '4px 12px',
+          color: 'var(--color-text-muted)',
+          fontSize: '0.78rem',
+          cursor: 'pointer',
+          transition: 'all 0.15s ease'
+        }}
+        title="Open Command Palette (Ctrl+K / ⌘K)"
+      >
+        <span style={{ color: 'var(--color-primary)', fontSize: '0.85rem' }}>🔍</span>
+        <span style={{ color: '#94a3b8' }}>Search modules, isotopes, standards...</span>
+        <span style={{
+          padding: '1px 5px',
+          fontSize: '0.68rem',
+          borderRadius: '4px',
+          background: 'rgba(255, 255, 255, 0.08)',
+          color: '#00e5ff',
+          fontFamily: 'var(--font-mono)'
+        }}>
+          Ctrl+K
+        </span>
+      </button>
 
       {/* Right: Theme Switcher & Governing Body Standards */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>

@@ -257,6 +257,37 @@ export const CAASCriticalityModule: React.FC = () => {
 
       {/* Assembly Setup Bar */}
       <div className="panel" style={{ padding: '16px' }}>
+        {/* Quick Excursion Presets */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '14px' }}>
+          <span style={{ fontSize: '0.74rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            ⚡ Critical Excursion Archetypes:
+          </span>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            {CRITICALITY_PRESETS.map((p) => {
+              const isSelected = selectedPresetId === p.id;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => handleSelectPreset(p.id)}
+                  style={{
+                    padding: '5px 12px',
+                    fontSize: '0.78rem',
+                    borderRadius: '6px',
+                    border: isSelected ? '1px solid var(--color-primary)' : '1px solid rgba(255, 255, 255, 0.12)',
+                    background: isSelected ? 'rgba(0, 229, 255, 0.18)' : 'rgba(255, 255, 255, 0.04)',
+                    color: isSelected ? '#00e5ff' : '#cbd5e1',
+                    cursor: 'pointer',
+                    fontWeight: isSelected ? 700 : 400
+                  }}
+                >
+                  {p.name}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
           <div>
             <label style={{ fontSize: '0.82rem', fontWeight: 600 }}>Critical System Model:</label>
@@ -330,6 +361,63 @@ export const CAASCriticalityModule: React.FC = () => {
               style={{ width: '100%', fontSize: '0.85rem' }}
             />
           </div>
+        </div>
+      </div>
+
+      {/* Dynamic Tactical Alarm Banner */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '12px',
+          padding: '12px 18px',
+          borderRadius: '8px',
+          border: caasCalculations.caasCompliant
+            ? '1px solid rgba(239, 68, 68, 0.6)'
+            : '1px solid rgba(245, 158, 11, 0.6)',
+          background: caasCalculations.caasCompliant
+            ? 'linear-gradient(90deg, rgba(239, 68, 68, 0.22) 0%, rgba(15, 23, 42, 0.8) 100%)'
+            : 'linear-gradient(90deg, rgba(245, 158, 11, 0.18) 0%, rgba(15, 23, 42, 0.8) 100%)'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <span style={{ fontSize: '1.4rem' }}>
+            {caasCalculations.caasCompliant ? '🚨' : '⚠️'}
+          </span>
+          <div>
+            <div
+              style={{
+                fontSize: '0.90rem',
+                fontWeight: 800,
+                letterSpacing: '0.6px',
+                color: caasCalculations.caasCompliant ? '#f87171' : '#fbbf24'
+              }}
+            >
+              {caasCalculations.caasCompliant
+                ? 'CRITICALITY ACCIDENT ALARM TRIPPED — IMMEDIATE FACILITY EVACUATION (ANSI/ANS-8.3)'
+                : 'SUB-THRESHOLD ACCIDENT INTENSITY — SENSOR TRIP INSUFFICIENT (< 20 rad/min)'}
+            </div>
+            <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '2px' }}>
+              Detector Flux: <strong style={{ color: '#fff' }}>{caasCalculations.doseRateDetRadMin.toFixed(0)} rad/min</strong> (Req ≥ 20 rad/min) | Standoff: <strong style={{ color: '#fff' }}>{personnelDistanceM}m</strong> | FWHM: <strong style={{ color: '#00e5ff' }}>{(excursionKinetics.fwhmMs * 1000).toFixed(1)} µs</strong>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span
+            style={{
+              padding: '3px 8px',
+              borderRadius: '4px',
+              fontSize: '0.75rem',
+              fontWeight: 700,
+              background: caasCalculations.triageColor,
+              color: '#000'
+            }}
+          >
+            {caasCalculations.clinicalTriage}
+          </span>
         </div>
       </div>
 

@@ -785,10 +785,112 @@ const CriticalityModule: React.FC = () => {
         )}
       </div>
 
+      {/* Real-Time Tactical Core Neutronics HUD Bar */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+          gap: '12px',
+          marginBottom: '20px'
+        }}
+      >
+        <div
+          style={{
+            background: 'rgba(0,0,0,0.4)',
+            border: `1px solid ${math.stateColor}60`,
+            borderLeft: `4px solid ${math.stateColor}`,
+            borderRadius: '8px',
+            padding: '12px 16px'
+          }}
+        >
+          <div style={{ fontSize: '0.70rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            Effective Multiplication (k_eff)
+          </div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginTop: '2px' }}>
+            <span style={{ fontSize: '1.6rem', fontWeight: 800, color: '#fff', fontFamily: 'var(--font-mono)' }}>
+              {math.kEff.toFixed(4)}
+            </span>
+            <span
+              style={{
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                color: math.stateColor,
+                padding: '2px 6px',
+                borderRadius: '4px',
+                background: `${math.stateColor}20`
+              }}
+            >
+              {math.state}
+            </span>
+          </div>
+        </div>
+
+        <div
+          style={{
+            background: 'rgba(0,0,0,0.4)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: '8px',
+            padding: '12px 16px'
+          }}
+        >
+          <div style={{ fontSize: '0.70rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            Core Reactivity (ρ)
+          </div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginTop: '2px' }}>
+            <span style={{ fontSize: '1.6rem', fontWeight: 800, color: math.rhoPcm > 0 ? '#f59e0b' : '#00e5ff', fontFamily: 'var(--font-mono)' }}>
+              {math.rhoPcm >= 0 ? `+${math.rhoPcm.toFixed(0)}` : math.rhoPcm.toFixed(0)}
+            </span>
+            <span style={{ fontSize: '0.80rem', color: '#94a3b8' }}>pcm</span>
+            <span style={{ fontSize: '0.74rem', color: '#64748b', marginLeft: 'auto' }}>
+              (${(math.rhoPcm / 650).toFixed(2)})
+            </span>
+          </div>
+        </div>
+
+        <div
+          style={{
+            background: 'rgba(0,0,0,0.4)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: '8px',
+            padding: '12px 16px'
+          }}
+        >
+          <div style={{ fontSize: '0.70rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            Asymptotic Reactor Period (T)
+          </div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginTop: '2px' }}>
+            <span style={{ fontSize: '1.6rem', fontWeight: 800, color: math.state === 'Prompt Critical' ? '#ef4444' : '#fff', fontFamily: 'var(--font-mono)' }}>
+              {math.reactorPeriodS > 1e4 ? '∞ (Stable)' : `${math.reactorPeriodS.toFixed(1)} s`}
+            </span>
+          </div>
+        </div>
+
+        <div
+          style={{
+            background: 'rgba(0,0,0,0.4)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: '8px',
+            padding: '12px 16px'
+          }}
+        >
+          <div style={{ fontSize: '0.70rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            Radial Peaking Factor (F_xy)
+          </div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginTop: '2px' }}>
+            <span style={{ fontSize: '1.6rem', fontWeight: 800, color: math.peakingFactorFxy > 2.0 ? '#f59e0b' : '#34d399', fontFamily: 'var(--font-mono)' }}>
+              {math.peakingFactorFxy.toFixed(2)}
+            </span>
+            <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
+              {math.peakingFactorFxy > 2.0 ? 'Hot Channel Risk' : 'Acceptable Flux'}
+            </span>
+          </div>
+        </div>
+      </div>
+
       <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', marginBottom: '20px' }}>
         {/* Core Controls */}
         <div className="panel" style={{ flex: '1 1 450px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
-          <h3>Core-Wide Controls & Coolant Chemistry</h3>
+          <h3>Core-Wide Controls &amp; Coolant Chemistry</h3>
 
           <div style={{ display: 'flex', gap: '15px' }}>
             <div className="form-group" style={{ flex: 1 }}>
@@ -823,12 +925,40 @@ const CriticalityModule: React.FC = () => {
           </div>
 
           <div className="form-group">
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <label className="form-label">Global Control Bank Insertion (B₄C)</label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+              <label className="form-label" style={{ margin: 0 }}>Global Control Bank Insertion (B₄C)</label>
               <span style={{ fontWeight: 'bold', color: controlInsertionPct > 50 ? 'var(--color-success)' : 'var(--color-warning)' }}>
                 {controlInsertionPct} %
               </span>
             </div>
+
+            {/* Quick Rod Bank Buttons */}
+            <div style={{ display: 'flex', gap: '5px', marginBottom: '8px' }}>
+              {[
+                { label: '🔴 Full SCRAM (100%)', val: 100 },
+                { label: '🟠 Shutdown (80%)', val: 80 },
+                { label: '🟢 Critical Trim (30%)', val: 30 },
+                { label: '⚪ Full Rod Out (0%)', val: 0 }
+              ].map((rb) => (
+                <button
+                  key={rb.val}
+                  type="button"
+                  onClick={() => setControlInsertionPct(rb.val)}
+                  style={{
+                    padding: '2px 7px',
+                    fontSize: '0.70rem',
+                    borderRadius: '4px',
+                    border: controlInsertionPct === rb.val ? '1px solid var(--color-primary)' : '1px solid rgba(255,255,255,0.1)',
+                    background: controlInsertionPct === rb.val ? 'rgba(0,229,255,0.2)' : 'rgba(255,255,255,0.03)',
+                    color: controlInsertionPct === rb.val ? '#00e5ff' : '#cbd5e1',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {rb.label}
+                </button>
+              ))}
+            </div>
+
             <input
               type="range"
               min="0"

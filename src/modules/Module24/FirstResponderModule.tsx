@@ -6,8 +6,73 @@ import VerificationBadge from '../../components/VerificationBadge';
 import { useRegulatory } from '../../context/RegulatoryContext';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
+import { TacticalCompassRose } from '../../components/TacticalCompassRose';
 
 const Plot = (PlotComponent as any).default || PlotComponent;
+
+export interface ThreatPreset {
+  id: string;
+  name: string;
+  isotope: string;
+  activityGBq: number;
+  explosiveYieldKg: number;
+  windSpeed: number;
+  windDirection: number;
+  incidentTitle: string;
+}
+
+export const THREAT_PRESETS: ThreatPreset[] = [
+  {
+    id: 'cs137_rdd',
+    name: '💥 100 Ci Cs-137 RDD',
+    isotope: 'Cs-137',
+    activityGBq: 3700,
+    explosiveYieldKg: 5.0,
+    windSpeed: 3.5,
+    windDirection: 225,
+    incidentTitle: 'Incident #CBRN-RDD: Urban Commercial Detonation (Cs-137 + 5kg C4)'
+  },
+  {
+    id: 'co60_irradiator',
+    name: '☢️ 500 Ci Co-60 Sterilizer',
+    isotope: 'Co-60',
+    activityGBq: 18500,
+    explosiveYieldKg: 0,
+    windSpeed: 2.0,
+    windDirection: 180,
+    incidentTitle: 'Incident #NDT-CO60: Unshielded High-Activity Irradiator Source Exposure'
+  },
+  {
+    id: 'ir192_pipeline',
+    name: '🔬 100 Ci Ir-192 NDT',
+    isotope: 'Ir-192',
+    activityGBq: 3700,
+    explosiveYieldKg: 0,
+    windSpeed: 4.0,
+    windDirection: 270,
+    incidentTitle: 'Incident #IND-IR192: Industrial Radiography Pigtail Disconnect / Jam'
+  },
+  {
+    id: 'am241_gauge',
+    name: '💨 5 Ci Am-241 Moisture Gauge',
+    isotope: 'Am-241',
+    activityGBq: 185,
+    explosiveYieldKg: 0,
+    windSpeed: 5.0,
+    windDirection: 315,
+    incidentTitle: 'Incident #CON-AM241: Construction Compactor Crushed Troxler Gauge'
+  },
+  {
+    id: 'i131_spill',
+    name: '🏥 10 Ci I-131 Spill',
+    isotope: 'I-131',
+    activityGBq: 370,
+    explosiveYieldKg: 0,
+    windSpeed: 1.5,
+    windDirection: 0,
+    incidentTitle: 'Incident #MED-I131: Hot Lab Liquid Iodine-131 Therapy Spill & Evaporation'
+  }
+];
 
 // --- Types & Definitions ---
 export type ActiveTab = 'cordon' | 'staytime' | 'erg' | 'triage' | 'decon' | 'sitrep';
@@ -758,6 +823,50 @@ const FirstResponderModule: React.FC = () => {
               1. Incident Threat Profile &amp; Blast Parameters
             </h3>
 
+            {/* Quick Threat Presets */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <span style={{ fontSize: '0.74rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                ⚡ Quick Incident Presets:
+              </span>
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                {THREAT_PRESETS.map((tp) => {
+                  const isMatch = selectedIsotopeKey === tp.isotope && customActivityGBq === tp.activityGBq;
+                  return (
+                    <button
+                      key={tp.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedIsotopeKey(tp.isotope);
+                        setCustomActivityGBq(tp.activityGBq);
+                        setExplosiveYieldKgTNT(tp.explosiveYieldKg);
+                        setWindSpeedMps(tp.windSpeed);
+                        setWindDirectionDeg(tp.windDirection);
+                        setIncidentTitle(tp.incidentTitle);
+                      }}
+                      style={{
+                        padding: '4px 9px',
+                        fontSize: '0.72rem',
+                        borderRadius: '5px',
+                        border: isMatch
+                          ? '1px solid var(--color-primary)'
+                          : '1px solid rgba(255, 255, 255, 0.1)',
+                        background: isMatch
+                          ? 'rgba(0, 229, 255, 0.18)'
+                          : 'rgba(255, 255, 255, 0.04)',
+                        color: isMatch
+                          ? '#00e5ff'
+                          : '#cbd5e1',
+                        cursor: 'pointer',
+                        fontWeight: isMatch ? 700 : 400
+                      }}
+                    >
+                      {tp.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label className="form-label">Threat Isotope</label>
               <select
@@ -807,33 +916,35 @@ const FirstResponderModule: React.FC = () => {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label">Wind Speed (m/s)</label>
-                <input
-                  type="number"
-                  className="form-control"
-                  value={windSpeedMps}
-                  min="0.5"
-                  step="0.5"
-                  onChange={(e) => setWindSpeedMps(Math.max(0.5, Number(e.target.value)))}
-                />
+            {/* Wind Vector & Direction via Tactical Compass Rose */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <label className="form-label" style={{ margin: 0 }}>
+                  Meteorological Wind Vector
+                </label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Wind Speed:</span>
+                  <input
+                    type="number"
+                    className="form-control"
+                    value={windSpeedMps}
+                    min="0.5"
+                    step="0.5"
+                    style={{ width: '80px', padding: '2px 8px', fontSize: '0.78rem', height: '28px' }}
+                    onChange={(e) => setWindSpeedMps(Math.max(0.5, Number(e.target.value)))}
+                  />
+                  <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>m/s</span>
+                </div>
               </div>
 
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label">Wind Origin Angle (° Azimuth)</label>
-                <input
-                  type="number"
-                  className="form-control"
+              {/* Tactical Compass Rose Dial */}
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '6px 0' }}>
+                <TacticalCompassRose
                   value={windDirectionDeg}
-                  min="0"
-                  max="359"
-                  step="15"
-                  onChange={(e) => setWindDirectionDeg(Number(e.target.value) % 360)}
+                  onChange={(bearingDeg: number) => setWindDirectionDeg(bearingDeg)}
+                  label="Wind Origin Bearing"
+                  sectorArcSweepDeg={67.5}
                 />
-                <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
-                  Blowing to {((windDirectionDeg + 180) % 360)}°
-                </span>
               </div>
             </div>
 
