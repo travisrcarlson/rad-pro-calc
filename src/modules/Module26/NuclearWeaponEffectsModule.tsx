@@ -4,10 +4,11 @@ import VerificationBadge from '../../components/VerificationBadge';
 import PlotComponent from 'react-plotly.js';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
+import { VisualDetonationSimulator } from './VisualDetonationSimulator';
 
 const Plot = (PlotComponent as any).default || PlotComponent;
 
-export type NukeTab = 'blast' | 'thermal' | 'prompt_rad' | 'hemp' | 'cordon_summary';
+export type NukeTab = 'visual_detonation' | 'blast' | 'thermal' | 'prompt_rad' | 'hemp' | 'cordon_summary';
 
 interface WeaponPreset {
   id: string;
@@ -24,13 +25,15 @@ const WEAPON_PRESETS: WeaponPreset[] = [
   { id: 'nagasaki_21kt', name: '☢️ 21 kT Implosion Plutonium (Nagasaki Fat Man)', yieldKt: 21, burstType: 'air', description: 'Air burst at 503m altitude over industrial valley.' },
   { id: 'w76_100kt', name: '🚀 100 kT SLBM Warhead (Trident D5 / W76)', yieldKt: 100, burstType: 'air', description: 'Modern submarine-launched ballistic missile warhead.' },
   { id: 'w87_300kt', name: '🌋 300 kT ICBM Warhead (Minuteman III / W87)', yieldKt: 300, burstType: 'air', description: 'Modern silo-based thermonuclear warhead with secondary fusion stage.' },
-  { id: 'b83_1200kt', name: '☄️ 1,200 kT (1.2 MT) Strategic Bomb (B83)', yieldKt: 1200, burstType: 'surface', description: 'Maximum yield US gravity bomb. Subsurface cratering and multi-mile devastation.' }
+  { id: 'b83_1200kt', name: '☄️ 1,200 kT (1.2 MT) Strategic Bomb (B83)', yieldKt: 1200, burstType: 'surface', description: 'Maximum yield US gravity bomb. Subsurface cratering and multi-mile devastation.' },
+  { id: 'castle_bravo_15mt', name: '🏝️ 15,000 kT (15 MT) Castle Bravo (Bikini)', yieldKt: 15000, burstType: 'surface', description: 'Largest US detonation in history. Thermonuclear dry-fuel lithium deuteride surface burst.' },
+  { id: 'tsar_bomba_50mt', name: '👑 50,000 kT (50 MT) Tsar Bomba (RDS-220)', yieldKt: 50000, burstType: 'air', description: 'Largest human detonation in history. Atmospheric cloud penetrated into mesosphere (64 km).' }
 ];
 
 export const NuclearWeaponEffectsModule: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [activeTab, setActiveTab] = useState<NukeTab>('blast');
+  const [activeTab, setActiveTab] = useState<NukeTab>('visual_detonation');
   const [selectedPresetId, setSelectedPresetId] = useState<string>('hiroshima_15kt');
   const [customYieldKt, setCustomYieldKt] = useState<number>(15.0);
   const [burstMode, setBurstMode] = useState<'surface' | 'air'>('air');
@@ -650,6 +653,26 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
       {/* Main Tab Navigation */}
       <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--color-border)', marginBottom: '10px', flexWrap: 'wrap' }}>
         <button
+          className={`nav-link ${activeTab === 'visual_detonation' ? 'active' : ''}`}
+          style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            padding: '10px 16px',
+            fontSize: '0.9rem',
+            borderBottom: activeTab === 'visual_detonation' ? '2px solid #ef4444' : 'none',
+            color: activeTab === 'visual_detonation' ? '#f87171' : 'var(--color-text-muted)',
+            fontWeight: activeTab === 'visual_detonation' ? 'bold' : 'normal',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px'
+          }}
+          onClick={() => setActiveTab('visual_detonation')}
+        >
+          <span>🌋 Visual Detonation &amp; Mushroom Cloud (Outrider Mode)</span>
+        </button>
+
+        <button
           className={`nav-link ${activeTab === 'blast' ? 'active' : ''}`}
           style={{
             background: 'none',
@@ -734,6 +757,19 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
           🎯 Tactical Radar Cordon Map
         </button>
       </div>
+
+      {/* ========================================================================= */}
+      {/* TAB 0: OUTRIDER VISUAL DETONATION & MUSHROOM CLOUD SIMULATOR */}
+      {/* ========================================================================= */}
+      {activeTab === 'visual_detonation' && (
+        <VisualDetonationSimulator
+          yieldKt={yieldKt}
+          burstMode={burstMode}
+          burstAltitudeM={burstAltitudeM}
+          onYieldChange={setCustomYieldKt}
+          onBurstModeChange={setBurstMode}
+        />
+      )}
 
       {/* ========================================================================= */}
       {/* TAB 1: SHOCKWAVE & BLAST OVERPRESSURE */}

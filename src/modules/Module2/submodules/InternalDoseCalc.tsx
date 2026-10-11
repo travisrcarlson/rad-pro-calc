@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import nuclidesData from '../../../data/nuclides.json';
 import { BlockMath } from 'react-katex';
+import { useRegulatory } from '../../../context/RegulatoryContext';
 
 const InternalDoseCalc: React.FC = () => {
+  const { currentFramework } = useRegulatory();
   const nuclides = nuclidesData as any[];
   const validNuclides = nuclides.filter(n => n['ALI Inhal. (µCi)'] || n['ALI Ingest. (µCi)']);
   
@@ -13,21 +15,23 @@ const InternalDoseCalc: React.FC = () => {
 
   const intakeBq = intake * intakeUnit;
 
-  // Read ALI from data depending on pathway
+  // Read ALI from data depending on pathway (10 CFR 20 Appendix B basis)
   const ali_uCi_str = pathway === 'inhalation' ? selectedNuclide['ALI Inhal. (µCi)'] : selectedNuclide['ALI Ingest. (µCi)'];
   const ali_uCi = parseFloat(ali_uCi_str || '0');
   
   // 1 uCi = 37,000 Bq
   const aliBq = ali_uCi * 37000;
 
-  // Committed Effective Dose E(50)
-  // ALI is defined as the intake resulting in 20 mSv (0.02 Sv) dose.
-  // Therefore, e(50) [Sv/Bq] = 0.02 / aliBq
-  const e50 = aliBq > 0 ? 0.02 / aliBq : 0;
+  // Committed Effective Dose Coefficient e(50)
+  // US 10 CFR Part 20 Appendix B defines the stochastic ALI based on 5 rem = 50 mSv = 0.05 Sv
+  // Therefore, e(50) [Sv/Bq] = 0.05 / aliBq
+  const e50 = aliBq > 0 ? 0.05 / aliBq : 0;
   
-  // E(50) = I * e(50) = intakeBq * e50 (result is in Sv, convert to mSv)
+  // E(50) = I * e(50) = intakeBq * e50 (result in Sv, convert to mSv)
   const doseSv = intakeBq * e50;
   const dose_mSv = doseSv * 1000;
+
+  const occLimit_mSv = currentFramework?.limits?.occupationalAnnualEffective_mSv || 20;
 
   const dac_uCi_ml = parseFloat(selectedNuclide['DAC (µCi/mL)'] || '0');
   const dac_Bq_m3 = dac_uCi_ml * 37000 * 1000000; // 1 mL = 1e-6 m3
@@ -97,13 +101,13 @@ const InternalDoseCalc: React.FC = () => {
           {(dose_mSv * 1000).toFixed(2)} µSv
         </div>
 
-        <div style={{ marginTop: '15px', color: dose_mSv > 20 ? 'var(--color-danger)' : 'var(--color-success)', fontWeight: 'bold' }}>
-          {dose_mSv > 20 ? '⚠️ EXCEEDS 20 mSv OCCUPATIONAL LIMIT' : '✓ Within 20 mSv Occupational Limit'}
+        <div style={{ marginTop: '15px', color: dose_mSv > occLimit_mSv ? 'var(--color-danger)' : 'var(--color-success)', fontWeight: 'bold' }}>
+          {dose_mSv > occLimit_mSv ? `⚠️ EXCEEDS ${occLimit_mSv} mSv OCCUPATIONAL LIMIT` : `✓ Within ${occLimit_mSv} mSv Occupational Limit (${currentFramework?.shortCode || 'Statutory'})`}
         </div>
 
         <div className="formula-box" style={{ marginTop: '30px' }}>
           <BlockMath math="E(50) = I \cdot e(50)" />
-          <BlockMath math="ALI = \frac{0.02 \text{ Sv}}{e(50)}" />
+          <BlockMath math="e(50) = \frac{0.05 \text{ Sv}}{\text{ALI}_{\text{10 CFR 20}}} \quad \left[\text{ICRP ALI} = \frac{0.02 \text{ Sv}}{e(50)}\right]" />
         </div>
       </div>
     </div>

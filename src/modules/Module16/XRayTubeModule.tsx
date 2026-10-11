@@ -130,7 +130,7 @@ const XRayTubeModule: React.FC = () => {
       for (let step = 0; step < 15; step++) {
         const mid = (low + high) / 2;
         const currentSum = getFilteredSum(mid);
-        if (currentSum > hvl ? currentSum > targetHvlIntensity : currentSum > targetHvlIntensity) {
+        if (currentSum > targetHvlIntensity) {
           low = mid;
         } else {
           high = mid;

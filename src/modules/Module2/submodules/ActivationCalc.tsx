@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { BlockMath } from 'react-katex';
 
-// Simplified library of standard activation targets for demonstration
+// Standard thermal and fast neutron activation targets
 const TARGETS = [
-  { name: 'Iron (Fe-54)', product: 'Mn-54', sigma_barns: 0.1, lambda_s: 2.56e-8, n_atoms_g: 6.4e20, gamma_uSv: 1.2 }, // Rough approx
-  { name: 'Cobalt (Co-59)', product: 'Co-60', sigma_barns: 37, lambda_s: 4.17e-9, n_atoms_g: 1.0e22, gamma_uSv: 3.5 },
-  { name: 'Nickel (Ni-62)', product: 'Ni-63', sigma_barns: 14.5, lambda_s: 2.19e-10, n_atoms_g: 3e20, gamma_uSv: 0.0 }
+  { name: 'Cobalt (Co-59)', product: 'Co-60', sigma_barns: 37.2, lambda_s: 4.168e-9, n_atoms_g: 1.022e22, gamma_uSv: 0.357 },
+  { name: 'Gold (Au-197)', product: 'Au-198', sigma_barns: 98.7, lambda_s: 2.977e-6, n_atoms_g: 3.057e21, gamma_uSv: 0.059 },
+  { name: 'Sodium (Na-23)', product: 'Na-24', sigma_barns: 0.53, lambda_s: 1.287e-5, n_atoms_g: 2.619e22, gamma_uSv: 0.498 },
+  { name: 'Iron (Fe-54 fast n,p)', product: 'Mn-54', sigma_barns: 0.08, lambda_s: 2.56e-8, n_atoms_g: 6.4e20, gamma_uSv: 0.127 },
+  { name: 'Nickel (Ni-62)', product: 'Ni-63', sigma_barns: 14.5, lambda_s: 2.19e-10, n_atoms_g: 3.0e20, gamma_uSv: 0.0 }
 ];
 
 const ActivationCalc: React.FC = () => {
@@ -101,7 +103,7 @@ const ActivationCalc: React.FC = () => {
 
         {selectedTarget.gamma_uSv > 0 && (
           <div style={{ marginTop: '10px', fontSize: '1.2rem', color: 'var(--color-accent)' }}>
-            Est. Contact Dose (1m): {(activity_MBq * selectedTarget.gamma_uSv).toExponential(2)} µSv/h
+            Est. Dose Rate at 1 m: {(activity_MBq * selectedTarget.gamma_uSv).toExponential(2)} µSv/h
           </div>
         )}
 
