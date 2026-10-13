@@ -13,6 +13,7 @@ import {
   getNuclearWeaponStates,
   getDetonationCountryColor,
   getDetonationCountryFlag,
+  getDetonationMarkerSize,
   type UnifiedGeospatialPin,
   type GeospatialCategory
 } from '../../services/globalGeospatialService';
@@ -412,8 +413,8 @@ export const GlobalNuclearMapModule: React.FC = () => {
   const [showIncidents, setShowIncidents] = useState<boolean>(true);
   const [showCTBTO, setShowCTBTO] = useState<boolean>(true);
 
-  // Timeline Player State
-  const [timelineMode, setTimelineMode] = useState<'cumulative' | 'single' | 'off'>('cumulative');
+  // Timeline Player State (defaults to 'off' so all 2,038 global nuclear detonations are shown immediately)
+  const [timelineMode, setTimelineMode] = useState<'cumulative' | 'single' | 'off'>('off');
   const [currentYear, setCurrentYear] = useState<number>(1962);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(1); // 1 = 800ms per year
@@ -909,16 +910,10 @@ export const GlobalNuclearMapModule: React.FC = () => {
             ),
             hoverinfo: 'text',
             marker: {
-              size: countryPins.map(p => {
-                const y = p.rawDetonation?.yieldKt || 20;
-                if (y >= 1000) return 13;
-                if (y >= 100) return 9.5;
-                if (y >= 10) return 6.5;
-                return 4.5;
-              }),
+              size: countryPins.map(p => getDetonationMarkerSize(p.rawDetonation?.yieldKt)),
               color: color,
               opacity: 0.85,
-              symbol: 'diamond',
+              symbol: 'circle',
               line: { width: 0.8, color: '#ffffff' }
             },
             customdata: countryPins
@@ -934,29 +929,23 @@ export const GlobalNuclearMapModule: React.FC = () => {
           text: pastDetonationPins.map(p => `<b>${getDetonationCountryFlag(p.country)} ${p.country}: ${p.name}</b><br>${p.location}<br>${p.primaryMetric}<br>${p.dateOrYear} // ${p.secondaryMetric}`),
           hoverinfo: 'text',
           marker: {
-            size: pastDetonationPins.map(p => {
-              const y = p.rawDetonation?.yieldKt || 20;
-              if (y >= 1000) return 12;
-              if (y >= 100) return 9;
-              if (y >= 10) return 6;
-              return 4.5;
-            }),
+            size: pastDetonationPins.map(p => getDetonationMarkerSize(p.rawDetonation?.yieldKt)),
             color: pastDetonationPins.map(p => p.color),
-            opacity: 0.75,
-            symbol: 'diamond',
-            line: { width: 0.8, color: '#f87171' }
+            opacity: 0.85,
+            symbol: 'circle',
+            line: { width: 0.8, color: '#ffffff' }
           },
           customdata: pastDetonationPins
         });
       }
     }
 
-    // 3. Current Year Active Explosions (Flashing Highlight Effect)
+    // 3. Current Year Active Explosions (Circular Markers Coded by Sovereign Country Color + White Highlight Ring)
     if (currentYearDetonationPins.length > 0) {
       traces.push({
         type: 'scattergeo',
         mode: 'markers',
-        name: `💥 Year ${currentYear} Blasts (${currentYearDetonationPins.length})`,
+        name: `💥 Year ${currentYear} Active Tests (${currentYearDetonationPins.length})`,
         lat: currentYearDetonationPins.map(p => p.coordinates.lat),
         lon: currentYearDetonationPins.map(p => p.coordinates.lon),
         text: currentYearDetonationPins.map(p => {
@@ -965,16 +954,10 @@ export const GlobalNuclearMapModule: React.FC = () => {
         }),
         hoverinfo: 'text',
         marker: {
-          size: currentYearDetonationPins.map(p => {
-            const y = p.rawDetonation?.yieldKt || 20;
-            if (y >= 1000) return 22;
-            if (y >= 100) return 17;
-            if (y >= 10) return 13;
-            return 10;
-          }),
-          color: '#facc15', // Brilliant electric yellow/gold
+          size: currentYearDetonationPins.map(p => getDetonationMarkerSize(p.rawDetonation?.yieldKt, true)),
+          color: currentYearDetonationPins.map(p => getDetonationCountryColor(p.country)),
           opacity: 0.98,
-          symbol: 'star',
+          symbol: 'circle',
           line: { width: 2.5, color: '#ffffff' }
         },
         customdata: currentYearDetonationPins
@@ -995,7 +978,7 @@ export const GlobalNuclearMapModule: React.FC = () => {
           size: incidentPins.map(p => Math.max(9, (p.rawIncident?.inesLevel || 4) * 2.2)),
           color: '#f59e0b',
           opacity: 0.92,
-          symbol: 'hexagram',
+          symbol: 'triangle-up',
           line: { width: 1.5, color: '#fbbf24' }
         },
         customdata: incidentPins
@@ -1719,7 +1702,7 @@ export const GlobalNuclearMapModule: React.FC = () => {
             {pins.length} Plotted Pins
           </div>
           <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
-            {timelineMode !== 'off' ? `Timeline Year: ${currentYear}` : 'Instant Haversine & Plume Link'}
+            {timelineMode !== 'off' ? `Timeline Year: ${currentYear}` : 'All 2,038 Global Detonations Active'}
           </div>
         </div>
       </div>
@@ -1748,7 +1731,12 @@ export const GlobalNuclearMapModule: React.FC = () => {
             {/* Play/Pause Button */}
             <button
               className="btn"
-              onClick={() => setIsPlaying(!isPlaying)}
+              onClick={() => {
+                if (!isPlaying && timelineMode === 'off') {
+                  setTimelineMode('cumulative');
+                }
+                setIsPlaying(!isPlaying);
+              }}
               style={{
                 padding: '5px 14px',
                 fontSize: '0.82rem',
@@ -1814,13 +1802,29 @@ export const GlobalNuclearMapModule: React.FC = () => {
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div style={{ display: 'flex', background: 'rgba(0,0,0,0.35)', padding: '3px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.08)' }}>
               <button
+                onClick={() => setTimelineMode('off')}
+                style={{
+                  padding: '3px 9px',
+                  fontSize: '0.73rem',
+                  background: timelineMode === 'off' ? 'rgba(0, 229, 255, 0.25)' : 'transparent',
+                  color: timelineMode === 'off' ? '#00e5ff' : '#94a3b8',
+                  border: timelineMode === 'off' ? '1px solid rgba(0, 229, 255, 0.4)' : 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontWeight: timelineMode === 'off' ? 700 : 400
+                }}
+                title="Shows all 2,038 historical nuclear tests across all eras (Default)"
+              >
+                🌍 All Tests (2,038)
+              </button>
+              <button
                 onClick={() => setTimelineMode('cumulative')}
                 style={{
                   padding: '3px 8px',
                   fontSize: '0.73rem',
                   background: timelineMode === 'cumulative' ? 'rgba(0, 229, 255, 0.2)' : 'transparent',
                   color: timelineMode === 'cumulative' ? '#00e5ff' : '#94a3b8',
-                  border: 'none',
+                  border: timelineMode === 'cumulative' ? '1px solid rgba(0, 229, 255, 0.3)' : 'none',
                   borderRadius: '4px',
                   cursor: 'pointer',
                   fontWeight: timelineMode === 'cumulative' ? 600 : 400
@@ -1836,7 +1840,7 @@ export const GlobalNuclearMapModule: React.FC = () => {
                   fontSize: '0.73rem',
                   background: timelineMode === 'single' ? 'rgba(245, 158, 11, 0.2)' : 'transparent',
                   color: timelineMode === 'single' ? '#f59e0b' : '#94a3b8',
-                  border: 'none',
+                  border: timelineMode === 'single' ? '1px solid rgba(245, 158, 11, 0.3)' : 'none',
                   borderRadius: '4px',
                   cursor: 'pointer',
                   fontWeight: timelineMode === 'single' ? 600 : 400
@@ -1844,21 +1848,6 @@ export const GlobalNuclearMapModule: React.FC = () => {
                 title="Shows only detonations in the selected year"
               >
                 Single Year ({currentYear})
-              </button>
-              <button
-                onClick={() => setTimelineMode('off')}
-                style={{
-                  padding: '3px 8px',
-                  fontSize: '0.73rem',
-                  background: timelineMode === 'off' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
-                  color: timelineMode === 'off' ? '#fff' : '#64748b',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer'
-                }}
-                title="Shows all detonations without timeline filtering"
-              >
-                All Years (Off)
               </button>
             </div>
 
@@ -2083,7 +2072,7 @@ export const GlobalNuclearMapModule: React.FC = () => {
               setSelectedReactorStatus('all');
               setSelectedReactorType('all');
               setFeaturedDetonationsOnly(false);
-              setTimelineMode('cumulative');
+              setTimelineMode('off');
               setCurrentYear(1962);
               setShowCTBTO(true);
               setSelectedCTBTOTech('all');
@@ -2312,6 +2301,47 @@ export const GlobalNuclearMapModule: React.FC = () => {
                 color: 'var(--color-text-muted)'
               }}>
                 🖱️ <strong>Click &amp; Drag</strong> to rotate 3D Globe // <strong>Scroll</strong> to zoom // <strong>Click marker</strong> to inspect ({pins.length} active)
+              </div>
+
+              {/* Top Right Floating Yield & Sovereign Scale Key */}
+              <div style={{
+                position: 'absolute',
+                top: '12px',
+                right: '14px',
+                zIndex: 10,
+                background: 'rgba(5, 10, 18, 0.88)',
+                backdropFilter: 'blur(4px)',
+                border: '1px solid rgba(0, 229, 255, 0.2)',
+                borderRadius: '6px',
+                padding: '5px 10px',
+                fontSize: '0.70rem',
+                color: '#cbd5e1',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                pointerEvents: 'none'
+              }}>
+                <span style={{ color: '#94a3b8', fontWeight: 600 }}>💥 Yield Size:</span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                  <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#38bdf8', display: 'inline-block' }}></span>
+                  <span style={{ fontSize: '0.66rem', color: '#94a3b8' }}>&lt;1 kt</span>
+                </span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#38bdf8', display: 'inline-block' }}></span>
+                  <span style={{ fontSize: '0.66rem', color: '#94a3b8' }}>15 kt</span>
+                </span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                  <span style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#38bdf8', display: 'inline-block' }}></span>
+                  <span style={{ fontSize: '0.66rem', color: '#94a3b8' }}>1 MT</span>
+                </span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                  <span style={{ width: '16px', height: '16px', borderRadius: '50%', background: '#38bdf8', display: 'inline-block' }}></span>
+                  <span style={{ fontSize: '0.66rem', color: '#94a3b8' }}>15 MT</span>
+                </span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                  <span style={{ width: '19px', height: '19px', borderRadius: '50%', background: '#38bdf8', display: 'inline-block' }}></span>
+                  <span style={{ fontSize: '0.66rem', color: '#94a3b8' }}>50 MT</span>
+                </span>
               </div>
 
               <Plot

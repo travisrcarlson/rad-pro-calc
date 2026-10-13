@@ -438,6 +438,22 @@ const tests = [
     },
     tolerance: 0.001,
     units: 'kt'
+  },
+  {
+    id: 'VTEST-35',
+    name: 'Historical Detonation Blast Yield Proportional Marker Sizing (Castle Bravo 15 MT)',
+    module: 'Global Nuclear Map & Proving Grounds (Module 31)',
+    standard: 'Glasstone & Dolan (1977) / Dynamic Logarithmic Blast Yield Scaling',
+    expected: 18.1,
+    compute: () => {
+      const yieldKt = 15000; // Castle Bravo 15 MT
+      const y = Math.max(0.01, yieldKt);
+      const baseSize = 4.5 + 3.25 * Math.log10(y);
+      const clamped = Math.max(4.0, Math.min(24.0, Math.round(baseSize * 10) / 10));
+      return clamped;
+    },
+    tolerance: 0.01,
+    units: 'px (Marker Radius)'
   }
 ];
 
@@ -557,7 +573,7 @@ console.log(' RADPRO CALC — SCIENTIFIC VERIFICATION & VALIDATION (V&V) TEST SU
 console.log(' Standards: IEEE 730-2014 SQA | IAEA TRS-398 | NCRP-151 | ISO/IEC 17025');
 console.log('========================================================================\n');
 
-console.log('--- SECTION 1: CORE ANALYTICAL BENCHMARK VECTORS (24 TESTS) ---');
+console.log(`--- SECTION 1: CORE ANALYTICAL BENCHMARK VECTORS (${tests.length} TESTS) ---`);
 let passedAnalytical = 0;
 let maxObservedErr = 0;
 

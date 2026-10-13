@@ -321,6 +321,30 @@ export function getDetonationCountryShortCode(country: string): string {
   return NUCLEAR_WEAPON_STATES[country]?.shortCode || country.slice(0, 3).toUpperCase();
 }
 
+/**
+ * Computes marker size scaled proportionally to blast explosive yield (in kilotons TNT).
+ * Continuous logarithmic formulation ensures tests across all 6 orders of magnitude
+ * (0.01 kt to 50,000 kt) have distinctive sizes while preserving visibility and click targets:
+ * - 0.02 kt (Tactical/Subkiloton): ~4.0 px
+ * - 1 kt (Low-Yield Fission): ~4.5 px
+ * - 15 kt (Little Boy / Hiroshima): ~8.3 px
+ * - 21 kt (Fat Man / Trinity): ~8.8 px
+ * - 100 kt (Strategic Warhead): ~11.0 px
+ * - 1,000 kt (1 MT Thermonuclear): ~14.3 px
+ * - 15,000 kt (Castle Bravo 15 MT): ~18.1 px
+ * - 50,000 kt (Tsar Bomba 50 MT): ~19.8 px
+ */
+export function getDetonationMarkerSize(yieldKt: number | undefined, isCurrentYear: boolean = false): number {
+  if (yieldKt === undefined || yieldKt <= 0) {
+    return isCurrentYear ? 7.5 : 4.0;
+  }
+  const y = Math.max(0.01, yieldKt);
+  const baseSize = 4.5 + 3.25 * Math.log10(y);
+  const clamped = Math.max(4.0, Math.min(24.0, Math.round(baseSize * 10) / 10));
+  return isCurrentYear ? Math.min(28.0, clamped + 3.5) : clamped;
+}
+
+
 const REACTORS: GlobalReactorRecord[] = reactorsDataRaw as unknown as GlobalReactorRecord[];
 const DETONATIONS: NuclearDetonationRecord[] = detonationsDataRaw as unknown as NuclearDetonationRecord[];
 const INCIDENTS: any[] = incidentsDataRaw as any[];
@@ -574,16 +598,10 @@ export function getUnifiedGeospatialPins(options: GeospatialFilterOptions = {}):
         year: d.year,
         isCurrentYear,
         typeOrClassification: d.testType,
-        color: isCurrentYear
-          ? '#facc15' // Brilliant bright sunburst gold for active year tests!
-          : detonationColorMode === 'country'
-          ? getDetonationCountryColor(d.country)
-          : d.yieldKt >= 1000
-          ? '#ef4444'
-          : d.yieldKt >= 100
-          ? '#f97316'
-          : '#eab308',
-        symbol: 'diamond',
+        color: detonationColorMode === 'yield'
+          ? (d.yieldKt >= 1000 ? '#ef4444' : d.yieldKt >= 100 ? '#f97316' : '#eab308')
+          : getDetonationCountryColor(d.country),
+        symbol: 'circle',
         isFeatured: !!d.isFeatured,
         rawDetonation: d
       });
