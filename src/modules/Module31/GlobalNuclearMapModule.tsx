@@ -906,7 +906,7 @@ export const GlobalNuclearMapModule: React.FC = () => {
             text: countryPins.map(p =>
               `<b>${flag} ${p.country}: ${p.name}</b><br>` +
               `📍 ${p.location}<br>` +
-              `💥 Yield: <b>${p.primaryMetric}</b><br>` +
+              `💥 <b>${p.primaryMetric}</b><br>` +
               `📅 ${p.dateOrYear} // ${p.secondaryMetric}`
             ),
             hoverinfo: 'text',
