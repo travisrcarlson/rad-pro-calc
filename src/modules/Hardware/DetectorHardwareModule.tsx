@@ -1,6 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import VerificationBadge from '../../components/VerificationBadge';
+import { AuditDossierModal } from '../../components/AuditDossierModal';
+import { type CalculationDossierPayload } from '../../services/auditDossierService';
 
 export const DetectorHardwareModule: React.FC = () => {
+  const [isDossierOpen, setIsDossierOpen] = useState<boolean>(false);
   const [connectionMode, setConnectionMode] = useState<'audio' | 'serial' | 'simulation'>('simulation');
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [cps, setCps] = useState<number>(0);
@@ -289,7 +293,35 @@ export const DetectorHardwareModule: React.FC = () => {
   // Currie Critical Level Lc = 2.33 * sqrt(B)
   const expectedBgCounts = (backgroundCpm / 60.0) * Math.max(1, elapsedSeconds);
   const currieLc = 2.33 * Math.sqrt(expectedBgCounts);
+  const currieLd = 2.71 + 4.65 * Math.sqrt(expectedBgCounts);
   const isAboveCurrie = netCounts > currieLc;
+
+  const dossierPayload: CalculationDossierPayload = useMemo(() => ({
+    reportTitle: `Live Detector Hardware & Poisson Metrology Assessment`,
+    moduleName: 'Detector Hardware Ingestion & Currie (1968) Metrology Engine',
+    statuteCitation: 'Currie (1968) Anal. Chem. 40(3):586 / NUREG-1575 (MARSSIM) / ANSI N42.17A',
+    verificationTestId: 'VTEST-26 (Currie L_C & L_D Detection Limits)',
+    operatorName: 'Instrumentation & Metrology Engineer',
+    operatorCredentials: 'CHP, RRPT',
+    facility: 'Radiation Counting & Hardware Telemetry Laboratory',
+    notes: `Non-paralyzable dead-time corrected pulse counting and Currie (1968) hypothesis testing via ${connectionMode.toUpperCase()} channel.`,
+    formulaDescription: 'n = \\frac{m}{1 - m\\tau}, \\quad L_C = 2.33\\sqrt{B}, \\quad L_D = 2.71 + 4.65\\sqrt{B}',
+    inputs: [
+      { label: 'Acquisition Mode', value: connectionMode.toUpperCase() },
+      { label: 'Observed Count Rate (m)', value: cpm, unit: 'CPM' },
+      { label: 'Detector Dead Time (τ)', value: deadTime_us, unit: 'µs' },
+      { label: 'Calibration Factor', value: calibrationFactor_cpm_per_uSv, unit: 'CPM/(µSv/h)' },
+      { label: 'Background Count Rate', value: backgroundCpm, unit: 'CPM' },
+      { label: 'Integration Elapsed Time', value: Math.max(1, elapsedSeconds), unit: 's' }
+    ],
+    outputs: [
+      { label: 'Dead-Time Corrected Rate (n)', value: trueCpm.toFixed(1), unit: 'CPM', status: 'PASS' },
+      { label: 'Ambient Dose Equivalent Rate', value: doseRate_uSv_h.toFixed(3), unit: 'µSv/h', status: doseRate_uSv_h > 20 ? 'WARNING' : 'PASS' },
+      { label: 'Currie Critical Level (L_C)', value: currieLc.toFixed(2), unit: 'counts', status: 'PASS' },
+      { label: 'Currie Detection Limit (L_D)', value: currieLd.toFixed(2), unit: 'counts', status: 'PASS' },
+      { label: 'Net Sample Counts (S = N - B)', value: netCounts.toFixed(1), unit: 'counts', status: isAboveCurrie ? 'WARNING' : 'PASS' }
+    ]
+  }), [connectionMode, cpm, deadTime_us, calibrationFactor_cpm_per_uSv, backgroundCpm, elapsedSeconds, trueCpm, doseRate_uSv_h, currieLc, currieLd, netCounts, isAboveCurrie]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -301,7 +333,9 @@ export const DetectorHardwareModule: React.FC = () => {
         padding: '16px 20px',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'space-between'
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '12px'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <span style={{ fontSize: '1.8rem' }}>📡</span>
@@ -315,7 +349,23 @@ export const DetectorHardwareModule: React.FC = () => {
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          <VerificationBadge testId="VTEST-26" label="Currie (1968) MDA" />
+          <button
+            onClick={() => setIsDossierOpen(true)}
+            style={{
+              background: 'rgba(16, 185, 129, 0.12)',
+              border: '1px solid rgba(16, 185, 129, 0.4)',
+              color: '#10b981',
+              padding: '6px 12px',
+              borderRadius: '6px',
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}
+          >
+            📜 QA Calculation Dossier
+          </button>
           <button
             onClick={() => setAudioClicksEnabled(!audioClicksEnabled)}
             style={{
@@ -583,6 +633,11 @@ export const DetectorHardwareModule: React.FC = () => {
           </div>
         </div>
       </div>
+      <AuditDossierModal
+        isOpen={isDossierOpen}
+        onClose={() => setIsDossierOpen(false)}
+        payload={dossierPayload}
+      />
     </div>
   );
 };

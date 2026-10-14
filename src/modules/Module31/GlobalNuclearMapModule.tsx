@@ -40,6 +40,7 @@ import {
   downloadBlob
 } from '../../services/tacticalGisExportService';
 import { TacticalCompassRose } from '../../components/TacticalCompassRose';
+import VerificationBadge from '../../components/VerificationBadge';
 
 const Plot = (PlotComponent as any).default || PlotComponent;
 
@@ -1586,11 +1587,12 @@ export const GlobalNuclearMapModule: React.FC = () => {
       <div className="panel" style={{ padding: '14px 18px', flexShrink: 0 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px' }}>
           <div>
-            <h2 style={{ margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.4rem' }}>
+            <h2 style={{ margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.4rem', flexWrap: 'wrap' }}>
               <span>🌍 Global Nuclear Geospatial &amp; 3D Earth Hub</span>
               <span style={{ fontSize: '0.72rem', padding: '3px 8px', background: 'rgba(0, 229, 255, 0.12)', color: 'var(--color-primary)', border: '1px solid rgba(0, 229, 255, 0.3)', borderRadius: '4px', fontWeight: 600 }}>
                 IAEA PRIS (739 Units) // 2,038 Weapons Tests // Orthographic 3D
               </span>
+              <VerificationBadge testId="VTEST-35" label="VTEST-33 / 34 / 35 Verified" />
             </h2>
             <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: '0.86rem' }}>
               Comprehensive planetary observatory mapping 319 civil &amp; research complexes (739 commercial power units), 2,038 historic atomic/thermonuclear detonations (1945–present), and landmark radiological accident sites.

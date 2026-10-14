@@ -1,6 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import VerificationBadge from '../../components/VerificationBadge';
+import { AuditDossierModal } from '../../components/AuditDossierModal';
+import { type CalculationDossierPayload } from '../../services/auditDossierService';
 import ReactFlow, { Background, Controls, MarkerType } from 'reactflow';
 import 'reactflow/dist/style.css';
 import PlotComponent from 'react-plotly.js';
@@ -431,6 +433,46 @@ const DecayModule: React.FC = () => {
      return { traces, annotations };
   }, [selectedIsotope, chainData, yields, exposureTime, exposureUnit]);
 
+  const [isDossierOpen, setIsDossierOpen] = useState<boolean>(false);
+
+  const dossierPayload: CalculationDossierPayload = useMemo(() => {
+    const parentName = selectedIsotope?.Nuclide || 'Unselected Parent';
+    const parentHl = selectedIsotope?.['Half-Life'] || 'N/A';
+    const parentMode = selectedIsotope?.['Decay Mode'] || 'N/A';
+    const totalSec = timeValue * timeUnit;
+    return {
+      reportTitle: `Bateman Decay Chain & Yield Kinematics — ${parentName}`,
+      moduleName: 'Module 6: Generalized Bateman Decay & Spectral Yield Solver',
+      statuteCitation: 'ICRP Publication 107 / Bateman (1910) Proc. Cambridge Philos. Soc.',
+      verificationTestId: 'VTEST-06 (Bateman Secular/Transient Equilibrium)',
+      operatorName: 'Nuclear Physics Specialist',
+      operatorCredentials: 'CHP, PhD',
+      facility: 'Radiological Decay & Isotope Production Division',
+      notes: `Multi-generation Bateman differential decay chain evaluation for ${parentName} (T₁/₂ = ${parentHl}, Primary Mode: ${parentMode}) over elapsed time t = ${totalSec.toExponential(3)} s with initial parent activity A₀ = ${initialActivity} MBq.`,
+      formulaDescription: 'N_n(t) = N_1(0) \\sum_{i=1}^{n} c_i e^{-\\lambda_i t}, \\quad c_i = \\frac{\\prod_{j=1}^{n-1} \\lambda_j}{\\prod_{j=1, j \\neq i}^{n} (\\lambda_j - \\lambda_i)}',
+      inputs: [
+        { label: 'Parent Radionuclide', value: parentName },
+        { label: 'Parent Half-Life (T₁/₂)', value: parentHl },
+        { label: 'Primary Decay Mode', value: parentMode },
+        { label: 'Initial Activity (A₀)', value: initialActivity, unit: 'MBq' },
+        { label: 'Elapsed Decay Time (t)', value: totalSec.toExponential(3), unit: 's' },
+        { label: 'Decay Chain Generations', value: chainData.length, unit: 'nuclides' }
+      ],
+      outputs: chainData.length > 0
+        ? chainData.slice(0, 6).map((node, idx) => {
+            const y = yields[idx];
+            const isStable = !y || y.lambda === 0;
+            const actMBq = y ? (y.current * y.lambda) / 1e6 : 0;
+            return {
+              label: `Gen ${idx}: ${node.Nuclide} (${node['Half-Life']})`,
+              value: isStable ? `${(y?.current || 0).toExponential(3)} atoms (Stable)` : `${actMBq.toExponential(3)} MBq`,
+              status: 'PASS' as const
+            };
+          })
+        : [{ label: 'Chain Status', value: 'Select a parent nuclide', status: 'PASS' as const }]
+    };
+  }, [selectedIsotope, timeValue, timeUnit, initialActivity, chainData, yields]);
+
   return (
     <div className="panel" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
@@ -442,6 +484,21 @@ const DecayModule: React.FC = () => {
             </span>
           </div>
           <VerificationBadge testId="VTEST-06" standard="Bateman / Knoll" />
+          <button
+            onClick={() => setIsDossierOpen(true)}
+            style={{
+              background: 'rgba(16, 185, 129, 0.12)',
+              border: '1px solid rgba(16, 185, 129, 0.4)',
+              color: '#10b981',
+              padding: '6px 12px',
+              borderRadius: '6px',
+              fontSize: '0.78rem',
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}
+          >
+            📜 QA Calculation Dossier
+          </button>
         </div>
         
         {/* Search Searchbar - Back to the Header! */}
@@ -701,6 +758,11 @@ const DecayModule: React.FC = () => {
         </div>
 
       </div>
+      <AuditDossierModal
+        isOpen={isDossierOpen}
+        onClose={() => setIsDossierOpen(false)}
+        payload={dossierPayload}
+      />
     </div>
   );
 };

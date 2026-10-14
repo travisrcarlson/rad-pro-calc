@@ -3,6 +3,7 @@ import { runMonteCarloSimulation, type MonteCarloConfig, type MonteCarloResult }
 import { useRegulatory } from '../../context/RegulatoryContext';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
+import VerificationBadge from '../../components/VerificationBadge';
 
 interface PresetSource {
   name: string;
@@ -200,18 +201,8 @@ export const MonteCarloModule: React.FC = () => {
             </div>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-          <span style={{
-            fontSize: '0.72rem',
-            padding: '4px 10px',
-            borderRadius: '6px',
-            background: 'rgba(16, 185, 129, 0.12)',
-            color: '#10b981',
-            border: '1px solid rgba(16, 185, 129, 0.3)',
-            fontFamily: 'var(--font-mono)'
-          }}>
-            VTEST-25 // MONTE CARLO
-          </span>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <VerificationBadge testId="VTEST-25" label="Klein-Nishina Monte Carlo" />
           <button
             className="btn btn-secondary"
             onClick={() => setIsDossierOpen(true)}

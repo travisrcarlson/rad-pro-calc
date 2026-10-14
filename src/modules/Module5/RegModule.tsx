@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useRegulatory } from '../../context/RegulatoryContext';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
+import VerificationBadge from '../../components/VerificationBadge';
 
 interface WorkerRecord {
   id: string;
@@ -91,7 +92,7 @@ const RegModule: React.FC = () => {
     reportTitle: `Annual Regulatory Dose Compliance Dossier — ${currentFramework.name}`,
     moduleName: 'Module 5: Regulatory Compliance & ALARA Administration',
     statuteCitation: `${currentFramework.name} (${currentFramework.citation})`,
-    verificationTestId: 'VTEST-10 / 21 CFR Part 11',
+    verificationTestId: 'VTEST-01 / ICRP-103 / 21 CFR Part 11',
     operatorName: 'Radiation Safety Officer (RSO)',
     operatorCredentials: 'CHP, MS Health Physics',
     facility: 'Central Nuclear Operations',
@@ -119,9 +120,10 @@ const RegModule: React.FC = () => {
       {/* Header */}
       <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
             <span className="hud-badge hud-badge-primary">RADIATION SAFETY OFFICER (RSO) HUD</span>
             <span className="hud-badge hud-badge-accent">{currentFramework.flagEmoji} {currentFramework.name} ({currentFramework.shortCode})</span>
+            <VerificationBadge testId="VTEST-01" label="ICRP 103 / 10 CFR 20" />
           </div>
           <h2 style={{ margin: '6px 0 0 0', fontSize: '1.4rem', letterSpacing: '0.03em' }}>
             Regulatory Dose Compliance &amp; ALARA Administration Dashboard

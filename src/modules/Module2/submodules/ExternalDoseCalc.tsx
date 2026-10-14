@@ -9,6 +9,7 @@ const Plot = (PlotComponent as any).default || PlotComponent;
 import { useRegulatory } from '../../../context/RegulatoryContext';
 import { AuditDossierModal } from '../../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../../services/auditDossierService';
+import VerificationBadge from '../../../components/VerificationBadge';
 
 const parseActivityMBq = (activityStr: string) => {
   const str = activityStr.toLowerCase();
@@ -175,7 +176,10 @@ const ExternalDoseCalc: React.FC = () => {
            </select>
         </div>
 
-        <h3 style={{ marginBottom: '15px' }}>2A. Point Source Calculator</h3>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', flexWrap: 'wrap', gap: '8px' }}>
+          <h3 style={{ margin: 0 }}>2A. Point Source Calculator</h3>
+          <VerificationBadge testId="VTEST-01" label="Inverse Square Law" />
+        </div>
         
         <div className="form-group">
           <label className="form-label">Nuclide</label>

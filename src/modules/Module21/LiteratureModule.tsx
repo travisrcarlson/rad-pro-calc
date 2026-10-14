@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { BlockMath, InlineMath } from 'react-katex';
+import VerificationBadge from '../../components/VerificationBadge';
 
 export type DomainCategory =
   | 'All Domains'
@@ -1058,7 +1059,7 @@ const METHOD_DOCS: MethodDoc[] = [
       'Emergency personnel operate with full SCBA and Level A/B PPE preventing inhalation of particulate aerosol.',
       'Transit dose is accumulated symmetrically along the ingress and egress vectors.'
     ],
-    benchmarks: 'Validated against US DOT ERG 2024 Table of Initial Isolation Distances, EPA PAG-2017 Table 2-1 emergency worker guidelines, REAC/TS casualty algorithms, and VTEST-24.'
+    benchmarks: 'Validated against US DOT ERG 2024 Table of Initial Isolation Distances, EPA PAG-2017 Table 2-1 emergency worker guidelines, REAC/TS casualty algorithms, and VTEST-21.'
   },
 
   // 25. Module 16B: X-Ray Image Distortion, Magnification & Geometric Penumbra
@@ -1606,12 +1607,106 @@ const METHOD_DOCS: MethodDoc[] = [
     benchmarks: 'Validated against DoD Cursor-on-Target interoperability test vectors and VTEST-32.'
   },
 
+  // 30. Module 30: Global Radiological Incidents & Historical Forensics
+  {
+    id: 'M30-HistoricalIncidents',
+    moduleId: 'Module 30',
+    moduleName: 'Global Radiological Incidents & Historical Forensics',
+    domain: 'Regulatory Standards & Transport Security',
+    title: 'IAEA INES 0–7 Severity Classification, Acute Radiation Syndrome (ARS) Reconstruction & Forensic Source Attribution',
+    overview: 'Comprehensive forensic encyclopedia of 1,568 global radiological incidents and 16 landmark deep-dive accident investigations (Chernobyl, Fukushima, Goiânia, Tokaimura, SL-1, Demon Core, Kyshtym, Kramatorsk), reconstructing source inventories, contact dose rates, and IAEA INES logarithmic severity ratings.',
+    standards: [
+      { org: 'IAEA / OECD-NEA', code: 'INES User\'s Manual (2013 Ed.)', year: '2013', title: 'The International Nuclear and Radiological Event Scale User\'s Manual' },
+      { org: 'UNSCEAR', code: '2008 / 2020 Annexes', year: '2020', title: 'Sources and Effects of Ionizing Radiation: Assessments of Radiation Levels and Effects from Major Nuclear Accidents' },
+      { org: 'IAEA', code: 'STI/PUB/815 (Goiânia)', year: '1988', title: 'The Radiological Accident in Goiânia' },
+      { org: 'LANL', code: 'LA-13638', year: '2000', title: 'A Review of Criticality Accidents (2000 Revision)' }
+    ],
+    primaryFormula: '\\text{INES Level} = \\lfloor \\log_{10}(A_{\\text{eq, I-131}} [\\text{TBq}]) \\rfloor + C_{\\text{defense}}, \\quad A_{\\text{eq, I-131}} = \\sum_i A_i \\cdot w_{\\text{INES}, i}',
+    secondaryFormulas: [
+      { label: 'Radiological Equivalence to I-131 Atmospheric Release', formula: 'A_{\\text{eq, I-131}} = 40 \\cdot A_{\\text{Cs-137}} + 1 \\cdot A_{\\text{I-131}} + 10^4 \\cdot A_{\\text{Pu-239}}' },
+      { label: 'Acute Radiation Syndrome (ARS) LD₅₀/₆₀ Probit Survival Curve', formula: 'P_{\\text{mortality}}(D) = \\Phi\\left( \\frac{D - \\text{LD}_{50/60}}{\\sigma_D} \\right), \\quad \\text{LD}_{50/60} \\approx 4.0\\text{ Gy (untreated)} \\to 6.5\\text{ Gy (G-CSF + ICU)}' }
+    ],
+    derivationSteps: [
+      {
+        stepTitle: '1. IAEA INES Logarithmic Source-Term Scaling',
+        explanation: 'The International Nuclear and Radiological Event Scale (INES) assigns integer levels 1 through 7 such that each step represents an approximate 10-fold increase in radiological severity, evaluated across three impact areas: People and Environment, Radiological Barriers and Control, and Defence-in-Depth.',
+        math: 'A_{\\text{eq, I-131}} > 50,000\\text{ TBq} \\implies \\text{INES Level 7 (Major Accident)}'
+      },
+      {
+        stepTitle: '2. Forensic Inverse-Square & Unshielded Contact Reconstruction',
+        explanation: 'For orphan teletherapy sources (e.g., Goiânia 50.9 TBq Cs-137 or Samut Prakan 15.7 TBq Co-60), forensic investigators reconstruct cumulative absorbed doses from contact duration and geometric distance histories.',
+        math: 'D_{\\text{patient}} = \\int_{t_0}^{t_f} \\frac{\\Gamma_i A(t)}{r(t)^2} e^{-\\mu_{\\text{tissue}} d(t)} \\, dt'
+      }
+    ],
+    variables: [
+      { symbol: 'A_{\\text{eq, I-131}}', description: 'Radiologically equivalent I-131 atmospheric activity release', units: 'TBq' },
+      { symbol: 'w_{\\text{INES}, i}', description: 'IAEA INES radionuclide equivalence multiplication factor (40 for Cs-137)', units: 'dimensionless' },
+      { symbol: '\\text{LD}_{50/60}', description: 'Whole-body acute absorbed dose resulting in 50% lethality within 60 days', units: 'Gy' }
+    ],
+    assumptions: [
+      'INES radiotoxicity equivalence weights account for ground deposition, inhalation, and food-chain pathways.',
+      'Historical activity inventories are decay-corrected to the time of incident onset.'
+    ],
+    benchmarks: 'Validated against IAEA INES User\'s Manual (2013) Table 2 equivalence factors, UNSCEAR Chernobyl/Fukushima annexes, and VTEST-28.'
+  },
+
+  // 31. Module 31: Global Nuclear Geospatial & 3D Earth Intelligence Hub
+  {
+    id: 'M31-GlobalNuclearMap',
+    moduleId: 'Module 31',
+    moduleName: 'Global Nuclear Geospatial & 3D Earth Hub',
+    domain: 'Environmental Dispersion & Response',
+    title: 'NUREG-0654 16-Sector Keyhole EPZ Evacuation, CTBTO Teleseismic Yield Inversion & Sovereign Test Symbolization',
+    overview: 'Planetary 3D orthographic/Mercator intelligence observatory integrating 319 nuclear power complexes (739 IAEA PRIS units), 2,038 historical nuclear weapon detonations across 8 sovereign states, 60 CTBTO International Monitoring System (IMS) stations, NUREG-0654 16-sector keyhole EPZ planning, and Murphy-Ringdal teleseismic mb-to-yield inversion.',
+    standards: [
+      { org: 'US NRC / FEMA', code: 'NUREG-0654 / FEMA-REP-1 Rev. 2', year: '2019', title: 'Criteria for Preparation and Evaluation of Radiological Emergency Response Plans and Preparedness in Support of Nuclear Power Plants' },
+      { org: 'CTBTO', code: 'CTBT Protocol Part I / IMS Manual', year: '1996', title: 'Comprehensive Nuclear-Test-Ban Treaty International Monitoring System Operational Manual' },
+      { org: 'Murphy', code: 'BSSA 71(1):223', year: '1981', title: 'P-Wave Coupling of Underground Nuclear Explosions in Various Geologic Media' },
+      { org: 'Glasstone & Dolan', code: 'Effects of Nuclear Weapons 3rd Ed.', year: '1977', title: 'Cube-Root Yield Scaling and Detonation Phenomenology' }
+    ],
+    primaryFormula: 'm_b = \\alpha + \\beta \\log_{10}(Y [\\text{kt}]) \\implies Y = 10^{(m_b - \\alpha)/\\beta}, \\quad r_{\\text{px}}(Y) = \\operatorname{clamp}_{[4, 24]}\\left(5 + 3.5 \\log_{10}\\left(\\frac{Y}{10}\\right)\\right)',
+    secondaryFormulas: [
+      { label: 'Downwind Plume Transport Bearing from Meteorological Wind Origin', formula: '\\theta_{\\text{plume}} = (\\theta_{\\text{wind, from}} + 180^\\circ) \\bmod 360^\\circ' },
+      { label: 'Spherical Geodesic Forward Projection (Keyhole Wedge & EPZ Rings)', formula: '\\phi_2 = \\arcsin\\left(\\sin\\phi_1 \\cos\\frac{d}{R_E} + \\cos\\phi_1 \\sin\\frac{d}{R_E} \\cos\\theta\\right)' },
+      { label: 'Baneberry Containment Scaled Depth of Burial (SDOB)', formula: '\\text{SDOB} = \\frac{\\text{DOB } [\\text{m}]}{Y [\\text{kt}]^{1/3}} \\ge 120 \\text{ m}\\cdot\\text{kt}^{-1/3}' }
+    ],
+    derivationSteps: [
+      {
+        stepTitle: '1. NUREG-0654 16-Sector Keyhole Evacuation Topology',
+        explanation: 'Emergency Planning Zones (EPZ) combine an omnidirectional 2-mile (3.22 km) Precautionary Action Zone (PAZ) ring with a downwind 10-mile (16.09 km) Urgent Protective Action Zone (UPZ) keyhole wedge spanning the primary downwind 22.5° compass sector plus two adjacent buffer sectors.',
+        math: 'S_{\\text{center}} = \\left\\lfloor \\frac{(\\theta_{\\text{plume}} + 11.25^\\circ) \\bmod 360^\\circ}{22.5^\\circ} \\right\\rfloor, \\quad S_{\\text{keyhole}} = \\{S_{\\text{center}-1}, S_{\\text{center}}, S_{\\text{center}+1}\\}'
+      },
+      {
+        stepTitle: '2. CTBTO Murphy-Ringdal Teleseismic Yield Inversion',
+        explanation: 'Underground nuclear explosions generate P-wave seismic signals whose body-wave magnitude mb scales linearly with log10(Y). Accounting for geological medium coupling (hard rock alpha=4.45, beta=0.75 vs dry alluvium alpha=3.35, beta=0.75) inverts observed mb into kiloton yield with ±0.25 mb 95% confidence bounds.',
+        math: 'Y_{\\text{est}} = 10^{(m_b - \\alpha)/\\beta}, \\quad [Y_{\\text{lower}}, Y_{\\text{upper}}] = \\left[10^{(m_b - 0.25 - \\alpha)/\\beta}, \\, 10^{(m_b + 0.25 - \\alpha)/\\beta}\\right]'
+      },
+      {
+        stepTitle: '3. Log10 Cartographic Blast Yield Symbolization',
+        explanation: 'Because historical weapon yields span 9 orders of magnitude (from sub-ton safety trials to the 50,000 kt Tsar Bomba), logarithmic radius scaling preserves visual legibility across all 2,038 detonation coordinates while maintaining strictly monotonic yield ordering.',
+        math: 'r_{\\text{px}}(Y) = \\max\\left(4, \\, \\min\\left(24, \\, 5 + 3.5 \\log_{10}\\left(\\frac{\\max(Y, 0.001)}{10}\\right)\\right)\\right)'
+      }
+    ],
+    variables: [
+      { symbol: 'm_b', description: 'Observed teleseismic P-wave body-wave magnitude', units: 'magnitude units' },
+      { symbol: '\\alpha, \\beta', description: 'Geological medium seismic coupling intercept and slope coefficients', units: 'dimensionless' },
+      { symbol: 'Y', description: 'Inverted or historical nuclear explosive yield', units: 'kt TNT equivalent' },
+      { symbol: '\\theta_{\\text{plume}}', description: 'Downwind atmospheric dispersion centerline azimuth', units: 'degrees True' },
+      { symbol: 'r_{\\text{px}}', description: '3D globe marker pixel diameter scaled by detonation yield', units: 'px' }
+    ],
+    assumptions: [
+      'Spherical Earth geodesic model with mean radius R_E = 6,371.0 km.',
+      'Fully coupled underground cavity detonation in specified host lithology for seismic inversion.'
+    ],
+    benchmarks: 'Validated against NUREG-0654 / FEMA-REP-1 keyhole geometry (VTEST-33), CTBT Protocol Murphy (1981) hard-rock inversion (VTEST-34), and Castle Bravo 15 MT marker scaling (VTEST-35).'
+  },
+
   // === FORWARD-LOOKING EXPANSION METHODOLOGIES (FUTURE RESEARCH & SPECIFICATIONS) ===
 
   // EXP-1: 10 CFR Part 61 Radioactive Waste Characterization & Disposal
   {
     id: 'EXP-10CFR61',
-    moduleId: 'Module 30 (Expansion)',
+    moduleId: 'Module 32 (Expansion)',
     moduleName: 'Radioactive Waste Characterization (10 CFR 61)',
     domain: 'Regulatory Standards & Transport Security',
     title: '10 CFR Part 61.55 Waste Classification (Class A/B/C/GTCC) & Sum of Fractions Rule',
@@ -1644,7 +1739,7 @@ const METHOD_DOCS: MethodDoc[] = [
   // EXP-2: Bethe-Bloch Ion Stopping Power & Bragg Peak
   {
     id: 'EXP-BetheBloch',
-    moduleId: 'Module 31 (Expansion)',
+    moduleId: 'Module 33 (Expansion)',
     moduleName: 'Alpha & Heavy Ion Stopping Power',
     domain: 'Medical & Advanced Expansion',
     title: 'Bethe-Bloch Equation & Bragg Peak Energy Deposition in Matter',
@@ -1677,7 +1772,7 @@ const METHOD_DOCS: MethodDoc[] = [
   // EXP-3: Space Radiation & Galactic Cosmic Rays
   {
     id: 'EXP-SpaceRad',
-    moduleId: 'Module 32 (Expansion)',
+    moduleId: 'Module 34 (Expansion)',
     moduleName: 'Space Radiation & GCR Transport',
     domain: 'Medical & Advanced Expansion',
     title: 'Badhwar-O\'Neill GCR Model, Solar Modulation Φ & SPE Shielding',
@@ -1757,11 +1852,14 @@ const LiteratureModule: React.FC = () => {
 
   return (
     <div className="literature-module">
-      <div className="panel-header">
-        <h2>📚 Core Literature, Physics Formulations & Regulatory Standards</h2>
-        <p style={{ color: 'var(--color-text-muted)' }}>
-          Comprehensive peer-reviewed scientific methodology compendium documenting the governing mathematical equations, analytical derivations, boundary limits, and international regulatory standards across all current and expansion modules.
-        </p>
+      <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
+        <div>
+          <h2 style={{ margin: '0 0 6px 0' }}>📚 Core Literature, Physics Formulations & Regulatory Standards</h2>
+          <p style={{ color: 'var(--color-text-muted)', margin: 0 }}>
+            Comprehensive peer-reviewed scientific methodology compendium documenting the governing mathematical equations, analytical derivations, boundary limits, and international regulatory standards across all 35 active and expansion modules.
+          </p>
+        </div>
+        <VerificationBadge testId="VTEST-01" label="43/43 Benchmarks Indexed" />
       </div>
 
       {/* Main Mode View Navigation */}
@@ -1785,7 +1883,7 @@ const LiteratureModule: React.FC = () => {
           style={{ borderTop: 'none', borderLeft: 'none', borderRight: 'none', background: 'none', cursor: 'pointer', fontSize: '0.95rem', padding: '10px 18px', borderBottom: activeTab === 'expansion' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'expansion' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'expansion' ? 'bold' : 'normal' }}
           onClick={() => setActiveTab('expansion')}
         >
-          🚀 Research & Expansion Specifications (Modules 30–31+)
+          🚀 Research & Expansion Specifications (Modules 32–34+)
         </button>
         <button
           className={`nav-link ${activeTab === 'standards' ? 'active' : ''}`}

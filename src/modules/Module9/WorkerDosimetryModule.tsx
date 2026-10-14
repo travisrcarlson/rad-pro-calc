@@ -4,6 +4,7 @@ import { BlockMath, InlineMath } from 'react-katex';
 import { useRegulatory } from '../../context/RegulatoryContext';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
+import VerificationBadge from '../../components/VerificationBadge';
 
 const Plot = (PlotComponent as any).default || PlotComponent;
 
@@ -336,7 +337,7 @@ const WorkerDosimetryModule: React.FC = () => {
     reportTitle: '3D Worker Dosimetry & ALARA Shift Analysis',
     moduleName: 'Module 9: 3D Worker Dosimetry & ALARA Shift Tracker',
     statuteCitation: `${currentFramework.name} (${currentFramework.citation})`,
-    verificationTestId: 'VTEST-15 / ICRP 103',
+    verificationTestId: 'VTEST-07 / ICRP 103',
     operatorName: 'Lead Health Physicist',
     operatorCredentials: 'CHP, RRPT',
     facility: 'Radiological Protection Division',
@@ -365,9 +366,10 @@ const WorkerDosimetryModule: React.FC = () => {
       {/* Title & Regulatory Header */}
       <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
             <span className="hud-badge hud-badge-primary">HEALTH PHYSICS SUITE</span>
             <span className="hud-badge hud-badge-accent">{currentFramework.flagEmoji} {currentFramework.name} ({currentFramework.shortCode})</span>
+            <VerificationBadge testId="VTEST-07" label="3D Ray-AABB Dosimetry" />
           </div>
           <h2 style={{ margin: '6px 0 0 0', fontSize: '1.4rem', letterSpacing: '0.03em' }}>
             Advanced 3D Worker Dosimetry &amp; ALARA Shift Tracker

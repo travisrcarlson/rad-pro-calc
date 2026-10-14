@@ -4,7 +4,8 @@ import { Link } from 'react-router-dom';
 export interface VerificationBadgeProps {
   testId: string;
   primaryTestId?: string;
-  standard: string;
+  standard?: string;
+  label?: string;
   title?: string;
   hideSqa?: boolean;
   style?: React.CSSProperties;
@@ -14,11 +15,13 @@ export const VerificationBadge: React.FC<VerificationBadgeProps> = ({
   testId,
   primaryTestId,
   standard,
+  label,
   title,
   hideSqa = false,
   style
 }) => {
   const targetTest = primaryTestId || (testId.includes(' ') ? testId.split(' ')[0] : testId);
+  const displayStandard = standard || label || 'ISO 17025';
 
   return (
     <div style={{ display: 'inline-flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', ...style }}>
@@ -37,11 +40,11 @@ export const VerificationBadge: React.FC<VerificationBadgeProps> = ({
           transition: 'all 0.2s ease',
           boxShadow: '0 1px 4px rgba(0,0,0,0.2)'
         }}
-        title={title || `View scientific proof and reference benchmark for ${testId} (${standard})`}
+        title={title || `View scientific proof and reference benchmark for ${testId} (${displayStandard})`}
       >
         <span style={{ color: '#10b981', fontWeight: 800 }}>✓ VERIFIED:</span>
         <span style={{ color: '#fff', fontWeight: 600 }}>{testId}</span>
-        <span style={{ opacity: 0.8, color: 'var(--color-primary)' }}>({standard})</span>
+        <span style={{ opacity: 0.8, color: 'var(--color-primary)' }}>({displayStandard})</span>
       </Link>
       {!hideSqa && (
         <Link

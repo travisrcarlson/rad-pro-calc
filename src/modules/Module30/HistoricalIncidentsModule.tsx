@@ -16,6 +16,7 @@ import {
 } from '../../services/historicalIncidentsService';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
+import VerificationBadge from '../../components/VerificationBadge';
 
 const inesColorMap: Record<number, { bg: string; text: string; border: string; label: string }> = {
   7: { bg: 'rgba(239, 68, 68, 0.22)', text: '#ef4444', border: '#ef4444', label: 'INES 7: Major Accident' },
@@ -183,11 +184,12 @@ export const HistoricalIncidentsModule: React.FC = () => {
       <div className="panel-header" style={{ marginBottom: '4px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
           <div>
-            <h2 style={{ margin: '0 0 6px 0', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <h2 style={{ margin: '0 0 6px 0', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
               <span>📜 Global Radiological Incidents &amp; Historical Forensics</span>
               <span style={{ fontSize: '0.75rem', padding: '3px 8px', background: 'rgba(0, 229, 255, 0.1)', color: 'var(--color-primary)', border: '1px solid rgba(0, 229, 255, 0.3)', borderRadius: '4px' }}>
                 IAEA INES 0–7 // 2,370+ Research Events
               </span>
+              <VerificationBadge testId="VTEST-28" label="IAEA INES Forensics" />
             </h2>
             <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: '0.88rem' }}>
               Comprehensive open-source research repository of global nuclear reactor meltdowns, criticality bursts, orphan teletherapy sources, industrial overexposures, and safety precursors.

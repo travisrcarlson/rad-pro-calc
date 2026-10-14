@@ -1,5 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { BlockMath } from 'react-katex';
+import VerificationBadge from '../../../components/VerificationBadge';
+import { AuditDossierModal } from '../../../components/AuditDossierModal';
+import { type CalculationDossierPayload } from '../../../services/auditDossierService';
 
 // Standard thermal and fast neutron activation targets
 const TARGETS = [
@@ -20,6 +23,7 @@ const ActivationCalc: React.FC = () => {
   const [tCoolUnit, setTCoolUnit] = useState<number>(86400); // days -> seconds
   
   const [mass, setMass] = useState<number>(1); // gram
+  const [isDossierOpen, setIsDossierOpen] = useState<boolean>(false);
 
   const selectedTarget = TARGETS[targetIdx];
 
@@ -37,10 +41,58 @@ const ActivationCalc: React.FC = () => {
   const activity_Bq = saturation_activity * buildup_factor * decay_factor;
   const activity_MBq = activity_Bq / 1000000;
 
+  const dossierPayload: CalculationDossierPayload = useMemo(() => ({
+    reportTitle: `Neutron Activation Analysis — ${selectedTarget.name} → ${selectedTarget.product}`,
+    moduleName: 'Module 2D: Neutron Activation & Saturation Kinetics Calculator',
+    statuteCitation: 'IAEA TRS No. 273 / Knoll Radiation Detection and Measurement',
+    verificationTestId: 'VTEST-17 (Neutron Activation Saturation)',
+    operatorName: 'Reactor Health Physicist',
+    operatorCredentials: 'CHP, PE',
+    facility: 'Neutron Activation & Reactor Dosimetry Laboratory',
+    notes: `Induced activity and post-irradiation decay calculation for ${mass} g of ${selectedTarget.name} exposed to thermal/fast neutron flux Φ = ${flux.toExponential(2)} n·cm⁻²·s⁻¹.`,
+    formulaDescription: 'A(t) = N \\sigma \\Phi \\left(1 - e^{-\\lambda t_{\\text{irr}}}\\right) e^{-\\lambda t_{\\text{cool}}}',
+    inputs: [
+      { label: 'Target Isotope', value: `${selectedTarget.name} → ${selectedTarget.product}` },
+      { label: 'Target Mass', value: mass, unit: 'g' },
+      { label: 'Microscopic Cross-Section (σ)', value: selectedTarget.sigma_barns, unit: 'barns' },
+      { label: 'Neutron Flux (Φ)', value: flux.toExponential(3), unit: 'n·cm⁻²·s⁻¹' },
+      { label: 'Irradiation Duration (t_irr)', value: t_irr.toExponential(3), unit: 's' },
+      { label: 'Cooling Duration (t_cool)', value: t_cool.toExponential(3), unit: 's' }
+    ],
+    outputs: [
+      {
+        label: `Induced Activity (${selectedTarget.product})`,
+        value: activity_MBq > 1 ? activity_MBq.toExponential(3) : activity_Bq.toExponential(3),
+        unit: activity_MBq > 1 ? 'MBq' : 'Bq',
+        status: 'PASS'
+      },
+      {
+        label: 'Saturation Activity (A_sat)',
+        value: (saturation_activity / 1e6).toExponential(3),
+        unit: 'MBq',
+        status: 'PASS'
+      },
+      {
+        label: 'Saturation Buildup Fraction',
+        value: `${(buildup_factor * 100).toFixed(2)}%`,
+        status: 'PASS'
+      },
+      {
+        label: 'Estimated Dose Rate at 1 m',
+        value: (activity_MBq * selectedTarget.gamma_uSv).toExponential(3),
+        unit: 'µSv/h',
+        status: (activity_MBq * selectedTarget.gamma_uSv) > 100 ? 'WARNING' : 'PASS'
+      }
+    ]
+  }), [selectedTarget, mass, flux, t_irr, t_cool, activity_MBq, activity_Bq, saturation_activity, buildup_factor]);
+
   return (
-    <div className="panel" style={{ display: 'flex', gap: '20px' }}>
-      <div style={{ flex: 1 }}>
-        <h3 style={{ marginBottom: '15px' }}>2D. Dose Rate from Activated Materials</h3>
+    <div className="panel" style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
+      <div style={{ flex: '1 1 320px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', flexWrap: 'wrap', gap: '8px' }}>
+          <h3 style={{ margin: 0 }}>2D. Dose Rate from Activated Materials</h3>
+          <VerificationBadge testId="VTEST-17" label="Neutron Activation" />
+        </div>
         
         <div className="form-group">
           <label className="form-label">Target Material</label>
@@ -94,8 +146,25 @@ const ActivationCalc: React.FC = () => {
         </div>
       </div>
 
-      <div style={{ flex: 1, borderLeft: '1px solid var(--color-border)', paddingLeft: '20px' }}>
-        <h3 style={{ marginBottom: '15px' }}>Induced Activity ({selectedTarget.product})</h3>
+      <div style={{ flex: '1 1 320px', borderLeft: '1px solid var(--color-border)', paddingLeft: '20px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+          <h3 style={{ margin: 0 }}>Induced Activity ({selectedTarget.product})</h3>
+          <button
+            onClick={() => setIsDossierOpen(true)}
+            style={{
+              background: 'rgba(16, 185, 129, 0.12)',
+              border: '1px solid rgba(16, 185, 129, 0.4)',
+              color: '#10b981',
+              padding: '6px 12px',
+              borderRadius: '6px',
+              fontSize: '0.78rem',
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}
+          >
+            📜 QA Calculation Dossier
+          </button>
+        </div>
         
         <div style={{ fontSize: '2.5rem', color: 'var(--color-primary)', fontWeight: 'bold' }}>
           {activity_MBq > 1 ? activity_MBq.toExponential(2) : activity_Bq.toExponential(2)} {activity_MBq > 1 ? 'MBq' : 'Bq'}
@@ -116,6 +185,12 @@ const ActivationCalc: React.FC = () => {
           <li>Saturation Activity: {(saturation_activity / 1e6).toExponential(2)} MBq</li>
         </ul>
       </div>
+
+      <AuditDossierModal
+        isOpen={isDossierOpen}
+        onClose={() => setIsDossierOpen(false)}
+        payload={dossierPayload}
+      />
     </div>
   );
 };

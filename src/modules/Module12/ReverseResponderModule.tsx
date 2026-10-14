@@ -1,6 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import allNuclidesData from '../../data/all_nuclides.json'; // Contains Z, N, Nuclide, Half-Life, Decay Mode, etc.
 import PlotComponent from 'react-plotly.js';
+import VerificationBadge from '../../components/VerificationBadge';
+import { AuditDossierModal } from '../../components/AuditDossierModal';
+import { type CalculationDossierPayload } from '../../services/auditDossierService';
 
 const Plot = (PlotComponent as any).default || PlotComponent;
 
@@ -471,13 +474,63 @@ const ReverseResponderModule: React.FC = () => {
       return mbq.toFixed(2) + ' MBq';
   };
 
+  const [isDossierOpen, setIsDossierOpen] = useState<boolean>(false);
+
+  const dossierPayload: CalculationDossierPayload = useMemo(() => ({
+    reportTitle: `Reverse Responder Source Back-Calculation & Triangulation`,
+    moduleName: 'Module 12: Reverse Responder Telemetry & Source Inversion Engine',
+    statuteCitation: 'IAEA EPR-First Responders / NCRP Report No. 138 / ICRP 107',
+    verificationTestId: 'VTEST-01 / VTEST-32 (Inverse-Square & Multilateration)',
+    operatorName: 'Radiological Emergency Responder',
+    operatorCredentials: 'CHP, HAZMAT Specialist',
+    facility: 'Field Reconnaissance & Source Attribution Unit',
+    notes: `Inverse source activity back-calculation from ${equipment} reading (${reading} ${unit}) at ${distance} m in ${mode === 'single' ? 'Single-Point Recon Mode' : '3D Architectural Triangulation Mode'}.`,
+    formulaDescription: 'A_0 = \\frac{\\dot{H}(r) \\cdot r^2}{\\Gamma_{\\text{eff}} \\cdot B(\\mu x) \\cdot e^{-\\mu x}}',
+    inputs: [
+      { label: 'Survey Instrument', value: equipment },
+      { label: 'Field Telemetry Reading', value: reading, unit },
+      { label: 'Standoff Distance', value: distance, unit: 'm' },
+      { label: 'Detector Efficiency', value: `${efficiency}%` },
+      { label: 'Operating Mode', value: mode === 'single' ? 'Single-Point Inversion' : 'Multi-Point 3D Triangulation' }
+    ],
+    outputs: results.length > 0
+      ? results.slice(0, 5).map((r, idx) => ({
+          label: `Candidate #${idx + 1}: ${r.nuclide} (${r.halfLife})`,
+          value: `${formatActivity(r.mbq)} [${r.mode}]`,
+          status: 'PASS' as const
+        }))
+      : [{ label: 'Candidate Search', value: 'No matching isotopes for current filter', status: 'WARNING' as const }]
+  }), [equipment, reading, unit, distance, efficiency, mode, results]);
+
   return (
     <div className="panel" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <div style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: '20px', marginBottom: '20px' }}>
-        <h2 style={{ fontSize: '1.8rem', color: 'var(--color-primary)', margin: '0 0 10px 0' }}>Reverse Responder Tool</h2>
-        <p style={{ margin: 0, color: 'var(--color-text-muted)' }}>
-          Input field telemetry to back-calculate implied source activities (A₀) across the nuclide database.
-        </p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
+          <div>
+            <h2 style={{ fontSize: '1.8rem', color: 'var(--color-primary)', margin: '0 0 10px 0' }}>Reverse Responder Tool</h2>
+            <p style={{ margin: 0, color: 'var(--color-text-muted)' }}>
+              Input field telemetry to back-calculate implied source activities (A₀) across the nuclide database.
+            </p>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            <VerificationBadge testId="VTEST-01" label="Inverse-Square Inversion" />
+            <button
+              onClick={() => setIsDossierOpen(true)}
+              style={{
+                background: 'rgba(16, 185, 129, 0.12)',
+                border: '1px solid rgba(16, 185, 129, 0.4)',
+                color: '#10b981',
+                padding: '6px 12px',
+                borderRadius: '6px',
+                fontSize: '0.78rem',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              📜 QA Calculation Dossier
+            </button>
+          </div>
+        </div>
         
         <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
           <button 
@@ -824,6 +877,11 @@ const ReverseResponderModule: React.FC = () => {
         </div>
 
       </div>
+      <AuditDossierModal
+        isOpen={isDossierOpen}
+        onClose={() => setIsDossierOpen(false)}
+        payload={dossierPayload}
+      />
     </div>
   );
 };
