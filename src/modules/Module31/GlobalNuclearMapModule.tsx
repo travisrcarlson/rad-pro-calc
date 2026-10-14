@@ -61,7 +61,7 @@ export interface HistoricalProvingGround {
   visualSimCityId?: string;
 }
 
-export const HISTORICAL_PROVING_GROUNDS: HistoricalProvingGround[] = [
+const HISTORICAL_PROVING_GROUNDS: HistoricalProvingGround[] = [
   {
     id: 'nevada',
     name: 'Nevada National Security Site (NNSS / NTS)',
@@ -1079,6 +1079,50 @@ export const GlobalNuclearMapModule: React.FC = () => {
 
     return traces;
   }, [pins, timelineMode, currentYear, distancePinA, distancePinB, isEPZOverlayActive, epzPlan, selectedReactorForEPZ]);
+
+  const plotLayout = useMemo(() => ({
+    autosize: true,
+    height: layoutMode === 'split' ? 640 : 580,
+    margin: { t: 0, b: 0, l: 0, r: 0 },
+    paper_bgcolor: 'transparent',
+    plot_bgcolor: 'transparent',
+    geo: {
+      projection: {
+        type: projectionType as any,
+        rotation: projectionType === 'orthographic' ? centerRotation : undefined
+      },
+      showland: true,
+      landcolor: '#111827',
+      showocean: true,
+      oceancolor: '#070b14',
+      showcountries: true,
+      countrycolor: 'rgba(0, 229, 255, 0.25)',
+      countrywidth: 0.8,
+      showcoastlines: true,
+      coastlinecolor: 'rgba(0, 229, 255, 0.4)',
+      coastlinewidth: 1.0,
+      showlakes: true,
+      lakecolor: '#070b14',
+      bgcolor: 'transparent'
+    },
+    showlegend: true,
+    legend: {
+      x: 0.02,
+      y: 0.05,
+      bgcolor: 'rgba(5, 10, 18, 0.88)',
+      bordercolor: 'rgba(0, 229, 255, 0.3)',
+      borderwidth: 1,
+      font: { color: '#ecf0f1', size: 11 }
+    }
+  }), [layoutMode, projectionType, centerRotation]);
+
+  const plotConfig = useMemo(() => ({
+    responsive: true,
+    scrollZoom: true,
+    displayModeBar: true,
+    displaylogo: false,
+    modeBarButtonsToRemove: ['select2d', 'lasso2d'] as any
+  }), []);
 
   // Render Tactical Distance Measurement Banner
   const renderDistanceBanner = () => {
@@ -2122,7 +2166,9 @@ export const GlobalNuclearMapModule: React.FC = () => {
                 cursor: 'pointer',
                 background: selectedCountry === nws.country ? `${nws.color}25` : 'rgba(255,255,255,0.03)',
                 color: selectedCountry === nws.country ? '#fff' : '#cbd5e1',
-                border: `1px solid ${selectedCountry === nws.country ? nws.color : 'rgba(255,255,255,0.08)'}`,
+                borderTop: `1px solid ${selectedCountry === nws.country ? nws.color : 'rgba(255,255,255,0.08)'}`,
+                borderRight: `1px solid ${selectedCountry === nws.country ? nws.color : 'rgba(255,255,255,0.08)'}`,
+                borderBottom: `1px solid ${selectedCountry === nws.country ? nws.color : 'rgba(255,255,255,0.08)'}`,
                 borderLeft: `3px solid ${nws.color}`,
                 fontWeight: selectedCountry === nws.country ? 700 : 500,
                 boxShadow: selectedCountry === nws.country ? `0 0 10px ${nws.color}33` : 'none'
@@ -2346,48 +2392,10 @@ export const GlobalNuclearMapModule: React.FC = () => {
 
               <Plot
                 data={plotData}
-                layout={{
-                  autosize: true,
-                  height: layoutMode === 'split' ? 640 : 580,
-                  margin: { t: 0, b: 0, l: 0, r: 0 },
-                  paper_bgcolor: 'transparent',
-                  plot_bgcolor: 'transparent',
-                  geo: {
-                    projection: {
-                      type: projectionType as any,
-                      rotation: projectionType === 'orthographic' ? centerRotation : undefined
-                    },
-                    showland: true,
-                    landcolor: '#111827',
-                    showocean: true,
-                    oceancolor: '#070b14',
-                    showcountries: true,
-                    countrycolor: 'rgba(0, 229, 255, 0.25)',
-                    countrywidth: 0.8,
-                    showcoastlines: true,
-                    coastlinecolor: 'rgba(0, 229, 255, 0.4)',
-                    coastlinewidth: 1.0,
-                    showlakes: true,
-                    lakecolor: '#070b14',
-                    bgcolor: 'transparent'
-                  },
-                  showlegend: true,
-                  legend: {
-                    x: 0.02,
-                    y: 0.05,
-                    bgcolor: 'rgba(5, 10, 18, 0.88)',
-                    bordercolor: 'rgba(0, 229, 255, 0.3)',
-                    borderwidth: 1,
-                    font: { color: '#ecf0f1', size: 11 }
-                  }
-                }}
-                config={{
-                  responsive: true,
-                  displayModeBar: true,
-                  displaylogo: false,
-                  modeBarButtonsToRemove: ['select2d', 'lasso2d']
-                }}
+                layout={plotLayout}
+                config={plotConfig}
                 onClick={handlePlotClick}
+                onError={() => {}}
                 style={{ width: '100%', height: '100%' }}
               />
             </div>
@@ -3618,7 +3626,9 @@ export const GlobalNuclearMapModule: React.FC = () => {
                         cursor: 'pointer',
                         background: provingGroundCountryFilter === nws.country ? `${nws.color}25` : 'rgba(255,255,255,0.03)',
                         color: provingGroundCountryFilter === nws.country ? '#fff' : '#cbd5e1',
-                        border: `1px solid ${provingGroundCountryFilter === nws.country ? nws.color : 'rgba(255,255,255,0.08)'}`,
+                        borderTop: `1px solid ${provingGroundCountryFilter === nws.country ? nws.color : 'rgba(255,255,255,0.08)'}`,
+                        borderRight: `1px solid ${provingGroundCountryFilter === nws.country ? nws.color : 'rgba(255,255,255,0.08)'}`,
+                        borderBottom: `1px solid ${provingGroundCountryFilter === nws.country ? nws.color : 'rgba(255,255,255,0.08)'}`,
                         borderLeft: `3px solid ${nws.color}`,
                         fontWeight: provingGroundCountryFilter === nws.country ? 700 : 500
                       }}
@@ -3677,7 +3687,9 @@ export const GlobalNuclearMapModule: React.FC = () => {
                       key={pg.id}
                       style={{
                         background: 'rgba(15, 23, 42, 0.55)',
-                        border: '1px solid rgba(255, 255, 255, 0.08)',
+                        borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+                        borderRight: '1px solid rgba(255, 255, 255, 0.08)',
+                        borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
                         borderLeft: `4px solid ${pg.color}`,
                         borderRadius: '8px',
                         padding: '14px',

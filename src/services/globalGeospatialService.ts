@@ -739,7 +739,7 @@ export function buildGeospatialDossierPayload(
     reportTitle: `Global Nuclear Facility & Detonation Dossier: ${pin.name}`,
     moduleName: 'Global Nuclear Geospatial & 3D Earth Hub',
     statuteCitation,
-    verificationTestId: isCTBTO ? 'VTEST-29 / CTBTO-IMS-STATION' : 'VTEST-28 / IAEA-GEOSPATIAL',
+    verificationTestId: isCTBTO ? 'VTEST-34 / CTBTO-IMS-STATION' : isDetonation ? 'VTEST-35 / DETONATION-YIELD-SCALING' : 'VTEST-33 / IAEA-GEOSPATIAL',
     operatorName,
     operatorCredentials: 'Certified Health Physicist (CHP) / Nuclear Geospatial Analyst',
     facility,

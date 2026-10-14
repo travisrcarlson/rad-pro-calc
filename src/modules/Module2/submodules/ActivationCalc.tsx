@@ -112,7 +112,7 @@ const ActivationCalc: React.FC = () => {
         </div>
         
         <ul style={{ marginTop: '15px', color: 'var(--color-text-muted)', fontSize: '0.85rem', paddingLeft: '20px' }}>
-          <li>Cross-section ($\sigma$): {selectedTarget.sigma_barns} barns</li>
+          <li>Cross-section (σ): {selectedTarget.sigma_barns} barns</li>
           <li>Saturation Activity: {(saturation_activity / 1e6).toExponential(2)} MBq</li>
         </ul>
       </div>

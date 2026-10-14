@@ -591,7 +591,7 @@ const SpectroscopyModule: React.FC = () => {
       <div className="panel" style={{ marginBottom: '20px' }}>
         <h3>2048-Channel Multi-Channel Analyzer (MCA) Pulse-Height Spectrum</h3>
         <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', marginBottom: '10px' }}>
-          Real-time energy spectrum ($Counts$ vs $keV$). Vertical markers indicate detected photopeaks and auto-identified isotopes.
+          Real-time energy spectrum (Counts vs keV). Vertical markers indicate detected photopeaks and auto-identified isotopes.
         </p>
 
         <div style={{ width: '100%' }}>

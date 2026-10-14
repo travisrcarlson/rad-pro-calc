@@ -21,7 +21,7 @@ export interface ThreatPreset {
   incidentTitle: string;
 }
 
-export const THREAT_PRESETS: ThreatPreset[] = [
+const THREAT_PRESETS: ThreatPreset[] = [
   {
     id: 'cs137_rdd',
     name: '💥 100 Ci Cs-137 RDD',

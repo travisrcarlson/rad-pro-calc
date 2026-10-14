@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import VerificationBadge from '../../components/VerificationBadge';
 import ReactFlow, { Background, Controls, MarkerType } from 'reactflow';
 import 'reactflow/dist/style.css';
@@ -40,6 +41,10 @@ const parseHalfLifeSeconds = (nuc: any): number => {
   
   if (parts.length < 2) return val;
   const unit = parts[1].toLowerCase();
+  if (unit === 'ms') return val * 1e-3;
+  if (unit === 'us' || unit === 'µs' || unit === 'μs') return val * 1e-6;
+  if (unit === 'ns') return val * 1e-9;
+  if (unit === 'ps') return val * 1e-12;
   if (unit.startsWith('s')) return val;
   if (unit.startsWith('m')) return val * 60;
   if (unit.startsWith('h')) return val * 3600;
@@ -49,6 +54,7 @@ const parseHalfLifeSeconds = (nuc: any): number => {
 };
 
 const DecayModule: React.FC = () => {
+  const [searchParams] = useSearchParams();
   const [selectedIsotope, setSelectedIsotope] = useState<any | null>(null);
 
   // Yield Calculator State
@@ -126,7 +132,9 @@ const DecayModule: React.FC = () => {
           ) 
         },
         style: { 
-          border: '1px solid #444',
+          borderLeft: '1px solid #444',
+          borderRight: '1px solid #444',
+          borderBottom: '1px solid #444',
           borderTop: `8px solid ${color}`, 
           borderRadius: '8px', 
           background: step === 0 ? '#2a2d34' : '#1a1d21', 
@@ -287,6 +295,17 @@ const DecayModule: React.FC = () => {
   const uniqueSymbols = useMemo(() => Array.from(new Set(allNuclides.map(n => n.Symbol))).sort(), []);
   const [searchSymbol, setSearchSymbol] = useState<string>('U');
   const availableIsotopes = useMemo(() => allNuclides.filter(n => n.Symbol === searchSymbol).sort((a,b) => (a.Z+a.N) - (b.Z+b.N)), [searchSymbol]);
+
+  useEffect(() => {
+    const isoParam = searchParams.get('isotope') || searchParams.get('nuclide');
+    if (isoParam) {
+      const match = allNuclides.find(n => n.Nuclide.toLowerCase() === isoParam.trim().toLowerCase());
+      if (match) {
+        setSelectedIsotope(match);
+        setSearchSymbol(match.Symbol);
+      }
+    }
+  }, [searchParams]);
 
   // --- Display spectrum data for Quadrant 2 ---
   const spectrumPlotData = useMemo(() => {
@@ -466,7 +485,7 @@ const DecayModule: React.FC = () => {
              </div>
              
              <div style={{ display: 'flex', alignItems: 'center', gap: '5px', backgroundColor: 'rgba(255,255,255,0.05)', padding: '5px 10px', borderRadius: '4px' }}>
-                <span style={{ fontSize: '0.8rem', color: '#aaa' }}>Measurement Time ($\Delta t$):</span>
+                <span style={{ fontSize: '0.8rem', color: '#aaa' }}>Measurement Time (Δt):</span>
                 <input type="number" className="form-control" style={{ width: '60px', padding: '2px 5px', fontSize: '0.8rem' }} value={exposureTime} onChange={e => setExposureTime(Number(e.target.value))} />
                 <select className="form-control" style={{ padding: '2px 5px', fontSize: '0.8rem' }} value={exposureUnit} onChange={e => setExposureUnit(Number(e.target.value))}>
                   <option value={1}>Sec</option>
@@ -528,7 +547,7 @@ const DecayModule: React.FC = () => {
           {/* New 4D Timeline Scrubber (Moved Up) */}
           <div style={{ padding: '10px 15px', backgroundColor: 'rgba(52, 152, 219, 0.05)', border: '1px solid rgba(52, 152, 219, 0.4)', borderRadius: '6px', marginBottom: '15px' }}>
              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#3498db', fontWeight: 'bold', marginBottom: '5px' }}>
-                <span>Timeline Scrubber ($t_{'{'}sim{'}'}$)</span>
+                <span>Timeline Scrubber (t_sim)</span>
                 <span style={{ fontSize: '1.1rem', textShadow: '0 0 5px rgba(52, 152, 219, 0.5)' }}>{(() => {
                    const t = timeValue * (sliderPct / 100);
                    return t.toFixed(2) + (timeUnit === 31557600 ? ' Years' : timeUnit === 86400 ? ' Days' : ' Secs');
@@ -621,7 +640,7 @@ const DecayModule: React.FC = () => {
                     <tr style={{ borderBottom: '1px solid #444', textAlign: 'left' }}>
                       <th style={{ padding: '8px' }}>Gen</th>
                       <th style={{ padding: '8px' }}>Isotope</th>
-                      <th style={{ padding: '8px' }}>$T_{'{'}1/2{'}'}$</th>
+                      <th style={{ padding: '8px' }}>T₁/₂</th>
                       <th style={{ padding: '8px', textAlign: 'right' }}>Active Yield</th>
                       <th style={{ padding: '8px', textAlign: 'right', borderLeft: '1px solid #444' }}>Consumed Yield</th>
                     </tr>

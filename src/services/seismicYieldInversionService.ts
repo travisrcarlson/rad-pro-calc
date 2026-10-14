@@ -188,7 +188,7 @@ export function buildSeismicYieldDossierPayload(
     reportTitle: `CTBT Seismic Yield Inversion Dossier: ${siteName}`,
     moduleName: 'CTBTO Seismic Inversion & IMS Network Engine',
     statuteCitation: 'Comprehensive Nuclear-Test-Ban Treaty (CTBT) Protocol Part I / Murphy-Ringdal Seismic Models',
-    verificationTestId: 'VTEST-29 / CTBTO-SEISMIC-YIELD',
+    verificationTestId: 'VTEST-34 / CTBTO-SEISMIC-YIELD',
     operatorName,
     operatorCredentials: 'Certified Health Physicist (CHP) / CTBTO Waveform Analyst',
     facility: siteName,

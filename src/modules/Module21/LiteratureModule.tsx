@@ -1768,28 +1768,28 @@ const LiteratureModule: React.FC = () => {
       <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', marginBottom: '20px', gap: '5px', flexWrap: 'wrap' }}>
         <button
           className={`nav-link ${activeTab === 'current' ? 'active' : ''}`}
-          style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.95rem', padding: '10px 18px', borderBottom: activeTab === 'current' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'current' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'current' ? 'bold' : 'normal' }}
+          style={{ borderTop: 'none', borderLeft: 'none', borderRight: 'none', background: 'none', cursor: 'pointer', fontSize: '0.95rem', padding: '10px 18px', borderBottom: activeTab === 'current' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'current' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'current' ? 'bold' : 'normal' }}
           onClick={() => setActiveTab('current')}
         >
           🔬 Active Validated Modules & Core Physics
         </button>
         <button
           className={`nav-link ${activeTab === 'derivations' ? 'active' : ''}`}
-          style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.95rem', padding: '10px 18px', borderBottom: activeTab === 'derivations' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'derivations' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'derivations' ? 'bold' : 'normal' }}
+          style={{ borderTop: 'none', borderLeft: 'none', borderRight: 'none', background: 'none', cursor: 'pointer', fontSize: '0.95rem', padding: '10px 18px', borderBottom: activeTab === 'derivations' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'derivations' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'derivations' ? 'bold' : 'normal' }}
           onClick={() => setActiveTab('derivations')}
         >
           📐 Analytical Derivations & Proofs
         </button>
         <button
           className={`nav-link ${activeTab === 'expansion' ? 'active' : ''}`}
-          style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.95rem', padding: '10px 18px', borderBottom: activeTab === 'expansion' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'expansion' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'expansion' ? 'bold' : 'normal' }}
+          style={{ borderTop: 'none', borderLeft: 'none', borderRight: 'none', background: 'none', cursor: 'pointer', fontSize: '0.95rem', padding: '10px 18px', borderBottom: activeTab === 'expansion' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'expansion' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'expansion' ? 'bold' : 'normal' }}
           onClick={() => setActiveTab('expansion')}
         >
-          🚀 Research & Expansion Specifications (Modules 30+)
+          🚀 Research & Expansion Specifications (Modules 30–31+)
         </button>
         <button
           className={`nav-link ${activeTab === 'standards' ? 'active' : ''}`}
-          style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.95rem', padding: '10px 18px', borderBottom: activeTab === 'standards' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'standards' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'standards' ? 'bold' : 'normal' }}
+          style={{ borderTop: 'none', borderLeft: 'none', borderRight: 'none', background: 'none', cursor: 'pointer', fontSize: '0.95rem', padding: '10px 18px', borderBottom: activeTab === 'standards' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'standards' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'standards' ? 'bold' : 'normal' }}
           onClick={() => setActiveTab('standards')}
         >
           🏛️ Standards Registry & Bibliography

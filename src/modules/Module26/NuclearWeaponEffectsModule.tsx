@@ -659,7 +659,9 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
           className={`nav-link ${activeTab === 'visual_detonation' ? 'active' : ''}`}
           style={{
             background: 'none',
-            border: 'none',
+            borderTop: 'none',
+            borderLeft: 'none',
+            borderRight: 'none',
             cursor: 'pointer',
             padding: '10px 16px',
             fontSize: '0.9rem',
@@ -679,7 +681,9 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
           className={`nav-link ${activeTab === 'blast' ? 'active' : ''}`}
           style={{
             background: 'none',
-            border: 'none',
+            borderTop: 'none',
+            borderLeft: 'none',
+            borderRight: 'none',
             cursor: 'pointer',
             padding: '10px 16px',
             fontSize: '0.9rem',
@@ -696,7 +700,9 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
           className={`nav-link ${activeTab === 'thermal' ? 'active' : ''}`}
           style={{
             background: 'none',
-            border: 'none',
+            borderTop: 'none',
+            borderLeft: 'none',
+            borderRight: 'none',
             cursor: 'pointer',
             padding: '10px 16px',
             fontSize: '0.9rem',
@@ -713,7 +719,9 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
           className={`nav-link ${activeTab === 'prompt_rad' ? 'active' : ''}`}
           style={{
             background: 'none',
-            border: 'none',
+            borderTop: 'none',
+            borderLeft: 'none',
+            borderRight: 'none',
             cursor: 'pointer',
             padding: '10px 16px',
             fontSize: '0.9rem',
@@ -730,7 +738,9 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
           className={`nav-link ${activeTab === 'hemp' ? 'active' : ''}`}
           style={{
             background: 'none',
-            border: 'none',
+            borderTop: 'none',
+            borderLeft: 'none',
+            borderRight: 'none',
             cursor: 'pointer',
             padding: '10px 16px',
             fontSize: '0.9rem',
@@ -747,7 +757,9 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
           className={`nav-link ${activeTab === 'cordon_summary' ? 'active' : ''}`}
           style={{
             background: 'none',
-            border: 'none',
+            borderTop: 'none',
+            borderLeft: 'none',
+            borderRight: 'none',
             cursor: 'pointer',
             padding: '10px 16px',
             fontSize: '0.9rem',

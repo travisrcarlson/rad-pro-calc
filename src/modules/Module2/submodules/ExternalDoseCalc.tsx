@@ -38,7 +38,7 @@ const ExternalDoseCalc: React.FC = () => {
 
   // Ingest URL params from Scenario Builder or external links
   useEffect(() => {
-    const nuclideParam = searchParams.get('nuclide');
+    const nuclideParam = searchParams.get('nuclide') || searchParams.get('isotope');
     const actParam = searchParams.get('activity');
     const unitParam = searchParams.get('unit');
 
@@ -94,7 +94,8 @@ const ExternalDoseCalc: React.FC = () => {
   const gammaSI = gammaOld / 37.0;
 
   const activityMBq = activity * activityUnit;
-  const doseRate = (activityMBq * gammaSI) / (distance * distance); // µSv/h
+  const safeDistance = Math.max(0.01, distance || 0.01); // Near-field singularity clamp (STRESS-01)
+  const doseRate = (activityMBq * gammaSI) / (safeDistance * safeDistance); // µSv/h
 
   const unitLabel = useMemo(() => {
     if (activityUnit === 1000000) return 'TBq';
@@ -216,7 +217,7 @@ const ExternalDoseCalc: React.FC = () => {
         <div style={{ marginTop: '20px' }}>
            <label className="form-label">Extracted Physical Parameter</label>
            <p style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>
-             $\Gamma$ = {gammaSI.toFixed(4)} µSv·m²/(h·MBq) 
+             Γ = {gammaSI.toFixed(4)} µSv·m²/(h·MBq) 
              <br/>(Calculated from ICRP/NuDat: {gammaOld} R·cm²/(mCi·h))
            </p>
         </div>

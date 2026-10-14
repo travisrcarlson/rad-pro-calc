@@ -491,7 +491,9 @@ export const MedicalCountermeasuresModule: React.FC = () => {
           className={`nav-link ${activeTab === 'protocol' ? 'active' : ''}`}
           style={{
             background: 'none',
-            border: 'none',
+            borderTop: 'none',
+            borderLeft: 'none',
+            borderRight: 'none',
             cursor: 'pointer',
             padding: '10px 16px',
             fontSize: '0.9rem',
@@ -508,7 +510,9 @@ export const MedicalCountermeasuresModule: React.FC = () => {
           className={`nav-link ${activeTab === 'kinetics' ? 'active' : ''}`}
           style={{
             background: 'none',
-            border: 'none',
+            borderTop: 'none',
+            borderLeft: 'none',
+            borderRight: 'none',
             cursor: 'pointer',
             padding: '10px 16px',
             fontSize: '0.9rem',
@@ -525,7 +529,9 @@ export const MedicalCountermeasuresModule: React.FC = () => {
           className={`nav-link ${activeTab === 'bioassay' ? 'active' : ''}`}
           style={{
             background: 'none',
-            border: 'none',
+            borderTop: 'none',
+            borderLeft: 'none',
+            borderRight: 'none',
             cursor: 'pointer',
             padding: '10px 16px',
             fontSize: '0.9rem',
@@ -542,7 +548,9 @@ export const MedicalCountermeasuresModule: React.FC = () => {
           className={`nav-link ${activeTab === 'orders' ? 'active' : ''}`}
           style={{
             background: 'none',
-            border: 'none',
+            borderTop: 'none',
+            borderLeft: 'none',
+            borderRight: 'none',
             cursor: 'pointer',
             padding: '10px 16px',
             fontSize: '0.9rem',

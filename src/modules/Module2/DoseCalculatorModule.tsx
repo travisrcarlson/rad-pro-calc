@@ -23,28 +23,28 @@ const DoseCalculatorModule: React.FC = () => {
       <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', marginBottom: '20px' }}>
         <button 
           className={`nav-link ${activeTab === 'external' ? 'active' : ''}`}
-          style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '1rem', borderBottom: activeTab === 'external' ? '2px solid var(--color-primary)' : 'none' }}
+          style={{ borderTop: 'none', borderLeft: 'none', borderRight: 'none', background: 'none', cursor: 'pointer', fontSize: '1rem', borderBottom: activeTab === 'external' ? '2px solid var(--color-primary)' : 'none' }}
           onClick={() => setActiveTab('external')}
         >
           2A. External Dose
         </button>
         <button 
           className={`nav-link ${activeTab === 'shielding' ? 'active' : ''}`}
-          style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '1rem', borderBottom: activeTab === 'shielding' ? '2px solid var(--color-primary)' : 'none' }}
+          style={{ borderTop: 'none', borderLeft: 'none', borderRight: 'none', background: 'none', cursor: 'pointer', fontSize: '1rem', borderBottom: activeTab === 'shielding' ? '2px solid var(--color-primary)' : 'none' }}
           onClick={() => setActiveTab('shielding')}
         >
           2B. Shielding
         </button>
         <button 
           className={`nav-link ${activeTab === 'internal' ? 'active' : ''}`}
-          style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '1rem', borderBottom: activeTab === 'internal' ? '2px solid var(--color-primary)' : 'none' }}
+          style={{ borderTop: 'none', borderLeft: 'none', borderRight: 'none', background: 'none', cursor: 'pointer', fontSize: '1rem', borderBottom: activeTab === 'internal' ? '2px solid var(--color-primary)' : 'none' }}
           onClick={() => setActiveTab('internal')}
         >
           2C. Internal Dose
         </button>
         <button 
           className={`nav-link ${activeTab === 'activation' ? 'active' : ''}`}
-          style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '1rem', borderBottom: activeTab === 'activation' ? '2px solid var(--color-primary)' : 'none' }}
+          style={{ borderTop: 'none', borderLeft: 'none', borderRight: 'none', background: 'none', cursor: 'pointer', fontSize: '1rem', borderBottom: activeTab === 'activation' ? '2px solid var(--color-primary)' : 'none' }}
           onClick={() => setActiveTab('activation')}
         >
           2D. Activation

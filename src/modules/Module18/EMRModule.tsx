@@ -902,35 +902,35 @@ const EMRModule: React.FC = () => {
       <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', gap: '4px', flexWrap: 'wrap' }}>
         <button
           className={`nav-link ${activeTab === 'tactical' ? 'active' : ''}`}
-          style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.9rem', padding: '10px 18px', borderBottom: activeTab === 'tactical' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'tactical' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'tactical' ? 'bold' : 'normal' }}
+          style={{ borderTop: 'none', borderLeft: 'none', borderRight: 'none', background: 'none', cursor: 'pointer', fontSize: '0.9rem', padding: '10px 18px', borderBottom: activeTab === 'tactical' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'tactical' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'tactical' ? 'bold' : 'normal' }}
           onClick={() => setActiveTab('tactical')}
         >
           📡 Tactical RF Radiation Polar HUD
         </button>
         <button
           className={`nav-link ${activeTab === 'density' ? 'active' : ''}`}
-          style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.9rem', padding: '10px 18px', borderBottom: activeTab === 'density' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'density' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'density' ? 'bold' : 'normal' }}
+          style={{ borderTop: 'none', borderLeft: 'none', borderRight: 'none', background: 'none', cursor: 'pointer', fontSize: '0.9rem', padding: '10px 18px', borderBottom: activeTab === 'density' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'density' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'density' ? 'bold' : 'normal' }}
           onClick={() => setActiveTab('density')}
         >
           📈 Power Density Decay & Distance Profile
         </button>
         <button
           className={`nav-link ${activeTab === 'radome' ? 'active' : ''}`}
-          style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.9rem', padding: '10px 18px', borderBottom: activeTab === 'radome' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'radome' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'radome' ? 'bold' : 'normal' }}
+          style={{ borderTop: 'none', borderLeft: 'none', borderRight: 'none', background: 'none', cursor: 'pointer', fontSize: '0.9rem', padding: '10px 18px', borderBottom: activeTab === 'radome' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'radome' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'radome' ? 'bold' : 'normal' }}
           onClick={() => setActiveTab('radome')}
         >
           ⚠️ Radome Standing Waves & Hotspots
         </button>
         <button
           className={`nav-link ${activeTab === 'standards' ? 'active' : ''}`}
-          style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.9rem', padding: '10px 18px', borderBottom: activeTab === 'standards' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'standards' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'standards' ? 'bold' : 'normal' }}
+          style={{ borderTop: 'none', borderLeft: 'none', borderRight: 'none', background: 'none', cursor: 'pointer', fontSize: '0.9rem', padding: '10px 18px', borderBottom: activeTab === 'standards' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'standards' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'standards' ? 'bold' : 'normal' }}
           onClick={() => setActiveTab('standards')}
         >
           📋 FCC OET-65 & IEEE C95.1 Criteria
         </button>
         <button
           className={`nav-link ${activeTab === 'physics' ? 'active' : ''}`}
-          style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.9rem', padding: '10px 18px', borderBottom: activeTab === 'physics' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'physics' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'physics' ? 'bold' : 'normal' }}
+          style={{ borderTop: 'none', borderLeft: 'none', borderRight: 'none', background: 'none', cursor: 'pointer', fontSize: '0.9rem', padding: '10px 18px', borderBottom: activeTab === 'physics' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'physics' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'physics' ? 'bold' : 'normal' }}
           onClick={() => setActiveTab('physics')}
         >
           📐 Electromagnetic Field Formulations
@@ -1155,7 +1155,7 @@ const EMRModule: React.FC = () => {
         <div className="panel" style={{ padding: '20px' }}>
           <h3 style={{ margin: '0 0 4px 0', fontSize: '1rem', color: '#fff' }}>Power Density Decay Profile vs. Distance</h3>
           <p style={{ color: 'var(--color-text-muted)', fontSize: '0.82rem', margin: '0 0 15px 0' }}>
-            Semi-log attenuation curve illustrating near-field saturation ($R \le 2D^2/\lambda$) transitioning to inverse-square far-field decay ($1/R^2$).
+            Semi-log attenuation curve illustrating near-field saturation (R ≤ 2D²/λ) transitioning to inverse-square far-field decay (1/R²).
           </p>
           <div style={{ width: '100%', height: '400px' }}>
             <Plot

@@ -1249,28 +1249,28 @@ export const HistoricalIncidentsModule: React.FC = () => {
               <button
                 className={`btn ${activeModalTab === 'chronology' ? 'btn-primary' : 'btn-secondary'}`}
                 onClick={() => setActiveModalTab('chronology')}
-                style={{ borderRadius: 0, border: 'none', borderBottom: activeModalTab === 'chronology' ? '2px solid var(--color-primary)' : 'none', padding: '10px 16px', fontSize: '0.84rem' }}
+                style={{ borderRadius: 0, borderTop: 'none', borderLeft: 'none', borderRight: 'none', borderBottom: activeModalTab === 'chronology' ? '2px solid var(--color-primary)' : 'none', padding: '10px 16px', fontSize: '0.84rem' }}
               >
                 ⏱️ Failure Timeline
               </button>
               <button
                 className={`btn ${activeModalTab === 'health_physics' ? 'btn-primary' : 'btn-secondary'}`}
                 onClick={() => setActiveModalTab('health_physics')}
-                style={{ borderRadius: 0, border: 'none', borderBottom: activeModalTab === 'health_physics' ? '2px solid var(--color-primary)' : 'none', padding: '10px 16px', fontSize: '0.84rem' }}
+                style={{ borderRadius: 0, borderTop: 'none', borderLeft: 'none', borderRight: 'none', borderBottom: activeModalTab === 'health_physics' ? '2px solid var(--color-primary)' : 'none', padding: '10px 16px', fontSize: '0.84rem' }}
               >
                 ☢️ Health Physics &amp; Dosimetry
               </button>
               <button
                 className={`btn ${activeModalTab === 'root_causes' ? 'btn-primary' : 'btn-secondary'}`}
                 onClick={() => setActiveModalTab('root_causes')}
-                style={{ borderRadius: 0, border: 'none', borderBottom: activeModalTab === 'root_causes' ? '2px solid var(--color-primary)' : 'none', padding: '10px 16px', fontSize: '0.84rem' }}
+                style={{ borderRadius: 0, borderTop: 'none', borderLeft: 'none', borderRight: 'none', borderBottom: activeModalTab === 'root_causes' ? '2px solid var(--color-primary)' : 'none', padding: '10px 16px', fontSize: '0.84rem' }}
               >
                 🔬 Root Causes &amp; Lessons
               </button>
               <button
                 className={`btn ${activeModalTab === 'countermeasures' ? 'btn-primary' : 'btn-secondary'}`}
                 onClick={() => setActiveModalTab('countermeasures')}
-                style={{ borderRadius: 0, border: 'none', borderBottom: activeModalTab === 'countermeasures' ? '2px solid var(--color-primary)' : 'none', padding: '10px 16px', fontSize: '0.84rem' }}
+                style={{ borderRadius: 0, borderTop: 'none', borderLeft: 'none', borderRight: 'none', borderBottom: activeModalTab === 'countermeasures' ? '2px solid var(--color-primary)' : 'none', padding: '10px 16px', fontSize: '0.84rem' }}
               >
                 💉 Medical Response &amp; Actions
               </button>

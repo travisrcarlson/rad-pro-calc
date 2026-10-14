@@ -185,16 +185,17 @@ export function calculateEPZEvacuationPlan(input: EPZScenarioInput): EPZEvacuati
   const upzRing = generateGeodesicRing(input.coordinates.lat, input.coordinates.lon, cfg.upzRadiusKm);
   const ipzRing = generateGeodesicRing(input.coordinates.lat, input.coordinates.lon, cfg.ipzRadiusKm);
 
-  // 4. Construct Keyhole Wedge Polygon (Center -> Arc across 67.5° at UPZ radius -> Back to Center)
+  // 4. Construct Keyhole Wedge Polygon (Center -> Arc across 67.5° at active evacuation radius -> Back to Center)
   const wedgePolygon: { lat: number; lon: number }[] = [];
   wedgePolygon.push(input.coordinates); // Origin at plant
 
   const startBearing = downwindBearing - 33.75;
   const endBearing = downwindBearing + 33.75;
   const wedgeSteps = 16;
+  const wedgeOuterRadiusKm = Math.max(cfg.upzRadiusKm, evacuationRadiusKm);
   for (let i = 0; i <= wedgeSteps; i++) {
     const b = startBearing + (i * (endBearing - startBearing)) / wedgeSteps;
-    wedgePolygon.push(calculateGeodesicPoint(input.coordinates.lat, input.coordinates.lon, b, cfg.upzRadiusKm));
+    wedgePolygon.push(calculateGeodesicPoint(input.coordinates.lat, input.coordinates.lon, b, wedgeOuterRadiusKm));
   }
   wedgePolygon.push(input.coordinates); // Close polygon
 
@@ -226,7 +227,7 @@ export function buildEPZDossierPayload(
     reportTitle: `Emergency Planning Zone (EPZ) Consequence Assessment: ${input.plantName}`,
     moduleName: 'Emergency Planning & Population Consequence Engine',
     statuteCitation: 'EPA-400-R-92-001 (EPA PAG Manual 2017) / NUREG-0654 / IAEA GSR Part 7',
-    verificationTestId: 'VTEST-21 / EPA-PAG-EPZ',
+    verificationTestId: 'VTEST-33 / EPA-PAG-EPZ',
     operatorName,
     operatorCredentials: 'Certified Health Physicist (CHP) / Radiological Emergency Director',
     facility: input.plantName,

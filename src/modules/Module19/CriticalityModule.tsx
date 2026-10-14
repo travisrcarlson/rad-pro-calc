@@ -797,7 +797,9 @@ const CriticalityModule: React.FC = () => {
         <div
           style={{
             background: 'rgba(0,0,0,0.4)',
-            border: `1px solid ${math.stateColor}60`,
+            borderTop: `1px solid ${math.stateColor}60`,
+            borderRight: `1px solid ${math.stateColor}60`,
+            borderBottom: `1px solid ${math.stateColor}60`,
             borderLeft: `4px solid ${math.stateColor}`,
             borderRadius: '8px',
             padding: '12px 16px'
@@ -1362,7 +1364,7 @@ const CriticalityModule: React.FC = () => {
       <div className="panel">
         <h3>Neutron Population Kinetics & Power Ascension</h3>
         <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', marginBottom: '10px' }}>
-          Relative reactor power level $P(t) / P_0$ over time based on computed period $T$.
+          Relative reactor power level P(t) / P₀ over time based on computed period T.
         </p>
         <div style={{ width: '100%' }}>
           <Plot

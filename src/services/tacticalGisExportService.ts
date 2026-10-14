@@ -4,7 +4,7 @@
  * and ATAK/WinTAK Cursor-on-Target (CoT XML v2.0) for field emergency management.
  */
 
-import { type EPZScenarioInput, type EPZEvacuationPlan } from './epzConsequenceService';
+import { calculateGeodesicPoint, type EPZScenarioInput, type EPZEvacuationPlan } from './epzConsequenceService';
 
 /**
  * Triggers a client-side file download in the browser.
@@ -41,10 +41,14 @@ export function generateEPZGeoJSON(scenario: EPZScenarioInput, plan: EPZEvacuati
     return ring;
   };
 
-  // Centerline Vector: From plant coordinates along plumeCenterlineBearingDeg out to 80 km
-  const centerlineEndPt = plan.ipzGeodesicRing.length > 0 
-    ? plan.ipzGeodesicRing[Math.floor(plan.ipzGeodesicRing.length / 2)] // fallback
-    : { lat: scenario.coordinates.lat, lon: scenario.coordinates.lon };
+  // Centerline Vector: From plant coordinates along plumeCenterlineBearingDeg out to IPZ radius (~80.47 km)
+  const ipzRadiusKm = scenario.config?.ipzRadiusKm || 80.47;
+  const centerlineEndPt = calculateGeodesicPoint(
+    scenario.coordinates.lat,
+    scenario.coordinates.lon,
+    plan.plumeCenterlineBearingDeg,
+    ipzRadiusKm
+  );
 
   const geoJson = {
     type: 'FeatureCollection',

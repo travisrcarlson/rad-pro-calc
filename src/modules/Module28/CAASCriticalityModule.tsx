@@ -470,7 +470,9 @@ export const CAASCriticalityModule: React.FC = () => {
           className={`nav-link ${activeTab === 'excursion' ? 'active' : ''}`}
           style={{
             background: 'none',
-            border: 'none',
+            borderTop: 'none',
+            borderLeft: 'none',
+            borderRight: 'none',
             cursor: 'pointer',
             padding: '10px 16px',
             fontSize: '0.9rem',
@@ -487,7 +489,9 @@ export const CAASCriticalityModule: React.FC = () => {
           className={`nav-link ${activeTab === 'caas_coverage' ? 'active' : ''}`}
           style={{
             background: 'none',
-            border: 'none',
+            borderTop: 'none',
+            borderLeft: 'none',
+            borderRight: 'none',
             cursor: 'pointer',
             padding: '10px 16px',
             fontSize: '0.9rem',
@@ -504,7 +508,9 @@ export const CAASCriticalityModule: React.FC = () => {
           className={`nav-link ${activeTab === 'prompt_flash' ? 'active' : ''}`}
           style={{
             background: 'none',
-            border: 'none',
+            borderTop: 'none',
+            borderLeft: 'none',
+            borderRight: 'none',
             cursor: 'pointer',
             padding: '10px 16px',
             fontSize: '0.9rem',
@@ -521,7 +527,9 @@ export const CAASCriticalityModule: React.FC = () => {
           className={`nav-link ${activeTab === 'emergency_plan' ? 'active' : ''}`}
           style={{
             background: 'none',
-            border: 'none',
+            borderTop: 'none',
+            borderLeft: 'none',
+            borderRight: 'none',
             cursor: 'pointer',
             padding: '10px 16px',
             fontSize: '0.9rem',

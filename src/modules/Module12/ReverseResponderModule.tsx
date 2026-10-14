@@ -439,8 +439,9 @@ const ReverseResponderModule: React.FC = () => {
       else if (equipment === 'Neutron Rem Meter') {
           if (mode.includes('SF') || mode.includes('N')) {
               isValidForDetector = true;
-              // Very coarse generic proxy for neutron dose
-              impliedActivityMBq = reading_mSv_hr * Math.pow(activeDistance, 2) * 1500 * (1 / effFraction);
+              // Support both CPM (e.g. BF3/He-3 rem ball ~ 600 CPM per mSv/h) and direct dose rate units
+              const effectiveDoseRate_mSv_hr = unit === 'CPM' ? (reading_cpm / 600) : reading_mSv_hr;
+              impliedActivityMBq = effectiveDoseRate_mSv_hr * Math.pow(activeDistance, 2) * 1500 * (1 / effFraction);
           }
       }
 
@@ -475,7 +476,7 @@ const ReverseResponderModule: React.FC = () => {
       <div style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: '20px', marginBottom: '20px' }}>
         <h2 style={{ fontSize: '1.8rem', color: 'var(--color-primary)', margin: '0 0 10px 0' }}>Reverse Responder Tool</h2>
         <p style={{ margin: 0, color: 'var(--color-text-muted)' }}>
-          Input field telemetry to back-calculate implied source activities ($A_0$) across the nuclide database.
+          Input field telemetry to back-calculate implied source activities (A₀) across the nuclide database.
         </p>
         
         <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>

@@ -775,7 +775,7 @@ const InternalDosimetryModule: React.FC = () => {
           <strong> Human Alimentary Tract Model (HATM, Publication 100)</strong>, and organ-specific clearance kinetics.
           <br /><br />
           <strong>Committed Dose Equivalent:</strong> Calculates the 50-year integrated equivalent dose to tissues.
-          The dose coefficients used represent the standard inhalation and ingestion values published in <strong>ICRP Publication 60</strong> (and FGR 12/13 equivalents) in $Sv/Bq$. 
+          The dose coefficients used represent the standard inhalation and ingestion values published in <strong>ICRP Publication 60</strong> (and FGR 12/13 equivalents) in Sv/Bq. 
           The biological clearance values assume standard healthy occupational adults. In case of actual contamination, clinical bioassays (e.g. whole-body counting, liquid scintillation urinalysis) must guide medical interventions like DTPA chelation (for Plutonium/Cobalt) or Prussian Blue ingestion (for Cesium).
         </p>
       </div>

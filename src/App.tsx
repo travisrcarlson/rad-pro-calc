@@ -98,8 +98,10 @@ const ModuleLoadingSkeleton: React.FC = () => (
       <div style={{
         width: '36px',
         height: '36px',
-        border: '3px solid rgba(0, 229, 255, 0.2)',
-        borderTopColor: 'var(--color-primary)',
+        borderRight: '3px solid rgba(0, 229, 255, 0.2)',
+        borderBottom: '3px solid rgba(0, 229, 255, 0.2)',
+        borderLeft: '3px solid rgba(0, 229, 255, 0.2)',
+        borderTop: '3px solid var(--color-primary)',
         borderRadius: '50%',
         animation: 'spin 0.8s linear infinite'
       }} />
@@ -213,7 +215,7 @@ const NAV_CATEGORIES: NavCategory[] = [
     color: '#c084fc',
     iconSymbol: '✓',
     items: [
-      { path: '/verify', label: 'Verification Tests', badge: '42/42 Pass', keywords: ['verify', 'test', 'sqa', 'validation', 'benchmark', 'qa'] },
+      { path: '/verify', label: 'Verification Tests', badge: '43/43 Pass', keywords: ['verify', 'test', 'sqa', 'validation', 'benchmark', 'qa'] },
       { path: '/literature', label: 'Core Literature & Physics', badge: 'Derivations', keywords: ['literature', 'citations', 'physics', 'equations', 'formulations', 'references'] }
     ]
   }

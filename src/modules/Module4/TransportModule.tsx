@@ -100,9 +100,11 @@ const TransportModule: React.FC = () => {
     const primaryIso = isoStr.split(';')[0].trim();
     // Element & Mass
     const [sym, mass] = primaryIso.split('-');
-    if (sym && mass && elementsMap[`${sym}-${mass}`]) {
+    if (sym && mass && elementsMap[sym]) {
       setSelectedElement(sym);
-      setSelectedMass(mass);
+      if (elementsMap[sym].masses.includes(mass)) {
+        setSelectedMass(mass);
+      }
     }
     
     // Activity
@@ -552,12 +554,12 @@ const TransportModule: React.FC = () => {
             ))}
           </div>
 
-          <div style={{ marginTop: '20px', padding: '10px', border: '1px solid #444', borderRadius: '4px' }}>
+           <div style={{ marginTop: '20px', padding: '10px', border: '1px solid #444', borderRadius: '4px' }}>
              <table style={{ width: '100%', fontSize: '0.9rem' }}>
                <tbody>
-                  <tr><td style={{ color: 'var(--color-text-muted)' }}>Package Surface Distance:</td> <td>{distSurf_cm} cm</td></tr>
-                  <tr><td style={{ color: 'var(--color-text-muted)' }}>1-Meter Distance:</td> <td>{dist1m_cm} cm</td></tr>
-                  <tr><td style={{ color: 'var(--color-text-muted)' }}>Shielding Attenuation ($10^{'{'}-n{'}'}$):</td> <td>$10^{'{'}-{totalDecades.toFixed(2)}{'}'}$</td></tr>
+                  <tr><td style={{ color: 'var(--color-text-muted)' }}>Package Surface Distance:</td><td>{distSurf_cm} cm</td></tr>
+                  <tr><td style={{ color: 'var(--color-text-muted)' }}>1-Meter Distance:</td><td>{dist1m_cm} cm</td></tr>
+                  <tr><td style={{ color: 'var(--color-text-muted)' }}>Shielding Attenuation (10⁻ⁿ):</td><td>10⁻{totalDecades.toFixed(2)}</td></tr>
                </tbody>
              </table>
           </div>
@@ -646,7 +648,7 @@ const TransportModule: React.FC = () => {
             <div className="formula-box" style={{ fontSize: '0.9rem', padding: '10px' }}>
               <BlockMath math="\dot{H}_{surf} = \frac{\Gamma \cdot A}{d_{surf}^2} \cdot 10^{-\sum\frac{x_i}{TVL_i}}" />
               <div style={{ height: '5px' }}></div>
-              <BlockMath math="TI = \frac{\dot{H}_{1m} \ [\text{µSv/h}]}{10}" />
+              <BlockMath math="TI = \frac{\dot{H}_{1m} \ [\mu\text{Sv/h}]}{10}" />
             </div>
           </div>
         </div>

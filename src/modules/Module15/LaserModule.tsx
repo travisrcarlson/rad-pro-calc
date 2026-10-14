@@ -620,28 +620,28 @@ const LaserModule: React.FC = () => {
       <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', gap: '4px', flexWrap: 'wrap' }}>
         <button
           className={`nav-link ${activeTab === 'schematic' ? 'active' : ''}`}
-          style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.9rem', padding: '10px 18px', borderBottom: activeTab === 'schematic' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'schematic' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'schematic' ? 'bold' : 'normal' }}
+          style={{ borderTop: 'none', borderLeft: 'none', borderRight: 'none', background: 'none', cursor: 'pointer', fontSize: '0.9rem', padding: '10px 18px', borderBottom: activeTab === 'schematic' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'schematic' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'schematic' ? 'bold' : 'normal' }}
           onClick={() => setActiveTab('schematic')}
         >
           🔬 Optical Bench & Beam Caustic CAD Schematic
         </button>
         <button
           className={`nav-link ${activeTab === 'decay' ? 'active' : ''}`}
-          style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.9rem', padding: '10px 18px', borderBottom: activeTab === 'decay' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'decay' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'decay' ? 'bold' : 'normal' }}
+          style={{ borderTop: 'none', borderLeft: 'none', borderRight: 'none', background: 'none', cursor: 'pointer', fontSize: '0.9rem', padding: '10px 18px', borderBottom: activeTab === 'decay' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'decay' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'decay' ? 'bold' : 'normal' }}
           onClick={() => setActiveTab('decay')}
         >
           📈 Irradiance Decay & Optical Density vs. Distance
         </button>
         <button
           className={`nav-link ${activeTab === 'eyewear' ? 'active' : ''}`}
-          style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.9rem', padding: '10px 18px', borderBottom: activeTab === 'eyewear' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'eyewear' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'eyewear' ? 'bold' : 'normal' }}
+          style={{ borderTop: 'none', borderLeft: 'none', borderRight: 'none', background: 'none', cursor: 'pointer', fontSize: '0.9rem', padding: '10px 18px', borderBottom: activeTab === 'eyewear' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'eyewear' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'eyewear' ? 'bold' : 'normal' }}
           onClick={() => setActiveTab('eyewear')}
         >
           🛡️ Eyewear OD & Workplace Safety Table
         </button>
         <button
           className={`nav-link ${activeTab === 'physics' ? 'active' : ''}`}
-          style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.9rem', padding: '10px 18px', borderBottom: activeTab === 'physics' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'physics' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'physics' ? 'bold' : 'normal' }}
+          style={{ borderTop: 'none', borderLeft: 'none', borderRight: 'none', background: 'none', cursor: 'pointer', fontSize: '0.9rem', padding: '10px 18px', borderBottom: activeTab === 'physics' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'physics' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'physics' ? 'bold' : 'normal' }}
           onClick={() => setActiveTab('physics')}
         >
           📐 ANSI Z136.1 Physics & Derivations

@@ -515,28 +515,28 @@ const BrachytherapyModule: React.FC = () => {
       <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', marginBottom: '20px', gap: '5px' }}>
         <button
           className={`nav-link ${activeTab === 'planner' ? 'active' : ''}`}
-          style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.95rem', padding: '10px 18px', borderBottom: activeTab === 'planner' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'planner' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'planner' ? 'bold' : 'normal' }}
+          style={{ borderTop: 'none', borderLeft: 'none', borderRight: 'none', background: 'none', cursor: 'pointer', fontSize: '0.95rem', padding: '10px 18px', borderBottom: activeTab === 'planner' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'planner' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'planner' ? 'bold' : 'normal' }}
           onClick={() => setActiveTab('planner')}
         >
           📍 2D Seed Planner & Isodose Map
         </button>
         <button
           className={`nav-link ${activeTab === 'dvh' ? 'active' : ''}`}
-          style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.95rem', padding: '10px 18px', borderBottom: activeTab === 'dvh' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'dvh' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'dvh' ? 'bold' : 'normal' }}
+          style={{ borderTop: 'none', borderLeft: 'none', borderRight: 'none', background: 'none', cursor: 'pointer', fontSize: '0.95rem', padding: '10px 18px', borderBottom: activeTab === 'dvh' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'dvh' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'dvh' ? 'bold' : 'normal' }}
           onClick={() => setActiveTab('dvh')}
         >
           📊 Dose-Volume Histogram (DVH)
         </button>
         <button
           className={`nav-link ${activeTab === 'physics' ? 'active' : ''}`}
-          style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.95rem', padding: '10px 18px', borderBottom: activeTab === 'physics' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'physics' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'physics' ? 'bold' : 'normal' }}
+          style={{ borderTop: 'none', borderLeft: 'none', borderRight: 'none', background: 'none', cursor: 'pointer', fontSize: '0.95rem', padding: '10px 18px', borderBottom: activeTab === 'physics' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'physics' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'physics' ? 'bold' : 'normal' }}
           onClick={() => setActiveTab('physics')}
         >
           📐 TG-43U1 Mathematical Physics
         </button>
         <button
           className={`nav-link ${activeTab === 'presets' ? 'active' : ''}`}
-          style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.95rem', padding: '10px 18px', borderBottom: activeTab === 'presets' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'presets' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'presets' ? 'bold' : 'normal' }}
+          style={{ borderTop: 'none', borderLeft: 'none', borderRight: 'none', background: 'none', cursor: 'pointer', fontSize: '0.95rem', padding: '10px 18px', borderBottom: activeTab === 'presets' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'presets' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'presets' ? 'bold' : 'normal' }}
           onClick={() => setActiveTab('presets')}
         >
           🏥 Clinical Cases Library

@@ -753,7 +753,9 @@ const XRayDistortionModule: React.FC = () => {
             style={{
               background: activeTab === tab.id ? 'rgba(0, 229, 255, 0.15)' : 'transparent',
               color: activeTab === tab.id ? '#00e5ff' : 'var(--color-text-muted)',
-              border: 'none',
+              borderTop: 'none',
+              borderLeft: 'none',
+              borderRight: 'none',
               borderBottom: activeTab === tab.id ? '2px solid #00e5ff' : '2px solid transparent',
               padding: '8px 14px',
               fontSize: '0.82rem',

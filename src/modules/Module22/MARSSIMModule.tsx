@@ -570,28 +570,28 @@ const MARSSIMModule: React.FC = () => {
       <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', marginBottom: '20px', gap: '5px' }}>
         <button
           className={`nav-link ${activeTab === 'detection_limits' ? 'active' : ''}`}
-          style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.95rem', padding: '10px 18px', borderBottom: activeTab === 'detection_limits' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'detection_limits' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'detection_limits' ? 'bold' : 'normal' }}
+          style={{ borderTop: 'none', borderLeft: 'none', borderRight: 'none', background: 'none', cursor: 'pointer', fontSize: '0.95rem', padding: '10px 18px', borderBottom: activeTab === 'detection_limits' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'detection_limits' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'detection_limits' ? 'bold' : 'normal' }}
           onClick={() => setActiveTab('detection_limits')}
         >
           🎯 Detection Limits & MDA / MDC
         </button>
         <button
           className={`nav-link ${activeTab === 'sample_size' ? 'active' : ''}`}
-          style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.95rem', padding: '10px 18px', borderBottom: activeTab === 'sample_size' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'sample_size' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'sample_size' ? 'bold' : 'normal' }}
+          style={{ borderTop: 'none', borderLeft: 'none', borderRight: 'none', background: 'none', cursor: 'pointer', fontSize: '0.95rem', padding: '10px 18px', borderBottom: activeTab === 'sample_size' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'sample_size' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'sample_size' ? 'bold' : 'normal' }}
           onClick={() => setActiveTab('sample_size')}
         >
           📐 FSS Sample Size & 2D Grid Planner
         </button>
         <button
           className={`nav-link ${activeTab === 'decision_engine' ? 'active' : ''}`}
-          style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.95rem', padding: '10px 18px', borderBottom: activeTab === 'decision_engine' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'decision_engine' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'decision_engine' ? 'bold' : 'normal' }}
+          style={{ borderTop: 'none', borderLeft: 'none', borderRight: 'none', background: 'none', cursor: 'pointer', fontSize: '0.95rem', padding: '10px 18px', borderBottom: activeTab === 'decision_engine' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'decision_engine' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'decision_engine' ? 'bold' : 'normal' }}
           onClick={() => setActiveTab('decision_engine')}
         >
           ⚖️ Nonparametric Decision Engine (Sign & WRS)
         </button>
         <button
           className={`nav-link ${activeTab === 'presets' ? 'active' : ''}`}
-          style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.95rem', padding: '10px 18px', borderBottom: activeTab === 'presets' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'presets' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'presets' ? 'bold' : 'normal' }}
+          style={{ borderTop: 'none', borderLeft: 'none', borderRight: 'none', background: 'none', cursor: 'pointer', fontSize: '0.95rem', padding: '10px 18px', borderBottom: activeTab === 'presets' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'presets' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'presets' ? 'bold' : 'normal' }}
           onClick={() => setActiveTab('presets')}
         >
           🏭 Facility Presets Library

@@ -524,7 +524,9 @@ export const CBRNConsequenceModule: React.FC = () => {
           className={`nav-link ${activeTab === 'fallout' ? 'active' : ''}`}
           style={{
             background: 'none',
-            border: 'none',
+            borderTop: 'none',
+            borderLeft: 'none',
+            borderRight: 'none',
             cursor: 'pointer',
             padding: '10px 16px',
             fontSize: '0.9rem',
@@ -541,7 +543,9 @@ export const CBRNConsequenceModule: React.FC = () => {
           className={`nav-link ${activeTab === 'shelter' ? 'active' : ''}`}
           style={{
             background: 'none',
-            border: 'none',
+            borderTop: 'none',
+            borderLeft: 'none',
+            borderRight: 'none',
             cursor: 'pointer',
             padding: '10px 16px',
             fontSize: '0.9rem',
@@ -558,7 +562,9 @@ export const CBRNConsequenceModule: React.FC = () => {
           className={`nav-link ${activeTab === 'egress' ? 'active' : ''}`}
           style={{
             background: 'none',
-            border: 'none',
+            borderTop: 'none',
+            borderLeft: 'none',
+            borderRight: 'none',
             cursor: 'pointer',
             padding: '10px 16px',
             fontSize: '0.9rem',
@@ -575,7 +581,9 @@ export const CBRNConsequenceModule: React.FC = () => {
           className={`nav-link ${activeTab === 'chemical' ? 'active' : ''}`}
           style={{
             background: 'none',
-            border: 'none',
+            borderTop: 'none',
+            borderLeft: 'none',
+            borderRight: 'none',
             cursor: 'pointer',
             padding: '10px 16px',
             fontSize: '0.9rem',
@@ -592,7 +600,9 @@ export const CBRNConsequenceModule: React.FC = () => {
           className={`nav-link ${activeTab === 'biodosimetry' ? 'active' : ''}`}
           style={{
             background: 'none',
-            border: 'none',
+            borderTop: 'none',
+            borderLeft: 'none',
+            borderRight: 'none',
             cursor: 'pointer',
             padding: '10px 16px',
             fontSize: '0.9rem',
@@ -609,7 +619,9 @@ export const CBRNConsequenceModule: React.FC = () => {
           className={`nav-link ${activeTab === 'iap' ? 'active' : ''}`}
           style={{
             background: 'none',
-            border: 'none',
+            borderTop: 'none',
+            borderLeft: 'none',
+            borderRight: 'none',
             cursor: 'pointer',
             padding: '10px 16px',
             fontSize: '0.9rem',
