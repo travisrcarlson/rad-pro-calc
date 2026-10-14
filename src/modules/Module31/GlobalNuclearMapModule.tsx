@@ -871,8 +871,11 @@ export const GlobalNuclearMapModule: React.FC = () => {
       });
     }
 
-    // 2. Historical Detonations (Grouped by Sovereign Nation or Single Trace)
+    // 2. Historical Detonations (Grouped by Sovereign Nation or Single Trace, sorted largest-yield-first so small blasts sit on top)
     if (pastDetonationPins.length > 0) {
+      const sortYieldDesc = (a: UnifiedGeospatialPin, b: UnifiedGeospatialPin) =>
+        (b.rawDetonation?.yieldKt || 0) - (a.rawDetonation?.yieldKt || 0);
+
       if (detonationColorMode === 'country') {
         const NWS_ORDER = [
           'United States',
@@ -891,7 +894,9 @@ export const GlobalNuclearMapModule: React.FC = () => {
         ];
 
         sortedCountries.forEach(country => {
-          const countryPins = pastDetonationPins.filter(p => p.country === country);
+          const countryPins = pastDetonationPins
+            .filter(p => p.country === country)
+            .sort(sortYieldDesc);
           if (countryPins.length === 0) return;
           const nwsMeta = NUCLEAR_WEAPON_STATES[country];
           const flag = nwsMeta?.flag || getDetonationCountryFlag(country);
@@ -913,55 +918,115 @@ export const GlobalNuclearMapModule: React.FC = () => {
             marker: {
               size: countryPins.map(p => getDetonationMarkerSize(p.rawDetonation?.yieldKt)),
               color: color,
-              opacity: 0.85,
+              opacity: 0.88,
               symbol: 'circle',
-              line: { width: 0.8, color: '#ffffff' }
+              line: {
+                width: countryPins.map(p => ((p.rawDetonation?.yieldKt || 0) >= 1000 ? 1.2 : 0.65)),
+                color: countryPins.map(p =>
+                  (p.rawDetonation?.yieldKt || 0) >= 1000
+                    ? 'rgba(254, 240, 138, 0.92)'
+                    : 'rgba(7, 11, 20, 0.82)'
+                )
+              }
             },
             customdata: countryPins
           });
         });
       } else {
+        const sortedPast = [...pastDetonationPins].sort(sortYieldDesc);
         traces.push({
           type: 'scattergeo',
           mode: 'markers',
-          name: timelineMode !== 'off' ? `Past Tests (${pastDetonationPins.length})` : `Detonations (${pastDetonationPins.length})`,
-          lat: pastDetonationPins.map(p => p.coordinates.lat),
-          lon: pastDetonationPins.map(p => p.coordinates.lon),
-          text: pastDetonationPins.map(p => `<b>${getDetonationCountryFlag(p.country)} ${p.country}: ${p.name}</b><br>${p.location}<br>${p.primaryMetric}<br>${p.dateOrYear} // ${p.secondaryMetric}`),
+          name: timelineMode !== 'off' ? `Past Tests (${sortedPast.length})` : `Detonations (${sortedPast.length})`,
+          lat: sortedPast.map(p => p.coordinates.lat),
+          lon: sortedPast.map(p => p.coordinates.lon),
+          text: sortedPast.map(p =>
+            `<b>${getDetonationCountryFlag(p.country)} ${p.country}: ${p.name}</b><br>` +
+            `📍 ${p.location}<br>` +
+            `💥 <b>${p.primaryMetric}</b><br>` +
+            `📅 ${p.dateOrYear} // ${p.secondaryMetric}`
+          ),
           hoverinfo: 'text',
           marker: {
-            size: pastDetonationPins.map(p => getDetonationMarkerSize(p.rawDetonation?.yieldKt)),
-            color: pastDetonationPins.map(p => p.color),
-            opacity: 0.85,
+            size: sortedPast.map(p => getDetonationMarkerSize(p.rawDetonation?.yieldKt)),
+            color: sortedPast.map(p => p.color),
+            opacity: 0.88,
             symbol: 'circle',
-            line: { width: 0.8, color: '#ffffff' }
+            line: {
+              width: sortedPast.map(p => ((p.rawDetonation?.yieldKt || 0) >= 1000 ? 1.2 : 0.65)),
+              color: sortedPast.map(p =>
+                (p.rawDetonation?.yieldKt || 0) >= 1000
+                  ? 'rgba(254, 240, 138, 0.92)'
+                  : 'rgba(7, 11, 20, 0.82)'
+              )
+            }
           },
-          customdata: pastDetonationPins
+          customdata: sortedPast
         });
       }
     }
 
-    // 3. Current Year Active Explosions (Circular Markers Coded by Sovereign Country Color + White Highlight Ring)
+    // 3. Current Year Active Explosions (Deduplicated Non-Overlapping Shockwave Halos + Incandescent Cores)
     if (currentYearDetonationPins.length > 0) {
+      const sortedActive = [...currentYearDetonationPins].sort(
+        (a, b) => (b.rawDetonation?.yieldKt || 0) - (a.rawDetonation?.yieldKt || 0)
+      );
+
+      // Deduplicate shockwave halo rings by 2.5° spatial sector so co-located tests in the same year never produce overlapping halo rings
+      const sectorMap = new Map<string, UnifiedGeospatialPin>();
+      sortedActive.forEach(p => {
+        const sectorKey = `${Math.round(p.coordinates.lat / 2.5)},${Math.round(p.coordinates.lon / 2.5)}`;
+        if (!sectorMap.has(sectorKey)) {
+          sectorMap.set(sectorKey, p);
+        }
+      });
+      const haloPins = Array.from(sectorMap.values());
+
+      // Layer 3A: Outer Blast Shockwave Halo (1 per active test site)
       traces.push({
         type: 'scattergeo',
         mode: 'markers',
-        name: `💥 Year ${currentYear} Active Tests (${currentYearDetonationPins.length})`,
-        lat: currentYearDetonationPins.map(p => p.coordinates.lat),
-        lon: currentYearDetonationPins.map(p => p.coordinates.lon),
-        text: currentYearDetonationPins.map(p => {
+        name: `🌊 Year ${currentYear} Blast Shockwave (${haloPins.length} Sites)`,
+        showlegend: false,
+        lat: haloPins.map(p => p.coordinates.lat),
+        lon: haloPins.map(p => p.coordinates.lon),
+        hoverinfo: 'skip',
+        marker: {
+          size: haloPins.map(p => getDetonationMarkerSize(p.rawDetonation?.yieldKt, true) + 9),
+          color: 'rgba(251, 146, 60, 0.14)',
+          symbol: 'circle',
+          line: {
+            width: 1.5,
+            color: haloPins.map(p => getDetonationCountryColor(p.country))
+          }
+        }
+      });
+
+      // Layer 3B: Individual Active Detonation Cores
+      traces.push({
+        type: 'scattergeo',
+        mode: 'markers',
+        name: `💥 Year ${currentYear} Active Tests (${sortedActive.length})`,
+        lat: sortedActive.map(p => p.coordinates.lat),
+        lon: sortedActive.map(p => p.coordinates.lon),
+        text: sortedActive.map(p => {
           const flag = getDetonationCountryFlag(p.country);
-          return `<b>💥 ${flag} ${p.country}: ${p.name} (${p.dateOrYear})</b><br>📍 ${p.location}<br><b>${p.primaryMetric}</b><br>${p.secondaryMetric}`;
+          return (
+            `<b>💥 ${flag} ${p.country}: ${p.name}</b><br>` +
+            `📍 ${p.location}<br>` +
+            `💥 <b>${p.primaryMetric}</b><br>` +
+            `📅 ${p.dateOrYear} // ${p.secondaryMetric}`
+          );
         }),
         hoverinfo: 'text',
         marker: {
-          size: currentYearDetonationPins.map(p => getDetonationMarkerSize(p.rawDetonation?.yieldKt, true)),
-          color: currentYearDetonationPins.map(p => getDetonationCountryColor(p.country)),
-          opacity: 0.98,
+          size: sortedActive.map(p => getDetonationMarkerSize(p.rawDetonation?.yieldKt, true)),
+          color: sortedActive.map(p => getDetonationCountryColor(p.country)),
+          opacity: 0.96,
           symbol: 'circle',
-          line: { width: 2.5, color: '#ffffff' }
+          line: { width: 1.4, color: '#fef08a' }
         },
-        customdata: currentYearDetonationPins
+        customdata: sortedActive
       });
     }
 

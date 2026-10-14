@@ -369,20 +369,26 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
     };
   }, [cloudPhysics, currentCity]);
 
-  // Pre-generate Volumetric Smoke Lobes for Organic Mushroom Cap
+  // Pre-generate Structured 3D Toroidal Vortex Lobes (Depth-Sorted Back -> Core -> Front)
   const smokeLobes = useMemo<SmokeLobe[]>(() => {
     const lobes: SmokeLobe[] = [];
-    const count = 75;
+    const count = 84;
+    const golden = Math.PI * (3 - Math.sqrt(5));
     for (let i = 0; i < count; i++) {
-      const angle = (i / count) * Math.PI * 2;
-      const dist = Math.sqrt(Math.random()) * 0.95;
-      const relX = Math.cos(angle) * dist;
-      // Flatten the top of the anvil
-      const relY = Math.sin(angle) * dist * 0.55;
-      const baseRadius = 0.18 + Math.random() * 0.16;
-      const phase = Math.random() * Math.PI * 2;
-      const speed = 0.4 + Math.random() * 0.8;
-      const layer = Math.abs(relX) > 0.65 ? 'front' : (relY > 0 ? 'core' : 'back');
+      // Deterministic Phyllotaxis distribution across left/right toroidal vortex rings and central dome
+      const frac = (i + 0.5) / count;
+      const theta = i * golden;
+      // Concentrate billows along the toroidal ring perimeter (0.35..0.92) + dome crown
+      const ringBias = 0.25 + 0.70 * Math.pow(frac, 0.65);
+      const relX = Math.cos(theta) * ringBias;
+      // Flattened stratospheric anvil top and rounded toroidal underside
+      const rawY = Math.sin(theta) * ringBias;
+      const relY = rawY < 0 ? rawY * 0.48 : rawY * 0.62;
+      const baseRadius = 0.20 + (1 - Math.abs(rawY) * 0.35) * 0.14 + ((i * 17) % 7) * 0.012;
+      const phase = (i * 1.13) % (Math.PI * 2);
+      const speed = 0.55 + ((i * 23) % 11) * 0.055;
+      const layer: 'back' | 'core' | 'front' =
+        rawY < -0.22 ? 'back' : Math.abs(relX) < 0.58 && rawY > -0.15 ? 'core' : 'front';
 
       lobes.push({
         relX,
@@ -390,11 +396,12 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
         baseRadius,
         phase,
         speed,
-        vortexRadius: dist,
+        vortexRadius: ringBias,
         layer
       });
     }
-    return lobes;
+    const order = { back: 0, core: 1, front: 2 };
+    return lobes.sort((a, b) => order[a.layer] - order[b.layer]);
   }, []);
 
   // --- TRIGGER DETONATION EVENT ---
@@ -497,105 +504,105 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
 
     const width = canvas.width;
     const height = canvas.height;
+    const t = simTimeSeconds;
+    const { hTopKm, hBaseKm, dCapKm, dStemKm, rFireballKm, tRiseHalf } = cloudPhysics;
 
-    // Viewport altitude range: 0 km to max(40 km, hTopKm * 1.35)
-    const maxAltKm = Math.max(35, Math.ceil((cloudPhysics.hTopKm * 1.3) / 10) * 10);
-    const groundY = height - 55;
+    // Viewport altitude range: 0 km to max(35 km, hTopKm * 1.3)
+    const maxAltKm = Math.max(35, Math.ceil((hTopKm * 1.3) / 10) * 10);
+    const groundY = height - 48;
 
     const kmToY = (altKm: number) => {
       const frac = altKm / maxAltKm;
-      return groundY - frac * (groundY - 35);
+      return groundY - frac * (groundY - 42);
     };
 
     const kmToPixelsX = (distKm: number) => {
-      const visibleWidthKm = Math.max(cloudPhysics.dCapKm * 3.2, 35);
-      return (distKm / visibleWidthKm) * (width * 0.82);
+      const visibleWidthKm = Math.max(dCapKm * 3.0, 34);
+      return (distKm / visibleWidthKm) * (width * 0.76);
     };
 
-    // Camera Shake Offset during detonation
+    // Camera Shake Offset during initial shockwave arrival
     let shakeX = 0, shakeY = 0;
     if (shakeIntensity > 0.01) {
-      shakeX = (Math.random() - 0.5) * 8 * shakeIntensity;
-      shakeY = (Math.random() - 0.5) * 8 * shakeIntensity;
+      shakeX = (Math.random() - 0.5) * 7 * shakeIntensity;
+      shakeY = (Math.random() - 0.5) * 7 * shakeIntensity;
     }
 
     ctx.save();
     ctx.translate(shakeX, shakeY);
 
-    // 1. Atmospheric Sky Gradient
+    // 1. Atmospheric Sky Gradient (with thermal horizon glow during early fireball phase)
+    const horizonGlow = Math.max(0, 1.0 - t / 45.0);
     const skyGradient = ctx.createLinearGradient(0, 0, 0, groundY);
-    skyGradient.addColorStop(0.0, '#020307'); // Deep Space / Mesosphere
-    skyGradient.addColorStop(0.35, '#050b18'); // Upper Stratosphere
-    skyGradient.addColorStop(0.65, '#0c1a32'); // Stratospheric Ozone
-    skyGradient.addColorStop(0.85, '#13284a'); // Tropopause Inversion
-    skyGradient.addColorStop(1.0, '#1a3a66'); // Troposphere Twilight
+    skyGradient.addColorStop(0.0, '#02040a'); // Mesosphere
+    skyGradient.addColorStop(0.35, '#060d1f'); // Upper Stratosphere
+    skyGradient.addColorStop(0.68, '#0b1933'); // Lower Stratosphere
+    skyGradient.addColorStop(0.88, horizonGlow > 0.1 ? `rgb(${Math.round(18 + 55 * horizonGlow)}, ${Math.round(35 + 22 * horizonGlow)}, 68)` : '#122648');
+    skyGradient.addColorStop(1.0, horizonGlow > 0.1 ? `rgb(${Math.round(28 + 110 * horizonGlow)}, ${Math.round(48 + 45 * horizonGlow)}, 82)` : '#18345e');
     ctx.fillStyle = skyGradient;
     ctx.fillRect(-20, -20, width + 40, height + 40);
 
-    // 2. High-Altitude Stars
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
-    for (let s = 0; s < 50; s++) {
+    // 2. High-Altitude Stars (Upper Stratosphere / Mesosphere)
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.42)';
+    for (let s = 0; s < 45; s++) {
       const sx = (s * 79.19) % width;
-      const sy = (s * 31.41) % (groundY * 0.4);
+      const sy = (s * 29.41) % (groundY * 0.36);
       ctx.fillRect(sx, sy, 1.2, 1.2);
     }
 
-    // 3. Atmospheric Boundary Markings
-    const tropopauseY = kmToY(12.0);
-    ctx.strokeStyle = 'rgba(0, 229, 255, 0.22)';
-    ctx.lineWidth = 1;
-    ctx.setLineDash([4, 6]);
-    ctx.beginPath();
-    ctx.moveTo(65, tropopauseY);
-    ctx.lineTo(width - 20, tropopauseY);
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    ctx.fillStyle = 'rgba(0, 229, 255, 0.65)';
-    ctx.font = '10px Inter, sans-serif';
-    ctx.fillText('TROPOPAUSE BOUNDARY (12 km / 39,000 ft)', 75, tropopauseY - 5);
-
-    if (maxAltKm >= 50) {
-      const stratopauseY = kmToY(50.0);
-      ctx.strokeStyle = 'rgba(245, 158, 11, 0.2)';
-      ctx.setLineDash([3, 5]);
+    // 3. Atmospheric Layer Boundaries (Right-Aligned Badges so they NEVER overlap Left Scale Landmarks)
+    const drawAtmBoundary = (altKm: number, label: string, strokeCol: string, badgeCol: string) => {
+      if (altKm > maxAltKm * 0.96) return;
+      const yPos = kmToY(altKm);
+      ctx.save();
+      ctx.strokeStyle = strokeCol;
+      ctx.lineWidth = 1;
+      ctx.setLineDash([5, 6]);
       ctx.beginPath();
-      ctx.moveTo(65, stratopauseY);
-      ctx.lineTo(width - 20, stratopauseY);
+      ctx.moveTo(54, yPos);
+      ctx.lineTo(width - 14, yPos);
       ctx.stroke();
       ctx.setLineDash([]);
-      ctx.fillStyle = 'rgba(245, 158, 11, 0.65)';
-      ctx.fillText('STRATOPAUSE (50 km / 164,000 ft)', 75, stratopauseY - 5);
+
+      ctx.font = '600 9.5px Inter, sans-serif';
+      const tw = ctx.measureText(label).width;
+      ctx.fillStyle = 'rgba(2, 6, 23, 0.78)';
+      ctx.fillRect(width - tw - 24, yPos - 14, tw + 12, 13);
+      ctx.fillStyle = badgeCol;
+      ctx.textAlign = 'right';
+      ctx.fillText(label, width - 18, yPos - 4);
+      ctx.restore();
+    };
+
+    drawAtmBoundary(
+      12.0,
+      unitMode === 'imperial' ? 'TROPOPAUSE (7.5 mi / 39,000 ft)' : 'TROPOPAUSE (12 km / 39,000 ft)',
+      'rgba(0, 229, 255, 0.22)',
+      'rgba(56, 189, 248, 0.85)'
+    );
+    if (maxAltKm >= 50) {
+      drawAtmBoundary(
+        50.0,
+        unitMode === 'imperial' ? 'STRATOPAUSE (31 mi / 164,000 ft)' : 'STRATOPAUSE (50 km / 164,000 ft)',
+        'rgba(245, 158, 11, 0.22)',
+        'rgba(251, 191, 36, 0.85)'
+      );
     }
 
     // 4. Distant Mountain Silhouette Ranges
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.7)';
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.72)';
     ctx.beginPath();
     ctx.moveTo(0, groundY);
-    for (let mx = 0; mx <= width; mx += 30) {
-      const my = groundY - 10 - Math.sin(mx * 0.015) * 8 - Math.cos(mx * 0.04) * 6;
+    for (let mx = 0; mx <= width; mx += 28) {
+      const my = groundY - 9 - Math.sin(mx * 0.015) * 7 - Math.cos(mx * 0.04) * 5;
       ctx.lineTo(mx, my);
     }
     ctx.lineTo(width, groundY);
     ctx.closePath();
     ctx.fill();
 
-    // 5. Ground Line & Terrain
-    const groundGrad = ctx.createLinearGradient(0, groundY, 0, height);
-    groundGrad.addColorStop(0.0, '#0f172a');
-    groundGrad.addColorStop(1.0, '#020617');
-    ctx.fillStyle = groundGrad;
-    ctx.fillRect(-20, groundY, width + 40, height - groundY + 40);
-
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(0, groundY);
-    ctx.lineTo(width, groundY);
-    ctx.stroke();
-
-    // 6. Left Altitude Ruler
-    ctx.fillStyle = 'rgba(148, 163, 184, 0.75)';
+    // 5. Left Altitude Ruler (x = 0..54)
+    ctx.fillStyle = 'rgba(148, 163, 184, 0.78)';
     ctx.font = '10px JetBrains Mono, monospace';
     ctx.textAlign = 'right';
     const altStep = maxAltKm >= 60 ? 10 : 5;
@@ -604,329 +611,500 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
       const label = unitMode === 'imperial'
         ? `${Math.round(alt * 0.621371)} mi`
         : `${alt} km`;
-      ctx.fillText(label, 52, yPos + 3);
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+      ctx.fillText(label, 46, yPos + 3);
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.16)';
       ctx.beginPath();
-      ctx.moveTo(56, yPos);
-      ctx.lineTo(62, yPos);
+      ctx.moveTo(50, yPos);
+      ctx.lineTo(55, yPos);
       ctx.stroke();
     }
     ctx.textAlign = 'left';
 
-    // 7. REALISTIC LANDMARK SILHOUETTES
+    // 6. COLLISION-FREE REFERENCE LANDMARKS IN DEDICATED LEFT LANE (x = 62..220)
     // A. Burj Khalifa (828 m)
     const burjY = kmToY(0.83);
-    const burjX = 72;
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-    ctx.fillRect(burjX, burjY + 12, 3, groundY - burjY - 12);
-    ctx.fillRect(burjX - 1, burjY + 22, 5, groundY - burjY - 22);
-    // Spire
-    ctx.fillRect(burjX + 1, burjY, 1, 12);
-    ctx.font = '9px Inter, sans-serif';
-    ctx.fillText('Burj Khalifa (828m)', burjX + 7, burjY + 12);
+    const burjX = 66;
+    ctx.fillStyle = 'rgba(226, 232, 240, 0.55)';
+    ctx.fillRect(burjX, Math.min(groundY - 4, burjY), 2, Math.max(4, groundY - burjY));
 
-    // B. Mt. Everest (8.85 km) with Snowy Ridge Crags
+    // B. Mt. Everest Silhouette (8.85 km)
     const everestY = kmToY(8.85);
-    const everestX = 110;
+    const everestX = 92;
     ctx.beginPath();
-    ctx.moveTo(everestX - 35, groundY);
-    ctx.lineTo(everestX - 8, everestY + 15);
+    ctx.moveTo(everestX - 24, groundY);
+    ctx.lineTo(everestX - 6, everestY + 10);
     ctx.lineTo(everestX, everestY);
-    ctx.lineTo(everestX + 12, everestY + 22);
-    ctx.lineTo(everestX + 40, groundY);
+    ctx.lineTo(everestX + 8, everestY + 14);
+    ctx.lineTo(everestX + 28, groundY);
     ctx.closePath();
-    ctx.fillStyle = 'rgba(71, 85, 105, 0.45)';
+    ctx.fillStyle = 'rgba(71, 85, 105, 0.48)';
     ctx.fill();
-    ctx.strokeStyle = 'rgba(148, 163, 184, 0.6)';
+    ctx.strokeStyle = 'rgba(148, 163, 184, 0.55)';
+    ctx.lineWidth = 1;
     ctx.stroke();
 
     // Snow Cap on Everest
     ctx.beginPath();
-    ctx.moveTo(everestX - 12, everestY + 25);
+    ctx.moveTo(everestX - 6, everestY + 10);
     ctx.lineTo(everestX, everestY);
-    ctx.lineTo(everestX + 10, everestY + 20);
+    ctx.lineTo(everestX + 6, everestY + 10);
     ctx.closePath();
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
     ctx.fill();
 
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
-    ctx.font = '10px Inter, sans-serif';
-    ctx.fillText('▲ Mt. Everest (8.85 km / 29,032 ft)', everestX - 15, everestY - 5);
-
-    // C. Commercial Jetliner (11 km) with Contrail
+    // C. Commercial Jetliner Icon (11.0 km)
     const planeY = kmToY(11.0);
-    const planeX = 120;
-    // Contrail
+    const planeX = 96;
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 1.2;
     ctx.beginPath();
-    ctx.moveTo(planeX - 50, planeY);
-    ctx.lineTo(planeX, planeY);
+    ctx.moveTo(planeX - 32, planeY);
+    ctx.lineTo(planeX - 6, planeY);
     ctx.stroke();
 
-    // Airplane Silhouette
     ctx.fillStyle = '#38bdf8';
     ctx.beginPath();
-    ctx.moveTo(planeX + 10, planeY); // nose
-    ctx.lineTo(planeX + 2, planeY - 1.5);
-    ctx.lineTo(planeX - 2, planeY - 6); // wing top
-    ctx.lineTo(planeX - 4, planeY - 1.5);
-    ctx.lineTo(planeX - 10, planeY - 1);
-    ctx.lineTo(planeX - 14, planeY - 4); // tail fin
-    ctx.lineTo(planeX - 14, planeY);
-    ctx.lineTo(planeX - 4, planeY + 1.5);
-    ctx.lineTo(planeX - 2, planeY + 6); // wing bottom
-    ctx.lineTo(planeX + 2, planeY + 1.5);
+    ctx.moveTo(planeX + 7, planeY);
+    ctx.lineTo(planeX - 5, planeY - 3.5);
+    ctx.lineTo(planeX - 3, planeY);
+    ctx.lineTo(planeX - 5, planeY + 3.5);
     ctx.closePath();
     ctx.fill();
 
-    ctx.fillStyle = 'rgba(56, 189, 248, 0.85)';
-    ctx.font = '10px Inter, sans-serif';
-    ctx.fillText('✈ Airliner Cruising (11 km / 36,000 ft)', planeX + 18, planeY + 3);
-
-    // D. SR-71 Blackbird / U-2 Spyplane (24 km)
-    if (maxAltKm >= 30) {
-      const spyY = kmToY(24.0);
-      const spyX = 160;
-      ctx.fillStyle = '#a855f7';
+    // D. SR-71 Blackbird Icon (24.0 km)
+    const spyY = kmToY(24.0);
+    const spyX = 96;
+    if (maxAltKm >= 28) {
+      ctx.fillStyle = '#c084fc';
       ctx.beginPath();
-      ctx.moveTo(spyX + 8, spyY);
-      ctx.lineTo(spyX - 4, spyY - 4);
-      ctx.lineTo(spyX - 10, spyY);
-      ctx.lineTo(spyX - 4, spyY + 4);
+      ctx.moveTo(spyX + 7, spyY);
+      ctx.lineTo(spyX - 5, spyY - 3);
+      ctx.lineTo(spyX - 8, spyY);
+      ctx.lineTo(spyX - 5, spyY + 3);
       ctx.closePath();
       ctx.fill();
-      ctx.fillStyle = 'rgba(168, 85, 247, 0.8)';
-      ctx.fillText('⚡ SR-71 Blackbird (24 km / 80,000 ft)', spyX + 14, spyY + 3);
     }
 
-    // 8. NUCLEAR DETONATION & MUSHROOM CLOUD PHYSICS SIMULATION
-    const centerX = width * 0.58;
-    const t = simTimeSeconds;
-    const { hTopKm, hBaseKm, dCapKm, dStemKm, rFireballKm, tRiseHalf } = cloudPhysics;
+    // Staggered Non-Overlapping Reference Callout Labels (guaranteed minimum 15px vertical spacing)
+    const rawLandmarks = [
+      { anchorX: burjX + 4, anchorY: groundY - 6, text: unitMode === 'imperial' ? '🏢 Burj Khalifa (2,722 ft)' : '🏢 Burj Khalifa (828 m)', color: '#cbd5e1' },
+      { anchorX: everestX + 6, anchorY: everestY + 2, text: unitMode === 'imperial' ? '▲ Mt. Everest (5.5 mi)' : '▲ Mt. Everest (8.85 km)', color: '#f1f5f9' },
+      { anchorX: planeX + 10, anchorY: planeY, text: unitMode === 'imperial' ? '✈ Airliner (6.8 mi)' : '✈ Airliner (11 km)', color: '#38bdf8' },
+      ...(maxAltKm >= 28 ? [{ anchorX: spyX + 10, anchorY: spyY, text: unitMode === 'imperial' ? '⚡ SR-71 (15 mi)' : '⚡ SR-71 (24 km)', color: '#c084fc' }] : [])
+    ];
 
-    // Fractional heights & dimensions
-    const currentGrowth = t / (t + tRiseHalf);
-    const currentTopKm = Math.max(rFireballKm * 1.4, hTopKm * currentGrowth);
-    const currentBaseKm = Math.max(rFireballKm * 0.5, hBaseKm * Math.pow(currentGrowth, 1.25));
-    const currentCapWidthKm = Math.max(rFireballKm * 1.8, dCapKm * Math.pow(currentGrowth, 0.8));
-    const currentStemWidthKm = Math.max(rFireballKm * 0.5, dStemKm * Math.pow(currentGrowth, 0.6));
+    // Enforce minimum 16px vertical separation from bottom to top so labels never collide at any yield
+    let lastLabelY = groundY + 10;
+    const labelX = 116;
+    rawLandmarks.forEach((lm) => {
+      const safeY = Math.min(lm.anchorY, lastLabelY - 16);
+      lastLabelY = safeY;
+
+      // Subtle leader line connecting icon to label
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.35)';
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.moveTo(lm.anchorX, lm.anchorY);
+      ctx.lineTo(labelX - 4, safeY - 3);
+      ctx.stroke();
+
+      // Backing pill for crisp legibility
+      ctx.font = '500 9.5px Inter, sans-serif';
+      const tw = ctx.measureText(lm.text).width;
+      ctx.fillStyle = 'rgba(2, 6, 23, 0.72)';
+      ctx.fillRect(labelX - 3, safeY - 11, tw + 6, 13);
+      ctx.fillStyle = lm.color;
+      ctx.fillText(lm.text, labelX, safeY - 1);
+    });
+
+    // 7. PHASED, NON-OVERLAPPING NUCLEAR DETONATION & MUSHROOM CLOUD KINEMATICS
+    const centerX = width * 0.56;
+    const hobKm = burstMode === 'air' ? Math.max(0.15, burstAltitudeM / 1000.0) : 0;
+
+    // Smooth buoyant rise curve: starts at HOB (or ground) and ascends toward stabilized cap altitude
+    const riseProgress = Math.pow(t / (t + tRiseHalf), 0.92);
+    const currentTopKm = Math.max(hobKm + rFireballKm * 1.15, hobKm * (1 - riseProgress) + hTopKm * riseProgress);
+    const currentBaseKm = Math.max(
+      hobKm * (1 - riseProgress),
+      hBaseKm * Math.pow(riseProgress, 1.18)
+    );
+    const currentCapWidthKm = Math.max(rFireballKm * 2.0, dCapKm * Math.pow(riseProgress, 0.78));
+    const currentStemWidthKm = Math.max(rFireballKm * 0.55, dStemKm * Math.pow(riseProgress, 0.58));
 
     const topY = kmToY(currentTopKm);
     const baseY = kmToY(currentBaseKm);
-    const capWidthPx = kmToPixelsX(currentCapWidthKm);
-    const stemWidthPx = kmToPixelsX(currentStemWidthKm);
+    const capCenterY = (topY + baseY) / 2;
+    const capRadiusY = Math.max(14, (baseY - topY) / 2);
+    const capWidthPx = Math.max(28, kmToPixelsX(currentCapWidthKm));
+    const capRadiusX = capWidthPx / 2;
+    const stemWidthPx = Math.max(12, kmToPixelsX(currentStemWidthKm));
 
-    // Initial Flash & Fireball Phase (t < 4.0s)
-    if (t < 4.0) {
-      const fbFrac = Math.min(1.0, t / 1.5);
-      const fbRadPx = kmToPixelsX(rFireballKm * fbFrac * 1.25);
-      const fbY = burstMode === 'air' ? kmToY(burstAltitudeM / 1000.0) : groundY;
+    // PHASE A: UPDRAFT SUCTION STEM & GROUND BASE SURGE (Begins forming as fireball lifts off, t >= 1.0s)
+    if (t >= 1.0) {
+      const stemReveal = Math.min(1.0, (t - 1.0) / 2.2);
+      const stemTopY = groundY - stemReveal * (groundY - (baseY + capRadiusY * 0.15));
 
-      const fbGrad = ctx.createRadialGradient(centerX, fbY, 0, centerX, fbY, fbRadPx);
-      fbGrad.addColorStop(0.0, 'rgba(255, 255, 255, 1.0)');
-      fbGrad.addColorStop(0.2, 'rgba(254, 240, 138, 0.98)');
-      fbGrad.addColorStop(0.5, 'rgba(249, 115, 22, 0.9)');
-      fbGrad.addColorStop(0.85, 'rgba(239, 68, 68, 0.7)');
-      fbGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0.0)');
-
-      ctx.fillStyle = fbGrad;
+      // 1. Sculpted Continuous Hyperbolic Stem Column (replaces beaded stack of circles!)
+      ctx.save();
       ctx.beginPath();
-      ctx.arc(centerX, fbY, fbRadPx, 0, Math.PI * 2);
+      const baseSkirtHalfW = stemWidthPx * (burstMode === 'surface' ? 1.45 : 1.15);
+      const throatHalfW = stemWidthPx * 0.46;
+      const upperFlaredHalfW = Math.min(capRadiusX * 0.65, stemWidthPx * 0.92);
+      const midStemY = groundY * 0.45 + stemTopY * 0.55;
+
+      ctx.moveTo(centerX - baseSkirtHalfW, groundY);
+      ctx.quadraticCurveTo(centerX - throatHalfW, midStemY, centerX - upperFlaredHalfW, stemTopY);
+      ctx.lineTo(centerX + upperFlaredHalfW, stemTopY);
+      ctx.quadraticCurveTo(centerX + throatHalfW, midStemY, centerX + baseSkirtHalfW, groundY);
+      ctx.closePath();
+
+      // 3D Cylindrical Stem Shading + Internal Incandescent Updraft Illumination
+      const hotCoreFrac = Math.max(0, 1.0 - t / 110.0);
+      const stemCylGrad = ctx.createLinearGradient(centerX - baseSkirtHalfW, midStemY, centerX + baseSkirtHalfW, midStemY);
+      if (burstMode === 'surface') {
+        stemCylGrad.addColorStop(0.0, `rgba(28, 20, 16, ${0.88 * stemReveal})`);
+        stemCylGrad.addColorStop(0.25, `rgba(68, 48, 36, ${0.94 * stemReveal})`);
+        stemCylGrad.addColorStop(0.5, `rgba(${Math.round(95 + 145 * hotCoreFrac)}, ${Math.round(70 + 75 * hotCoreFrac)}, ${Math.round(52 + 20 * hotCoreFrac)}, ${0.96 * stemReveal})`);
+        stemCylGrad.addColorStop(0.75, `rgba(62, 44, 34, ${0.94 * stemReveal})`);
+        stemCylGrad.addColorStop(1.0, `rgba(24, 18, 14, ${0.88 * stemReveal})`);
+      } else {
+        stemCylGrad.addColorStop(0.0, `rgba(30, 36, 48, ${0.82 * stemReveal})`);
+        stemCylGrad.addColorStop(0.28, `rgba(75, 82, 96, ${0.90 * stemReveal})`);
+        stemCylGrad.addColorStop(0.5, `rgba(${Math.round(125 + 120 * hotCoreFrac)}, ${Math.round(128 + 55 * hotCoreFrac)}, ${Math.round(138 - 20 * hotCoreFrac)}, ${0.94 * stemReveal})`);
+        stemCylGrad.addColorStop(0.72, `rgba(70, 76, 90, ${0.90 * stemReveal})`);
+        stemCylGrad.addColorStop(1.0, `rgba(26, 32, 44, ${0.82 * stemReveal})`);
+      }
+      ctx.fillStyle = stemCylGrad;
       ctx.fill();
 
-      // Supersonic Shockwave Ring
-      const shockSpeedKmS = 1.3;
-      const shockRadiusPx = kmToPixelsX(t * shockSpeedKmS * 4.2);
-      ctx.strokeStyle = `rgba(255, 255, 255, ${Math.max(0, 0.85 - t * 0.2)})`;
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.arc(centerX, fbY, shockRadiusPx, 0, Math.PI * 2);
-      ctx.stroke();
+      // 2. Soft Billowing Boundary Eddies along Stem Flanks
+      const flankBillows = 10;
+      for (let b = 0; b < flankBillows; b++) {
+        const bf = (b + 0.5) / flankBillows;
+        const by = groundY - bf * (groundY - stemTopY);
+        const halfW = throatHalfW + Math.pow(bf - 0.45, 2) * stemWidthPx * 1.4;
+        const bRad = Math.max(6, stemWidthPx * (0.28 + 0.08 * Math.sin(bf * 9 + t * 0.6)));
+        [-1, 1].forEach((side) => {
+          const bx = centerX + side * halfW * 0.85;
+          const bGrad = ctx.createRadialGradient(bx - side * bRad * 0.2, by, 1, bx, by, bRad);
+          bGrad.addColorStop(0.0, burstMode === 'surface' ? `rgba(92, 68, 52, ${0.55 * stemReveal})` : `rgba(120, 128, 142, ${0.50 * stemReveal})`);
+          bGrad.addColorStop(0.65, burstMode === 'surface' ? `rgba(48, 34, 26, ${0.45 * stemReveal})` : `rgba(60, 66, 78, ${0.42 * stemReveal})`);
+          bGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.0)');
+          ctx.fillStyle = bGrad;
+          ctx.beginPath();
+          ctx.arc(bx, by, bRad, 0, Math.PI * 2);
+          ctx.fill();
+        });
+      }
 
-      // Wilson Condensation Disc (Rarefaction Shock Collar)
-      if (t > 0.35 && t < 2.8) {
-        const wilsonGrad = ctx.createRadialGradient(centerX, fbY, shockRadiusPx * 0.75, centerX, fbY, shockRadiusPx * 0.98);
-        wilsonGrad.addColorStop(0.0, 'rgba(224, 242, 254, 0.0)');
-        wilsonGrad.addColorStop(0.5, `rgba(224, 242, 254, ${0.45 * (1 - t / 2.8)})`);
-        wilsonGrad.addColorStop(1.0, 'rgba(224, 242, 254, 0.0)');
-        ctx.fillStyle = wilsonGrad;
+      // 3. Ascending Bell-Shaped Condensation Skirt Rings (Rayleigh-Taylor Stem Collars)
+      if (t >= 3.5) {
+        const collarY = groundY - 0.62 * (groundY - stemTopY);
+        const collarW = throatHalfW * 2.15;
+        const collarGrad = ctx.createRadialGradient(centerX, collarY, collarW * 0.2, centerX, collarY, collarW);
+        collarGrad.addColorStop(0.0, `rgba(226, 232, 240, ${0.38 * stemReveal})`);
+        collarGrad.addColorStop(0.6, `rgba(148, 163, 184, ${0.28 * stemReveal})`);
+        collarGrad.addColorStop(1.0, 'rgba(148, 163, 184, 0.0)');
+        ctx.fillStyle = collarGrad;
         ctx.beginPath();
-        ctx.ellipse(centerX, fbY, shockRadiusPx * 0.98, shockRadiusPx * 0.45, 0, 0, Math.PI * 2);
+        ctx.ellipse(centerX, collarY, collarW, Math.max(5, collarW * 0.22), 0, 0, Math.PI * 2);
         ctx.fill();
+      }
+
+      // 4. Rolling Ground Debris Base Surge Cloud
+      const surgeWidthPx = Math.min(width * 0.34, baseSkirtHalfW * (1.5 + Math.min(1.6, t * 0.08)));
+      const surgeHeightPx = Math.max(8, Math.min(26, stemWidthPx * 0.42));
+      const surgeGrad = ctx.createRadialGradient(centerX, groundY, surgeWidthPx * 0.1, centerX, groundY, surgeWidthPx);
+      surgeGrad.addColorStop(0.0, burstMode === 'surface' ? `rgba(105, 76, 56, ${0.85 * stemReveal})` : `rgba(110, 118, 130, ${0.55 * stemReveal})`);
+      surgeGrad.addColorStop(0.65, burstMode === 'surface' ? `rgba(58, 42, 32, ${0.65 * stemReveal})` : `rgba(64, 70, 82, ${0.35 * stemReveal})`);
+      surgeGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.0)');
+      ctx.fillStyle = surgeGrad;
+      ctx.beginPath();
+      ctx.ellipse(centerX, groundY - 2, surgeWidthPx, surgeHeightPx, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // PHASE B: VOLUMETRIC TOROIDAL MUSHROOM CAP & INCANDESCENT FIREBALL CORE
+    // Seamless evolution from pure plasma fireball (t < 1.5s) -> glowing toroidal vortex (1.5..25s) -> towering anvil cloud (25s+)
+    const smokeMaturity = Math.max(0, Math.min(1.0, (t - 1.2) / 6.5)); // 0 during initial pure fireball, 1 when toroidal smoke cap forms
+    const plasmaIntensity = Math.max(0.08, Math.exp(-t / 55.0)); // Incandescent core glow persists and slowly cools
+
+    // B1. Back-Layer Toroidal Smoke Billows (drawn BEHIND the incandescent plasma core)
+    if (smokeMaturity > 0.02) {
+      smokeLobes.forEach((lobe) => {
+        if (lobe.layer !== 'back') return;
+        const side = lobe.relX >= 0 ? 1 : -1;
+        const rollAngle = lobe.phase + t * lobe.speed * 0.32 * side;
+        const lobeX = centerX + lobe.relX * capRadiusX + Math.cos(rollAngle) * 4;
+        const lobeY = capCenterY + lobe.relY * capRadiusY + Math.sin(rollAngle) * 3;
+        const lobeR = Math.max(8, lobe.baseRadius * capRadiusX);
+
+        const grad = ctx.createRadialGradient(
+          lobeX - side * lobeR * 0.22,
+          lobeY + lobeR * 0.25,
+          lobeR * 0.08,
+          lobeX,
+          lobeY,
+          lobeR
+        );
+        grad.addColorStop(0.0, `rgba(${Math.round(95 + 90 * plasmaIntensity)}, ${Math.round(82 + 40 * plasmaIntensity)}, 75, ${0.78 * smokeMaturity})`);
+        grad.addColorStop(0.55, `rgba(52, 56, 68, ${0.84 * smokeMaturity})`);
+        grad.addColorStop(0.9, `rgba(26, 30, 40, ${0.75 * smokeMaturity})`);
+        grad.addColorStop(1.0, 'rgba(15, 23, 42, 0.0)');
+
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(lobeX, lobeY, lobeR, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
+
+    // B2. Primary Incandescent Plasma Fireball & Toroidal Ring Core
+    {
+      const fbExpand = t < 0.6 ? 0.35 + 0.65 * (t / 0.6) : 1.0;
+      const coreRx = capRadiusX * fbExpand * (1.0 - 0.18 * smokeMaturity);
+      const coreRy = capRadiusY * fbExpand * (1.0 - 0.12 * smokeMaturity);
+
+      // Outer thermal bloom halo
+      const haloGrad = ctx.createRadialGradient(centerX, capCenterY, coreRx * 0.1, centerX, capCenterY, coreRx * 1.45);
+      haloGrad.addColorStop(0.0, `rgba(255, 255, 240, ${0.98 * plasmaIntensity})`);
+      haloGrad.addColorStop(0.28, `rgba(254, 240, 138, ${0.92 * plasmaIntensity})`);
+      haloGrad.addColorStop(0.58, `rgba(249, 115, 22, ${0.82 * plasmaIntensity})`);
+      haloGrad.addColorStop(0.82, `rgba(220, 38, 38, ${0.55 * plasmaIntensity})`);
+      haloGrad.addColorStop(1.0, 'rgba(185, 28, 28, 0.0)');
+
+      ctx.fillStyle = haloGrad;
+      ctx.beginPath();
+      ctx.ellipse(centerX, capCenterY, coreRx * 1.35, coreRy * 1.25, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Left & Right Toroidal Plasma Vortex Cores (visible as the fireball rolls into a doughnut)
+      if (t >= 1.2 && plasmaIntensity > 0.12) {
+        [-0.48, 0.48].forEach((offsetFrac) => {
+          const vx = centerX + offsetFrac * capRadiusX;
+          const vy = capCenterY + capRadiusY * 0.08;
+          const vr = Math.max(10, capRadiusX * 0.42);
+          const vGrad = ctx.createRadialGradient(vx, vy, 1, vx, vy, vr);
+          vGrad.addColorStop(0.0, `rgba(255, 250, 220, ${0.92 * plasmaIntensity})`);
+          vGrad.addColorStop(0.45, `rgba(251, 146, 60, ${0.78 * plasmaIntensity})`);
+          vGrad.addColorStop(0.8, `rgba(185, 28, 28, ${0.42 * plasmaIntensity})`);
+          vGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0.0)');
+          ctx.fillStyle = vGrad;
+          ctx.beginPath();
+          ctx.arc(vx, vy, vr, 0, Math.PI * 2);
+          ctx.fill();
+        });
       }
     }
 
-    // Volumetric Organic Mushroom Cloud (t >= 0.8s)
-    if (t >= 0.8) {
-      const cloudAlpha = Math.min(1.0, (t - 0.8) / 1.6);
-      const capCenterY = (topY + baseY) / 2;
-      const capRadiusY = Math.max(18, (baseY - topY) / 2);
-      const capRadiusX = Math.max(28, capWidthPx / 2);
-
-      // A. Suction Debris Stem (from ground upward)
-      const stemSegments = 16;
-      for (let s = 0; s < stemSegments; s++) {
-        const segFrac = s / stemSegments;
-        const segY = groundY - segFrac * (groundY - (baseY + 10));
-        // Flared base, narrowing mid-throat, expanding into cap base
-        const throatCurve = Math.sin(segFrac * Math.PI);
-        const segWidth = stemWidthPx * (1.1 - throatCurve * 0.35);
-        const wiggle = Math.sin(segFrac * 6 + t * 0.5) * 4;
-
-        const stemPuffGrad = ctx.createRadialGradient(
-          centerX + wiggle, segY, 0,
-          centerX + wiggle, segY, segWidth * 0.8
-        );
-
-        if (burstMode === 'surface') {
-          // Pulverized soil and dark charred debris
-          stemPuffGrad.addColorStop(0.0, `rgba(80, 50, 35, ${0.85 * cloudAlpha})`);
-          stemPuffGrad.addColorStop(0.5, `rgba(55, 38, 28, ${0.88 * cloudAlpha})`);
-          stemPuffGrad.addColorStop(1.0, 'rgba(20, 15, 12, 0.0)');
-        } else {
-          // Condensed water droplets and atmospheric soot
-          stemPuffGrad.addColorStop(0.0, `rgba(110, 115, 125, ${0.75 * cloudAlpha})`);
-          stemPuffGrad.addColorStop(0.6, `rgba(60, 65, 75, ${0.8 * cloudAlpha})`);
-          stemPuffGrad.addColorStop(1.0, 'rgba(25, 28, 35, 0.0)');
-        }
-
-        ctx.fillStyle = stemPuffGrad;
-        ctx.beginPath();
-        ctx.arc(centerX + wiggle, segY, segWidth * 0.8, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      // Internal Thermal Updraft Streak in Stem Throat
-      if (t < 90) {
-        const thermalAlpha = Math.max(0, 1.0 - t / 75.0);
-        const streakGrad = ctx.createLinearGradient(0, groundY, 0, baseY);
-        streakGrad.addColorStop(0.0, `rgba(255, 230, 150, ${0.8 * thermalAlpha})`);
-        streakGrad.addColorStop(0.5, `rgba(249, 115, 22, ${0.65 * thermalAlpha})`);
-        streakGrad.addColorStop(1.0, `rgba(220, 38, 38, ${0.2 * thermalAlpha})`);
-        ctx.fillStyle = streakGrad;
-        ctx.beginPath();
-        ctx.moveTo(centerX - stemWidthPx * 0.25, groundY);
-        ctx.lineTo(centerX - stemWidthPx * 0.15, baseY + 10);
-        ctx.lineTo(centerX + stemWidthPx * 0.15, baseY + 10);
-        ctx.lineTo(centerX + stemWidthPx * 0.25, groundY);
-        ctx.closePath();
-        ctx.fill();
-      }
-
-      // B. Ground Debris Base Surge (for surface bursts)
-      if (burstMode === 'surface') {
-        const surgeRadiusPx = Math.min(width * 0.35, stemWidthPx * 2.2 * Math.min(2.0, t * 0.2));
-        const surgeGrad = ctx.createRadialGradient(centerX, groundY, 0, centerX, groundY, surgeRadiusPx);
-        surgeGrad.addColorStop(0.0, `rgba(90, 60, 40, ${0.85 * cloudAlpha})`);
-        surgeGrad.addColorStop(0.6, `rgba(65, 42, 30, ${0.65 * cloudAlpha})`);
-        surgeGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
-        ctx.fillStyle = surgeGrad;
-        ctx.beginPath();
-        ctx.ellipse(centerX, groundY, surgeRadiusPx, surgeRadiusPx * 0.3, 0, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      // C. Internal Incandescent Core (Fireball remnants glowing inside torus)
-      if (t < 150) {
-        const fireAlpha = Math.max(0, 1.0 - t / 110.0);
-        const coreFireGrad = ctx.createRadialGradient(
-          centerX, capCenterY, 0,
-          centerX, capCenterY, capRadiusX * 0.55
-        );
-        coreFireGrad.addColorStop(0.0, `rgba(255, 255, 220, ${fireAlpha * 0.95})`);
-        coreFireGrad.addColorStop(0.3, `rgba(251, 146, 60, ${fireAlpha * 0.9})`);
-        coreFireGrad.addColorStop(0.7, `rgba(220, 38, 38, ${fireAlpha * 0.6})`);
-        coreFireGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
-
-        ctx.fillStyle = coreFireGrad;
-        ctx.beginPath();
-        ctx.ellipse(centerX, capCenterY, capRadiusX * 0.6, capRadiusY * 0.6, 0, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      // D. Volumetric Organic Smoke Lobes (Toroidal Convection Roll)
+    // B3. Core & Front Toroidal Cauliflower Lobes (Translucent rims so internal plasma fire shines through!)
+    if (smokeMaturity > 0.05) {
       smokeLobes.forEach((lobe) => {
-        // Toroidal circulation rotation
-        const currentPhase = lobe.phase + (t * lobe.speed * 0.35);
-        const rollFrac = Math.sin(currentPhase);
-        const lobeX = centerX + lobe.relX * capRadiusX + rollFrac * 6;
-        const lobeY = capCenterY + lobe.relY * capRadiusY;
-        const lobeRadius = lobe.baseRadius * capRadiusX;
+        if (lobe.layer === 'back') return;
+        const side = lobe.relX >= 0 ? 1 : -1;
+        // Authentic toroidal circulation: inner throat rises, outer rim curls down and inward
+        const rollAngle = lobe.phase + t * lobe.speed * 0.36;
+        const lobeX = centerX + lobe.relX * capRadiusX + side * Math.cos(rollAngle) * 5;
+        const lobeY = capCenterY + lobe.relY * capRadiusY + Math.sin(rollAngle) * 4;
+        const lobeR = Math.max(8, lobe.baseRadius * capRadiusX);
 
-        // Spherical 3D Volumetric Lighting Gradient: Light from fiery core below, dark smoke above
+        // Directional 3D lighting: illuminated from bottom-inner plasma core, shadowed on outer top
+        const lightOffsetX = -lobe.relX * lobeR * 0.32;
+        const lightOffsetY = (lobe.relY < 0 ? 0.32 : -0.22) * lobeR;
         const lobeGrad = ctx.createRadialGradient(
-          lobeX, lobeY - lobeRadius * 0.25, lobeRadius * 0.1,
-          lobeX, lobeY, lobeRadius
+          lobeX + lightOffsetX,
+          lobeY + lightOffsetY,
+          lobeR * 0.08,
+          lobeX,
+          lobeY,
+          lobeR
         );
 
-        if (lobe.layer === 'core') {
-          // Warmer internal core lobes
-          lobeGrad.addColorStop(0.0, `rgba(180, 160, 145, ${0.9 * cloudAlpha})`);
-          lobeGrad.addColorStop(0.4, `rgba(120, 95, 80, ${0.92 * cloudAlpha})`);
-          lobeGrad.addColorStop(0.85, `rgba(55, 45, 40, ${0.95 * cloudAlpha})`);
-          lobeGrad.addColorStop(1.0, 'rgba(25, 20, 20, 0.0)');
-        } else {
-          // Outer dense cauliflower lobes
-          lobeGrad.addColorStop(0.0, `rgba(145, 150, 160, ${0.88 * cloudAlpha})`);
-          lobeGrad.addColorStop(0.5, `rgba(80, 85, 95, ${0.92 * cloudAlpha})`);
-          lobeGrad.addColorStop(0.9, `rgba(38, 40, 48, ${0.95 * cloudAlpha})`);
-          lobeGrad.addColorStop(1.0, 'rgba(15, 18, 24, 0.0)');
-        }
+        const emberGlow = plasmaIntensity * (lobe.layer === 'core' ? 0.85 : 0.45);
+        const rLit = Math.round(148 + 105 * emberGlow);
+        const gLit = Math.round(145 + 35 * emberGlow);
+        const bLit = Math.round(152 - 65 * emberGlow);
+
+        const rMid = Math.round(74 + 90 * emberGlow);
+        const gMid = Math.round(78 - 10 * emberGlow);
+        const bMid = Math.round(90 - 45 * emberGlow);
+
+        const alphaScale = lobe.layer === 'core' ? 0.72 * smokeMaturity : 0.82 * smokeMaturity;
+
+        lobeGrad.addColorStop(0.0, `rgba(${rLit}, ${gLit}, ${bLit}, ${alphaScale})`);
+        lobeGrad.addColorStop(0.52, `rgba(${rMid}, ${gMid}, ${bMid}, ${alphaScale * 0.95})`);
+        lobeGrad.addColorStop(0.88, `rgba(30, 34, 44, ${alphaScale * 0.82})`);
+        lobeGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.0)');
 
         ctx.fillStyle = lobeGrad;
         ctx.beginPath();
-        ctx.arc(lobeX, lobeY, lobeRadius, 0, Math.PI * 2);
+        ctx.arc(lobeX, lobeY, lobeR, 0, Math.PI * 2);
         ctx.fill();
       });
 
-      // E. Flattened Stratospheric Anvil Cap Shelf
-      const shelfGrad = ctx.createLinearGradient(0, topY, 0, topY + capRadiusY * 0.5);
-      shelfGrad.addColorStop(0.0, `rgba(175, 180, 190, ${0.65 * cloudAlpha})`);
-      shelfGrad.addColorStop(1.0, 'rgba(60, 65, 75, 0.0)');
+      // B4. Glaciated Ice-Crystal Pileus Cap & Stratospheric Anvil Crown
+      const pileusAlpha = Math.min(0.78, smokeMaturity * 0.75);
+      const shelfGrad = ctx.createLinearGradient(0, topY - 4, 0, topY + capRadiusY * 0.55);
+      shelfGrad.addColorStop(0.0, `rgba(241, 245, 249, ${pileusAlpha})`);
+      shelfGrad.addColorStop(0.45, `rgba(186, 200, 218, ${pileusAlpha * 0.55})`);
+      shelfGrad.addColorStop(1.0, 'rgba(71, 85, 105, 0.0)');
       ctx.fillStyle = shelfGrad;
       ctx.beginPath();
-      ctx.ellipse(centerX, topY + 4, capRadiusX * 0.95, capRadiusY * 0.35, 0, 0, Math.PI * 2);
+      ctx.ellipse(centerX, topY + capRadiusY * 0.18, capRadiusX * 0.96, Math.max(8, capRadiusY * 0.34), 0, 0, Math.PI * 2);
       ctx.fill();
     }
 
-    // 9. Dimension Annotation Arrows & Labels
-    if (t >= 2.0) {
-      const arrowX = centerX + capWidthPx / 2 + 40;
+    // PHASE C: SUPERSONIC HEMISPHERICAL SHOCKWAVE FRONT & TRANSIENT WILSON CONDENSATION COLLAR
+    if (t > 0.05 && t < 12.0) {
+      const shockSpeedKmS = 0.42 + 0.75 * Math.exp(-t / 2.5);
+      const shockRadiusPx = kmToPixelsX(rFireballKm + t * shockSpeedKmS * 2.8);
+      const shockOriginY = kmToY(hobKm);
+      const shockAlpha = Math.max(0, Math.min(0.9, (1 - t / 12.0) * 0.9));
+
+      ctx.save();
+      // Clip shockwave to above ground
+      ctx.beginPath();
+      ctx.rect(0, 0, width, groundY);
+      ctx.clip();
+
+      // Refractive Shock Front Arc
+      ctx.strokeStyle = `rgba(224, 242, 254, ${shockAlpha})`;
+      ctx.lineWidth = 2.2;
+      ctx.shadowColor = '#38bdf8';
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.arc(centerX, shockOriginY, shockRadiusPx, Math.PI, 0, false);
+      ctx.stroke();
+
+      // Transient Wilson Condensation Cloud Ring (Negative-Pressure Rarefaction Phase, 1.0s <= t <= 5.5s)
+      if (t >= 1.0 && t <= 5.5) {
+        const wilsonBell = Math.sin(((t - 1.0) / 4.5) * Math.PI);
+        const wRx = Math.max(capRadiusX * 1.25, shockRadiusPx * 0.72);
+        const wRy = Math.max(10, capRadiusY * 0.42);
+        const wilsonGrad = ctx.createRadialGradient(centerX, capCenterY, wRx * 0.35, centerX, capCenterY, wRx);
+        wilsonGrad.addColorStop(0.0, 'rgba(240, 249, 255, 0.0)');
+        wilsonGrad.addColorStop(0.55, `rgba(224, 242, 254, ${0.42 * wilsonBell})`);
+        wilsonGrad.addColorStop(0.85, `rgba(186, 230, 253, ${0.28 * wilsonBell})`);
+        wilsonGrad.addColorStop(1.0, 'rgba(224, 242, 254, 0.0)');
+        ctx.fillStyle = wilsonGrad;
+        ctx.beginPath();
+        ctx.ellipse(centerX, capCenterY, wRx, wRy, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    // 8. Ground Plane & glowing Ground Zero Crater / Reflection
+    const groundGrad = ctx.createLinearGradient(0, groundY, 0, height);
+    groundGrad.addColorStop(0.0, '#0f172a');
+    groundGrad.addColorStop(1.0, '#020617');
+    ctx.fillStyle = groundGrad;
+    ctx.fillRect(-20, groundY, width + 40, height - groundY + 40);
+
+    // Thermal Ground Reflection under Ground Zero
+    const groundGlowR = Math.max(40, capRadiusX * 1.2);
+    const groundGlow = ctx.createRadialGradient(centerX, groundY, 2, centerX, groundY, groundGlowR);
+    groundGlow.addColorStop(0.0, `rgba(251, 146, 60, ${0.55 * plasmaIntensity})`);
+    groundGlow.addColorStop(0.5, `rgba(220, 38, 38, ${0.22 * plasmaIntensity})`);
+    groundGlow.addColorStop(1.0, 'rgba(0, 0, 0, 0.0)');
+    ctx.fillStyle = groundGlow;
+    ctx.fillRect(centerX - groundGlowR, groundY - 3, groundGlowR * 2, 14);
+
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.24)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, groundY);
+    ctx.lineTo(width, groundY);
+    ctx.stroke();
+
+    // 9. Clamped Non-Overlapping Dimension Callout Box (Right Side of Cloud)
+    if (t >= 0.8) {
+      const boxW = 168;
+      const boxH = 42;
+      const idealArrowX = centerX + capRadiusX + 20;
+      const arrowX = Math.min(width - boxW - 16, Math.max(centerX + 36, idealArrowX));
+
       ctx.strokeStyle = '#00e5ff';
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = 1.4;
       ctx.beginPath();
       ctx.moveTo(arrowX, groundY);
       ctx.lineTo(arrowX, topY);
       ctx.stroke();
 
+      // Top & Bottom Ticks
+      ctx.beginPath();
+      ctx.moveTo(arrowX - 4, topY);
+      ctx.lineTo(arrowX + 4, topY);
+      ctx.moveTo(arrowX - 4, groundY);
+      ctx.lineTo(arrowX + 4, groundY);
+      ctx.stroke();
+
       // Top Arrowhead
       ctx.fillStyle = '#00e5ff';
       ctx.beginPath();
-      ctx.moveTo(arrowX - 4, topY + 8);
-      ctx.lineTo(arrowX + 4, topY + 8);
+      ctx.moveTo(arrowX - 4, topY + 7);
+      ctx.lineTo(arrowX + 4, topY + 7);
       ctx.lineTo(arrowX, topY);
       ctx.closePath();
       ctx.fill();
 
-      // Dimension Readouts
-      ctx.font = 'bold 11px JetBrains Mono, monospace';
+      const midBoxY = Math.max(48, Math.min(groundY - boxH - 8, (groundY + topY) / 2 - boxH / 2));
+      ctx.fillStyle = 'rgba(5, 10, 18, 0.86)';
+      ctx.strokeStyle = 'rgba(0, 229, 255, 0.45)';
+      ctx.lineWidth = 1;
+      ctx.fillRect(arrowX + 8, midBoxY, boxW, boxH);
+      ctx.strokeRect(arrowX + 8, midBoxY, boxW, boxH);
+
+      ctx.font = 'bold 10.5px JetBrains Mono, monospace';
+      ctx.fillStyle = '#00e5ff';
       const topLabel = unitMode === 'imperial'
-        ? `Cloud Top: ${(currentTopKm * 0.621371).toFixed(1)} mi (${Math.round(currentTopKm * 3280.84).toLocaleString()} ft)`
-        : `Cloud Top: ${currentTopKm.toFixed(1)} km`;
-      ctx.fillText(topLabel, arrowX + 8, (groundY + topY) / 2);
+        ? `Top: ${(currentTopKm * 0.621371).toFixed(1)} mi (${Math.round(currentTopKm * 3280.84).toLocaleString()} ft)`
+        : `Top: ${currentTopKm.toFixed(1)} km (${Math.round(currentTopKm * 1000).toLocaleString()} m)`;
+      ctx.fillText(topLabel, arrowX + 14, midBoxY + 16);
 
       const capLabel = unitMode === 'imperial'
         ? `Cap Width: ${(currentCapWidthKm * 0.621371).toFixed(1)} mi`
         : `Cap Width: ${currentCapWidthKm.toFixed(1)} km`;
       ctx.font = '10px Inter, sans-serif';
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-      ctx.fillText(capLabel, arrowX + 8, (groundY + topY) / 2 + 15);
+      ctx.fillStyle = '#e2e8f0';
+      ctx.fillText(capLabel, arrowX + 14, midBoxY + 32);
     }
 
-    // 10. Blinding Flash Overlay
+    // 10. Top-Left Live Physical Regime Telemetry Badge
+    {
+      const phaseText =
+        t < 1.5
+          ? 'PHASE I: DOUBLE-FLASH & ISOTHERMAL FIREBALL BREAKAWAY'
+          : t < 8.0
+          ? 'PHASE II: TOROIDAL VORTEX LIFT-OFF & WILSON CLOUD'
+          : t < 60.0
+          ? 'PHASE III: CONVECTIVE CAP EXPANSION & MACH UPDRAFT STEM'
+          : 'PHASE IV: STRATOSPHERIC ANVIL STABILIZATION';
+      const estTempK = Math.round(3200 + 650000 * Math.exp(-t / 1.8) + 8500 * Math.exp(-t / 35));
+
+      ctx.fillStyle = 'rgba(5, 10, 18, 0.84)';
+      ctx.strokeStyle = 'rgba(249, 115, 22, 0.45)';
+      ctx.lineWidth = 1;
+      ctx.fillRect(62, 10, 345, 36);
+      ctx.strokeRect(62, 10, 345, 36);
+
+      ctx.font = 'bold 10px Inter, sans-serif';
+      ctx.fillStyle = '#fb923c';
+      ctx.fillText(`⚡ ${phaseText}`, 70, 24);
+
+      ctx.font = '9.5px JetBrains Mono, monospace';
+      ctx.fillStyle = '#cbd5e1';
+      ctx.fillText(
+        `Core Temp: ~${estTempK.toLocaleString()} K | Ascent: ${Math.round(riseProgress * 100)}% Stabilized`,
+        70,
+        39
+      );
+    }
+
+    // 11. Initial Detonation Double-Pulse Flash Overlay
     if (flashIntensity > 0.01) {
-      ctx.fillStyle = `rgba(255, 255, 255, ${flashIntensity})`;
+      ctx.fillStyle = `rgba(255, 255, 255, ${flashIntensity * 0.85})`;
       ctx.fillRect(-20, -20, width + 40, height + 40);
     }
 
@@ -1016,54 +1194,73 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
       ctx.stroke();
     }
 
+    // Kinematic expansion factor so blast zones animate cleanly from Ground Zero on detonation
+    const shockDistKm = simTimeSeconds * (0.343 + 0.45 * Math.exp(-simTimeSeconds / 4.0));
+    const thermalFlashFactor = Math.min(1.0, simTimeSeconds / 0.6);
+    const fireballGrowthFactor = Math.min(1.0, simTimeSeconds / 0.9);
+    const blastSweepFactor = (targetKm: number) =>
+      simTimeSeconds >= 18 ? 1.0 : Math.min(1.0, Math.max(0.18, shockDistKm / Math.max(0.05, targetKm)));
+
     // 3. OUTRIDER 4-TIER GLOWING TRANSLUCENT ENERGY ZONES
-    // Zone 4: Heat / Thermal Radiation (3rd Degree Burns) - Amber
-    const rZ4Px = kmToMapPx(rZone4_Thermal3rdKm);
+    // Zone 4: Heat / Thermal Radiation (3rd Degree Burns) - Amber (propagates at speed of light during flash)
+    const rZ4Px = kmToMapPx(rZone4_Thermal3rdKm) * thermalFlashFactor;
     const isZ4Focused = selectedEffect === 'thermal' || selectedEffect === null;
     ctx.save();
-    ctx.fillStyle = isZ4Focused ? 'rgba(245, 158, 11, 0.22)' : 'rgba(245, 158, 11, 0.08)';
+    ctx.fillStyle = isZ4Focused ? 'rgba(245, 158, 11, 0.20)' : 'rgba(245, 158, 11, 0.07)';
     ctx.beginPath();
     ctx.arc(centerX, centerY, rZ4Px, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = '#f59e0b';
-    ctx.lineWidth = isZ4Focused ? 2.5 : 1.2;
+    ctx.lineWidth = isZ4Focused ? 2.2 : 1.1;
     ctx.shadowColor = '#f59e0b';
-    ctx.shadowBlur = isZ4Focused ? 12 : 4;
+    ctx.shadowBlur = isZ4Focused ? 10 : 3;
     ctx.stroke();
     ctx.restore();
 
     // Zone 3: Shockwave / Moderate Blast (5 psi) - Electric Cyan / Sky Blue
-    const rZ3Px = kmToMapPx(rZone3_Mod5psiKm);
+    const rZ3TargetPx = kmToMapPx(rZone3_Mod5psiKm);
+    const rZ3Px = rZ3TargetPx * blastSweepFactor(rZone3_Mod5psiKm);
     const isZ3Focused = selectedEffect === 'shockwave' || selectedEffect === null;
     ctx.save();
-    ctx.fillStyle = isZ3Focused ? 'rgba(0, 229, 255, 0.25)' : 'rgba(0, 229, 255, 0.08)';
+    // Dashed target ring if shockwave is still sweeping toward 5-psi perimeter
+    if (rZ3Px < rZ3TargetPx * 0.99) {
+      ctx.strokeStyle = 'rgba(0, 229, 255, 0.35)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, rZ3TargetPx, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    ctx.fillStyle = isZ3Focused ? 'rgba(0, 229, 255, 0.22)' : 'rgba(0, 229, 255, 0.07)';
     ctx.beginPath();
     ctx.arc(centerX, centerY, rZ3Px, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = '#00e5ff';
-    ctx.lineWidth = isZ3Focused ? 2.5 : 1.2;
+    ctx.lineWidth = isZ3Focused ? 2.2 : 1.1;
     ctx.shadowColor = '#00e5ff';
-    ctx.shadowBlur = isZ3Focused ? 12 : 4;
+    ctx.shadowBlur = isZ3Focused ? 10 : 3;
     ctx.stroke();
     ctx.restore();
 
     // Zone 2: Prompt Radiation / Heavy Blast (20 psi) - Neon Magenta / Crimson
-    const rZ2Px = kmToMapPx(rZone2_Heavy20psiKm);
+    const rZ2TargetPx = kmToMapPx(rZone2_Heavy20psiKm);
+    const rZ2Px = rZ2TargetPx * Math.max(thermalFlashFactor * 0.85, blastSweepFactor(rZone2_Heavy20psiKm));
     const isZ2Focused = selectedEffect === 'radiation' || selectedEffect === null;
     ctx.save();
-    ctx.fillStyle = isZ2Focused ? 'rgba(224, 36, 94, 0.38)' : 'rgba(224, 36, 94, 0.12)';
+    ctx.fillStyle = isZ2Focused ? 'rgba(224, 36, 94, 0.34)' : 'rgba(224, 36, 94, 0.11)';
     ctx.beginPath();
     ctx.arc(centerX, centerY, rZ2Px, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = '#e0245e';
-    ctx.lineWidth = isZ2Focused ? 3 : 1.5;
+    ctx.lineWidth = isZ2Focused ? 2.6 : 1.3;
     ctx.shadowColor = '#e0245e';
-    ctx.shadowBlur = isZ2Focused ? 14 : 5;
+    ctx.shadowBlur = isZ2Focused ? 12 : 4;
     ctx.stroke();
     ctx.restore();
 
     // Zone 1: Fireball Core - Incandescent Gold / Bright Orange
-    const rZ1Px = kmToMapPx(rZone1_FireballKm);
+    const rZ1Px = Math.max(4, kmToMapPx(rZone1_FireballKm) * fireballGrowthFactor);
     const isZ1Focused = selectedEffect === 'fireball' || selectedEffect === null;
     ctx.save();
     const fbGrad = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, rZ1Px);
@@ -1076,20 +1273,19 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
     ctx.arc(centerX, centerY, rZ1Px, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = '#fef08a';
-    ctx.lineWidth = isZ1Focused ? 2.5 : 1.2;
+    ctx.lineWidth = isZ1Focused ? 2.2 : 1.1;
     ctx.shadowColor = '#ea5600';
-    ctx.shadowBlur = isZ1Focused ? 18 : 6;
+    ctx.shadowBlur = isZ1Focused ? 15 : 5;
     ctx.stroke();
     ctx.restore();
 
-    // 4. Real-Time Propagating Shockwave Wavefront Circle
-    const shockDistKm = simTimeSeconds * 0.343;
-    const maxViewKm = (width / 2 * metersPerPixel) / 1000.0;
-    if (shockDistKm <= maxViewKm) {
+    // 4. Real-Time Propagating Supersonic Shockwave Front
+    const maxViewKm = ((width / 2) * metersPerPixel) / 1000.0;
+    if (shockDistKm > 0.02 && shockDistKm <= maxViewKm * 1.15) {
       const shockWavePx = kmToMapPx(shockDistKm);
       ctx.save();
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.95)';
-      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.92)';
+      ctx.lineWidth = 2.2;
       ctx.shadowColor = '#00e5ff';
       ctx.shadowBlur = 12;
       ctx.beginPath();
@@ -1098,24 +1294,59 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
       ctx.restore();
     }
 
-    // 5. Ground Zero Tactical Pin
+    // 5. Non-Overlapping Radial Zone Callout Badges (placed at distinct 45° / 135° / 225° / 315° angles)
+    const zoneBadges = [
+      { rPx: kmToMapPx(rZone4_Thermal3rdKm), angleDeg: -35, label: `🔥 3rd° Burn (${unitMode === 'imperial' ? `${cloudPhysics.rZone4_Thermal3rdMiles.toFixed(2)} mi` : `${rZone4_Thermal3rdKm.toFixed(2)} km`})`, color: '#fbbf24' },
+      { rPx: kmToMapPx(rZone3_Mod5psiKm), angleDeg: 35, label: `💨 5 psi (${unitMode === 'imperial' ? `${cloudPhysics.rZone3_Mod5psiMiles.toFixed(2)} mi` : `${rZone3_Mod5psiKm.toFixed(2)} km`})`, color: '#38bdf8' },
+      { rPx: kmToMapPx(rZone2_Heavy20psiKm), angleDeg: 145, label: `☢️ 20 psi / Rad (${unitMode === 'imperial' ? `${cloudPhysics.rZone2_Heavy20psiMiles.toFixed(2)} mi` : `${rZone2_Heavy20psiKm.toFixed(2)} km`})`, color: '#f472b6' },
+      { rPx: kmToMapPx(rZone1_FireballKm), angleDeg: -145, label: `☀️ Fireball (${unitMode === 'imperial' ? `${cloudPhysics.rZone1_FireballMiles.toFixed(2)} mi` : `${rZone1_FireballKm.toFixed(2)} km`})`, color: '#fef08a' }
+    ];
+
+    ctx.font = '600 9.5px JetBrains Mono, monospace';
+    zoneBadges.forEach((zb) => {
+      if (zb.rPx < 14 || zb.rPx > width * 0.48) return;
+      const rad = (zb.angleDeg * Math.PI) / 180.0;
+      const bx = centerX + Math.cos(rad) * zb.rPx;
+      const by = centerY + Math.sin(rad) * zb.rPx;
+      const tw = ctx.measureText(zb.label).width;
+      const pillX = Math.max(8, Math.min(width - tw - 14, bx - tw / 2));
+      const pillY = Math.max(58, Math.min(height - 20, by - 7));
+
+      ctx.fillStyle = 'rgba(6, 9, 14, 0.86)';
+      ctx.strokeStyle = zb.color;
+      ctx.lineWidth = 1;
+      ctx.fillRect(pillX - 4, pillY - 10, tw + 8, 14);
+      ctx.strokeRect(pillX - 4, pillY - 10, tw + 8, 14);
+      ctx.fillStyle = zb.color;
+      ctx.fillText(zb.label, pillX, pillY);
+    });
+
+    // 6. Ground Zero Tactical Crosshair Pin
     ctx.fillStyle = '#ffffff';
     ctx.beginPath();
-    ctx.arc(centerX, centerY, 4.5, 0, Math.PI * 2);
+    ctx.arc(centerX, centerY, 4.0, 0, Math.PI * 2);
     ctx.fill();
 
-    // City & Coordinates Label Overlay
+    // 7. Top-Left City & Coordinates Header Pill (Non-overlapping glass backing)
+    ctx.fillStyle = 'rgba(6, 9, 14, 0.86)';
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.14)';
+    ctx.lineWidth = 1;
+    ctx.fillRect(12, 10, 410, 42);
+    ctx.strokeRect(12, 10, 410, 42);
+
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 13px Inter, sans-serif';
-    ctx.fillText(`📍 ${currentCity.name}, ${currentCity.country}`, 20, 30);
-    ctx.fillStyle = 'rgba(148, 163, 184, 0.9)';
+    ctx.font = 'bold 12.5px Inter, sans-serif';
+    ctx.fillText(`📍 ${currentCity.name}, ${currentCity.country}`, 20, 28);
+    ctx.fillStyle = 'rgba(148, 163, 184, 0.92)';
     ctx.font = '10px JetBrains Mono, monospace';
+    const latStr = `${Math.abs(currentCity.lat).toFixed(4)}° ${currentCity.lat >= 0 ? 'N' : 'S'}`;
+    const lonStr = `${Math.abs(currentCity.lon).toFixed(4)}° ${currentCity.lon >= 0 ? 'E' : 'W'}`;
     ctx.fillText(
-      `${currentCity.lat.toFixed(4)}° N, ${Math.abs(currentCity.lon).toFixed(4)}° W | Pop Density: ${currentCity.popDensityPerKm2.toLocaleString()} / km²`,
+      `${latStr}, ${lonStr} | Pop Density: ${currentCity.popDensityPerKm2.toLocaleString()} / km²`,
       20,
-      46
+      44
     );
-  }, [simTimeSeconds, cloudPhysics, currentCity, selectedEffect]);
+  }, [simTimeSeconds, cloudPhysics, currentCity, selectedEffect, unitMode]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>

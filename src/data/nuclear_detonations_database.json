@@ -275,8 +275,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 36.8,
-      "lon": -115.95
+      "lat": 36.8149,
+      "lon": -115.9703
     },
     "date": "1951-01-28",
     "year": 1951,
@@ -302,8 +302,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 36.8,
-      "lon": -115.95
+      "lat": 36.769,
+      "lon": -115.9466
     },
     "date": "1951-02-01",
     "year": 1951,
@@ -329,8 +329,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 36.8,
-      "lon": -115.95
+      "lat": 36.8302,
+      "lon": -115.921
     },
     "date": "1951-02-02",
     "year": 1951,
@@ -356,8 +356,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 36.8,
-      "lon": -115.95
+      "lat": 36.7923,
+      "lon": -116.0041
     },
     "date": "1951-02-06",
     "year": 1951,
@@ -491,8 +491,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50.435,
-      "lon": 77.813
+      "lat": 50.4539,
+      "lon": 77.7806
     },
     "date": "1951-09-24",
     "year": 1951,
@@ -518,8 +518,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50.435,
-      "lon": 77.813
+      "lat": 50.3956,
+      "lon": 77.8184
     },
     "date": "1951-10-18",
     "year": 1951,
@@ -1355,8 +1355,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.0189,
+      "lon": 77.9679
     },
     "date": "1953-08-23",
     "year": 1953,
@@ -1382,8 +1382,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.9606,
+      "lon": 78.0054
     },
     "date": "1953-09-03",
     "year": 1953,
@@ -1409,8 +1409,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.0385,
+      "lon": 78.0459
     },
     "date": "1953-09-08",
     "year": 1953,
@@ -1436,8 +1436,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.9902,
+      "lon": 77.9142
     },
     "date": "1953-09-10",
     "year": 1953,
@@ -1490,8 +1490,8 @@
     "country": "United Kingdom",
     "location": "Emu Field, South Australia",
     "coordinates": {
-      "lat": -28.7,
-      "lon": 132.35
+      "lat": -28.6878,
+      "lon": 132.3349
     },
     "date": "1953-10-26",
     "year": 1953,
@@ -1706,8 +1706,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.9664,
+      "lon": 78.0822
     },
     "date": "1954-09-29",
     "year": 1954,
@@ -1733,8 +1733,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.0662,
+      "lon": 77.9723
     },
     "date": "1954-10-01",
     "year": 1954,
@@ -1760,8 +1760,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.9343,
+      "lon": 77.9469
     },
     "date": "1954-10-03",
     "year": 1954,
@@ -1787,8 +1787,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.0272,
+      "lon": 78.1157
     },
     "date": "1954-10-05",
     "year": 1954,
@@ -1814,8 +1814,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.0321,
+      "lon": 77.8792
     },
     "date": "1954-10-08",
     "year": 1954,
@@ -1841,8 +1841,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.9198,
+      "lon": 78.0584
     },
     "date": "1954-10-19",
     "year": 1954,
@@ -1868,8 +1868,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.0886,
+      "lon": 78.0432
     },
     "date": "1954-10-23",
     "year": 1954,
@@ -1895,8 +1895,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.9514,
+      "lon": 77.8694
     },
     "date": "1954-10-26",
     "year": 1954,
@@ -1922,8 +1922,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.9783,
+      "lon": 78.1534
     },
     "date": "1954-10-30",
     "year": 1954,
@@ -1976,8 +1976,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37.0478,
-      "lon": -116.0211
+      "lat": 37.0627,
+      "lon": -116.0414
     },
     "date": "1955-02-22",
     "year": 1955,
@@ -2057,8 +2057,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37.0403,
-      "lon": -116.0253
+      "lat": 37.0552,
+      "lon": -116.0456
     },
     "date": "1955-03-12",
     "year": 1955,
@@ -2138,8 +2138,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37.0956,
-      "lon": -116.1028
+      "lat": 37.1105,
+      "lon": -116.1231
     },
     "date": "1955-03-29",
     "year": 1955,
@@ -2327,8 +2327,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37.0947,
-      "lon": -116.0239
+      "lat": 37.1096,
+      "lon": -116.0442
     },
     "date": "1955-05-15",
     "year": 1955,
@@ -2354,8 +2354,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.0857,
+      "lon": 77.9063
     },
     "date": "1955-07-29",
     "year": 1955,
@@ -2381,8 +2381,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.8925,
+      "lon": 77.9783
     },
     "date": "1955-08-02",
     "year": 1955,
@@ -2408,8 +2408,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.0722,
+      "lon": 78.1332
     },
     "date": "1955-08-05",
     "year": 1955,
@@ -2489,8 +2489,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 36.9,
-      "lon": -115.95
+      "lat": 36.9149,
+      "lon": -115.9703
     },
     "date": "1955-11-03",
     "year": 1955,
@@ -2516,8 +2516,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 36.9,
-      "lon": -115.95
+      "lat": 36.869,
+      "lon": -115.9466
     },
     "date": "1955-11-05",
     "year": 1955,
@@ -2543,8 +2543,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.0048,
+      "lon": 77.8205
     },
     "date": "1955-11-06",
     "year": 1955,
@@ -2570,8 +2570,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.9162,
+      "lon": 78.131
     },
     "date": "1955-11-22",
     "year": 1955,
@@ -2597,8 +2597,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 36.9,
-      "lon": -115.95
+      "lat": 36.9302,
+      "lon": -115.921
     },
     "date": "1956-01-18",
     "year": 1956,
@@ -2651,8 +2651,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.1219,
+      "lon": 77.9912
     },
     "date": "1956-03-16",
     "year": 1956,
@@ -2678,8 +2678,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.9039,
+      "lon": 77.8752
     },
     "date": "1956-03-25",
     "year": 1956,
@@ -2813,8 +2813,8 @@
     "country": "United States",
     "location": "Enewetak Atoll, Marshall Islands",
     "coordinates": {
-      "lat": 11.62,
-      "lon": 162.33
+      "lat": 11.6281,
+      "lon": 162.321
     },
     "date": "1956-05-27",
     "year": 1956,
@@ -2948,8 +2948,8 @@
     "country": "United States",
     "location": "Enewetak Atoll, Marshall Islands",
     "coordinates": {
-      "lat": 11.62,
-      "lon": 162.33
+      "lat": 11.6031,
+      "lon": 162.3315
     },
     "date": "1956-06-13",
     "year": 1956,
@@ -3218,8 +3218,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.0171,
+      "lon": 78.1978
     },
     "date": "1956-08-24",
     "year": 1956,
@@ -3245,8 +3245,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.075,
+      "lon": 77.8323
     },
     "date": "1956-08-30",
     "year": 1956,
@@ -3272,8 +3272,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.869,
+      "lon": 78.0459
     },
     "date": "1956-09-02",
     "year": 1956,
@@ -3299,8 +3299,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.119,
+      "lon": 78.1061
     },
     "date": "1956-09-10",
     "year": 1956,
@@ -3353,8 +3353,8 @@
     "country": "United Kingdom",
     "location": "Maralinga Proving Ground, South Australia",
     "coordinates": {
-      "lat": -30,
-      "lon": 131
+      "lat": -29.9878,
+      "lon": 130.9847
     },
     "date": "1956-10-04",
     "year": 1956,
@@ -3380,8 +3380,8 @@
     "country": "United Kingdom",
     "location": "Maralinga Proving Ground, South Australia",
     "coordinates": {
-      "lat": -30,
-      "lon": 131
+      "lat": -30.0254,
+      "lon": 131.0026
     },
     "date": "1956-10-11",
     "year": 1956,
@@ -3407,8 +3407,8 @@
     "country": "United Kingdom",
     "location": "Maralinga Proving Ground, South Australia",
     "coordinates": {
-      "lat": -30,
-      "lon": 131
+      "lat": -29.9753,
+      "lon": 131.0219
     },
     "date": "1956-10-22",
     "year": 1956,
@@ -3434,8 +3434,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.9574,
+      "lon": 77.7925
     },
     "date": "1956-11-17",
     "year": 1956,
@@ -3461,8 +3461,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.9401,
+      "lon": 78.2016
     },
     "date": "1956-12-14",
     "year": 1956,
@@ -3515,8 +3515,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.1342,
+      "lon": 77.9126
     },
     "date": "1957-03-08",
     "year": 1957,
@@ -3542,8 +3542,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.8606,
+      "lon": 77.922
     },
     "date": "1957-04-03",
     "year": 1957,
@@ -3569,8 +3569,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.0701,
+      "lon": 78.2076
     },
     "date": "1957-04-06",
     "year": 1957,
@@ -3596,8 +3596,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.0391,
+      "lon": 77.7693
     },
     "date": "1957-04-10",
     "year": 1957,
@@ -3623,8 +3623,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.8689,
+      "lon": 78.1312
     },
     "date": "1957-04-12",
     "year": 1957,
@@ -3650,8 +3650,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.1561,
+      "lon": 78.0417
     },
     "date": "1957-04-16",
     "year": 1957,
@@ -3758,8 +3758,8 @@
     "country": "United Kingdom",
     "location": "Malden Island, Line Islands",
     "coordinates": {
-      "lat": -4,
-      "lon": -155
+      "lat": -3.9919,
+      "lon": -155.0089
     },
     "date": "1957-05-31",
     "year": 1957,
@@ -3785,8 +3785,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37.0478,
-      "lon": -116.0211
+      "lat": 37.0168,
+      "lon": -116.0177
     },
     "date": "1957-06-02",
     "year": 1957,
@@ -3839,8 +3839,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37.1347,
-      "lon": -116.0408
+      "lat": 37.1496,
+      "lon": -116.0611
     },
     "date": "1957-06-18",
     "year": 1957,
@@ -3866,8 +3866,8 @@
     "country": "United Kingdom",
     "location": "Malden Island, Line Islands",
     "coordinates": {
-      "lat": -4,
-      "lon": -155
+      "lat": -4.0169,
+      "lon": -154.9985
     },
     "date": "1957-06-19",
     "year": 1957,
@@ -3893,8 +3893,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 36.7981,
-      "lon": -115.9289
+      "lat": 36.813,
+      "lon": -115.9492
     },
     "date": "1957-06-24",
     "year": 1957,
@@ -3947,8 +3947,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37.1347,
-      "lon": -116.0408
+      "lat": 37.1037,
+      "lon": -116.0374
     },
     "date": "1957-07-05",
     "year": 1957,
@@ -4055,8 +4055,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37.1347,
-      "lon": -116.0408
+      "lat": 37.1649,
+      "lon": -116.0117
     },
     "date": "1957-07-25",
     "year": 1957,
@@ -4190,8 +4190,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.9015,
+      "lon": 77.8022
     },
     "date": "1957-08-22",
     "year": 1957,
@@ -4217,8 +4217,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37.0867,
-      "lon": -116.0236
+      "lat": 37.1016,
+      "lon": -116.0439
     },
     "date": "1957-08-23",
     "year": 1957,
@@ -4244,8 +4244,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.9865,
+      "lon": 78.2531
     },
     "date": "1957-08-26",
     "year": 1957,
@@ -4298,8 +4298,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37.0867,
-      "lon": -116.0236
+      "lat": 37.0557,
+      "lon": -116.0202
     },
     "date": "1957-08-30",
     "year": 1957,
@@ -4352,8 +4352,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37.0531,
-      "lon": -116.1025
+      "lat": 37.068,
+      "lon": -116.1228
     },
     "date": "1957-09-02",
     "year": 1957,
@@ -4379,8 +4379,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37.1347,
-      "lon": -116.0408
+      "lat": 37.127,
+      "lon": -116.0951
     },
     "date": "1957-09-06",
     "year": 1957,
@@ -4433,8 +4433,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 73.0236,
+      "lon": 54.9117
     },
     "date": "1957-09-07",
     "year": 1957,
@@ -4460,8 +4460,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37.0867,
-      "lon": -116.0236
+      "lat": 37.1169,
+      "lon": -115.9945
     },
     "date": "1957-09-08",
     "year": 1957,
@@ -4487,8 +4487,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.1216,
+      "lon": 77.825
     },
     "date": "1957-09-13",
     "year": 1957,
@@ -4514,8 +4514,8 @@
     "country": "United Kingdom",
     "location": "Maralinga Proving Ground, South Australia",
     "coordinates": {
-      "lat": -30,
-      "lon": 131
+      "lat": -30.0063,
+      "lon": 130.9591
     },
     "date": "1957-09-14",
     "year": 1957,
@@ -4568,8 +4568,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37.0867,
-      "lon": -116.0236
+      "lat": 37.079,
+      "lon": -116.0779
     },
     "date": "1957-09-16",
     "year": 1957,
@@ -4622,8 +4622,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37.1383,
-      "lon": -116.1175
+      "lat": 37.1532,
+      "lon": -116.1378
     },
     "date": "1957-09-23",
     "year": 1957,
@@ -4649,8 +4649,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 72.9507,
+      "lon": 55.0148
     },
     "date": "1957-09-24",
     "year": 1957,
@@ -4676,8 +4676,8 @@
     "country": "United Kingdom",
     "location": "Maralinga Proving Ground, South Australia",
     "coordinates": {
-      "lat": -30,
-      "lon": 131
+      "lat": -30.0216,
+      "lon": 131.0392
     },
     "date": "1957-09-25",
     "year": 1957,
@@ -4703,8 +4703,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.832,
+      "lon": 78.0013
     },
     "date": "1957-09-26",
     "year": 1957,
@@ -4730,8 +4730,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37.1347,
-      "lon": -116.0408
+      "lat": 37.1083,
+      "lon": -115.9887
     },
     "date": "1957-09-28",
     "year": 1957,
@@ -4757,8 +4757,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 73.0481,
+      "lon": 55.1262
     },
     "date": "1957-10-06",
     "year": 1957,
@@ -4784,8 +4784,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37.1347,
-      "lon": -116.0408
+      "lat": 37.1867,
+      "lon": -116.0583
     },
     "date": "1957-10-07",
     "year": 1957,
@@ -4811,8 +4811,8 @@
     "country": "United Kingdom",
     "location": "Maralinga Proving Ground, South Australia",
     "coordinates": {
-      "lat": -30,
-      "lon": 131
+      "lat": -29.9574,
+      "lon": 130.9868
     },
     "date": "1957-10-09",
     "year": 1957,
@@ -4838,8 +4838,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 72.9878,
+      "lon": 54.7642
     },
     "date": "1957-10-10",
     "year": 1957,
@@ -4919,8 +4919,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37.04,
-      "lon": -116.03
+      "lat": 37.0549,
+      "lon": -116.0503
     },
     "date": "1957-12-09",
     "year": 1957,
@@ -4946,8 +4946,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.1261,
+      "lon": 78.178
     },
     "date": "1957-12-28",
     "year": 1957,
@@ -4973,8 +4973,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.9841,
+      "lon": 77.7326
     },
     "date": "1958-01-04",
     "year": 1958,
@@ -5000,8 +5000,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.8943,
+      "lon": 78.2167
     },
     "date": "1958-01-17",
     "year": 1958,
@@ -5054,8 +5054,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 72.958,
+      "lon": 55.2259
     },
     "date": "1958-02-23",
     "year": 1958,
@@ -5081,8 +5081,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 73.0828,
+      "lon": 54.9239
     },
     "date": "1958-02-27",
     "year": 1958,
@@ -5108,8 +5108,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 72.9178,
+      "lon": 54.854
     },
     "date": "1958-02-27",
     "year": 1958,
@@ -5135,8 +5135,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.1742,
+      "lon": 77.9507
     },
     "date": "1958-03-13",
     "year": 1958,
@@ -5162,8 +5162,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 73.034,
+      "lon": 55.318
     },
     "date": "1958-03-14",
     "year": 1958,
@@ -5189,8 +5189,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.8483,
+      "lon": 77.8514
     },
     "date": "1958-03-14",
     "year": 1958,
@@ -5216,8 +5216,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37.113,
-      "lon": -116.115
+      "lat": 37.1279,
+      "lon": -116.1353
     },
     "date": "1958-03-14",
     "year": 1958,
@@ -5243,8 +5243,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.048,
+      "lon": 78.2723
     },
     "date": "1958-03-15",
     "year": 1958,
@@ -5270,8 +5270,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.0838,
+      "lon": 77.7459
     },
     "date": "1958-03-18",
     "year": 1958,
@@ -5297,8 +5297,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.8259,
+      "lon": 78.1004
     },
     "date": "1958-03-20",
     "year": 1958,
@@ -5324,8 +5324,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 73.0401,
+      "lon": 54.668
     },
     "date": "1958-03-21",
     "year": 1958,
@@ -5351,8 +5351,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.174,
+      "lon": 78.1102
     },
     "date": "1958-03-22",
     "year": 1958,
@@ -5405,8 +5405,8 @@
     "country": "United Kingdom",
     "location": "Christmas Island (Kiritimati), Line Islands",
     "coordinates": {
-      "lat": 2,
-      "lon": -157
+      "lat": 2.0081,
+      "lon": -157.0089
     },
     "date": "1958-04-28",
     "year": 1958,
@@ -5459,8 +5459,8 @@
     "country": "United States",
     "location": "Bikini Atoll, Marshall Islands",
     "coordinates": {
-      "lat": 11.6908,
-      "lon": 165.2736
+      "lat": 11.6989,
+      "lon": 165.2646
     },
     "date": "1958-05-11",
     "year": 1958,
@@ -5702,8 +5702,8 @@
     "country": "United States",
     "location": "Bikini Atoll, Marshall Islands",
     "coordinates": {
-      "lat": 11.6908,
-      "lon": 165.2736
+      "lat": 11.6739,
+      "lon": 165.2751
     },
     "date": "1958-05-31",
     "year": 1958,
@@ -5837,8 +5837,8 @@
     "country": "United States",
     "location": "Enewetak Atoll, Marshall Islands",
     "coordinates": {
-      "lat": 11.6603,
-      "lon": 162.2253
+      "lat": 11.6684,
+      "lon": 162.2163
     },
     "date": "1958-06-14",
     "year": 1958,
@@ -5891,8 +5891,8 @@
     "country": "United States",
     "location": "Bikini Atoll, Marshall Islands",
     "coordinates": {
-      "lat": 11.6872,
-      "lon": 165.415
+      "lat": 11.6953,
+      "lon": 165.406
     },
     "date": "1958-06-27",
     "year": 1958,
@@ -5918,8 +5918,8 @@
     "country": "United States",
     "location": "Enewetak Atoll, Marshall Islands",
     "coordinates": {
-      "lat": 11.6633,
-      "lon": 162.23
+      "lat": 11.6714,
+      "lon": 162.221
     },
     "date": "1958-06-27",
     "year": 1958,
@@ -5972,8 +5972,8 @@
     "country": "United States",
     "location": "Bikini Atoll, Marshall Islands",
     "coordinates": {
-      "lat": 11.4961,
-      "lon": 165.3708
+      "lat": 11.5042,
+      "lon": 165.3618
     },
     "date": "1958-06-29",
     "year": 1958,
@@ -5999,8 +5999,8 @@
     "country": "United States",
     "location": "Enewetak Atoll, Marshall Islands",
     "coordinates": {
-      "lat": 11.5442,
-      "lon": 162.3564
+      "lat": 11.5523,
+      "lon": 162.3474
     },
     "date": "1958-07-01",
     "year": 1958,
@@ -6026,8 +6026,8 @@
     "country": "United States",
     "location": "Bikini Atoll, Marshall Islands",
     "coordinates": {
-      "lat": 11.6908,
-      "lon": 165.2736
+      "lat": 11.7073,
+      "lon": 165.2865
     },
     "date": "1958-07-02",
     "year": 1958,
@@ -6053,8 +6053,8 @@
     "country": "United States",
     "location": "Enewetak Atoll, Marshall Islands",
     "coordinates": {
-      "lat": 11.6633,
-      "lon": 162.23
+      "lat": 11.6464,
+      "lon": 162.2315
     },
     "date": "1958-07-05",
     "year": 1958,
@@ -6161,8 +6161,8 @@
     "country": "United States",
     "location": "Bikini Atoll, Marshall Islands",
     "coordinates": {
-      "lat": 11.4961,
-      "lon": 165.3708
+      "lat": 11.4792,
+      "lon": 165.3723
     },
     "date": "1958-07-22",
     "year": 1958,
@@ -6188,8 +6188,8 @@
     "country": "United States",
     "location": "Enewetak Atoll, Marshall Islands",
     "coordinates": {
-      "lat": 11.6633,
-      "lon": 162.23
+      "lat": 11.6798,
+      "lon": 162.2429
     },
     "date": "1958-07-22",
     "year": 1958,
@@ -6269,8 +6269,8 @@
     "country": "United States",
     "location": "Enewetak Atoll, Marshall Islands",
     "coordinates": {
-      "lat": 11.55,
-      "lon": 162.36
+      "lat": 11.5581,
+      "lon": 162.351
     },
     "date": "1958-08-06",
     "year": 1958,
@@ -6323,8 +6323,8 @@
     "country": "United States",
     "location": "Enewetak Atoll, Marshall Islands",
     "coordinates": {
-      "lat": 11.55,
-      "lon": 162.36
+      "lat": 11.5331,
+      "lon": 162.3615
     },
     "date": "1958-08-18",
     "year": 1958,
@@ -6350,8 +6350,8 @@
     "country": "United Kingdom",
     "location": "Christmas Island (Kiritimati), Line Islands",
     "coordinates": {
-      "lat": 2,
-      "lon": -157
+      "lat": 1.9831,
+      "lon": -156.9985
     },
     "date": "1958-08-22",
     "year": 1958,
@@ -6431,8 +6431,8 @@
     "country": "United Kingdom",
     "location": "Christmas Island (Kiritimati), Line Islands",
     "coordinates": {
-      "lat": 2,
-      "lon": -157
+      "lat": 2.0165,
+      "lon": -156.9873
     },
     "date": "1958-09-02",
     "year": 1958,
@@ -6485,8 +6485,8 @@
     "country": "United Kingdom",
     "location": "Christmas Island (Kiritimati), Line Islands",
     "coordinates": {
-      "lat": 2,
-      "lon": -157
+      "lat": 1.9958,
+      "lon": -157.0236
     },
     "date": "1958-09-11",
     "year": 1958,
@@ -6566,8 +6566,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37.0867,
-      "lon": -116.0236
+      "lat": 37.0603,
+      "lon": -115.9716
     },
     "date": "1958-09-19",
     "year": 1958,
@@ -6620,8 +6620,8 @@
     "country": "United Kingdom",
     "location": "Christmas Island (Kiritimati), Line Islands",
     "coordinates": {
-      "lat": 2,
-      "lon": -157
+      "lat": 1.9856,
+      "lon": -156.9773
     },
     "date": "1958-09-23",
     "year": 1958,
@@ -6701,8 +6701,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37.1931,
-      "lon": -116.2006
+      "lat": 37.208,
+      "lon": -116.221
     },
     "date": "1958-09-28",
     "year": 1958,
@@ -6728,8 +6728,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37.0867,
-      "lon": -116.0236
+      "lat": 37.1387,
+      "lon": -116.0411
     },
     "date": "1958-09-29",
     "year": 1958,
@@ -6755,8 +6755,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 72.8998,
+      "lon": 55.1605
     },
     "date": "1958-09-30",
     "year": 1958,
@@ -6782,8 +6782,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 73.1108,
+      "lon": 55.1188
     },
     "date": "1958-09-30",
     "year": 1958,
@@ -6809,8 +6809,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 72.9392,
+      "lon": 54.6412
     },
     "date": "1958-10-02",
     "year": 1958,
@@ -6836,8 +6836,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 72.9729,
+      "lon": 55.4216
     },
     "date": "1958-10-02",
     "year": 1958,
@@ -6863,8 +6863,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 73.1071,
+      "lon": 54.7424
     },
     "date": "1958-10-04",
     "year": 1958,
@@ -6890,8 +6890,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 72.8656,
+      "lon": 54.9404
     },
     "date": "1958-10-05",
     "year": 1958,
@@ -6917,8 +6917,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37.0867,
-      "lon": -116.0236
+      "lat": 37.035,
+      "lon": -116.0572
     },
     "date": "1958-10-05",
     "year": 1958,
@@ -6971,8 +6971,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 73.0902,
+      "lon": 55.3661
     },
     "date": "1958-10-06",
     "year": 1958,
@@ -7025,8 +7025,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 73.006,
+      "lon": 54.5068
     },
     "date": "1958-10-10",
     "year": 1958,
@@ -7052,8 +7052,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37.0947,
-      "lon": -116.0236
+      "lat": 37.1096,
+      "lon": -116.0439
     },
     "date": "1958-10-10",
     "year": 1958,
@@ -7079,8 +7079,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 72.8953,
+      "lon": 55.36
     },
     "date": "1958-10-12",
     "year": 1958,
@@ -7106,8 +7106,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37.0867,
-      "lon": -116.0236
+      "lat": 37.108,
+      "lon": -115.9503
     },
     "date": "1958-10-13",
     "year": 1958,
@@ -7160,8 +7160,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 73.1524,
+      "lon": 54.9759
     },
     "date": "1958-10-15",
     "year": 1958,
@@ -7241,8 +7241,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37.0867,
-      "lon": -116.0236
+      "lat": 37.1119,
+      "lon": -116.1001
     },
     "date": "1958-10-16",
     "year": 1958,
@@ -7295,8 +7295,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 72.8798,
+      "lon": 54.657
     },
     "date": "1958-10-18",
     "year": 1958,
@@ -7349,8 +7349,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 73.0214,
+      "lon": 55.5437
     },
     "date": "1958-10-19",
     "year": 1958,
@@ -7376,8 +7376,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 73.0938,
+      "lon": 54.5391
     },
     "date": "1958-10-19",
     "year": 1958,
@@ -7403,8 +7403,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 72.8362,
+      "lon": 55.126
     },
     "date": "1958-10-20",
     "year": 1958,
@@ -7457,8 +7457,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 73.1488,
+      "lon": 55.2916
     },
     "date": "1958-10-21",
     "year": 1958,
@@ -7484,8 +7484,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 72.9468,
+      "lon": 54.4298
     },
     "date": "1958-10-22",
     "year": 1958,
@@ -7511,8 +7511,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37.0867,
-      "lon": -116.0236
+      "lat": 37.0237,
+      "lon": -115.9866
     },
     "date": "1958-10-22",
     "year": 1958,
@@ -7538,8 +7538,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 36.7981,
-      "lon": -115.9289
+      "lat": 36.7671,
+      "lon": -115.9255
     },
     "date": "1958-10-22",
     "year": 1958,
@@ -7565,8 +7565,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37.2,
-      "lon": -116.1
+      "lat": 37.2149,
+      "lon": -116.1204
     },
     "date": "1958-10-22",
     "year": 1958,
@@ -7592,8 +7592,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37.1347,
-      "lon": -116.0408
+      "lat": 37.083,
+      "lon": -116.0745
     },
     "date": "1958-10-22",
     "year": 1958,
@@ -7619,8 +7619,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 72.9251,
+      "lon": 55.5541
     },
     "date": "1958-10-24",
     "year": 1958,
@@ -7700,8 +7700,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 73.1678,
+      "lon": 54.7599
     },
     "date": "1958-10-25",
     "year": 1958,
@@ -7727,8 +7727,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 72.8257,
+      "lon": 54.7856
     },
     "date": "1958-10-25",
     "year": 1958,
@@ -7781,8 +7781,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 36.7981,
-      "lon": -115.9289
+      "lat": 36.8283,
+      "lon": -115.8999
     },
     "date": "1958-10-26",
     "year": 1958,
@@ -7808,8 +7808,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37.0867,
-      "lon": -116.0236
+      "lat": 37.1563,
+      "lon": -115.9962
     },
     "date": "1958-10-26",
     "year": 1958,
@@ -7943,8 +7943,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37.0867,
-      "lon": -116.0236
+      "lat": 37.0485,
+      "lon": -116.1063
     },
     "date": "1958-10-30",
     "year": 1958,
@@ -7970,8 +7970,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37.1,
-      "lon": -116.05
+      "lat": 37.1149,
+      "lon": -116.0703
     },
     "date": "1958-10-30",
     "year": 1958,
@@ -8051,8 +8051,8 @@
     "country": "Soviet Union",
     "location": "Kapustin Yar Missile Test Range, Astrakhan Oblast, Russia",
     "coordinates": {
-      "lat": 48,
-      "lon": 46
+      "lat": 48.0122,
+      "lon": 45.9802
     },
     "date": "1958-11-01",
     "year": 1958,
@@ -8078,8 +8078,8 @@
     "country": "Soviet Union",
     "location": "Kapustin Yar Missile Test Range, Astrakhan Oblast, Russia",
     "coordinates": {
-      "lat": 48,
-      "lon": 46
+      "lat": 47.9746,
+      "lon": 46.0033
     },
     "date": "1958-11-03",
     "year": 1958,
@@ -8186,8 +8186,8 @@
     "country": "France",
     "location": "Reggane Proving Ground, Algerian Sahara",
     "coordinates": {
-      "lat": 26,
-      "lon": -0.1
+      "lat": 26.0122,
+      "lon": -0.1148
     },
     "date": "1961-04-25",
     "year": 1961,
@@ -8213,8 +8213,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.9187,
+      "lon": 77.733
     },
     "date": "1961-09-01",
     "year": 1961,
@@ -8240,8 +8240,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.9434,
+      "lon": 78.2854
     },
     "date": "1961-09-04",
     "year": 1961,
@@ -8267,8 +8267,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.1674,
+      "lon": 77.8474
     },
     "date": "1961-09-05",
     "year": 1961,
@@ -8321,8 +8321,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.8084,
+      "lon": 77.936
     },
     "date": "1961-09-06",
     "year": 1961,
@@ -8348,8 +8348,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.1147,
+      "lon": 78.2511
     },
     "date": "1961-09-09",
     "year": 1961,
@@ -8375,8 +8375,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 73.0877,
+      "lon": 55.5706
     },
     "date": "1961-09-10",
     "year": 1961,
@@ -8402,8 +8402,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.0247,
+      "lon": 77.6913
     },
     "date": "1961-09-10",
     "year": 1961,
@@ -8456,8 +8456,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.8462,
+      "lon": 78.2036
     },
     "date": "1961-09-11",
     "year": 1961,
@@ -8510,8 +8510,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 73.0489,
+      "lon": 54.366
     },
     "date": "1961-09-13",
     "year": 1961,
@@ -8537,8 +8537,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.2037,
+      "lon": 78.0116
     },
     "date": "1961-09-13",
     "year": 1961,
@@ -8564,8 +8564,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.8534,
+      "lon": 77.7753
     },
     "date": "1961-09-14",
     "year": 1961,
@@ -8699,8 +8699,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.0106,
+      "lon": 78.3226
     },
     "date": "1961-09-17",
     "year": 1961,
@@ -8726,8 +8726,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.1335,
+      "lon": 77.7487
     },
     "date": "1961-09-18",
     "year": 1961,
@@ -8753,8 +8753,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.7906,
+      "lon": 78.0454
     },
     "date": "1961-09-18",
     "year": 1961,
@@ -8807,8 +8807,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.1756,
+      "lon": 78.1881
     },
     "date": "1961-09-19",
     "year": 1961,
@@ -8834,8 +8834,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.9518,
+      "lon": 77.6739
     },
     "date": "1961-09-20",
     "year": 1961,
@@ -8861,8 +8861,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 72.8361,
+      "lon": 55.3605
     },
     "date": "1961-09-20",
     "year": 1961,
@@ -8888,8 +8888,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.8931,
+      "lon": 78.2936
     },
     "date": "1961-09-21",
     "year": 1961,
@@ -8915,8 +8915,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 73.1951,
+      "lon": 55.1147
     },
     "date": "1961-09-22",
     "year": 1961,
@@ -8942,8 +8942,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.208,
+      "lon": 77.895
     },
     "date": "1961-09-26",
     "year": 1961,
@@ -8969,8 +8969,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.7994,
+      "lon": 77.8577
     },
     "date": "1961-10-01",
     "year": 1961,
@@ -9023,8 +9023,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 72.8769,
+      "lon": 54.4563
     },
     "date": "1961-10-02",
     "year": 1961,
@@ -9050,8 +9050,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.0868,
+      "lon": 78.3183
     },
     "date": "1961-10-04",
     "year": 1961,
@@ -9104,8 +9104,8 @@
     "country": "Soviet Union",
     "location": "Kapustin Yar Missile Test Range, Astrakhan Oblast, Russia",
     "coordinates": {
-      "lat": 48,
-      "lon": 46
+      "lat": 48.0247,
+      "lon": 46.0283
     },
     "date": "1961-10-06",
     "year": 1961,
@@ -9158,8 +9158,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 72.9831,
+      "lon": 55.6956
     },
     "date": "1961-10-08",
     "year": 1961,
@@ -9239,8 +9239,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.0748,
+      "lon": 77.6715
     },
     "date": "1961-10-12",
     "year": 1961,
@@ -9266,8 +9266,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.8007,
+      "lon": 78.1649
     },
     "date": "1961-10-17",
     "year": 1961,
@@ -9293,8 +9293,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.2202,
+      "lon": 78.0885
     },
     "date": "1961-10-19",
     "year": 1961,
@@ -9401,8 +9401,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.8751,
+      "lon": 77.701
     },
     "date": "1961-10-25",
     "year": 1961,
@@ -9428,8 +9428,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 73.152,
+      "lon": 54.5191
     },
     "date": "1961-10-25",
     "year": 1961,
@@ -9455,8 +9455,8 @@
     "country": "Soviet Union",
     "location": "Kapustin Yar Missile Test Range, Astrakhan Oblast, Russia",
     "coordinates": {
-      "lat": 48,
-      "lon": 46
+      "lat": 47.9937,
+      "lon": 45.947
     },
     "date": "1961-10-27",
     "year": 1961,
@@ -9482,8 +9482,8 @@
     "country": "Soviet Union",
     "location": "Kapustin Yar Missile Test Range, Astrakhan Oblast, Russia",
     "coordinates": {
-      "lat": 48,
-      "lon": 46
+      "lat": 47.9784,
+      "lon": 46.0508
     },
     "date": "1961-10-27",
     "year": 1961,
@@ -9509,8 +9509,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 70.7,
-      "lon": 53.5
+      "lat": 70.7236,
+      "lon": 53.4219
     },
     "date": "1961-10-27",
     "year": 1961,
@@ -9563,8 +9563,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.962,
+      "lon": 78.3543
     },
     "date": "1961-10-30",
     "year": 1961,
@@ -9671,8 +9671,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.1832,
+      "lon": 77.7771
     },
     "date": "1961-11-01",
     "year": 1961,
@@ -9698,8 +9698,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 72.79,
+      "lon": 55.0035
     },
     "date": "1961-11-02",
     "year": 1961,
@@ -9725,8 +9725,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.7664,
+      "lon": 77.9717
     },
     "date": "1961-11-02",
     "year": 1961,
@@ -9752,8 +9752,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 73.1577,
+      "lon": 55.4892
     },
     "date": "1961-11-02",
     "year": 1961,
@@ -9779,8 +9779,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.1611,
+      "lon": 78.2682
     },
     "date": "1961-11-03",
     "year": 1961,
@@ -9806,8 +9806,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.9977,
+      "lon": 77.6304
     },
     "date": "1961-11-03",
     "year": 1961,
@@ -9833,8 +9833,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 72.9801,
+      "lon": 54.2652
     },
     "date": "1961-11-04",
     "year": 1961,
@@ -9860,8 +9860,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 72.8679,
+      "lon": 55.5955
     },
     "date": "1961-11-04",
     "year": 1961,
@@ -9887,8 +9887,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.8401,
+      "lon": 78.2769
     },
     "date": "1961-11-04",
     "year": 1961,
@@ -10400,8 +10400,8 @@
     "country": "United Kingdom",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37,
-      "lon": -116
+      "lat": 37.0149,
+      "lon": -116.0203
     },
     "date": "1962-03-01",
     "year": 1962,
@@ -10751,8 +10751,8 @@
     "country": "United States",
     "location": "Christmas Island (Kiritimati), Line Islands",
     "coordinates": {
-      "lat": 1.6,
-      "lon": -157.3
+      "lat": 1.6081,
+      "lon": -157.3089
     },
     "date": "1962-04-27",
     "year": 1962,
@@ -10832,8 +10832,8 @@
     "country": "United States",
     "location": "Christmas Island (Kiritimati), Line Islands",
     "coordinates": {
-      "lat": 1.6,
-      "lon": -157.3
+      "lat": 1.5831,
+      "lon": -157.2985
     },
     "date": "1962-05-02",
     "year": 1962,
@@ -10859,8 +10859,8 @@
     "country": "United States",
     "location": "Christmas Island (Kiritimati), Line Islands",
     "coordinates": {
-      "lat": 1.6,
-      "lon": -157.3
+      "lat": 1.6165,
+      "lon": -157.2873
     },
     "date": "1962-05-04",
     "year": 1962,
@@ -10940,8 +10940,8 @@
     "country": "United States",
     "location": "Christmas Island (Kiritimati), Line Islands",
     "coordinates": {
-      "lat": 1.6,
-      "lon": -157.3
+      "lat": 1.5958,
+      "lon": -157.3236
     },
     "date": "1962-05-08",
     "year": 1962,
@@ -10967,8 +10967,8 @@
     "country": "United States",
     "location": "Christmas Island (Kiritimati), Line Islands",
     "coordinates": {
-      "lat": 1.6,
-      "lon": -157.3
+      "lat": 1.5856,
+      "lon": -157.2774
     },
     "date": "1962-05-09",
     "year": 1962,
@@ -11021,8 +11021,8 @@
     "country": "United States",
     "location": "Christmas Island (Kiritimati), Line Islands",
     "coordinates": {
-      "lat": 1.6,
-      "lon": -157.3
+      "lat": 1.6284,
+      "lon": -157.3076
     },
     "date": "1962-05-11",
     "year": 1962,
@@ -11075,8 +11075,8 @@
     "country": "United States",
     "location": "Christmas Island (Kiritimati), Line Islands",
     "coordinates": {
-      "lat": 1.6,
-      "lon": -157.3
+      "lat": 1.5718,
+      "lon": -157.3146
     },
     "date": "1962-05-12",
     "year": 1962,
@@ -11129,8 +11129,8 @@
     "country": "United States",
     "location": "Christmas Island (Kiritimati), Line Islands",
     "coordinates": {
-      "lat": 1.6,
-      "lon": -157.3
+      "lat": 1.6116,
+      "lon": -157.2681
     },
     "date": "1962-05-14",
     "year": 1962,
@@ -11183,8 +11183,8 @@
     "country": "United States",
     "location": "Christmas Island (Kiritimati), Line Islands",
     "coordinates": {
-      "lat": 1.6,
-      "lon": -157.3
+      "lat": 1.6137,
+      "lon": -157.3333
     },
     "date": "1962-05-19",
     "year": 1962,
@@ -11210,8 +11210,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37.12483,
-      "lon": -116.052
+      "lat": 37.1397,
+      "lon": -116.0723
     },
     "date": "1962-05-25",
     "year": 1962,
@@ -11237,8 +11237,8 @@
     "country": "United States",
     "location": "Christmas Island (Kiritimati), Line Islands",
     "coordinates": {
-      "lat": 1.6,
-      "lon": -157.3
+      "lat": 1.5656,
+      "lon": -157.2839
     },
     "date": "1962-05-25",
     "year": 1962,
@@ -11264,8 +11264,8 @@
     "country": "United States",
     "location": "Christmas Island (Kiritimati), Line Islands",
     "coordinates": {
-      "lat": 1.6,
-      "lon": -157.3
+      "lat": 1.638,
+      "lon": -157.2881
     },
     "date": "1962-05-27",
     "year": 1962,
@@ -11372,8 +11372,8 @@
     "country": "United States",
     "location": "Christmas Island (Kiritimati), Line Islands",
     "coordinates": {
-      "lat": 1.6,
-      "lon": -157.3
+      "lat": 1.5792,
+      "lon": -157.336
     },
     "date": "1962-06-09",
     "year": 1962,
@@ -11399,8 +11399,8 @@
     "country": "United States",
     "location": "Christmas Island (Kiritimati), Line Islands",
     "coordinates": {
-      "lat": 1.5,
-      "lon": -157.2
+      "lat": 1.5081,
+      "lon": -157.2089
     },
     "date": "1962-06-10",
     "year": 1962,
@@ -11426,8 +11426,8 @@
     "country": "United States",
     "location": "Christmas Island (Kiritimati), Line Islands",
     "coordinates": {
-      "lat": 1.5,
-      "lon": -157.2
+      "lat": 1.4831,
+      "lon": -157.1985
     },
     "date": "1962-06-12",
     "year": 1962,
@@ -11480,8 +11480,8 @@
     "country": "United States",
     "location": "Christmas Island (Kiritimati), Line Islands",
     "coordinates": {
-      "lat": 1.5,
-      "lon": -157.2
+      "lat": 1.5165,
+      "lon": -157.1873
     },
     "date": "1962-06-15",
     "year": 1962,
@@ -11507,8 +11507,8 @@
     "country": "United States",
     "location": "Christmas Island (Kiritimati), Line Islands",
     "coordinates": {
-      "lat": 1.6,
-      "lon": -157.3
+      "lat": 1.5907,
+      "lon": -157.2577
     },
     "date": "1962-06-17",
     "year": 1962,
@@ -11534,8 +11534,8 @@
     "country": "United States",
     "location": "Christmas Island (Kiritimati), Line Islands",
     "coordinates": {
-      "lat": 1.6,
-      "lon": -157.3
+      "lat": 1.6367,
+      "lon": -157.3258
     },
     "date": "1962-06-19",
     "year": 1962,
@@ -11588,8 +11588,8 @@
     "country": "United States",
     "location": "Christmas Island (Kiritimati), Line Islands",
     "coordinates": {
-      "lat": 1.6,
-      "lon": -157.3
+      "lat": 1.5539,
+      "lon": -157.306
     },
     "date": "1962-06-22",
     "year": 1962,
@@ -11831,8 +11831,8 @@
     "country": "United States",
     "location": "Christmas Island (Kiritimati), Line Islands",
     "coordinates": {
-      "lat": 1.6,
-      "lon": -157.3
+      "lat": 1.6309,
+      "lon": -157.2633
     },
     "date": "1962-07-10",
     "year": 1962,
@@ -11939,8 +11939,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 36.8,
-      "lon": -115.95
+      "lat": 36.7736,
+      "lon": -115.8982
     },
     "date": "1962-07-14",
     "year": 1962,
@@ -12020,8 +12020,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.2397,
+      "lon": 77.9636
     },
     "date": "1962-08-01",
     "year": 1962,
@@ -12047,8 +12047,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.8061,
+      "lon": 77.7734
     },
     "date": "1962-08-03",
     "year": 1962,
@@ -12074,8 +12074,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.0449,
+      "lon": 78.3733
     },
     "date": "1962-08-04",
     "year": 1962,
@@ -12101,8 +12101,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 74.2,
-      "lon": 52.5
+      "lat": 74.2236,
+      "lon": 52.4052
     },
     "date": "1962-08-05",
     "year": 1962,
@@ -12128,8 +12128,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.1298,
+      "lon": 77.6755
     },
     "date": "1962-08-07",
     "year": 1962,
@@ -12155,8 +12155,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 73.2178,
+      "lon": 54.8645
     },
     "date": "1962-08-10",
     "year": 1962,
@@ -12182,8 +12182,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.7618,
+      "lon": 78.1035
     },
     "date": "1962-08-18",
     "year": 1962,
@@ -12209,8 +12209,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.222,
+      "lon": 78.1751
     },
     "date": "1962-08-18",
     "year": 1962,
@@ -12263,8 +12263,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.9118,
+      "lon": 77.6353
     },
     "date": "1962-08-21",
     "year": 1962,
@@ -12290,8 +12290,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 72.8103,
+      "lon": 54.5917
     },
     "date": "1962-08-22",
     "year": 1962,
@@ -12317,8 +12317,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.9061,
+      "lon": 78.3638
     },
     "date": "1962-08-22",
     "year": 1962,
@@ -12371,8 +12371,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.2286,
+      "lon": 77.8293
     },
     "date": "1962-08-23",
     "year": 1962,
@@ -12452,8 +12452,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.7559,
+      "lon": 77.8849
     },
     "date": "1962-08-25",
     "year": 1962,
@@ -12479,8 +12479,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 73.06,
+      "lon": 55.7482
     },
     "date": "1962-08-25",
     "year": 1962,
@@ -12506,8 +12506,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.1308,
+      "lon": 78.3435
     },
     "date": "1962-08-27",
     "year": 1962,
@@ -12560,8 +12560,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.053,
+      "lon": 77.6069
     },
     "date": "1962-08-31",
     "year": 1962,
@@ -12587,8 +12587,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 73.1048,
+      "lon": 54.3016
     },
     "date": "1962-09-02",
     "year": 1962,
@@ -12641,8 +12641,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73.7,
-      "lon": 53.8
+      "lat": 73.7236,
+      "lon": 53.708
     },
     "date": "1962-09-08",
     "year": 1962,
@@ -12830,8 +12830,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 72.7823,
+      "lon": 55.276
     },
     "date": "1962-09-21",
     "year": 1962,
@@ -12857,8 +12857,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.789,
+      "lon": 78.2355
     },
     "date": "1962-09-22",
     "year": 1962,
@@ -12884,8 +12884,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.2593,
+      "lon": 78.0483
     },
     "date": "1962-09-24",
     "year": 1962,
@@ -12911,8 +12911,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.8288,
+      "lon": 77.6901
     },
     "date": "1962-09-25",
     "year": 1962,
@@ -12992,8 +12992,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.9917,
+      "lon": 78.4107
     },
     "date": "1962-09-28",
     "year": 1962,
@@ -13127,8 +13127,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 73.2175,
+      "lon": 55.3028
     },
     "date": "1962-10-07",
     "year": 1962,
@@ -13154,8 +13154,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.1855,
+      "lon": 77.7042
     },
     "date": "1962-10-09",
     "year": 1962,
@@ -13181,8 +13181,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 72.8983,
+      "lon": 54.2663
     },
     "date": "1962-10-09",
     "year": 1962,
@@ -13208,8 +13208,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.7333,
+      "lon": 78.0232
     },
     "date": "1962-10-10",
     "year": 1962,
@@ -13289,8 +13289,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.2079,
+      "lon": 78.2646
     },
     "date": "1962-10-13",
     "year": 1962,
@@ -13316,8 +13316,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.9614,
+      "lon": 77.5842
     },
     "date": "1962-10-14",
     "year": 1962,
@@ -13424,8 +13424,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.8471,
+      "lon": 78.349
     },
     "date": "1962-10-20",
     "year": 1962,
@@ -13478,8 +13478,8 @@
     "country": "Soviet Union",
     "location": "Kapustin Yar Missile Test Range, Astrakhan Oblast, Russia",
     "coordinates": {
-      "lat": 48,
-      "lon": 46
+      "lat": 48.0426,
+      "lon": 45.9829
     },
     "date": "1962-10-22",
     "year": 1962,
@@ -13559,8 +13559,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 72.9293,
+      "lon": 55.7843
     },
     "date": "1962-10-27",
     "year": 1962,
@@ -13613,8 +13613,8 @@
     "country": "United States",
     "location": "Johnston Atoll, North Pacific Ocean",
     "coordinates": {
-      "lat": 15,
-      "lon": -169
+      "lat": 15.0081,
+      "lon": -169.0092
     },
     "date": "1962-10-27",
     "year": 1962,
@@ -13640,8 +13640,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.2657,
+      "lon": 77.9028
     },
     "date": "1962-10-28",
     "year": 1962,
@@ -13667,8 +13667,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.7606,
+      "lon": 77.7914
     },
     "date": "1962-10-28",
     "year": 1962,
@@ -13694,8 +13694,8 @@
     "country": "Soviet Union",
     "location": "Kapustin Yar Missile Test Range, Astrakhan Oblast, Russia",
     "coordinates": {
-      "lat": 48,
-      "lon": 46
+      "lat": 47.9577,
+      "lon": 45.9672
     },
     "date": "1962-10-28",
     "year": 1962,
@@ -13721,8 +13721,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 73.2092,
+      "lon": 54.5806
     },
     "date": "1962-10-29",
     "year": 1962,
@@ -13748,8 +13748,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.0864,
+      "lon": 78.4074
     },
     "date": "1962-10-30",
     "year": 1962,
@@ -13775,8 +13775,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 72.7605,
+      "lon": 54.8241
     },
     "date": "1962-10-30",
     "year": 1962,
@@ -13829,8 +13829,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.1138,
+      "lon": 77.6068
     },
     "date": "1962-10-31",
     "year": 1962,
@@ -13856,8 +13856,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.7441,
+      "lon": 78.1712
     },
     "date": "1962-11-01",
     "year": 1962,
@@ -13883,8 +13883,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 73.1433,
+      "lon": 55.6901
     },
     "date": "1962-11-01",
     "year": 1962,
@@ -13910,8 +13910,8 @@
     "country": "Soviet Union",
     "location": "Kapustin Yar Missile Test Range, Astrakhan Oblast, Russia",
     "coordinates": {
-      "lat": 48,
-      "lon": 46
+      "lat": 48.0175,
+      "lon": 46.0715
     },
     "date": "1962-11-01",
     "year": 1962,
@@ -13964,8 +13964,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 73.0309,
+      "lon": 54.1517
     },
     "date": "1962-11-03",
     "year": 1962,
@@ -13991,8 +13991,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.2644,
+      "lon": 78.1434
     },
     "date": "1962-11-03",
     "year": 1962,
@@ -14018,8 +14018,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 72.8078,
+      "lon": 55.5595
     },
     "date": "1962-11-03",
     "year": 1962,
@@ -14045,8 +14045,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.8667,
+      "lon": 77.6145
     },
     "date": "1962-11-04",
     "year": 1962,
@@ -14099,8 +14099,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.9306,
+      "lon": 78.4265
     },
     "date": "1962-11-05",
     "year": 1962,
@@ -14153,8 +14153,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.2375,
+      "lon": 77.7573
     },
     "date": "1962-11-11",
     "year": 1962,
@@ -14180,8 +14180,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.7181,
+      "lon": 77.929
     },
     "date": "1962-11-13",
     "year": 1962,
@@ -14207,8 +14207,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.1779,
+      "lon": 78.3502
     },
     "date": "1962-11-14",
     "year": 1962,
@@ -14261,8 +14261,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.021,
+      "lon": 77.5527
     },
     "date": "1962-11-17",
     "year": 1962,
@@ -14288,8 +14288,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.7893,
+      "lon": 78.3092
     },
     "date": "1962-11-24",
     "year": 1962,
@@ -14315,8 +14315,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.291,
+      "lon": 77.9934
     },
     "date": "1962-11-26",
     "year": 1962,
@@ -14369,8 +14369,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.7816,
+      "lon": 77.6977
     },
     "date": "1962-12-01",
     "year": 1962,
@@ -14531,8 +14531,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 73.2546,
+      "lon": 55.0318
     },
     "date": "1962-12-18",
     "year": 1962,
@@ -14558,8 +14558,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 72.8168,
+      "lon": 54.3825
     },
     "date": "1962-12-18",
     "year": 1962,
@@ -14585,8 +14585,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 73.0133,
+      "lon": 55.8866
     },
     "date": "1962-12-20",
     "year": 1962,
@@ -14612,8 +14612,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 73.1668,
+      "lon": 54.3094
     },
     "date": "1962-12-22",
     "year": 1962,
@@ -14639,8 +14639,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 72.7383,
+      "lon": 55.1249
     },
     "date": "1962-12-23",
     "year": 1962,
@@ -14666,8 +14666,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 73.2195,
+      "lon": 55.517
     },
     "date": "1962-12-23",
     "year": 1962,
@@ -14693,8 +14693,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.03,
+      "lon": 78.4545
     },
     "date": "1962-12-23",
     "year": 1962,
@@ -14720,8 +14720,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 72.9397,
+      "lon": 54.1039
     },
     "date": "1962-12-23",
     "year": 1962,
@@ -14747,8 +14747,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.176,
+      "lon": 77.6317
     },
     "date": "1962-12-24",
     "year": 1962,
@@ -14774,8 +14774,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.709,
+      "lon": 78.0869
     },
     "date": "1962-12-24",
     "year": 1962,
@@ -14855,8 +14855,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 72.8664,
+      "lon": 55.8068
     },
     "date": "1962-12-25",
     "year": 1962,
@@ -15152,8 +15152,8 @@
     "country": "France",
     "location": "In Ekker Underground Test Site, Hoggar, Algeria",
     "coordinates": {
-      "lat": 24,
-      "lon": 5
+      "lat": 24.0122,
+      "lon": 4.9855
     },
     "date": "1963-03-18",
     "year": 1963,
@@ -15206,8 +15206,8 @@
     "country": "France",
     "location": "In Ekker Underground Test Site, Hoggar, Algeria",
     "coordinates": {
-      "lat": 24,
-      "lon": 5
+      "lat": 23.9746,
+      "lon": 5.0024
     },
     "date": "1963-03-30",
     "year": 1963,
@@ -15395,8 +15395,8 @@
     "country": "United States",
     "location": "Nellis Air Force Range, Nevada, USA",
     "coordinates": {
-      "lat": 37.2,
-      "lon": -116.1
+      "lat": 37.169,
+      "lon": -116.0966
     },
     "date": "1963-05-15",
     "year": 1963,
@@ -15503,8 +15503,8 @@
     "country": "United States",
     "location": "Nellis Air Force Range, Nevada, USA",
     "coordinates": {
-      "lat": 37.2,
-      "lon": -116.1
+      "lat": 37.2302,
+      "lon": -116.0709
     },
     "date": "1963-05-25",
     "year": 1963,
@@ -15665,8 +15665,8 @@
     "country": "United States",
     "location": "Nellis Air Force Range, Nevada, USA",
     "coordinates": {
-      "lat": 37.2,
-      "lon": -116.1
+      "lat": 37.1923,
+      "lon": -116.1544
     },
     "date": "1963-06-09",
     "year": 1963,
@@ -15800,8 +15800,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37,
-      "lon": -116
+      "lat": 36.969,
+      "lon": -115.9966
     },
     "date": "1963-08-23",
     "year": 1963,
@@ -15854,8 +15854,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37.1,
-      "lon": -116
+      "lat": 37.1149,
+      "lon": -116.0203
     },
     "date": "1963-09-13",
     "year": 1963,
@@ -16448,8 +16448,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37,
-      "lon": -116
+      "lat": 37.0302,
+      "lon": -115.971
     },
     "date": "1964-02-18",
     "year": 1964,
@@ -16826,8 +16826,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.2534,
+      "lon": 78.2428
     },
     "date": "1964-06-06",
     "year": 1964,
@@ -17042,8 +17042,8 @@
     "country": "United Kingdom",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37,
-      "lon": -116
+      "lat": 36.9923,
+      "lon": -116.0543
     },
     "date": "1964-07-17",
     "year": 1964,
@@ -17150,8 +17150,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.9182,
+      "lon": 77.5527
     },
     "date": "1964-08-18",
     "year": 1964,
@@ -17366,8 +17366,8 @@
     "country": "United Kingdom",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37,
-      "lon": -116
+      "lat": 36.9736,
+      "lon": -115.948
     },
     "date": "1964-09-25",
     "year": 1964,
@@ -17393,8 +17393,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.8655,
+      "lon": 78.4177
     },
     "date": "1964-09-30",
     "year": 1964,
@@ -17501,8 +17501,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37,
-      "lon": -116
+      "lat": 37.052,
+      "lon": -116.0175
     },
     "date": "1964-10-16",
     "year": 1964,
@@ -17663,8 +17663,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 49.7,
-      "lon": 78
+      "lat": 49.7189,
+      "lon": 77.9681
     },
     "date": "1964-11-16",
     "year": 1964,
@@ -17771,8 +17771,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37,
-      "lon": -116
+      "lat": 36.9483,
+      "lon": -116.0336
     },
     "date": "1964-12-16",
     "year": 1964,
@@ -17960,8 +17960,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.2817,
+      "lon": 77.8326
     },
     "date": "1965-02-04",
     "year": 1965,
@@ -18257,8 +18257,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.7184,
+      "lon": 77.8266
     },
     "date": "1965-03-27",
     "year": 1965,
@@ -18527,8 +18527,8 @@
     "country": "China",
     "location": "Lop Nur Test Base, Xinjiang, China",
     "coordinates": {
-      "lat": 41.5,
-      "lon": 89
+      "lat": 41.5216,
+      "lon": 88.9685
     },
     "date": "1965-05-14",
     "year": 1965,
@@ -18554,8 +18554,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37,
-      "lon": -116
+      "lat": 37.0213,
+      "lon": -115.9268
     },
     "date": "1965-05-14",
     "year": 1965,
@@ -18635,8 +18635,8 @@
     "country": "France",
     "location": "In Ekker Underground Test Site, Hoggar, Algeria",
     "coordinates": {
-      "lat": 24,
-      "lon": 5
+      "lat": 24.0247,
+      "lon": 5.0208
     },
     "date": "1965-05-30",
     "year": 1965,
@@ -18662,8 +18662,8 @@
     "country": "Soviet Union",
     "location": "Bashkortostan, Russia (PNE)",
     "coordinates": {
-      "lat": 53,
-      "lon": 56
+      "lat": 53.0122,
+      "lon": 55.9779
     },
     "date": "1965-06-10",
     "year": 1965,
@@ -19040,8 +19040,8 @@
     "country": "United Kingdom",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 36.98,
-      "lon": -115.99
+      "lat": 36.9949,
+      "lon": -116.0103
     },
     "date": "1965-09-10",
     "year": 1965,
@@ -19121,8 +19121,8 @@
     "country": "France",
     "location": "In Ekker Underground Test Site, Hoggar, Algeria",
     "coordinates": {
-      "lat": 24,
-      "lon": 5
+      "lat": 23.9937,
+      "lon": 4.9612
     },
     "date": "1965-10-01",
     "year": 1965,
@@ -19175,8 +19175,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.1329,
+      "lon": 78.4256
     },
     "date": "1965-10-14",
     "year": 1965,
@@ -19418,8 +19418,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 49.9,
-      "lon": 78.1
+      "lat": 49.9189,
+      "lon": 78.0679
     },
     "date": "1965-12-24",
     "year": 1965,
@@ -19634,8 +19634,8 @@
     "country": "France",
     "location": "In Ekker Underground Test Site, Hoggar, Algeria",
     "coordinates": {
-      "lat": 24,
-      "lon": 5
+      "lat": 23.9784,
+      "lon": 5.0372
     },
     "date": "1966-02-16",
     "year": 1966,
@@ -19931,8 +19931,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37.24267,
-      "lon": -116.43086
+      "lat": 37.2576,
+      "lon": -116.4513
     },
     "date": "1966-04-14",
     "year": 1966,
@@ -20201,8 +20201,8 @@
     "country": "China",
     "location": "Lop Nur Test Base, Xinjiang, China",
     "coordinates": {
-      "lat": 41.5,
-      "lon": 89
+      "lat": 41.4549,
+      "lon": 89.0053
     },
     "date": "1966-05-09",
     "year": 1966,
@@ -20579,8 +20579,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -21.9919,
+      "lon": -139.0095
     },
     "date": "1966-07-19",
     "year": 1966,
@@ -20606,8 +20606,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.0871,
+      "lon": 77.5446
     },
     "date": "1966-07-21",
     "year": 1966,
@@ -20633,8 +20633,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -22.0169,
+      "lon": -138.9984
     },
     "date": "1966-07-21",
     "year": 1966,
@@ -20822,8 +20822,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -21.9835,
+      "lon": -138.9864
     },
     "date": "1966-09-11",
     "year": 1966,
@@ -20903,8 +20903,8 @@
     "country": "France",
     "location": "Fangataufa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -22.0042,
+      "lon": -139.0255
     },
     "date": "1966-09-24",
     "year": 1966,
@@ -20984,8 +20984,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -22.0144,
+      "lon": -138.9756
     },
     "date": "1966-10-04",
     "year": 1966,
@@ -21065,8 +21065,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 73.26,
+      "lon": 54.7115
     },
     "date": "1966-10-27",
     "year": 1966,
@@ -21092,8 +21092,8 @@
     "country": "China",
     "location": "Lop Nur Test Base, Xinjiang, China",
     "coordinates": {
-      "lat": 41.5,
-      "lon": 89
+      "lat": 41.544,
+      "lon": 89.045
     },
     "date": "1966-10-27",
     "year": 1966,
@@ -21146,8 +21146,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.7369,
+      "lon": 78.2453
     },
     "date": "1966-10-29",
     "year": 1966,
@@ -21254,8 +21254,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.3018,
+      "lon": 78.096
     },
     "date": "1966-11-19",
     "year": 1966,
@@ -21308,8 +21308,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.8184,
+      "lon": 77.6105
     },
     "date": "1966-12-03",
     "year": 1966,
@@ -21335,8 +21335,8 @@
     "country": "United States",
     "location": "Salmon Site (Tatum Salt Dome), Hattiesburg, Mississippi, USA",
     "coordinates": {
-      "lat": 31.1421,
-      "lon": -89.5699
+      "lat": 31.1543,
+      "lon": -89.5854
     },
     "date": "1966-12-03",
     "year": 1966,
@@ -21470,8 +21470,8 @@
     "country": "China",
     "location": "Lop Nur Test Base, Xinjiang, China",
     "coordinates": {
-      "lat": 41.5,
-      "lon": 89
+      "lat": 41.4889,
+      "lon": 88.9159
     },
     "date": "1966-12-28",
     "year": 1966,
@@ -21605,8 +21605,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.9646,
+      "lon": 78.48
     },
     "date": "1967-01-30",
     "year": 1967,
@@ -22172,8 +22172,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -21.9716,
+      "lon": -139.0082
     },
     "date": "1967-06-05",
     "year": 1967,
@@ -22280,8 +22280,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -22.0282,
+      "lon": -139.0158
     },
     "date": "1967-06-27",
     "year": 1967,
@@ -22361,8 +22361,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -21.9884,
+      "lon": -138.9656
     },
     "date": "1967-07-02",
     "year": 1967,
@@ -22631,8 +22631,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.2354,
+      "lon": 77.682
     },
     "date": "1967-09-02",
     "year": 1967,
@@ -22739,8 +22739,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37.166,
-      "lon": -116.03842
+      "lat": 37.1809,
+      "lon": -116.0588
     },
     "date": "1967-09-21",
     "year": 1967,
@@ -23198,8 +23198,8 @@
     "country": "China",
     "location": "Lop Nur Test Base, Xinjiang, China",
     "coordinates": {
-      "lat": 41.5,
-      "lon": 89
+      "lat": 41.4616,
+      "lon": 89.0806
     },
     "date": "1967-12-24",
     "year": 1967,
@@ -24197,8 +24197,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -21.9863,
+      "lon": -139.0359
     },
     "date": "1968-07-07",
     "year": 1968,
@@ -24251,8 +24251,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -22.0344,
+      "lon": -138.9827
     },
     "date": "1968-07-15",
     "year": 1968,
@@ -24332,8 +24332,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -21.962,
+      "lon": -138.9872
     },
     "date": "1968-08-03",
     "year": 1968,
@@ -24791,8 +24791,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.6871,
+      "lon": 77.987
     },
     "date": "1968-10-21",
     "year": 1968,
@@ -24845,8 +24845,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.226,
+      "lon": 78.3398
     },
     "date": "1968-10-29",
     "year": 1968,
@@ -24926,8 +24926,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37,
-      "lon": -116
+      "lat": 37.0252,
+      "lon": -116.0764
     },
     "date": "1968-11-04",
     "year": 1968,
@@ -25277,8 +25277,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 49.7,
-      "lon": 78.1
+      "lat": 49.7189,
+      "lon": 78.0681
     },
     "date": "1968-12-18",
     "year": 1968,
@@ -25331,8 +25331,8 @@
     "country": "China",
     "location": "Lop Nur Test Base, Xinjiang, China",
     "coordinates": {
-      "lat": 41.5,
-      "lon": 89
+      "lat": 41.5757,
+      "lon": 88.9728
     },
     "date": "1968-12-27",
     "year": 1968,
@@ -25709,8 +25709,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.9808,
+      "lon": 77.51
     },
     "date": "1969-04-04",
     "year": 1969,
@@ -25736,8 +25736,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.8006,
+      "lon": 78.383
     },
     "date": "1969-04-13",
     "year": 1969,
@@ -25763,8 +25763,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37,
-      "lon": -116
+      "lat": 36.937,
+      "lon": -115.9631
     },
     "date": "1969-04-24",
     "year": 1969,
@@ -25925,8 +25925,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37,
-      "lon": -116
+      "lat": 37.0696,
+      "lon": -115.9727
     },
     "date": "1969-05-27",
     "year": 1969,
@@ -26033,8 +26033,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37,
-      "lon": -116
+      "lat": 36.9618,
+      "lon": -116.0826
     },
     "date": "1969-06-26",
     "year": 1969,
@@ -26168,8 +26168,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37.2,
-      "lon": -116.1
+      "lat": 37.1736,
+      "lon": -116.0479
     },
     "date": "1969-08-14",
     "year": 1969,
@@ -26330,8 +26330,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 49.77,
-      "lon": 78.03
+      "lat": 49.7889,
+      "lon": 77.998
     },
     "date": "1969-09-11",
     "year": 1969,
@@ -26411,8 +26411,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37,
-      "lon": -116
+      "lat": 36.983,
+      "lon": -115.903
     },
     "date": "1969-09-20",
     "year": 1969,
@@ -26519,8 +26519,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37,
-      "lon": -116
+      "lat": 37.0673,
+      "lon": -116.0593
     },
     "date": "1969-10-01",
     "year": 1969,
@@ -26762,8 +26762,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.3145,
+      "lon": 77.9269
     },
     "date": "1969-10-30",
     "year": 1969,
@@ -26870,8 +26870,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.7353,
+      "lon": 77.7223
     },
     "date": "1969-11-27",
     "year": 1969,
@@ -26978,8 +26978,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37,
-      "lon": -116
+      "lat": 36.9155,
+      "lon": -116.0137
     },
     "date": "1969-12-10",
     "year": 1969,
@@ -27005,8 +27005,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37,
-      "lon": -116
+      "lat": 37.0567,
+      "lon": -115.9157
     },
     "date": "1969-12-10",
     "year": 1969,
@@ -27356,8 +27356,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.0749,
+      "lon": 78.4848
     },
     "date": "1970-02-18",
     "year": 1970,
@@ -27815,8 +27815,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -22.0208,
+      "lon": -139.0388
     },
     "date": "1970-05-15",
     "year": 1970,
@@ -27896,8 +27896,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -22.0093,
+      "lon": -138.9544
     },
     "date": "1970-05-22",
     "year": 1970,
@@ -27977,8 +27977,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.1558,
+      "lon": 77.5622
     },
     "date": "1970-05-27",
     "year": 1970,
@@ -28004,8 +28004,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37,
-      "lon": -116
+      "lat": 37.0037,
+      "lon": -116.1135
     },
     "date": "1970-05-28",
     "year": 1970,
@@ -28085,8 +28085,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -21.9633,
+      "lon": -139.0279
     },
     "date": "1970-06-24",
     "year": 1970,
@@ -28166,8 +28166,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.6938,
+      "lon": 78.1597
     },
     "date": "1970-06-28",
     "year": 1970,
@@ -28274,8 +28274,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 49.82,
-      "lon": 78.18
+      "lat": 49.8389,
+      "lon": 78.148
     },
     "date": "1970-07-24",
     "year": 1970,
@@ -28301,8 +28301,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -22.0461,
+      "lon": -139.0064
     },
     "date": "1970-07-27",
     "year": 1970,
@@ -28328,8 +28328,8 @@
     "country": "France",
     "location": "Fangataufa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -21.9691,
+      "lon": -138.9604
     },
     "date": "1970-08-02",
     "year": 1970,
@@ -28355,8 +28355,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -21.998,
+      "lon": -139.0533
     },
     "date": "1970-08-06",
     "year": 1970,
@@ -28382,8 +28382,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.2962,
+      "lon": 78.2048
     },
     "date": "1970-09-06",
     "year": 1970,
@@ -28409,8 +28409,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 49.77,
-      "lon": 78.1
+      "lat": 49.7889,
+      "lon": 78.068
     },
     "date": "1970-09-06",
     "year": 1970,
@@ -28436,8 +28436,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37,
-      "lon": -116
+      "lat": 36.9342,
+      "lon": -115.9172
     },
     "date": "1970-10-13",
     "year": 1970,
@@ -28544,8 +28544,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37,
-      "lon": -116
+      "lat": 37.0958,
+      "lon": -116.0055
     },
     "date": "1970-10-28",
     "year": 1970,
@@ -28652,8 +28652,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37,
-      "lon": -116
+      "lat": 36.9245,
+      "lon": -116.0789
     },
     "date": "1970-12-03",
     "year": 1970,
@@ -28895,8 +28895,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.87,
+      "lon": 77.536
     },
     "date": "1971-01-29",
     "year": 1971,
@@ -28922,8 +28922,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.894,
+      "lon": 78.4805
     },
     "date": "1971-03-22",
     "year": 1971,
@@ -28949,8 +28949,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 49.7,
-      "lon": 78.2
+      "lat": 49.7189,
+      "lon": 78.1681
     },
     "date": "1971-03-22",
     "year": 1971,
@@ -29003,8 +29003,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.2878,
+      "lon": 77.7562
     },
     "date": "1971-04-09",
     "year": 1971,
@@ -29084,8 +29084,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -22.0359,
+      "lon": -138.9611
     },
     "date": "1971-06-05",
     "year": 1971,
@@ -29138,8 +29138,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -21.9477,
+      "lon": -139.0026
     },
     "date": "1971-06-12",
     "year": 1971,
@@ -29192,8 +29192,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 77.7
+      "lat": 50.0189,
+      "lon": 77.6679
     },
     "date": "1971-06-19",
     "year": 1971,
@@ -29408,8 +29408,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -22.0412,
+      "lon": -139.0371
     },
     "date": "1971-07-04",
     "year": 1971,
@@ -29570,8 +29570,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37,
-      "lon": -116
+      "lat": 37.0134,
+      "lon": -115.8749
     },
     "date": "1971-08-05",
     "year": 1971,
@@ -29624,8 +29624,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -21.9927,
+      "lon": -138.9412
     },
     "date": "1971-08-08",
     "year": 1971,
@@ -29894,8 +29894,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 77.7
+      "lat": 49.9606,
+      "lon": 77.7054
     },
     "date": "1971-10-09",
     "year": 1971,
@@ -30029,8 +30029,8 @@
     "country": "China",
     "location": "Lop Nur Test Base, Xinjiang, China",
     "coordinates": {
-      "lat": 41.5,
-      "lon": 89
+      "lat": 41.4249,
+      "lon": 88.9479
     },
     "date": "1971-11-18",
     "year": 1971,
@@ -30083,8 +30083,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 49.8,
-      "lon": 78.1
+      "lat": 49.8189,
+      "lon": 78.068
     },
     "date": "1971-11-29",
     "year": 1971,
@@ -30272,8 +30272,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.6807,
+      "lon": 77.8768
     },
     "date": "1971-12-30",
     "year": 1971,
@@ -30299,8 +30299,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 49.8,
-      "lon": 78.1
+      "lat": 49.7606,
+      "lon": 78.1054
     },
     "date": "1971-12-30",
     "year": 1971,
@@ -30353,8 +30353,8 @@
     "country": "China",
     "location": "Lop Nur Test Base, Xinjiang, China",
     "coordinates": {
-      "lat": 41.5,
-      "lon": 89
+      "lat": 41.531,
+      "lon": 89.1135
     },
     "date": "1972-01-07",
     "year": 1972,
@@ -30461,8 +30461,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 49.8,
-      "lon": 78.2
+      "lat": 49.8189,
+      "lon": 78.168
     },
     "date": "1972-03-10",
     "year": 1972,
@@ -30488,8 +30488,8 @@
     "country": "China",
     "location": "Lop Nur Test Base, Xinjiang, China",
     "coordinates": {
-      "lat": 41.5,
-      "lon": 89
+      "lat": 41.5366,
+      "lon": 88.8815
     },
     "date": "1972-03-18",
     "year": 1972,
@@ -30542,8 +30542,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 49.7,
-      "lon": 78.2
+      "lat": 49.6606,
+      "lon": 78.2054
     },
     "date": "1972-03-28",
     "year": 1972,
@@ -30677,8 +30677,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.1826,
+      "lon": 78.4279
     },
     "date": "1972-04-20",
     "year": 1972,
@@ -30839,8 +30839,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 49.8,
-      "lon": 78.2
+      "lat": 49.7606,
+      "lon": 78.2054
     },
     "date": "1972-06-07",
     "year": 1972,
@@ -30866,8 +30866,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -21.9679,
+      "lon": -139.0498
     },
     "date": "1972-06-25",
     "year": 1972,
@@ -30974,8 +30974,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -22.0561,
+      "lon": -138.9864
     },
     "date": "1972-06-30",
     "year": 1972,
@@ -31001,8 +31001,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 49.7,
-      "lon": 78
+      "lat": 49.6606,
+      "lon": 78.0054
     },
     "date": "1972-07-06",
     "year": 1972,
@@ -31109,8 +31109,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -21.949,
+      "lon": -138.9685
     },
     "date": "1972-07-27",
     "year": 1972,
@@ -31163,8 +31163,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -22.0182,
+      "lon": -139.0617
     },
     "date": "1972-07-31",
     "year": 1972,
@@ -31190,8 +31190,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37,
-      "lon": -116
+      "lat": 37.0589,
+      "lon": -116.1061
     },
     "date": "1972-08-09",
     "year": 1972,
@@ -31217,8 +31217,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 49.8,
-      "lon": 78.1
+      "lat": 49.8385,
+      "lon": 78.1457
     },
     "date": "1972-08-16",
     "year": 1972,
@@ -31271,8 +31271,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 49.98,
-      "lon": 78.89
+      "lat": 49.9989,
+      "lon": 78.8579
     },
     "date": "1972-08-26",
     "year": 1972,
@@ -31325,8 +31325,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 77.7
+      "lat": 50.0385,
+      "lon": 77.7459
     },
     "date": "1972-09-02",
     "year": 1972,
@@ -31568,8 +31568,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37,
-      "lon": -116
+      "lat": 36.8971,
+      "lon": -115.971
     },
     "date": "1972-11-17",
     "year": 1972,
@@ -31649,8 +31649,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 49.8,
-      "lon": 78.1
+      "lat": 49.7902,
+      "lon": 78.0146
     },
     "date": "1972-12-10",
     "year": 1972,
@@ -31757,8 +31757,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37,
-      "lon": -116
+      "lat": 37.0935,
+      "lon": -115.9329
     },
     "date": "1972-12-21",
     "year": 1972,
@@ -31811,8 +31811,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 49.8,
-      "lon": 78.1
+      "lat": 49.7664,
+      "lon": 78.1818
     },
     "date": "1972-12-28",
     "year": 1972,
@@ -31865,8 +31865,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 49.8,
-      "lon": 78.2
+      "lat": 49.8385,
+      "lon": 78.2457
     },
     "date": "1973-02-16",
     "year": 1973,
@@ -31973,8 +31973,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 77.7
+      "lat": 49.9902,
+      "lon": 77.6142
     },
     "date": "1973-04-19",
     "year": 1973,
@@ -32297,8 +32297,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37,
-      "lon": -116
+      "lat": 36.9666,
+      "lon": -116.1312
     },
     "date": "1973-06-28",
     "year": 1973,
@@ -32351,8 +32351,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 49.8,
-      "lon": 78.1
+      "lat": 49.8662,
+      "lon": 78.0724
     },
     "date": "1973-07-10",
     "year": 1973,
@@ -32378,8 +32378,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -22.0257,
+      "lon": -138.9401
     },
     "date": "1973-07-21",
     "year": 1973,
@@ -32405,8 +32405,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78.9
+      "lat": 50.0189,
+      "lon": 78.8679
     },
     "date": "1973-07-23",
     "year": 1973,
@@ -32432,8 +32432,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -21.9425,
+      "lon": -139.026
     },
     "date": "1973-07-28",
     "year": 1973,
@@ -32486,8 +32486,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -22.0598,
+      "lon": -139.0232
     },
     "date": "1973-08-18",
     "year": 1973,
@@ -32513,8 +32513,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -21.9699,
+      "lon": -138.9383
     },
     "date": "1973-08-24",
     "year": 1973,
@@ -32621,8 +32621,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -21.9832,
+      "lon": -139.0685
     },
     "date": "1973-09-13",
     "year": 1973,
@@ -32675,8 +32675,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.0513,
+      "lon": 77.4908
     },
     "date": "1973-09-20",
     "year": 1973,
@@ -32837,8 +32837,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 49.8,
-      "lon": 78.2
+      "lat": 49.7902,
+      "lon": 78.1146
     },
     "date": "1973-10-26",
     "year": 1973,
@@ -32918,8 +32918,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.7401,
+      "lon": 78.3227
     },
     "date": "1973-11-04",
     "year": 1973,
@@ -33107,8 +33107,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.3329,
+      "lon": 78.0353
     },
     "date": "1973-12-31",
     "year": 1973,
@@ -33134,8 +33134,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37,
-      "lon": -116
+      "lat": 36.9529,
+      "lon": -115.8725
     },
     "date": "1974-01-10",
     "year": 1974,
@@ -33215,8 +33215,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.7691,
+      "lon": 77.6228
     },
     "date": "1974-02-28",
     "year": 1974,
@@ -33296,8 +33296,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.0066,
+      "lon": 78.5226
     },
     "date": "1974-04-16",
     "year": 1974,
@@ -33485,8 +33485,8 @@
     "country": "United Kingdom",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37.1,
-      "lon": -116.1
+      "lat": 37.1149,
+      "lon": -116.1203
     },
     "date": "1974-05-23",
     "year": 1974,
@@ -33566,8 +33566,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -22.0562,
+      "lon": -138.961
     },
     "date": "1974-06-16",
     "year": 1974,
@@ -33674,8 +33674,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -21.9331,
+      "lon": -138.9876
     },
     "date": "1974-07-01",
     "year": 1974,
@@ -33701,8 +33701,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -22.0422,
+      "lon": -139.0588
     },
     "date": "1974-07-07",
     "year": 1974,
@@ -33809,8 +33809,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -22.0058,
+      "lon": -138.9248
     },
     "date": "1974-07-17",
     "year": 1974,
@@ -33863,8 +33863,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -21.9479,
+      "lon": -139.052
     },
     "date": "1974-07-25",
     "year": 1974,
@@ -33890,8 +33890,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -22.072,
+      "lon": -138.9996
     },
     "date": "1974-07-28",
     "year": 1974,
@@ -33917,8 +33917,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.2229,
+      "lon": 77.6064
     },
     "date": "1974-07-29",
     "year": 1974,
@@ -33998,8 +33998,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -21.9459,
+      "lon": -138.9471
     },
     "date": "1974-08-15",
     "year": 1974,
@@ -34025,8 +34025,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -22.0068,
+      "lon": -139.0794
     },
     "date": "1974-08-24",
     "year": 1974,
@@ -34160,8 +34160,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -22.0453,
+      "lon": -138.9356
     },
     "date": "1974-09-14",
     "year": 1974,
@@ -34457,8 +34457,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.6636,
+      "lon": 78.0562
     },
     "date": "1974-11-28",
     "year": 1974,
@@ -34619,8 +34619,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37,
-      "lon": -116
+      "lat": 37.1055,
+      "lon": -116.0553
     },
     "date": "1975-02-06",
     "year": 1975,
@@ -34700,8 +34700,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.2734,
+      "lon": 78.3131
     },
     "date": "1975-02-20",
     "year": 1975,
@@ -34808,8 +34808,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 49.76,
-      "lon": 78.23
+      "lat": 49.7789,
+      "lon": 78.198
     },
     "date": "1975-03-11",
     "year": 1975,
@@ -35240,8 +35240,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.9341,
+      "lon": 77.4801
     },
     "date": "1975-07-15",
     "year": 1975,
@@ -35402,8 +35402,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 49.98,
-      "lon": 78.89
+      "lat": 49.9406,
+      "lon": 78.8954
     },
     "date": "1975-10-05",
     "year": 1975,
@@ -35429,8 +35429,8 @@
     "country": "Soviet Union",
     "location": "Novaya Zemlya Test Proving Grounds, Russia",
     "coordinates": {
-      "lat": 73,
-      "lon": 55
+      "lat": 72.7493,
+      "lon": 54.6088
     },
     "date": "1975-10-18",
     "year": 1975,
@@ -35672,8 +35672,8 @@
     "country": "France",
     "location": "Fangataufa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -21.9253,
+      "lon": -139.0147
     },
     "date": "1975-11-26",
     "year": 1975,
@@ -35861,8 +35861,8 @@
     "country": "China",
     "location": "Lop Nur Test Base, Xinjiang, China",
     "coordinates": {
-      "lat": 41.5,
-      "lon": 89
+      "lat": 41.4083,
+      "lon": 89.0573
     },
     "date": "1976-01-23",
     "year": 1976,
@@ -36077,8 +36077,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.8222,
+      "lon": 78.4541
     },
     "date": "1976-03-17",
     "year": 1976,
@@ -36185,8 +36185,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -22.065,
+      "lon": -139.0441
     },
     "date": "1976-04-03",
     "year": 1976,
@@ -36212,8 +36212,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.3294,
+      "lon": 77.8515
     },
     "date": "1976-04-10",
     "year": 1976,
@@ -36455,8 +36455,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -21.9794,
+      "lon": -138.9191
     },
     "date": "1976-07-22",
     "year": 1976,
@@ -36644,8 +36644,8 @@
     "country": "China",
     "location": "Lop Nur Test Base, Xinjiang, China",
     "coordinates": {
-      "lat": 41.5,
-      "lon": 89
+      "lat": 41.6013,
+      "lon": 89.0424
     },
     "date": "1976-09-26",
     "year": 1976,
@@ -36968,8 +36968,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -21.9641,
+      "lon": -139.0755
     },
     "date": "1976-12-05",
     "year": 1976,
@@ -36995,8 +36995,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.6916,
+      "lon": 77.7626
     },
     "date": "1976-12-07",
     "year": 1976,
@@ -37184,8 +37184,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37,
-      "lon": -116
+      "lat": 36.8905,
+      "lon": -116.0493
     },
     "date": "1977-02-16",
     "year": 1977,
@@ -37238,8 +37238,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37,
-      "lon": -116
+      "lat": 37.0551,
+      "lon": -115.8687
     },
     "date": "1977-03-08",
     "year": 1977,
@@ -37292,8 +37292,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.1247,
+      "lon": 78.5008
     },
     "date": "1977-03-29",
     "year": 1977,
@@ -37346,8 +37346,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -22.0746,
+      "lon": -138.9702
     },
     "date": "1977-04-02",
     "year": 1977,
@@ -37535,8 +37535,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -21.9254,
+      "lon": -138.9673
     },
     "date": "1977-06-28",
     "year": 1977,
@@ -37616,8 +37616,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -22.0349,
+      "lon": -139.0793
     },
     "date": "1977-07-12",
     "year": 1977,
@@ -37805,8 +37805,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37,
-      "lon": -116
+      "lat": 37.0307,
+      "lon": -116.1459
     },
     "date": "1977-08-16",
     "year": 1977,
@@ -38048,8 +38048,8 @@
     "country": "China",
     "location": "Lop Nur Test Base, Xinjiang, China",
     "coordinates": {
-      "lat": 41.5,
-      "lon": 89
+      "lat": 41.4444,
+      "lon": 88.8719
     },
     "date": "1977-09-17",
     "year": 1977,
@@ -38156,8 +38156,8 @@
     "country": "Soviet Union",
     "location": "Azgir, West Kazakhstan (PNE)",
     "coordinates": {
-      "lat": 48,
-      "lon": 47
+      "lat": 48.0122,
+      "lon": 46.9802
     },
     "date": "1977-10-14",
     "year": 1977,
@@ -38210,8 +38210,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 49.78,
-      "lon": 78.16
+      "lat": 49.7989,
+      "lon": 78.128
     },
     "date": "1977-10-29",
     "year": 1977,
@@ -38264,8 +38264,8 @@
     "country": "Soviet Union",
     "location": "Azgir, West Kazakhstan (PNE)",
     "coordinates": {
-      "lat": 48,
-      "lon": 47
+      "lat": 47.9746,
+      "lon": 47.0033
     },
     "date": "1977-10-30",
     "year": 1977,
@@ -38345,8 +38345,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.1259,
+      "lon": 77.498
     },
     "date": "1977-11-12",
     "year": 1977,
@@ -38372,8 +38372,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -22.0242,
+      "lon": -138.9152
     },
     "date": "1977-11-12",
     "year": 1977,
@@ -38453,8 +38453,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.6882,
+      "lon": 78.2386
     },
     "date": "1977-11-27",
     "year": 1977,
@@ -38561,8 +38561,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -21.9283,
+      "lon": -139.0453
     },
     "date": "1977-12-17",
     "year": 1977,
@@ -38588,8 +38588,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.3346,
+      "lon": 78.1522
     },
     "date": "1977-12-26",
     "year": 1977,
@@ -38696,8 +38696,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -22.0821,
+      "lon": -139.019
     },
     "date": "1978-02-27",
     "year": 1978,
@@ -38723,8 +38723,8 @@
     "country": "China",
     "location": "Lop Nur Test Base, Xinjiang, China",
     "coordinates": {
-      "lat": 41.5,
-      "lon": 89
+      "lat": 41.4752,
+      "lon": 89.1505
     },
     "date": "1978-03-15",
     "year": 1978,
@@ -38885,8 +38885,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -21.9509,
+      "lon": -138.9254
     },
     "date": "1978-03-25",
     "year": 1978,
@@ -39074,8 +39074,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.8188,
+      "lon": 77.5347
     },
     "date": "1978-05-24",
     "year": 1978,
@@ -39155,8 +39155,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.9314,
+      "lon": 78.5353
     },
     "date": "1978-06-02",
     "year": 1978,
@@ -39209,8 +39209,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -21.9894,
+      "lon": -139.0917
     },
     "date": "1978-07-01",
     "year": 1978,
@@ -39317,8 +39317,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -22.0659,
+      "lon": -138.9395
     },
     "date": "1978-07-19",
     "year": 1978,
@@ -39344,8 +39344,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -21.9127,
+      "lon": -138.9966
     },
     "date": "1978-07-26",
     "year": 1978,
@@ -39560,8 +39560,8 @@
     "country": "Soviet Union",
     "location": "Azgir, West Kazakhstan (PNE)",
     "coordinates": {
-      "lat": 48,
-      "lon": 47
+      "lat": 48.0247,
+      "lon": 47.0283
     },
     "date": "1978-09-12",
     "year": 1978,
@@ -39695,8 +39695,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37,
-      "lon": -116
+      "lat": 36.897,
+      "lon": -115.917
     },
     "date": "1978-09-27",
     "year": 1978,
@@ -39992,8 +39992,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -22.0628,
+      "lon": -139.0668
     },
     "date": "1978-11-02",
     "year": 1978,
@@ -40046,8 +40046,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -21.9955,
+      "lon": -138.9041
     },
     "date": "1978-11-14",
     "year": 1978,
@@ -40073,8 +40073,8 @@
     "country": "United Kingdom",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37.13,
-      "lon": -116.08
+      "lat": 37.1449,
+      "lon": -116.1003
     },
     "date": "1978-11-18",
     "year": 1978,
@@ -40154,8 +40154,8 @@
     "country": "Soviet Union",
     "location": "Azgir, West Kazakhstan (PNE)",
     "coordinates": {
-      "lat": 48,
-      "lon": 47
+      "lat": 47.9937,
+      "lon": 46.947
     },
     "date": "1978-11-30",
     "year": 1978,
@@ -40235,8 +40235,8 @@
     "country": "China",
     "location": "Lop Nur Test Base, Xinjiang, China",
     "coordinates": {
-      "lat": 41.5,
-      "lon": 89
+      "lat": 41.5979,
+      "lon": 88.9081
     },
     "date": "1978-12-14",
     "year": 1978,
@@ -40316,8 +40316,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -21.9428,
+      "lon": -139.0747
     },
     "date": "1978-12-17",
     "year": 1978,
@@ -40424,8 +40424,8 @@
     "country": "Soviet Union",
     "location": "Azgir, West Kazakhstan (PNE)",
     "coordinates": {
-      "lat": 48,
-      "lon": 47
+      "lat": 47.9784,
+      "lon": 47.0508
     },
     "date": "1979-01-10",
     "year": 1979,
@@ -40613,8 +40613,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -22.0897,
+      "lon": -138.9865
     },
     "date": "1979-03-01",
     "year": 1979,
@@ -40640,8 +40640,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -21.9247,
+      "lon": -138.9441
     },
     "date": "1979-03-09",
     "year": 1979,
@@ -40694,8 +40694,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.2839,
+      "lon": 77.6764
     },
     "date": "1979-03-23",
     "year": 1979,
@@ -40748,8 +40748,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -22.0207,
+      "lon": -139.0969
     },
     "date": "1979-04-04",
     "year": 1979,
@@ -40775,8 +40775,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.649,
+      "lon": 77.9401
     },
     "date": "1979-04-10",
     "year": 1979,
@@ -40910,8 +40910,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.2335,
+      "lon": 78.4143
     },
     "date": "1979-06-12",
     "year": 1979,
@@ -41126,8 +41126,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.0078,
+      "lon": 77.4474
     },
     "date": "1979-07-18",
     "year": 1979,
@@ -41477,8 +41477,8 @@
     "country": "China",
     "location": "Lop Nur Test Base, Xinjiang, China",
     "coordinates": {
-      "lat": 41.5,
-      "lon": 89
+      "lat": 41.3771,
+      "lon": 88.9787
     },
     "date": "1979-09-13",
     "year": 1979,
@@ -41666,8 +41666,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 49.81,
-      "lon": 78.13
+      "lat": 49.8289,
+      "lon": 78.098
     },
     "date": "1979-10-18",
     "year": 1979,
@@ -41774,8 +41774,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -22.0458,
+      "lon": -138.9128
     },
     "date": "1979-11-19",
     "year": 1979,
@@ -41801,8 +41801,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -21.9109,
+      "lon": -139.0312
     },
     "date": "1979-11-22",
     "year": 1979,
@@ -41990,8 +41990,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -22.086,
+      "lon": -139.0423
     },
     "date": "1980-02-23",
     "year": 1980,
@@ -42044,8 +42044,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -21.9628,
+      "lon": -138.9054
     },
     "date": "1980-03-03",
     "year": 1980,
@@ -42098,8 +42098,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.7536,
+      "lon": 78.4006
     },
     "date": "1980-03-14",
     "year": 1980,
@@ -42233,8 +42233,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22.1,
-      "lon": -138.7
+      "lat": -22.0919,
+      "lon": -138.7096
     },
     "date": "1980-04-04",
     "year": 1980,
@@ -42557,8 +42557,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -21.9679,
+      "lon": -139.0976
     },
     "date": "1980-06-21",
     "year": 1980,
@@ -42638,8 +42638,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 49.98,
-      "lon": 78.89
+      "lat": 50.0185,
+      "lon": 78.9359
     },
     "date": "1980-06-25",
     "year": 1980,
@@ -42746,8 +42746,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -21.86,
-      "lon": -139
+      "lat": -21.8519,
+      "lon": -139.0095
     },
     "date": "1980-07-19",
     "year": 1980,
@@ -43070,8 +43070,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.3567,
+      "lon": 77.9635
     },
     "date": "1980-10-23",
     "year": 1980,
@@ -43097,8 +43097,8 @@
     "country": "United Kingdom",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37.1,
-      "lon": -116
+      "lat": 37.069,
+      "lon": -115.9966
     },
     "date": "1980-10-24",
     "year": 1980,
@@ -43205,8 +43205,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -22.0854,
+      "lon": -138.951
     },
     "date": "1980-11-25",
     "year": 1980,
@@ -43259,8 +43259,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.7203,
+      "lon": 77.651
     },
     "date": "1980-12-05",
     "year": 1980,
@@ -43286,8 +43286,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.0549,
+      "lon": 78.553
     },
     "date": "1980-12-05",
     "year": 1980,
@@ -43529,8 +43529,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -21.9056,
+      "lon": -138.9737
     },
     "date": "1981-02-27",
     "year": 1981,
@@ -43556,8 +43556,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -22.0535,
+      "lon": -139.0888
     },
     "date": "1981-03-06",
     "year": 1981,
@@ -43583,8 +43583,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.2002,
+      "lon": 77.5331
     },
     "date": "1981-03-25",
     "year": 1981,
@@ -43637,8 +43637,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 49.98,
-      "lon": 79.02
+      "lat": 49.9989,
+      "lon": 78.9879
     },
     "date": "1981-03-29",
     "year": 1981,
@@ -43826,8 +43826,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.6486,
+      "lon": 78.1342
     },
     "date": "1981-06-04",
     "year": 1981,
@@ -43961,8 +43961,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -22.0163,
+      "lon": -138.8947
     },
     "date": "1981-07-11",
     "year": 1981,
@@ -44042,8 +44042,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -21.9215,
+      "lon": -139.0662
     },
     "date": "1981-07-18",
     "year": 1981,
@@ -44393,8 +44393,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.3183,
+      "lon": 78.2711
     },
     "date": "1981-10-16",
     "year": 1981,
@@ -44474,8 +44474,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -22.1001,
+      "lon": -139.0084
     },
     "date": "1981-11-06",
     "year": 1981,
@@ -44906,8 +44906,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -21.931,
+      "lon": -138.9203
     },
     "date": "1982-02-20",
     "year": 1982,
@@ -44933,8 +44933,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -22.001,
+      "lon": -139.1098
     },
     "date": "1982-02-24",
     "year": 1982,
@@ -44987,8 +44987,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -22.0685,
+      "lon": -138.9177
     },
     "date": "1982-03-23",
     "year": 1982,
@@ -45014,8 +45014,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -21.8973,
+      "lon": -139.0108
     },
     "date": "1982-03-31",
     "year": 1982,
@@ -45257,8 +45257,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -22.0831,
+      "lon": -139.0673
     },
     "date": "1982-06-27",
     "year": 1982,
@@ -45338,8 +45338,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -21.9808,
+      "lon": -138.8891
     },
     "date": "1982-07-21",
     "year": 1982,
@@ -45662,8 +45662,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37.21202,
-      "lon": -116.20677
+      "lat": 37.2269,
+      "lon": -116.2272
     },
     "date": "1982-09-23",
     "year": 1982,
@@ -45986,8 +45986,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -21.9444,
+      "lon": -139.0964
     },
     "date": "1982-11-27",
     "year": 1982,
@@ -46175,8 +46175,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.8826,
+      "lon": 77.464
     },
     "date": "1983-03-11",
     "year": 1983,
@@ -46229,8 +46229,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 49.8,
-      "lon": 78.12
+      "lat": 49.8189,
+      "lon": 78.088
     },
     "date": "1983-03-30",
     "year": 1983,
@@ -46364,8 +46364,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -22.1021,
+      "lon": -138.9693
     },
     "date": "1983-04-25",
     "year": 1983,
@@ -46391,8 +46391,8 @@
     "country": "China",
     "location": "Lop Nur Test Base, Xinjiang, China",
     "coordinates": {
-      "lat": 41.5,
-      "lon": 89
+      "lat": 41.5825,
+      "lon": 89.1307
     },
     "date": "1983-05-04",
     "year": 1983,
@@ -46607,8 +46607,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -21.9049,
+      "lon": -138.948
     },
     "date": "1983-06-18",
     "year": 1983,
@@ -46769,8 +46769,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -22.0378,
+      "lon": -139.1083
     },
     "date": "1983-07-20",
     "year": 1983,
@@ -46985,8 +46985,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37,
-      "lon": -116
+      "lat": 37.1227,
+      "lon": -115.9736
     },
     "date": "1983-09-21",
     "year": 1983,
@@ -47363,8 +47363,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.8534,
+      "lon": 78.5201
     },
     "date": "1983-11-02",
     "year": 1983,
@@ -47417,8 +47417,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.3349,
+      "lon": 77.7699
     },
     "date": "1983-11-29",
     "year": 1983,
@@ -47471,8 +47471,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -22.0402,
+      "lon": -138.8919
     },
     "date": "1983-12-03",
     "year": 1983,
@@ -47498,8 +47498,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -21.902,
+      "lon": -139.0507
     },
     "date": "1983-12-07",
     "year": 1983,
@@ -47849,8 +47849,8 @@
     "country": "United Kingdom",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37,
-      "lon": -116
+      "lat": 36.9226,
+      "lon": -116.1251
     },
     "date": "1984-05-01",
     "year": 1984,
@@ -47903,8 +47903,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -21.83,
-      "lon": -138.9
+      "lat": -21.8219,
+      "lon": -138.9095
     },
     "date": "1984-05-08",
     "year": 1984,
@@ -48038,8 +48038,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -21.83,
-      "lon": -138.9
+      "lat": -21.8469,
+      "lon": -138.8984
     },
     "date": "1984-06-12",
     "year": 1984,
@@ -48443,8 +48443,8 @@
     "country": "Soviet Union",
     "location": "Perm Krai, Russia (PNE)",
     "coordinates": {
-      "lat": 61,
-      "lon": 58
+      "lat": 61.0122,
+      "lon": 57.9726
     },
     "date": "1984-08-28",
     "year": 1984,
@@ -48794,8 +48794,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -21.83,
-      "lon": -138.9
+      "lat": -21.8135,
+      "lon": -138.8864
     },
     "date": "1984-10-27",
     "year": 1984,
@@ -48821,8 +48821,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -21.83,
-      "lon": -138.9
+      "lat": -21.8342,
+      "lon": -138.9255
     },
     "date": "1984-11-02",
     "year": 1984,
@@ -48875,8 +48875,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 49.82,
-      "lon": 78.1
+      "lat": 49.8389,
+      "lon": 78.068
     },
     "date": "1984-11-23",
     "year": 1984,
@@ -48902,8 +48902,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -22.1046,
+      "lon": -139.0342
     },
     "date": "1984-12-01",
     "year": 1984,
@@ -48956,8 +48956,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -21.83,
-      "lon": -138.9
+      "lat": -21.8444,
+      "lon": -138.8756
     },
     "date": "1984-12-06",
     "year": 1984,
@@ -49064,8 +49064,8 @@
     "country": "China",
     "location": "Lop Nur Test Base, Xinjiang, China",
     "coordinates": {
-      "lat": 41.5,
-      "lon": 89
+      "lat": 41.5055,
+      "lon": 88.824
     },
     "date": "1984-12-19",
     "year": 1984,
@@ -49307,8 +49307,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -21.83,
-      "lon": -138.9
+      "lat": -21.8016,
+      "lon": -138.9082
     },
     "date": "1985-04-30",
     "year": 1985,
@@ -49361,8 +49361,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -21.83,
-      "lon": -138.9
+      "lat": -21.8582,
+      "lon": -138.9158
     },
     "date": "1985-05-08",
     "year": 1985,
@@ -49388,8 +49388,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -21.83,
-      "lon": -138.9
+      "lat": -21.8184,
+      "lon": -138.8657
     },
     "date": "1985-06-03",
     "year": 1985,
@@ -49415,8 +49415,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -21.83,
-      "lon": -138.9
+      "lat": -21.8163,
+      "lon": -138.9358
     },
     "date": "1985-06-07",
     "year": 1985,
@@ -49496,8 +49496,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 79
+      "lat": 50.0189,
+      "lon": 78.9679
     },
     "date": "1985-06-15",
     "year": 1985,
@@ -49577,8 +49577,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 79
+      "lat": 49.9606,
+      "lon": 79.0054
     },
     "date": "1985-06-30",
     "year": 1985,
@@ -49604,8 +49604,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.6521,
+      "lon": 77.8172
     },
     "date": "1985-07-11",
     "year": 1985,
@@ -49658,8 +49658,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.1777,
+      "lon": 78.5019
     },
     "date": "1985-07-19",
     "year": 1985,
@@ -49685,8 +49685,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 79
+      "lat": 50.0385,
+      "lon": 79.0459
     },
     "date": "1985-07-20",
     "year": 1985,
@@ -49712,8 +49712,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 79
+      "lat": 49.9902,
+      "lon": 78.9142
     },
     "date": "1985-07-25",
     "year": 1985,
@@ -49928,8 +49928,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -21.9439,
+      "lon": -138.898
     },
     "date": "1985-10-24",
     "year": 1985,
@@ -49955,8 +49955,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -21.9773,
+      "lon": -139.1168
     },
     "date": "1985-10-26",
     "year": 1985,
@@ -50009,8 +50009,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -22.0904,
+      "lon": -138.93
     },
     "date": "1985-11-24",
     "year": 1985,
@@ -50036,8 +50036,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -21.8889,
+      "lon": -138.9857
     },
     "date": "1985-11-26",
     "year": 1985,
@@ -50252,8 +50252,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -22.0734,
+      "lon": -139.0921
     },
     "date": "1986-05-06",
     "year": 1986,
@@ -50306,8 +50306,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -22.0036,
+      "lon": -138.878
     },
     "date": "1986-05-27",
     "year": 1986,
@@ -50576,8 +50576,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -21.9205,
+      "lon": -139.0879
     },
     "date": "1986-11-10",
     "year": 1986,
@@ -50657,8 +50657,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -22.1143,
+      "lon": -138.9931
     },
     "date": "1986-12-06",
     "year": 1986,
@@ -50792,8 +50792,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.0872,
+      "lon": 77.4416
     },
     "date": "1987-02-26",
     "year": 1987,
@@ -50819,8 +50819,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 79
+      "lat": 49.9664,
+      "lon": 79.0822
     },
     "date": "1987-03-12",
     "year": 1987,
@@ -50873,8 +50873,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 49.6924,
+      "lon": 78.3211
     },
     "date": "1987-04-03",
     "year": 1987,
@@ -50900,8 +50900,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 79
+      "lat": 50.0662,
+      "lon": 78.9723
     },
     "date": "1987-04-03",
     "year": 1987,
@@ -51089,8 +51089,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -21.9109,
+      "lon": -138.9214
     },
     "date": "1987-05-05",
     "year": 1987,
@@ -51143,8 +51143,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -22.0165,
+      "lon": -139.1235
     },
     "date": "1987-05-20",
     "year": 1987,
@@ -51224,8 +51224,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -22.0655,
+      "lon": -138.8963
     },
     "date": "1987-06-06",
     "year": 1987,
@@ -51683,8 +51683,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 49.79,
-      "lon": 78.14
+      "lat": 49.8089,
+      "lon": 78.108
     },
     "date": "1987-10-16",
     "year": 1987,
@@ -51737,8 +51737,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -21.8861,
+      "lon": -139.0289
     },
     "date": "1987-10-23",
     "year": 1987,
@@ -51845,8 +51845,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -22.1026,
+      "lon": -139.062
     },
     "date": "1987-11-29",
     "year": 1987,
@@ -52439,8 +52439,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37.16616,
-      "lon": -116.07224
+      "lat": 37.181,
+      "lon": -116.0926
     },
     "date": "1988-06-22",
     "year": 1988,
@@ -52763,8 +52763,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -21.963,
+      "lon": -138.8789
     },
     "date": "1988-10-25",
     "year": 1988,
@@ -52817,8 +52817,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37,
-      "lon": -116
+      "lat": 36.9894,
+      "lon": -115.8399
     },
     "date": "1988-11-09",
     "year": 1988,
@@ -52979,8 +52979,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37,
-      "lon": -116
+      "lat": 37.0955,
+      "lon": -116.1107
     },
     "date": "1988-12-09",
     "year": 1988,
@@ -53060,8 +53060,8 @@
     "country": "Soviet Union",
     "location": "Semipalatinsk Test Site (Polygon), Kazakhstan",
     "coordinates": {
-      "lat": 50,
-      "lon": 78
+      "lat": 50.3673,
+      "lon": 78.0867
     },
     "date": "1988-12-28",
     "year": 1988,
@@ -53303,8 +53303,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -21,
-      "lon": -139
+      "lat": -20.9919,
+      "lon": -139.0095
     },
     "date": "1989-05-20",
     "year": 1989,
@@ -53735,8 +53735,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -22,
-      "lon": -139
+      "lat": -21.9512,
+      "lon": -139.1168
     },
     "date": "1989-11-25",
     "year": 1989,
@@ -53816,8 +53816,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37,
-      "lon": -116
+      "lat": 36.868,
+      "lon": -115.9992
     },
     "date": "1989-12-20",
     "year": 1989,
@@ -54140,8 +54140,8 @@
     "country": "United States",
     "location": "Nevada Test Site, USA",
     "coordinates": {
-      "lat": 37,
-      "lon": -116
+      "lat": 37.0991,
+      "lon": -115.8874
     },
     "date": "1990-09-20",
     "year": 1990,
@@ -54410,8 +54410,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -21,
-      "lon": -138
+      "lat": -20.9919,
+      "lon": -138.0095
     },
     "date": "1991-05-07",
     "year": 1991,
@@ -54518,8 +54518,8 @@
     "country": "France",
     "location": "Moruroa Atoll, French Polynesia",
     "coordinates": {
-      "lat": -21,
-      "lon": -138
+      "lat": -21.0169,
+      "lon": -137.9984
     },
     "date": "1991-07-05",
     "year": 1991,
