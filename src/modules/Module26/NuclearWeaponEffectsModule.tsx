@@ -14,20 +14,24 @@ interface WeaponPreset {
   id: string;
   name: string;
   yieldKt: number;
-  burstType: 'surface' | 'air';
+  burstType: 'surface' | 'air' | 'underground';
+  defaultHobM?: number;
   description: string;
 }
 
 const WEAPON_PRESETS: WeaponPreset[] = [
-  { id: 'davy_crockett', name: '💥 0.02 kT (W54 Davy Crockett Man-Portable)', yieldKt: 0.02, burstType: 'surface', description: 'Sub-kiloton tactical nuclear weapon. Prompt radiation exceeds blast radius.' },
-  { id: 'suitcase_1kt', name: '💣 1.0 kT Improvised Nuclear Device (IND)', yieldKt: 1.0, burstType: 'surface', description: 'Terrorist/improvised ground-level urban detonation with devastating local blast.' },
-  { id: 'hiroshima_15kt', name: '🏙️ 15 kT Gun-Type Fission (Hiroshima Little Boy)', yieldKt: 15, burstType: 'air', description: 'Air burst at 600m. Optimal blast overpressure and devastating incendiary firestorm.' },
-  { id: 'nagasaki_21kt', name: '☢️ 21 kT Implosion Plutonium (Nagasaki Fat Man)', yieldKt: 21, burstType: 'air', description: 'Air burst at 503m altitude over industrial valley.' },
-  { id: 'w76_100kt', name: '🚀 100 kT SLBM Warhead (Trident D5 / W76)', yieldKt: 100, burstType: 'air', description: 'Modern submarine-launched ballistic missile warhead.' },
-  { id: 'w87_300kt', name: '🌋 300 kT ICBM Warhead (Minuteman III / W87)', yieldKt: 300, burstType: 'air', description: 'Modern silo-based thermonuclear warhead with secondary fusion stage.' },
-  { id: 'b83_1200kt', name: '☄️ 1,200 kT (1.2 MT) Strategic Bomb (B83)', yieldKt: 1200, burstType: 'surface', description: 'Maximum yield US gravity bomb. Subsurface cratering and multi-mile devastation.' },
-  { id: 'castle_bravo_15mt', name: '🏝️ 15,000 kT (15 MT) Castle Bravo (Bikini)', yieldKt: 15000, burstType: 'surface', description: 'Largest US detonation in history. Thermonuclear dry-fuel lithium deuteride surface burst.' },
-  { id: 'tsar_bomba_50mt', name: '👑 50,000 kT (50 MT) Tsar Bomba (RDS-220)', yieldKt: 50000, burstType: 'air', description: 'Largest human detonation in history. Atmospheric cloud penetrated into mesosphere (64 km).' }
+  { id: 'davy_crockett', name: '💥 0.02 kT (W54 Davy Crockett Man-Portable)', yieldKt: 0.02, burstType: 'surface', defaultHobM: 0, description: 'Sub-kiloton tactical nuclear weapon. Prompt radiation exceeds blast radius.' },
+  { id: 'b61_12_epw', name: '⛏️ 0.3 kT Earth-Penetrating Bunker Buster (B61-12 EPW)', yieldKt: 0.3, burstType: 'underground', defaultHobM: -30, description: 'Subterranean earth-penetrating strike (-30m DOB). Deep shockwave coupling and throw-out crater.' },
+  { id: 'suitcase_1kt', name: '💣 1.0 kT Improvised Nuclear Device (IND)', yieldKt: 1.0, burstType: 'surface', defaultHobM: 0, description: 'Terrorist/improvised ground-level urban detonation with devastating local blast.' },
+  { id: 'hiroshima_15kt', name: '🏙️ 15 kT Gun-Type Fission (Hiroshima Little Boy)', yieldKt: 15, burstType: 'air', defaultHobM: 600, description: 'Air burst at 600m. Optimal blast overpressure and devastating incendiary firestorm.' },
+  { id: 'nagasaki_21kt', name: '☢️ 21 kT Implosion Plutonium (Nagasaki Fat Man)', yieldKt: 21, burstType: 'air', defaultHobM: 503, description: 'Air burst at 503m altitude over industrial valley.' },
+  { id: 'w76_100kt', name: '🚀 100 kT SLBM Warhead (Trident D5 / W76)', yieldKt: 100, burstType: 'air', defaultHobM: 650, description: 'Modern submarine-launched ballistic missile warhead.' },
+  { id: 'sedan_104kt', name: '🕳️ 104 kT Shallow Subterranean Cratering (Storax Sedan)', yieldKt: 104, burstType: 'underground', defaultHobM: -194, description: 'Plowshare underground cratering test at -194m depth. Excavated 390m wide, 98m deep crater.' },
+  { id: 'punggye_250kt', name: '🪨 250 kT Deep Underground Contained (Mt. Mantap Tunnel)', yieldKt: 250, burstType: 'underground', defaultHobM: -550, description: 'Fully contained subterranean detonation at -550m depth. Vaporized rock cavity and collapse chimney.' },
+  { id: 'w87_300kt', name: '🌋 300 kT ICBM Warhead (Minuteman III / W87)', yieldKt: 300, burstType: 'air', defaultHobM: 940, description: 'Modern silo-based thermonuclear warhead with secondary fusion stage.' },
+  { id: 'b83_1200kt', name: '☄️ 1,200 kT (1.2 MT) Strategic Bomb (B83)', yieldKt: 1200, burstType: 'surface', defaultHobM: 0, description: 'Maximum yield US gravity bomb. Subsurface cratering and multi-mile devastation.' },
+  { id: 'castle_bravo_15mt', name: '🏝️ 15,000 kT (15 MT) Castle Bravo (Bikini)', yieldKt: 15000, burstType: 'surface', defaultHobM: 0, description: 'Largest US detonation in history. Thermonuclear dry-fuel lithium deuteride surface burst.' },
+  { id: 'tsar_bomba_50mt', name: '👑 50,000 kT (50 MT) Tsar Bomba (RDS-220)', yieldKt: 50000, burstType: 'air', defaultHobM: 4000, description: 'Largest human detonation in history. Atmospheric cloud penetrated into mesosphere (64 km).' }
 ];
 
 export const NuclearWeaponEffectsModule: React.FC = () => {
@@ -36,7 +40,7 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
   const [activeTab, setActiveTab] = useState<NukeTab>('visual_detonation');
   const [selectedPresetId, setSelectedPresetId] = useState<string>('hiroshima_15kt');
   const [customYieldKt, setCustomYieldKt] = useState<number>(15.0);
-  const [burstMode, setBurstMode] = useState<'surface' | 'air'>('air');
+  const [burstMode, setBurstMode] = useState<'surface' | 'air' | 'underground'>('air');
   const [burstAltitudeM, setBurstAltitudeM] = useState<number>(600);
   const [atmosphericVisibilityKm, setAtmosphericVisibilityKm] = useState<number>(20);
   const [targetDistanceKm, setTargetDistanceKm] = useState<number>(2.0);
@@ -46,18 +50,57 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
     return searchParams.get('city') || searchParams.get('preset') || undefined;
   }, [searchParams]);
 
+  // Unified handler that keeps burstAltitudeM and burstMode strictly synchronized
+  const handleBurstAltitudeChange = (newAltM: number) => {
+    const clamped = Math.max(-2500, Math.min(100000, Math.round(newAltM)));
+    setBurstAltitudeM(clamped);
+    if (clamped < 0) {
+      setBurstMode('underground');
+    } else if (clamped === 0) {
+      setBurstMode('surface');
+    } else {
+      setBurstMode('air');
+    }
+  };
+
+  const handleBurstModeChange = (mode: 'surface' | 'air' | 'underground') => {
+    setBurstMode(mode);
+    if (mode === 'surface') {
+      setBurstAltitudeM(0);
+    } else if (mode === 'underground') {
+      if (burstAltitudeM >= 0) {
+        // Default to optimal shallow/intermediate subterranean depth (~45 * Y^(1/3) m)
+        setBurstAltitudeM(-Math.max(25, Math.min(1500, Math.round(45 * Math.pow(customYieldKt, 1 / 3)))));
+      }
+    } else {
+      if (burstAltitudeM <= 0) {
+        setBurstAltitudeM(Math.round(140 * Math.pow(customYieldKt, 1 / 3)));
+      }
+    }
+  };
+
   useEffect(() => {
     const yieldParam = searchParams.get('yieldKt');
     const burstParam = searchParams.get('burstMode');
+    const hobParam = searchParams.get('hob');
     const nameParam = searchParams.get('name');
 
     if (yieldParam) {
       const y = parseFloat(yieldParam);
       if (!isNaN(y) && y > 0) {
         setCustomYieldKt(y);
-        const mode = burstParam === 'surface' ? 'surface' : 'air';
+        const mode: 'surface' | 'air' | 'underground' =
+          burstParam === 'underground' ? 'underground' : burstParam === 'surface' ? 'surface' : 'air';
         setBurstMode(mode);
-        setBurstAltitudeM(mode === 'surface' ? 0 : Math.round(140 * Math.pow(y, 1 / 3)));
+        if (hobParam !== null && !isNaN(parseFloat(hobParam))) {
+          setBurstAltitudeM(Math.round(parseFloat(hobParam)));
+        } else if (mode === 'underground') {
+          setBurstAltitudeM(-Math.max(30, Math.min(1200, Math.round(65 * Math.pow(y, 1 / 3)))));
+        } else if (mode === 'surface') {
+          setBurstAltitudeM(0);
+        } else {
+          setBurstAltitudeM(Math.round(140 * Math.pow(y, 1 / 3)));
+        }
         if (nameParam) {
           setHydratedDetonationName(decodeURIComponent(nameParam));
         }
@@ -72,8 +115,15 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
     if (p) {
       setCustomYieldKt(p.yieldKt);
       setBurstMode(p.burstType);
-      // Optimum height of burst roughly ~120 * Y^(1/3) m
-      setBurstAltitudeM(p.burstType === 'surface' ? 0 : Math.round(140 * Math.pow(p.yieldKt, 1 / 3)));
+      if (typeof p.defaultHobM === 'number') {
+        setBurstAltitudeM(p.defaultHobM);
+      } else if (p.burstType === 'surface') {
+        setBurstAltitudeM(0);
+      } else if (p.burstType === 'underground') {
+        setBurstAltitudeM(-Math.round(45 * Math.pow(p.yieldKt, 1 / 3)));
+      } else {
+        setBurstAltitudeM(Math.round(140 * Math.pow(p.yieldKt, 1 / 3)));
+      }
     }
   };
 
@@ -84,15 +134,22 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
     const y = Math.max(0.001, yieldKt);
     const p0 = 14.696; // ambient sea-level atmospheric pressure (psi)
 
+    // Subterranean Scaled Depth of Burial (SDOB in m / kt^(1/3), Glasstone & Dolan Ch. VI / Nordyke)
+    const dobM = burstAltitudeM < 0 ? Math.abs(burstAltitudeM) : 0;
+    const sdob = dobM / Math.pow(y, 1 / 3);
+    // Airblast energy coupling factor for subterranean bursts:
+    // Shallow bursts vent gas & spall shock; deep bursts (SDOB >= 90) are fully contained except ground-coupled acoustic wave
+    const undergroundAirblastFactor = dobM > 0 ? Math.max(0.008, Math.exp(-sdob / 38.0)) : 1.0;
+
     // Helper: calculate peak incident overpressure (psi) at ground distance rGroundKm and burst altitude hM
-    // Implements Kinney & Graham (1985) blast shockwave formulation with ground reflection modeling
+    // Implements Kinney & Graham (1985) blast shockwave formulation with ground reflection & subterranean containment modeling
     const calcPso = (rGroundKm: number, hM: number): number => {
       const rM = Math.max(1, rGroundKm * 1000);
       const slantM = Math.sqrt(rM * rM + hM * hM);
-      // Hemispherical ground reflection: ~1.8x for surface burst, ~2.0x for air burst Mach reflection
-      const refl = burstMode === 'surface' ? 1.8 : 2.0;
-      const wKg = y * 1e6 * refl;
-      const z = slantM / Math.pow(wKg, 1 / 3); // Hopkinson-Cranz scaled distance (m / kg^(1/3))
+      // Hemispherical ground reflection: ~1.8x for surface/subterranean, ~2.0x for air burst Mach reflection
+      const refl = burstMode === 'air' ? 2.0 : 1.8;
+      const wKg = y * 1e6 * refl * undergroundAirblastFactor;
+      const z = slantM / Math.pow(Math.max(0.01, wKg), 1 / 3); // Hopkinson-Cranz scaled distance (m / kg^(1/3))
 
       const num = 808 * (1 + Math.pow(z / 4.5, 2));
       const den = Math.sqrt(1 + Math.pow(z / 0.048, 2)) *
@@ -104,7 +161,7 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
     // Fast, robust bisection solver for exact damage contour radii (ground distance in km)
     // Guarantees 100% mathematical consistency: P(r_Xpsi) === X psi
     const findRadiusKm = (targetPsi: number): number => {
-      const hM = burstMode === 'surface' ? 0 : Math.max(0, burstAltitudeM);
+      const hM = Math.abs(burstAltitudeM);
       if (calcPso(0, hM) < targetPsi) return 0;
       let low = 0;
       let high = 250000;
@@ -125,7 +182,7 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
     const r1psi_km = findRadiusKm(1);
 
     // Blast Overpressure at user target distance
-    const hM = burstMode === 'surface' ? 0 : Math.max(0, burstAltitudeM);
+    const hM = Math.abs(burstAltitudeM);
     const overpressurePsi = Math.max(0.001, calcPso(targetDistanceKm, hM));
 
     // Dynamic pressure q = 2.5 * P^2 / (P + 7 * P0), P0 = 14.7 psi (Rankine-Hugoniot)
@@ -162,13 +219,17 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
   // --- TAB 2: Thermal Radiation Pulse & Flashburns ---
   const thermalCalculations = useMemo(() => {
     const y = Math.max(0.001, yieldKt);
-    const scaledYieldFactor = Math.pow(y, 0.41);
+    const dobM = burstAltitudeM < 0 ? Math.abs(burstAltitudeM) : 0;
+    const sdob = dobM / Math.pow(y, 1 / 3);
+    // Rock/soil overburden blocks thermal fireball breakthrough once SDOB > ~20 m/kt^(1/3)
+    const undergroundThermalEscape = dobM > 0 ? (sdob < 28 ? Math.exp(-Math.pow(sdob / 10.0, 2)) : 0.0) : 1.0;
+    const scaledYieldFactor = Math.pow(y * undergroundThermalEscape, 0.41);
 
     // Thermal radiant fluence at target distance:
     // Q = (eta_th * Y_joules) / (4 * pi * R^2) * tau_atm
     // eta_th ~ 0.35 (35% of total yield emitted as thermal)
     // 1 kT TNT = 4.184e12 Joules
-    const etaTh = 0.35;
+    const etaTh = 0.35 * undergroundThermalEscape;
     const yJoules = y * 4.184e12;
     const rTargetM = Math.max(10, targetDistanceKm * 1000);
     const slantDistanceM = Math.sqrt(rTargetM * rTargetM + burstAltitudeM * burstAltitudeM);
@@ -197,7 +258,7 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
     const tSecondPeakS = 0.0417 * Math.pow(y, 0.47);
 
     // Curve profile for thermal plot
-    const maxR = r1stBurn_km * 2.0;
+    const maxR = Math.max(0.5, r1stBurn_km * 2.0);
     const steps = 80;
     const curvePoints: { rKm: number; fluenceCal: number }[] = [];
     for (let i = 1; i <= steps; i++) {
@@ -225,28 +286,28 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
   // --- TAB 3: Prompt Initial Nuclear Radiation Flash ---
   const promptRadCalculations = useMemo(() => {
     const y = Math.max(0.001, yieldKt);
+    const dobM = burstAltitudeM < 0 ? Math.abs(burstAltitudeM) : 0;
+    // Earth/rock overburden attenuates prompt neutrons & gammas with relaxation length ~0.25m (10x every ~0.6m of rock)
+    const rockShieldingFactor = dobM > 0 ? Math.exp(-dobM / 2.2) : 1.0;
+
     const rTargetM = Math.max(10, targetDistanceKm * 1000);
     const slantDistanceM = Math.sqrt(rTargetM * rTargetM + burstAltitudeM * burstAltitudeM);
 
     // Initial prompt radiation (neutrons + prompt gammas within first 60 seconds):
     // D(R) ~ (D0 * Y) / R^2 * exp(-R / lambda_air)
-    // For fission weapons: ~300 Gy at 1000m for 20 kT in unattenuated air
-    // Mean free path in sea-level air ~ 250m for prompt neutrons, ~350m for 4 MeV gammas
     const lambdaAirM = 300.0; // composite relaxation length
-    const refDoseAt1km = 15.0 * y; // Gy at 1 km unattenuated geometry
+    const refDoseAt1km = 15.0 * y * rockShieldingFactor; // Gy at 1 km unattenuated geometry
     const rRatio = 1000.0 / slantDistanceM;
     const promptDoseGy = refDoseAt1km * (rRatio * rRatio) * Math.exp(-(slantDistanceM - 1000.0) / lambdaAirM);
 
     // Lethal thresholds
-    // LD50/60 (4.5 Gy bone marrow death without ICU intervention)
-    // LD100 (8.0 Gy gastrointestinal syndrome)
-    // CNS Incapacitation (20.0 Gy)
-    const rLd50_km = 0.55 * Math.pow(y, 0.28);
-    const rLd100_km = 0.42 * Math.pow(y, 0.28);
-    const rCns_km = 0.28 * Math.pow(y, 0.28);
+    const effRadYield = y * rockShieldingFactor;
+    const rLd50_km = effRadYield > 1e-5 ? 0.55 * Math.pow(effRadYield, 0.28) : 0;
+    const rLd100_km = effRadYield > 1e-5 ? 0.42 * Math.pow(effRadYield, 0.28) : 0;
+    const rCns_km = effRadYield > 1e-5 ? 0.28 * Math.pow(effRadYield, 0.28) : 0;
 
     return {
-      targetPromptDoseGy: Math.max(0.0001, promptDoseGy),
+      targetPromptDoseGy: Math.max(0.0, promptDoseGy),
       rLd50_km,
       rLd100_km,
       rCns_km
@@ -259,7 +320,7 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
     // E1 Fast Pulse: Compton electrons produced by prompt gamma rays interacting with stratospheric air (20-40km)
     // Peak field up to 50 kV/m with rise time < 2.5 ns (MIL-STD-188-125)
     const isHighAltitude = burstAltitudeM >= 30000;
-    const burstKm = burstAltitudeM / 1000.0;
+    const burstKm = Math.max(0, burstAltitudeM) / 1000.0;
 
     // Horizon radius for HEMP illumination: R_horizon = sqrt(2 * R_earth * h + h^2)
     // R_earth ~ 6371 km
@@ -279,11 +340,16 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
     };
   }, [burstAltitudeM, yieldKt]);
 
-  // --- Fireball Size ---
+  // --- Fireball / Subterranean Cavity Size ---
   const fireballRadiusM = useMemo(() => {
-    // R_fireball ~ 70 * Y^(0.38) meters
-    return Math.round(70 * Math.pow(Math.max(0.001, yieldKt), 0.38));
-  }, [yieldKt]);
+    const y = Math.max(0.001, yieldKt);
+    if (burstAltitudeM < 0) {
+      // Underground vaporized rock cavity radius R_c ~ 11.5 * Y^(1/3) m (Glasstone & Dolan Eq. 6.105)
+      return Math.round(11.5 * Math.pow(y, 1 / 3));
+    }
+    // Atmospheric fireball radius R_fireball ~ 70 * Y^(0.38) meters
+    return Math.round(70 * Math.pow(y, 0.38));
+  }, [yieldKt, burstAltitudeM]);
 
   // --- Consolidated Tactical Polar Cordon Traces ---
   const cordonMap = useMemo(() => {
@@ -340,6 +406,12 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
 
   // --- Cryptographic Audit Dossier Payload ---
   const dossierPayload: CalculationDossierPayload = useMemo(() => {
+    const modeLabel =
+      burstMode === 'underground'
+        ? `Subterranean Burst (DOB ${Math.abs(burstAltitudeM)}m)`
+        : burstMode === 'surface'
+        ? 'Surface Contact Burst (0m)'
+        : `Air Burst (HOB +${burstAltitudeM}m)`;
     return {
       reportTitle: 'ICS-208 Nuclear Weapon Prompt Effects & Tactical Overpressure Dossier',
       moduleName: 'Module 26 (Nuclear Weapon Effects & Prompt Radiations)',
@@ -348,17 +420,17 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
       operatorName: 'CBRN Weapons Effects Analyst',
       operatorCredentials: 'CHP / CBRN Consequence Manager',
       facility: 'Tactical Defense Operations Center / Threat Assessment Unit',
-      notes: `Prompt weapons effects simulation for ${yieldKt} kT (${burstMode} burst at ${burstAltitudeM}m). Target distance: ${targetDistanceKm} km. Overpressure: ${blastCalculations.targetOverpressurePsi.toFixed(2)} psi. Thermal: ${thermalCalculations.targetFluenceCalCm2.toFixed(1)} cal/cm².`,
+      notes: `Prompt weapons effects simulation for ${yieldKt} kT (${modeLabel}). Target distance: ${targetDistanceKm} km. Overpressure: ${blastCalculations.targetOverpressurePsi.toFixed(2)} psi. Thermal: ${thermalCalculations.targetFluenceCalCm2.toFixed(1)} cal/cm².`,
       formulaDescription: 'Z = \\frac{R}{W^{1/3}}, \\quad \\frac{\\Delta P}{P_0} = \\frac{808[1+(Z/4.5)^2]}{\\sqrt{1+(Z/0.048)^2}\\sqrt{1+(Z/0.32)^2}\\sqrt{1+(Z/1.35)^2}}, \\quad u = \\frac{5 P c_0}{7 P_0 \\sqrt{1 + 6P/(7P_0)}}',
       inputs: [
         { label: 'Weapon Yield', value: yieldKt, unit: 'kT' },
-        { label: 'Detonation Mode', value: burstMode === 'air' ? 'Air Burst' : 'Surface Burst' },
-        { label: 'Burst Altitude', value: burstAltitudeM, unit: 'm' },
+        { label: 'Detonation Mode', value: modeLabel },
+        { label: 'Burst Elevation / Depth', value: burstAltitudeM, unit: 'm' },
         { label: 'Target Standoff Distance', value: targetDistanceKm, unit: 'km' },
         { label: 'Atmospheric Visibility', value: atmosphericVisibilityKm, unit: 'km' }
       ],
       outputs: [
-        { label: 'Fireball Radius', value: fireballRadiusM, unit: 'm', status: 'PASS' },
+        { label: burstAltitudeM < 0 ? 'Subterranean Cavity Radius' : 'Fireball Radius', value: fireballRadiusM, unit: 'm', status: 'PASS' },
         { label: 'Target Incident Overpressure', value: blastCalculations.targetOverpressurePsi.toFixed(2), unit: 'psi', status: blastCalculations.targetOverpressurePsi > 5 ? 'WARNING' : 'PASS' },
         { label: 'Target Dynamic Wind Speed', value: blastCalculations.targetWindSpeedMph, unit: 'mph', status: 'PASS' },
         { label: '5-psi Severe Damage Radius', value: blastCalculations.r5psi_km.toFixed(2), unit: 'km', status: 'PASS' },
@@ -382,7 +454,7 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
               <VerificationBadge testId="VTEST-29" standard="Glasstone &amp; Dolan / Brode" />
             </h2>
             <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: '0.88rem' }}>
-              Kingery-Bulmash shockwave overpressures, dynamic wind speeds, dual-pulse thermal flashburns, prompt initial radiation flash, and MIL-STD-188-125 High-Altitude Electromagnetic Pulse (HEMP).
+              Kingery-Bulmash shockwave overpressures, dynamic wind speeds, dual-pulse thermal flashburns, prompt initial radiation flash, subterranean cratering/containment, and MIL-STD-188-125 HEMP.
             </p>
           </div>
           <button
@@ -415,7 +487,7 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
                 Active Scenario: <span style={{ color: '#f87171' }}>{hydratedDetonationName}</span>
               </div>
               <div style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)' }}>
-                Weapon yield ({yieldKt >= 1000 ? `${(yieldKt / 1000).toFixed(2)} Mt` : `${yieldKt} kt`}) and {burstMode} burst parameters automatically loaded from Global Detonations / CTBTO Seismic Inversion
+                Weapon yield ({yieldKt >= 1000 ? `${(yieldKt / 1000).toFixed(2)} Mt` : `${yieldKt} kt`}) and {burstMode} burst ({burstAltitudeM < 0 ? `${burstAltitudeM}m DOB` : `+${burstAltitudeM}m HOB`}) parameters automatically loaded from Global Detonations / CTBTO Seismic Inversion
               </div>
             </div>
           </div>
@@ -502,33 +574,54 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
             <select
               className="form-control"
               value={burstMode}
-              onChange={(e) => {
-                const mode = e.target.value as 'surface' | 'air';
-                setBurstMode(mode);
-                if (mode === 'surface') setBurstAltitudeM(0);
-                else setBurstAltitudeM(Math.round(140 * Math.pow(yieldKt, 1 / 3)));
-              }}
+              onChange={(e) => handleBurstModeChange(e.target.value as 'surface' | 'air' | 'underground')}
               style={{ width: '100%', fontSize: '0.85rem' }}
             >
-              <option value="air">Air Burst (Maximizes Blast Overpressure)</option>
-              <option value="surface">Surface Burst (Heavy Fallout Cratering)</option>
+              <option value="air">☁️ Air Burst (HOB &gt; 0m — Mach Stem Overpressure)</option>
+              <option value="surface">🌋 Surface Burst (0m — Ground Cratering &amp; Fallout)</option>
+              <option value="underground">⛏️ Subterranean / Underground (DOB &lt; 0m — Cratering / Contained)</option>
             </select>
           </div>
 
           <div>
-            <label style={{ fontSize: '0.82rem', fontWeight: 600 }}>Height of Burst (HOB):</label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <label style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                {burstAltitudeM < 0 ? 'Subterranean Depth (DOB m):' : 'Height / Depth of Burst (m):'}
+              </label>
+              <span style={{ fontSize: '0.72rem', fontFamily: 'JetBrains Mono, monospace', color: burstAltitudeM < 0 ? '#a855f7' : burstAltitudeM === 0 ? '#f97316' : '#38bdf8' }}>
+                {burstAltitudeM < 0 ? `${burstAltitudeM} m (Sub-Terrain)` : burstAltitudeM === 0 ? '0 m (Surface)' : `+${burstAltitudeM.toLocaleString()} m`}
+              </span>
+            </div>
             <input
               type="number"
-              min="0"
+              min="-2500"
               max="100000"
-              step="50"
+              step="10"
               className="form-control"
               value={burstAltitudeM}
-              onChange={(e) => setBurstAltitudeM(Math.max(0, parseInt(e.target.value) || 0))}
+              onChange={(e) => handleBurstAltitudeChange(parseInt(e.target.value) || 0)}
               style={{ width: '100%', fontSize: '0.85rem' }}
             />
-            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-              {burstAltitudeM >= 30000 ? '⚡ HEMP Active (>30 km)' : 'Tropospheric Detonation'}
+            <input
+              type="range"
+              min="-1500"
+              max="5000"
+              step="10"
+              value={Math.max(-1500, Math.min(5000, burstAltitudeM))}
+              onChange={(e) => handleBurstAltitudeChange(parseInt(e.target.value) || 0)}
+              style={{ width: '100%', marginTop: '4px', cursor: 'pointer', accentColor: burstAltitudeM < 0 ? '#a855f7' : '#38bdf8' }}
+              title="Scrub between -1,500m subterranean depth and +5,000m airburst altitude (use numeric input up to +100,000m for HEMP)"
+            />
+            <div style={{ fontSize: '0.73rem', color: 'var(--color-text-muted)' }}>
+              {burstAltitudeM < 0
+                ? Math.abs(burstAltitudeM) / Math.pow(Math.max(0.001, yieldKt), 1 / 3) >= 90
+                  ? `🪨 Contained Underground (SDOB ${(Math.abs(burstAltitudeM) / Math.pow(Math.max(0.001, yieldKt), 1 / 3)).toFixed(0)} m/kt¹/³)`
+                  : `⛏️ Shallow Cratering Vent (SDOB ${(Math.abs(burstAltitudeM) / Math.pow(Math.max(0.001, yieldKt), 1 / 3)).toFixed(0)} m/kt¹/³)`
+                : burstAltitudeM === 0
+                ? '🌋 Surface Contact Detonation (0 m)'
+                : burstAltitudeM >= 30000
+                ? '⚡ Exoatmospheric HEMP Active (>30 km)'
+                : '☁️ Tropospheric Airburst Detonation'}
             </div>
           </div>
 
@@ -580,7 +673,9 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
             {thermalCalculations.targetFluenceCalCm2.toFixed(1)} cal/cm²
           </div>
           <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-            {thermalCalculations.targetFluenceJcm2.toFixed(1)} J/cm² total pulse
+            {burstAltitudeM < 0 && thermalCalculations.targetFluenceCalCm2 < 0.1
+              ? '🪨 Blocked by rock overburden'
+              : `${thermalCalculations.targetFluenceJcm2.toFixed(1)} J/cm² total pulse`}
           </div>
         </div>
 
@@ -590,17 +685,25 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
             {promptRadCalculations.targetPromptDoseGy >= 10 ? promptRadCalculations.targetPromptDoseGy.toFixed(0) : promptRadCalculations.targetPromptDoseGy.toFixed(2)} Gy
           </div>
           <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-            {promptRadCalculations.targetPromptDoseGy >= 4.5 ? '🚨 Acute Lethal Flash' : 'Sub-lethal prompt flash'}
+            {burstAltitudeM < 0 && promptRadCalculations.targetPromptDoseGy < 0.01
+              ? '🪨 Contained by earth strata'
+              : promptRadCalculations.targetPromptDoseGy >= 4.5
+              ? '🚨 Acute Lethal Flash'
+              : 'Sub-lethal prompt flash'}
           </div>
         </div>
 
         <div style={{ background: 'rgba(16, 185, 129, 0.08)', padding: '14px', borderRadius: '8px', border: '1px solid #10b981' }}>
-          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>LUMINOUS FIREBALL RADIUS</div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+            {burstAltitudeM < 0 ? 'SUBTERRANEAN ROCK CAVITY' : 'LUMINOUS FIREBALL RADIUS'}
+          </div>
           <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#10b981', marginTop: '2px' }}>
             {fireballRadiusM} meters
           </div>
           <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-            Diameter: {(fireballRadiusM * 2 / 1000).toFixed(2)} km
+            {burstAltitudeM < 0
+              ? `Seismic mb ${(3.92 + 0.75 * Math.log10(Math.max(0.01, yieldKt))).toFixed(2)} • DOB ${Math.abs(burstAltitudeM)}m`
+              : `Diameter: ${(fireballRadiusM * 2 / 1000).toFixed(2)} km`}
           </div>
         </div>
       </div>
@@ -782,7 +885,8 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
           burstMode={burstMode}
           burstAltitudeM={burstAltitudeM}
           onYieldChange={setCustomYieldKt}
-          onBurstModeChange={setBurstMode}
+          onBurstModeChange={handleBurstModeChange}
+          onBurstAltitudeChange={handleBurstAltitudeChange}
           initialCityId={initialCityPresetId}
         />
       )}

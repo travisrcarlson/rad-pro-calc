@@ -822,10 +822,26 @@ export const GlobalNuclearMapModule: React.FC = () => {
   // Dispatch to Nuclear Weapon Effects Module with Automated Parameter Hydration
   const handleDispatchNuclearEffects = (pin: UnifiedGeospatialPin) => {
     const yieldKt = pin.rawDetonation?.yieldKt || 15.0;
-    const isAir = (pin.rawDetonation?.testType || pin.rawDetonation?.environment || '').toLowerCase().includes('air') ||
-                  (pin.rawDetonation?.heightOfBurstM ?? 0) > 50;
-    const burstMode = isAir ? 'air' : 'surface';
-    navigate(`/nuclear-weapons-effects?yieldKt=${yieldKt}&burstMode=${burstMode}&name=${encodeURIComponent(pin.name)}&lat=${pin.coordinates.lat}&lon=${pin.coordinates.lon}`);
+    const rawType = (pin.rawDetonation?.testType || pin.rawDetonation?.environment || '').toLowerCase();
+    const rawHob = pin.rawDetonation?.heightOfBurstM;
+    const isUnderground =
+      rawType.includes('ug') ||
+      rawType.includes('shaft') ||
+      rawType.includes('tunnel') ||
+      rawType.includes('underground') ||
+      rawType.includes('crater') ||
+      (typeof rawHob === 'number' && rawHob < 0);
+    const isAir =
+      !isUnderground &&
+      (rawType.includes('air') || rawType.includes('atmospher') || rawType.includes('drop') || (typeof rawHob === 'number' && rawHob > 50));
+    const burstMode = isUnderground ? 'underground' : isAir ? 'air' : 'surface';
+    const hobParam =
+      typeof rawHob === 'number'
+        ? `&hob=${Math.round(rawHob)}`
+        : isUnderground
+        ? `&hob=${-Math.max(30, Math.round(65 * Math.pow(yieldKt, 1 / 3)))}`
+        : '';
+    navigate(`/nuclear-weapons-effects?yieldKt=${yieldKt}&burstMode=${burstMode}${hobParam}&name=${encodeURIComponent(pin.name)}&lat=${pin.coordinates.lat}&lon=${pin.coordinates.lon}`);
   };
 
   // Dispatch to Historical Incidents Module
