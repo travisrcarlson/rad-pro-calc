@@ -113,6 +113,7 @@ const ModuleLoadingSkeleton: React.FC = () => (
 );
 
 interface NavItem {
+  moduleNumber: number;
   path: string;
   label: string;
   badge: string;
@@ -134,11 +135,11 @@ const NAV_CATEGORIES: NavCategory[] = [
     color: '#00e5ff',
     iconSymbol: '◎',
     items: [
-      { path: '/dose', label: 'Dose Calculator', badge: 'ICRP-103', keywords: ['dose', 'point', 'gamma', 'alara', 'attenuation', 'curie'] },
-      { path: '/worker', label: 'Worker Dosimetry', badge: 'Occupational', keywords: ['worker', 'dosimetry', 'occupational', 'quarterly', 'annual', 'limit'] },
-      { path: '/internal-dose', label: 'Internal Dosimetry', badge: 'MIRD', keywords: ['internal', 'mird', 'intake', 'inhalation', 'ingestion', 'organ'] },
-      { path: '/spatial3d', label: '3D Spatial Workspace', badge: 'Point Cloud', keywords: ['3d', 'spatial', 'cad', 'workspace', 'mesh', 'voxels'] },
-      { path: '/visualisation', label: 'Radiation Map', badge: 'Heatmap', keywords: ['map', 'heatmap', 'isodose', 'contour', 'zone'] }
+      { moduleNumber: 1, path: '/dose', label: 'Dose Calculator', badge: 'ICRP-103', keywords: ['module 1', 'm01', 'dose', 'point', 'gamma', 'alara', 'attenuation', 'curie'] },
+      { moduleNumber: 2, path: '/worker', label: 'Worker Dosimetry', badge: 'Occupational', keywords: ['module 2', 'm02', 'worker', 'dosimetry', 'occupational', 'quarterly', 'annual', 'limit'] },
+      { moduleNumber: 3, path: '/internal-dose', label: 'Internal Dosimetry', badge: 'MIRD', keywords: ['module 3', 'm03', 'internal', 'mird', 'intake', 'inhalation', 'ingestion', 'organ'] },
+      { moduleNumber: 4, path: '/spatial3d', label: '3D Spatial Workspace', badge: 'Point Cloud', keywords: ['module 4', 'm04', '3d', 'spatial', 'cad', 'workspace', 'mesh', 'voxels'] },
+      { moduleNumber: 5, path: '/visualisation', label: 'Radiation Map', badge: 'Heatmap', keywords: ['module 5', 'm05', 'map', 'heatmap', 'isodose', 'contour', 'zone'] }
     ]
   },
   {
@@ -147,16 +148,16 @@ const NAV_CATEGORIES: NavCategory[] = [
     color: '#ff9f1c',
     iconSymbol: '▲',
     items: [
-      { path: '/first-responder', label: 'Tactical CBRN Response', badge: 'ERG/REAC-TS', keywords: ['first responder', 'cbrn', 'hazmat', 'triage', 'decon', 'ki', 'dtpa', 'cordon', 'erg 2024'] },
-      { path: '/cbrn-consequence', label: 'CBRN Fallout & Shelter', badge: 'Way-Wigner / NCRP-165', keywords: ['cbrn', 'fallout', 'shelter', 'wigner', '7-10 rule', 'protection factor', 'aegl', 'tih', 'egress', 'evacuation', 'biodosimetry', 'dicentric', 'metrepol'] },
-      { path: '/nuclear-weapons-effects', label: 'Prompt Blast & HEMP', badge: 'Kingery-Bulmash', keywords: ['nuclear', 'weapon', 'blast', 'overpressure', 'thermal', 'burn', 'hemp', 'emp', 'shockwave', 'prompt radiation'] },
-      { path: '/medical-countermeasures', label: 'Medical Countermeasures', badge: 'DTPA / PB / KI', keywords: ['medical', 'countermeasures', 'chelation', 'dtpa', 'prussian blue', 'potassium iodide', 'ki', 'decorporation', 'actinide', 'cesium', 'iodine'] },
-      { path: '/tactical-gis', label: 'Tactical GIS & ATAK Hub', badge: 'CoT / Vector', keywords: ['gis', 'map', 'atak', 'wintak', 'cot', 'cursor on target', 'triangulation', 'multilateration', 'mesh', 'picket'] },
-      { path: '/scenarios', label: 'Incident Scenario Drills', badge: 'INES / .radcase', keywords: ['scenario', 'drill', 'incident', 'case', 'goiania', 'tokaimura', 'cask', 'radcase'] },
-      { path: '/responder', label: 'Reverse Triangulation', badge: 'Isopleths', keywords: ['responder', 'triangulation', 'source term', 'search', 'pinpoint'] },
-      { path: '/plume', label: 'Plume Atmospheric Model', badge: 'Gaussian', keywords: ['plume', 'atmospheric', 'pasquill', 'dispersion', 'wind', 'fallout'] },
-      { path: '/shielding', label: 'Shielding & ALARA PAGs', badge: 'NBS-107', keywords: ['shielding', 'pags', 'protective action', 'shelter', 'evacuation', 'epa-400'] },
-      { path: '/transport', label: 'Transport Packaging', badge: 'IAEA SSR-6', keywords: ['transport', 'ssr-6', 'packaging', 'type a', 'type b', 'ti', 'csi'] }
+      { moduleNumber: 6, path: '/first-responder', label: 'Tactical CBRN Response', badge: 'ERG/REAC-TS', keywords: ['module 6', 'm06', 'first responder', 'cbrn', 'hazmat', 'triage', 'decon', 'ki', 'dtpa', 'cordon', 'erg 2024'] },
+      { moduleNumber: 7, path: '/cbrn-consequence', label: 'CBRN Fallout & Shelter', badge: 'Way-Wigner / NCRP-165', keywords: ['module 7', 'm07', 'cbrn', 'fallout', 'shelter', 'wigner', '7-10 rule', 'protection factor', 'aegl', 'tih', 'egress', 'evacuation', 'biodosimetry', 'dicentric', 'metrepol'] },
+      { moduleNumber: 8, path: '/nuclear-weapons-effects', label: 'Prompt Blast & HEMP', badge: 'Kingery-Bulmash', keywords: ['module 8', 'm08', 'nuclear', 'weapon', 'blast', 'overpressure', 'thermal', 'burn', 'hemp', 'emp', 'shockwave', 'prompt radiation'] },
+      { moduleNumber: 9, path: '/medical-countermeasures', label: 'Medical Countermeasures', badge: 'DTPA / PB / KI', keywords: ['module 9', 'm09', 'medical', 'countermeasures', 'chelation', 'dtpa', 'prussian blue', 'potassium iodide', 'ki', 'decorporation', 'actinide', 'cesium', 'iodine'] },
+      { moduleNumber: 10, path: '/tactical-gis', label: 'Tactical GIS & ATAK Hub', badge: 'CoT / Vector', keywords: ['module 10', 'm10', 'gis', 'map', 'atak', 'wintak', 'cot', 'cursor on target', 'triangulation', 'multilateration', 'mesh', 'picket'] },
+      { moduleNumber: 11, path: '/scenarios', label: 'Incident Scenario Drills', badge: 'INES / .radcase', keywords: ['module 11', 'm11', 'scenario', 'drill', 'incident', 'case', 'goiania', 'tokaimura', 'cask', 'radcase'] },
+      { moduleNumber: 12, path: '/responder', label: 'Reverse Triangulation', badge: 'Isopleths', keywords: ['module 12', 'm12', 'responder', 'triangulation', 'source term', 'search', 'pinpoint'] },
+      { moduleNumber: 13, path: '/plume', label: 'Plume Atmospheric Model', badge: 'Gaussian', keywords: ['module 13', 'm13', 'plume', 'atmospheric', 'pasquill', 'dispersion', 'wind', 'fallout'] },
+      { moduleNumber: 14, path: '/shielding', label: 'Shielding & ALARA PAGs', badge: 'NBS-107', keywords: ['module 14', 'm14', 'shielding', 'pags', 'protective action', 'shelter', 'evacuation', 'epa-400'] },
+      { moduleNumber: 15, path: '/transport', label: 'Transport Packaging', badge: 'IAEA SSR-6', keywords: ['module 15', 'm15', 'transport', 'ssr-6', 'packaging', 'type a', 'type b', 'ti', 'csi'] }
     ]
   },
   {
@@ -165,11 +166,11 @@ const NAV_CATEGORIES: NavCategory[] = [
     color: '#a78bfa',
     iconSymbol: '⚡',
     items: [
-      { path: '/xray', label: 'Pulsed & Flash X-Ray', badge: 'NCRP-147', keywords: ['pulsed', 'flash', 'x-ray', 'duty cycle', 'beam'] },
-      { path: '/xray-tube', label: 'X-Ray Tube Simulator', badge: 'Kramers/Birch', keywords: ['tube', 'spectra', 'anode', 'filtration', 'hvl', 'kvp'] },
-      { path: '/xray-distortion', label: 'X-Ray Distortion & Geometry', badge: 'SID / OID / Penumbra', keywords: ['distortion', 'xray', 'sid', 'oid', 'sod', 'penumbra', 'unsharpness', 'magnification', 'depth', 'foreshortening', 'elongation', 'asme', 'ndt', 'geometry', 'frustum'] },
-      { path: '/laser', label: 'Laser Safety & NOHD', badge: 'ANSI Z136', keywords: ['laser', 'nohd', 'mpe', 'divergence', 'beam optical'] },
-      { path: '/emr-safety', label: 'EW EMR & Microwave', badge: 'IEEE C95.1', keywords: ['emr', 'rf', 'microwave', 'radar', 'electromagnetic', 'sar'] }
+      { moduleNumber: 16, path: '/xray', label: 'Pulsed & Flash X-Ray', badge: 'NCRP-147', keywords: ['module 16', 'm16', 'pulsed', 'flash', 'x-ray', 'duty cycle', 'beam'] },
+      { moduleNumber: 17, path: '/xray-tube', label: 'X-Ray Tube Simulator', badge: 'Kramers/Birch', keywords: ['module 17', 'm17', 'tube', 'spectra', 'anode', 'filtration', 'hvl', 'kvp'] },
+      { moduleNumber: 18, path: '/xray-distortion', label: 'X-Ray Distortion & Geometry', badge: 'SID / OID / Penumbra', keywords: ['module 18', 'm18', 'distortion', 'xray', 'sid', 'oid', 'sod', 'penumbra', 'unsharpness', 'magnification', 'depth', 'foreshortening', 'elongation', 'asme', 'ndt', 'geometry', 'frustum'] },
+      { moduleNumber: 19, path: '/laser', label: 'Laser Safety & NOHD', badge: 'ANSI Z136', keywords: ['module 19', 'm19', 'laser', 'nohd', 'mpe', 'divergence', 'beam optical'] },
+      { moduleNumber: 20, path: '/emr-safety', label: 'EW EMR & Microwave', badge: 'IEEE C95.1', keywords: ['module 20', 'm20', 'emr', 'rf', 'microwave', 'radar', 'electromagnetic', 'sar'] }
     ]
   },
   {
@@ -178,11 +179,11 @@ const NAV_CATEGORIES: NavCategory[] = [
     color: '#10b981',
     iconSymbol: '⚛',
     items: [
-      { path: '/criticality', label: 'Criticality & Reactor Core', badge: '4-Factor', keywords: ['criticality', 'reactor', 'keff', 'multiplication', 'fuel', 'lattice', 'buckling'] },
-      { path: '/caas-criticality', label: 'CAAS Criticality Alarms', badge: 'ANSI/ANS-8.3', keywords: ['caas', 'criticality', 'alarm', 'excursion', 'nordheim fuchs', 'godiva', 'fission burst', 'ans 8.3'] },
-      { path: '/monte-carlo', label: 'Monte Carlo Micro-Kernel', badge: 'Klein-Nishina', keywords: ['monte carlo', 'stochastic', 'compton', 'pair production', 'cross section', 'buildup', 'histories'] },
-      { path: '/decay', label: 'Radiolysis & Decay Chains', badge: 'Bateman', keywords: ['decay', 'bateman', 'radiolysis', 'g-value', 'daughter', 'chain'] },
-      { path: '/spectroscopy', label: 'Gamma Spectroscopy', badge: 'MCA / FWHM', keywords: ['spectroscopy', 'mca', 'fwhm', 'channel', 'peak', 'resolution'] }
+      { moduleNumber: 21, path: '/criticality', label: 'Criticality & Reactor Core', badge: '4-Factor', keywords: ['module 21', 'm21', 'criticality', 'reactor', 'keff', 'multiplication', 'fuel', 'lattice', 'buckling'] },
+      { moduleNumber: 22, path: '/caas-criticality', label: 'CAAS Criticality Alarms', badge: 'ANSI/ANS-8.3', keywords: ['module 22', 'm22', 'caas', 'criticality', 'alarm', 'excursion', 'nordheim fuchs', 'godiva', 'fission burst', 'ans 8.3'] },
+      { moduleNumber: 23, path: '/monte-carlo', label: 'Monte Carlo Micro-Kernel', badge: 'Klein-Nishina', keywords: ['module 23', 'm23', 'monte carlo', 'stochastic', 'compton', 'pair production', 'cross section', 'buildup', 'histories'] },
+      { moduleNumber: 24, path: '/decay', label: 'Radiolysis & Decay Chains', badge: 'Bateman', keywords: ['module 24', 'm24', 'decay', 'bateman', 'radiolysis', 'g-value', 'daughter', 'chain'] },
+      { moduleNumber: 25, path: '/spectroscopy', label: 'Gamma Spectroscopy', badge: 'MCA / FWHM', keywords: ['module 25', 'm25', 'spectroscopy', 'mca', 'fwhm', 'channel', 'peak', 'resolution'] }
     ]
   },
   {
@@ -191,8 +192,8 @@ const NAV_CATEGORIES: NavCategory[] = [
     color: '#14b8a6',
     iconSymbol: '✚',
     items: [
-      { path: '/brachytherapy', label: 'Brachytherapy Planner', badge: 'TG-43', keywords: ['brachytherapy', 'tg-43', 'seed', 'prostate', 'anisotropy', 'dose rate constant'] },
-      { path: '/marssim', label: 'MARSSIM Decommissioning', badge: 'NUREG-1575', keywords: ['marssim', 'decommissioning', 'dcgl', 'wrs', 'sign test', 'survey'] }
+      { moduleNumber: 26, path: '/brachytherapy', label: 'Brachytherapy Planner', badge: 'TG-43', keywords: ['module 26', 'm26', 'brachytherapy', 'tg-43', 'seed', 'prostate', 'anisotropy', 'dose rate constant'] },
+      { moduleNumber: 27, path: '/marssim', label: 'MARSSIM Decommissioning', badge: 'NUREG-1575', keywords: ['module 27', 'm27', 'marssim', 'decommissioning', 'dcgl', 'wrs', 'sign test', 'survey'] }
     ]
   },
   {
@@ -201,12 +202,12 @@ const NAV_CATEGORIES: NavCategory[] = [
     color: '#38bdf8',
     iconSymbol: '▤',
     items: [
-      { path: '/nuclides', label: 'Nuclide Database', badge: 'ICRP-107', keywords: ['nuclide', 'isotope', 'half-life', 'decay mode', 'energy', 'branching'] },
-      { path: '/equipment', label: 'Equipment Catalog', badge: 'Detectors', keywords: ['equipment', 'detector', 'geiger', 'scintillator', 'efficiency'] },
-      { path: '/incidents', label: 'Historical Incidents DB', badge: 'INES 1-7', keywords: ['historical', 'incident', 'accident', 'chernobyl', 'fukushima', 'goiania', 'tokaimura', 'sl-1', 'forensics', 'case'] },
-      { path: '/global-map', label: 'Global 3D Earth Hub', badge: 'Reactors & Tests', keywords: ['globe', 'map', 'earth', 'reactor', 'detonation', 'test site', 'nuclear', 'geospatial', '3d', 'coordinates', 'orbit', 'polygon'] },
-      { path: '/hardware', label: 'Hardware Pulse Counter', badge: 'WebSerial/Audio', keywords: ['hardware', 'serial', 'audio', 'pulse', 'cpm', 'cps', 'currie', 'dead-time', 'geiger'] },
-      { path: '/reg', label: 'Regulatory Dashboard', badge: '10 CFR 20', keywords: ['regulatory', 'nrc', 'agreement state', 'compliance', 'limits'] }
+      { moduleNumber: 28, path: '/nuclides', label: 'Nuclide Database', badge: 'ICRP-107', keywords: ['module 28', 'm28', 'nuclide', 'isotope', 'half-life', 'decay mode', 'energy', 'branching'] },
+      { moduleNumber: 29, path: '/equipment', label: 'Equipment Catalog', badge: 'Detectors', keywords: ['module 29', 'm29', 'equipment', 'detector', 'geiger', 'scintillator', 'efficiency'] },
+      { moduleNumber: 30, path: '/incidents', label: 'Historical Incidents DB', badge: 'INES 1-7', keywords: ['module 30', 'm30', 'historical', 'incident', 'accident', 'chernobyl', 'fukushima', 'goiania', 'tokaimura', 'sl-1', 'forensics', 'case'] },
+      { moduleNumber: 31, path: '/global-map', label: 'Global 3D Earth Hub', badge: 'Reactors & Tests', keywords: ['module 31', 'm31', 'globe', 'map', 'earth', 'reactor', 'detonation', 'test site', 'nuclear', 'geospatial', '3d', 'coordinates', 'orbit', 'polygon'] },
+      { moduleNumber: 32, path: '/hardware', label: 'Hardware Pulse Counter', badge: 'WebSerial/Audio', keywords: ['module 32', 'm32', 'hardware', 'serial', 'audio', 'pulse', 'cpm', 'cps', 'currie', 'dead-time', 'geiger'] },
+      { moduleNumber: 33, path: '/reg', label: 'Regulatory Dashboard', badge: '10 CFR 20', keywords: ['module 33', 'm33', 'regulatory', 'nrc', 'agreement state', 'compliance', 'limits'] }
     ]
   },
   {
@@ -215,8 +216,8 @@ const NAV_CATEGORIES: NavCategory[] = [
     color: '#c084fc',
     iconSymbol: '✓',
     items: [
-      { path: '/verify', label: 'Verification Tests', badge: '43/43 Pass', keywords: ['verify', 'test', 'sqa', 'validation', 'benchmark', 'qa'] },
-      { path: '/literature', label: 'Core Literature & Physics', badge: 'Derivations', keywords: ['literature', 'citations', 'physics', 'equations', 'formulations', 'references'] }
+      { moduleNumber: 34, path: '/verify', label: 'Verification Tests', badge: '43/43 Pass', keywords: ['module 34', 'm34', 'verify', 'test', 'sqa', 'validation', 'benchmark', 'qa'] },
+      { moduleNumber: 35, path: '/literature', label: 'Core Literature & Physics', badge: 'Derivations', keywords: ['module 35', 'm35', 'literature', 'citations', 'physics', 'equations', 'formulations', 'references'] }
     ]
   }
 ];
@@ -275,11 +276,12 @@ const Sidebar: React.FC<SidebarProps> = ({ onOpenCommandPalette }) => {
       return { ...cat, visibleItems: cat.items };
     }
     const matchingItems = cat.items.filter(item => {
+      const matchNum = String(item.moduleNumber) === query || `m${String(item.moduleNumber).padStart(2, '0')}` === query || `module ${item.moduleNumber}` === query;
       const matchLabel = item.label.toLowerCase().includes(query);
       const matchBadge = item.badge.toLowerCase().includes(query);
       const matchKeywords = item.keywords.some(k => k.toLowerCase().includes(query));
       const matchCategory = cat.title.toLowerCase().includes(query);
-      return matchLabel || matchBadge || matchKeywords || matchCategory;
+      return matchNum || matchLabel || matchBadge || matchKeywords || matchCategory;
     });
     return { ...cat, visibleItems: matchingItems };
   }).filter(cat => !query || cat.visibleItems.length > 0);
@@ -398,8 +400,20 @@ const Sidebar: React.FC<SidebarProps> = ({ onOpenCommandPalette }) => {
                         to={item.path}
                         className={({ isActive }) => `sidebar-nav-link ${isActive ? 'active' : ''}`}
                       >
-                        <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginRight: '6px' }}>
-                          {item.label}
+                        <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginRight: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{
+                            fontFamily: 'var(--font-mono)',
+                            fontSize: '0.68rem',
+                            color: cat.color,
+                            opacity: 0.85,
+                            fontWeight: 700,
+                            minWidth: '18px'
+                          }}>
+                            {String(item.moduleNumber).padStart(2, '0')}
+                          </span>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {item.label}
+                          </span>
                         </span>
                         <span className="sidebar-module-badge">
                           {item.badge}

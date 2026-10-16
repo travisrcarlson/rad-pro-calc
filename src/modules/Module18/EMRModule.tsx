@@ -497,7 +497,7 @@ const EMRModule: React.FC = () => {
 
   const dossierPayload: CalculationDossierPayload = useMemo(() => ({
     reportTitle: 'Electromagnetic Radiation Safety & HERO/HERF Exclusion Dossier',
-    moduleName: 'Module 18: Electronic Warfare EMR & Microwave Radiation Safety',
+    moduleName: 'Module 20: Electronic Warfare EMR & Microwave Radiation Safety',
     statuteCitation: 'IEEE C95.1-2019 / FCC OET Bulletin 65 / DoD MIL-STD-464C',
     verificationTestId: 'VTEST-12',
     operatorName: 'Radiation Safety Officer / EW Officer',
@@ -533,7 +533,7 @@ const EMRModule: React.FC = () => {
       <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
         <div>
           <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: 0 }}>
-            <span>📡 Electronic Warfare EMR & Microwave Radiation Safety</span>
+            <span>📡 Module 20 — Electronic Warfare EMR &amp; Microwave Radiation Safety</span>
             <span style={{ fontSize: '0.75rem', padding: '3px 8px', background: 'rgba(0, 229, 255, 0.1)', color: 'var(--color-primary)', border: '1px solid rgba(0, 229, 255, 0.3)', borderRadius: '4px' }}>
               FCC OET-65 / IEEE C95.1-2019 / DoD MIL-STD-464C
             </span>

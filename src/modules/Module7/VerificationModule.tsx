@@ -36,7 +36,7 @@ const runAllVerificationTests = (): VerificationTest[] => {
     tests.push({
       id: 'VTEST-01',
       name: 'Co-60 Specific Gamma Ray Constant (Γ)',
-      module: 'Module 1 / 2A (External Dose)',
+      module: 'Module 1A / 28 (External Dose & Nuclide DB)',
       category: 'Radiometry',
       standard: 'ICRP Publication 107 & NCRP Report 151',
       standardDoc: 'ICRP-107 Section 3.4 / NCRP-151 Table B.1',
@@ -63,7 +63,7 @@ const runAllVerificationTests = (): VerificationTest[] => {
     tests.push({
       id: 'VTEST-02',
       name: 'Cs-137 / Ba-137m Specific Gamma Constant (Γ)',
-      module: 'Module 1 / 2A (External Dose)',
+      module: 'Module 1A / 28 (External Dose & Nuclide DB)',
       category: 'Radiometry',
       standard: 'ICRP Publication 107 / NuDat 3.0',
       standardDoc: 'ICRP-107 / Brookhaven National Laboratory NuDat',
@@ -92,7 +92,7 @@ const runAllVerificationTests = (): VerificationTest[] => {
     tests.push({
       id: 'VTEST-03',
       name: 'Tenth-Value Layer (TVL) Decade Attenuation',
-      module: 'Module 2B / 4 / 8 (Shielding)',
+      module: 'Module 1B / 4 / 14 (Shielding)',
       category: 'Radiometry',
       standard: 'NCRP Report 147 / NCRP Report 151',
       standardDoc: 'NCRP-151 Section 2.2: Structural Shielding Design',
@@ -121,7 +121,7 @@ const runAllVerificationTests = (): VerificationTest[] => {
     tests.push({
       id: 'VTEST-04',
       name: 'Committed Effective Dose E(50) — I-131 Ingestion',
-      module: 'Module 2C / 17 (Internal Dosimetry)',
+      module: 'Module 1C / 3 (Internal Dosimetry)',
       category: 'Decay & Internal',
       standard: 'ICRP Publication 119',
       standardDoc: 'ICRP-119 Compendium of Dose Coefficients (Adult Public)',
@@ -148,7 +148,7 @@ const runAllVerificationTests = (): VerificationTest[] => {
     tests.push({
       id: 'VTEST-05',
       name: 'IAEA SSR-6 Transport Index (TI) Formulation',
-      module: 'Module 4 (Transport Packaging)',
+      module: 'Module 15 (Transport Packaging)',
       category: 'Decay & Internal',
       standard: 'IAEA Safety Standards Series No. SSR-6 (Rev. 1)',
       standardDoc: 'IAEA SSR-6 Section 526 & 527 / 49 CFR § 173.403',
@@ -179,7 +179,7 @@ const runAllVerificationTests = (): VerificationTest[] => {
     tests.push({
       id: 'VTEST-06',
       name: 'Transient Equilibrium Peak Time (Mo-99 → Tc-99m)',
-      module: 'Module 6 (Decay Kinematics)',
+      module: 'Module 24 (Radiolysis & Decay Chains)',
       category: 'Decay & Internal',
       standard: 'Knoll 4th Ed. / Bateman Equations (1910)',
       standardDoc: 'Knoll Radiation Detection and Measurement, Ch. 3',
@@ -214,7 +214,7 @@ const runAllVerificationTests = (): VerificationTest[] => {
     tests.push({
       id: 'VTEST-07',
       name: 'Ray-AABB 3D Geometric Obstacle Penetration Length',
-      module: 'Module 8 / 9 (3D Spatial Engine)',
+      module: 'Module 2 / 4 (3D Spatial Engine)',
       category: 'Radiometry',
       standard: 'Kay & Kajiya Slab Algorithm (1986)',
       standardDoc: 'Computer Graphics Vol. 20, No. 4: Ray Tracing Bounding Volumes',
@@ -243,7 +243,7 @@ const runAllVerificationTests = (): VerificationTest[] => {
     tests.push({
       id: 'VTEST-08',
       name: 'Flash X-Ray Nanosecond Pulse Instantaneous Flux',
-      module: 'Module 10 (Pulsed X-Ray)',
+      module: 'Module 16 (Pulsed & Flash X-Ray)',
       category: 'Machines & Beams',
       standard: 'Golden Engineering XR200 Spec / ANSI N43.3',
       standardDoc: 'Golden Engineering Technical Manual / NBS Handbook 114',
@@ -276,7 +276,7 @@ const runAllVerificationTests = (): VerificationTest[] => {
     tests.push({
       id: 'VTEST-09',
       name: 'Gaussian Plume Briggs Dispersion Coefficients (Class D)',
-      module: 'Module 13 (Atmospheric Plume)',
+      module: 'Module 13 (Plume Atmospheric Model)',
       category: 'Atmospheric',
       standard: 'Briggs (1973) / EPA AERMOD Model Formulation',
       standardDoc: 'EPA-454/R-03-004 AERMOD Dispersion Equations',
@@ -307,7 +307,7 @@ const runAllVerificationTests = (): VerificationTest[] => {
     tests.push({
       id: 'VTEST-10',
       name: 'ANSI Z136.1 Laser Nominal Ocular Hazard Distance (NOHD)',
-      module: 'Module 15 (Laser Safety)',
+      module: 'Module 19 (Laser Safety & NOHD)',
       category: 'Machines & Beams',
       standard: 'ANSI Z136.1-2014 Table B1 & Equation B1',
       standardDoc: 'American National Standard for Safe Use of Lasers, Eq. B1',
@@ -335,7 +335,7 @@ const runAllVerificationTests = (): VerificationTest[] => {
     tests.push({
       id: 'VTEST-11',
       name: 'Duane-Hunt Law — X-Ray Minimum Wavelength (λmin)',
-      module: 'Module 16 (X-Ray Tube Physics)',
+      module: 'Module 17 (X-Ray Tube Simulator)',
       category: 'Machines & Beams',
       standard: 'Duane & Hunt (1915) Physical Review',
       standardDoc: 'Johns & Cunningham, The Physics of Radiology, 4th Ed.',
@@ -365,7 +365,7 @@ const runAllVerificationTests = (): VerificationTest[] => {
     tests.push({
       id: 'VTEST-12',
       name: 'FCC OET-65 Radar Antenna Fraunhofer Far-Field Boundary',
-      module: 'Module 18 (Electronic Warfare EMR)',
+      module: 'Module 20 (EW EMR & Microwave)',
       category: 'Machines & Beams',
       standard: 'FCC OET Bulletin 65 & IEEE C95.1-2019',
       standardDoc: 'FCC OET Bulletin 65, Section 2: Antenna Calculations',
@@ -392,7 +392,7 @@ const runAllVerificationTests = (): VerificationTest[] => {
     tests.push({
       id: 'VTEST-13',
       name: 'Heterogeneous Reactor Lattice Infinite Multiplication (k∞)',
-      module: 'Module 19 (Criticality & Reactor Core)',
+      module: 'Module 21 (Criticality & Reactor Core)',
       category: 'Criticality & MCA',
       standard: 'Lamarsh & Baratta 3rd Ed. / IAEA-TECDOC-808',
       standardDoc: 'Lamarsh Nuclear Reactor Theory Section 7.2: Heterogeneous Core Models',
@@ -420,7 +420,7 @@ const runAllVerificationTests = (): VerificationTest[] => {
     tests.push({
       id: 'VTEST-14',
       name: 'HPGe Gamma Spectrometry FWHM Energy Resolution (R)',
-      module: 'Module 20 (MCA Spectroscopy)',
+      module: 'Module 25 (Gamma Spectroscopy)',
       category: 'Criticality & MCA',
       standard: 'IEEE Std 325-1996 (R2002)',
       standardDoc: 'IEEE Standard Test Procedures for Germanium Gamma-Ray Detectors',
@@ -453,7 +453,7 @@ const runAllVerificationTests = (): VerificationTest[] => {
     tests.push({
       id: 'VTEST-15',
       name: 'MARSSIM Sign Test Nonparametric Sample Size (N)',
-      module: 'Module 22 (MARSSIM Site Release)',
+      module: 'Module 27 (MARSSIM Decommissioning)',
       category: 'Clinical & Stats',
       standard: 'NUREG-1575 (Rev. 1) Equation 5-2',
       standardDoc: 'MARSSIM Chapter 5: Survey Planning and Design',
@@ -481,7 +481,7 @@ const runAllVerificationTests = (): VerificationTest[] => {
     tests.push({
       id: 'VTEST-16',
       name: 'AAPM TG-43U1 Brachytherapy Reference Point Dose Rate',
-      module: 'Module 23 (AAPM TG-43 Brachytherapy)',
+      module: 'Module 26 (Brachytherapy Planner)',
       category: 'Clinical & Stats',
       standard: 'AAPM TG-43U1 (Rivard et al. 2004)',
       standardDoc: 'Medical Physics 31(3), March 2004: Update of AAPM TG-43',
@@ -510,7 +510,7 @@ const runAllVerificationTests = (): VerificationTest[] => {
     tests.push({
       id: 'VTEST-17',
       name: 'Industrial Radiography Controlled Area Boundary Distance',
-      module: 'Module 3 (NDT Industrial Radiography)',
+      module: 'Module 5 (Radiation Map & NDT)',
       category: 'Radiometry',
       standard: '10 CFR § 34.41 & IAEA SSG-11',
       standardDoc: 'NRC 10 CFR § 34.41 / IAEA Specific Safety Guide SSG-11',
@@ -539,7 +539,7 @@ const runAllVerificationTests = (): VerificationTest[] => {
     tests.push({
       id: 'VTEST-18',
       name: 'Semi-Infinite Cloud Air Submersion Dose Rate (Xe-133)',
-      module: 'Module 5 (Cloud & Ground Plane Shine)',
+      module: 'Module 13 / 33 (Cloud & Ground Shine)',
       category: 'Atmospheric',
       standard: 'EPA Federal Guidance Report No. 12 (Table III.1)',
       standardDoc: 'EPA-402-R-93-081: External Exposure to Radionuclides in Air, Water, and Soil',
@@ -567,7 +567,7 @@ const runAllVerificationTests = (): VerificationTest[] => {
     tests.push({
       id: 'VTEST-19',
       name: 'Synchrotron Bending Magnet Critical Photon Energy (Ec)',
-      module: 'Module 11 (Synchrotron & FEL Physics)',
+      module: 'Module 16 / 29 (Synchrotron & Equipment)',
       category: 'Machines & Beams',
       standard: 'Wiedemann Particle Accelerator Physics / Jackson',
       standardDoc: 'H. Wiedemann, Particle Accelerator Physics 4th Ed. / Jackson Classical Electrodynamics',
@@ -599,7 +599,7 @@ const runAllVerificationTests = (): VerificationTest[] => {
     tests.push({
       id: 'VTEST-20',
       name: 'Thermal Neutron Activation Saturation Yield (Au-198)',
-      module: 'Module 12 (Neutron Activation Analysis)',
+      module: 'Module 1D / 12 (Neutron Activation)',
       category: 'Criticality & MCA',
       standard: 'IAEA-NDS-2016 / Glasstone Reactor Theory',
       standardDoc: 'IAEA Nuclear Data Section / Glasstone & Sesonske Nuclear Reactor Engineering',
@@ -627,7 +627,7 @@ const runAllVerificationTests = (): VerificationTest[] => {
     tests.push({
       id: 'VTEST-21',
       name: 'EPA Protective Action Guide Early Phase Evacuation Threshold',
-      module: 'Module 14 (Emergency Management & PAGs)',
+      module: 'Module 14 (Shielding & ALARA PAGs)',
       category: 'Atmospheric',
       standard: 'EPA-400-R-92-001 (EPA PAG Manual 2017)',
       standardDoc: 'EPA PAG Manual Section 2: Protective Action Guides for the Early Phase',
@@ -655,7 +655,7 @@ const runAllVerificationTests = (): VerificationTest[] => {
     tests.push({
       id: 'VTEST-22',
       name: 'Cs-137 Systemic Biokinetic Effective Half-Life (Te)',
-      module: 'Module 17 (Organ Biokinetics & Retention)',
+      module: 'Module 3 (Internal Dosimetry & Biokinetics)',
       category: 'Decay & Internal',
       standard: 'ICRP Publication 68 & ICRP Publication 30',
       standardDoc: 'ICRP-68 Annex D: Biokinetic Data for Systemic Retention',
@@ -681,7 +681,7 @@ const runAllVerificationTests = (): VerificationTest[] => {
     tests.push({
       id: 'VTEST-23',
       name: 'Galactic Cosmic Radiation Dose Rate at FL390 (Solar Min)',
-      module: 'Module 21 (Cosmic Radiation & Aviation)',
+      module: 'Module 35 (Core Literature & Cosmic Physics)',
       category: 'Radiometry',
       standard: 'FAA CARI-7 & ICRP Publication 132',
       standardDoc: 'FAA Advisory Circular AC 120-61B / ICRP Publication 132',
@@ -711,7 +711,7 @@ const runAllVerificationTests = (): VerificationTest[] => {
     tests.push({
       id: 'VTEST-24',
       name: 'Katz-Penfold Beta Particle CSDA Maximum Range (P-32)',
-      module: 'Module 24 (Alpha/Beta Stopping Power)',
+      module: 'Module 6 (Tactical CBRN & Stopping Power)',
       category: 'Machines & Beams',
       standard: 'Katz & Penfold (1952) / ICRU Report 37',
       standardDoc: 'Reviews of Modern Physics 24, 28: Range-Energy Relations for Electrons and Betas',
@@ -743,7 +743,7 @@ const runAllVerificationTests = (): VerificationTest[] => {
     tests.push({
       id: 'VTEST-25',
       name: 'Klein-Nishina Total Incoherent Compton Cross-Section (α = 1.0)',
-      module: 'Monte Carlo Micro-Kernel (Photon Transport)',
+      module: 'Module 23 (Monte Carlo Micro-Kernel)',
       category: 'Criticality & MCA',
       standard: 'Klein & Nishina (1929) / Evans Atomic Nucleus',
       standardDoc: 'Z. Physik 52, 853; Evans The Atomic Nucleus Ch. 23',
@@ -770,7 +770,7 @@ const runAllVerificationTests = (): VerificationTest[] => {
     tests.push({
       id: 'VTEST-26',
       name: 'Currie Critical Decision Level (Lc) Detection Limit (B = 100)',
-      module: 'Hardware Metrology & Live Pulse Counting',
+      module: 'Module 32 (Hardware Pulse Counter)',
       category: 'Radiometry',
       standard: 'L.A. Currie (1968) Anal. Chem. 40, 586-593 Eq. 15',
       standardDoc: 'Currie Limits for Qualitative Detection and Quantitative Determination',
@@ -800,7 +800,7 @@ const runAllVerificationTests = (): VerificationTest[] => {
     tests.push({
       id: 'VTEST-27',
       name: 'Radiographic Geometric Magnification (M) & Penumbra Unsharpness (Ug)',
-      module: 'X-Ray Distortion & Geometry (Module 16B)',
+      module: 'Module 18 (X-Ray Distortion & Geometry)',
       category: 'Machines & Beams',
       standard: 'Bushong Radiologic Science 12th Ed. / ASME BPVC Sec V Art. 2',
       standardDoc: 'Bushong Ch. 17: Image Quality / ASME BPVC Section V Article 2 Table T-274.1',
@@ -830,7 +830,7 @@ const runAllVerificationTests = (): VerificationTest[] => {
     tests.push({
       id: 'VTEST-28',
       name: 'Way-Wigner Fission Product Decay & In-Shelter Dose Integration',
-      module: 'CBRN Consequence & Fallout (Module 25)',
+      module: 'Module 7 (CBRN Fallout & Shelter)',
       category: 'Atmospheric',
       standard: 'NCRP Report No. 165 / Glasstone & Dolan (1977)',
       standardDoc: 'NCRP Report No. 165: Responding to a Radiological or Nuclear Terrorism Incident / Glasstone Ch. 9',
@@ -862,7 +862,7 @@ const runAllVerificationTests = (): VerificationTest[] => {
     tests.push({
       id: 'VTEST-29',
       name: 'Nuclear Weapon Prompt Thermal Radiation Fluence (10 kT at 2.0 km)',
-      module: 'Nuclear Weapon Effects (Module 26)',
+      module: 'Module 8 (Prompt Blast & HEMP)',
       category: 'Atmospheric',
       standard: 'Glasstone & Dolan (1977) / Kingery-Bulmash',
       standardDoc: 'Glasstone & Dolan: The Effects of Nuclear Weapons 3rd Ed. / BRL Report 1972',
@@ -896,7 +896,7 @@ const runAllVerificationTests = (): VerificationTest[] => {
     tests.push({
       id: 'VTEST-30',
       name: 'Prussian Blue Accelerated Cs-137 Biokinetic Decorporation at Day 60',
-      module: 'Medical Countermeasures (Module 27)',
+      module: 'Module 9 (Medical Countermeasures)',
       category: 'Decay & Internal',
       standard: 'ICRP Publication 78 / NCRP Report No. 166',
       standardDoc: 'NCRP Report No. 166: Management of Persons Contaminated with Radionuclides / ICRP 78',
@@ -927,7 +927,7 @@ const runAllVerificationTests = (): VerificationTest[] => {
     tests.push({
       id: 'VTEST-31',
       name: 'Godiva Prompt-Critical Burst FWHM Pulse Duration (+$0.10 Prompt Step)',
-      module: 'CAAS Criticality Excursions (Module 28)',
+      module: 'Module 22 (CAAS Criticality Alarms)',
       category: 'Criticality & MCA',
       standard: 'ANSI/ANS-8.3 / Hansen & Maier (LA-UR-77-2400)',
       standardDoc: 'Hansen & Maier Godiva-IV Critical Assembly Benchmark / ANSI/ANS-8.3',
@@ -957,7 +957,7 @@ const runAllVerificationTests = (): VerificationTest[] => {
     tests.push({
       id: 'VTEST-32',
       name: 'Sensor Mesh Inverse Multilateration Localization Convergence',
-      module: 'Tactical GIS & ATAK Hub (Module 29)',
+      module: 'Module 10 (Tactical GIS & ATAK Hub)',
       category: 'Radiometry',
       standard: 'Cursor-on-Target / Inverse Multilateration (DoD-CoT)',
       standardDoc: 'DoD Cursor-on-Target v2.0 / Tactical Radioisotope Localization Algorithm',
@@ -984,7 +984,7 @@ const runAllVerificationTests = (): VerificationTest[] => {
     tests.push({
       id: 'VTEST-33',
       name: 'IAEA GSR Part 7 & EPA PAG 16-Sector Keyhole Evacuation Arc Sweep',
-      module: 'EPZ Consequence & Population Engine (Module 31)',
+      module: 'Module 11 / 30 / 31 (EPZ & Incident Consequence)',
       category: 'Atmospheric',
       standard: 'EPA-400-R-92-001 / IAEA GSR Part 7 / NUREG-0654',
       standardDoc: 'EPA PAG Manual (2017) Section 2.2 / IAEA GSR Part 7 App. II (3-Sector Keyhole Evacuation)',
@@ -1014,7 +1014,7 @@ const runAllVerificationTests = (): VerificationTest[] => {
     tests.push({
       id: 'VTEST-34',
       name: 'CTBTO Murphy-Ringdal Empirical Teleseismic Yield Inversion (mb 5.55)',
-      module: 'CTBTO Seismic Inversion Engine (Module 31)',
+      module: 'Module 31 (Global 3D Earth Hub — CTBTO)',
       category: 'Radiometry',
       standard: 'CTBT Protocol Part I / Murphy (1981) / Ringdal (1992)',
       standardDoc: 'Comprehensive Nuclear-Test-Ban Treaty (CTBT) Protocol / Murphy J.R. (1981) BSSA 71(1)',
@@ -1041,7 +1041,7 @@ const runAllVerificationTests = (): VerificationTest[] => {
     tests.push({
       id: 'VTEST-35',
       name: 'Historical Detonation Blast Yield Proportional Marker Sizing (Castle Bravo 15 MT)',
-      module: 'Global 3D Earth Hub (Module 31)',
+      module: 'Module 31 (Global 3D Earth Hub)',
       category: 'Radiometry',
       standard: 'Glasstone & Dolan (1977) / Dynamic Logarithmic Blast Yield Scaling',
       standardDoc: 'Glasstone & Dolan (1977) Effects of Nuclear Weapons / SIPRI-UNODA 2,056-Event Geodatabase',
@@ -1091,7 +1091,7 @@ const runAllStressTests = (): StressTestResult[] => {
     list.push({
       id: 'STRESS-01',
       name: 'Point Source Near-Field Singularity Clamp (r → 0)',
-      module: 'Module 1 / 2A / 8',
+      module: 'Module 1A / 4 / 28',
       domain: 'Numerical Safeguards',
       standard: 'ISO 17025 Singularity Guard: max(r, r_min)',
       condition: 'Distance input r = 0.00 m (singularity pole)',
@@ -1114,7 +1114,7 @@ const runAllStressTests = (): StressTestResult[] => {
     list.push({
       id: 'STRESS-02',
       name: 'Infinite Shielding Attenuation Asymptotic Convergence (x → ∞)',
-      module: 'Module 2B / 4 / 8',
+      module: 'Module 1B / 4 / 14',
       domain: 'Shielding Attenuation',
       standard: 'NCRP-151 Asymptotic Zero Transmission',
       condition: 'Shield thickness x = 100 × TVL (380 cm Pb)',
@@ -1137,7 +1137,7 @@ const runAllStressTests = (): StressTestResult[] => {
     list.push({
       id: 'STRESS-03',
       name: 'Asymptotic Long-Term Decay Convergence (t → ∞)',
-      module: 'Module 6',
+      module: 'Module 24',
       domain: 'Decay Kinematics',
       standard: 'Bateman Law t = 1,000 Half-Lives',
       condition: 'Decay duration t = 1,000 × T½ (1,000 hours)',
@@ -1164,7 +1164,7 @@ const runAllStressTests = (): StressTestResult[] => {
     list.push({
       id: 'STRESS-04',
       name: 'Multi-Step Bateman Kinematic Activity Non-Negativity',
-      module: 'Module 6',
+      module: 'Module 24',
       domain: 'Bateman Kinetics',
       standard: 'Differential System Positive Invariance',
       condition: 'Transient decay chain evaluated across 100 temporal slices [0, 10⁶ s]',
@@ -1187,7 +1187,7 @@ const runAllStressTests = (): StressTestResult[] => {
     list.push({
       id: 'STRESS-05',
       name: 'Relativistic Lorentz Singularity Protection (β → 1)',
-      module: 'Module 11',
+      module: 'Module 16 / 29',
       domain: 'Synchrotron & FEL Physics',
       standard: 'Special Relativity Limiting Velocity c',
       condition: 'Beam velocity ratio β = 0.999999999 (0.999999999 c)',
@@ -1208,7 +1208,7 @@ const runAllStressTests = (): StressTestResult[] => {
     list.push({
       id: 'STRESS-06',
       name: 'Duane-Hunt Accelerated Voltage Boundary Handling (V ≤ 0)',
-      module: 'Module 16',
+      module: 'Module 17',
       domain: 'X-Ray Tube Physics',
       standard: 'Quantum Cutoff Physical Boundary Condition',
       condition: 'High-voltage supply V = 0 kV and V = -10 kV (unphysical inputs)',
@@ -1254,7 +1254,7 @@ const runAllStressTests = (): StressTestResult[] => {
     list.push({
       id: 'STRESS-08',
       name: 'IEEE 754 64-Bit Double Precision Machine Epsilon Integrity',
-      module: 'All Modules',
+      module: 'Modules 1–35',
       domain: 'Hardware FPU Arithmetic',
       standard: 'IEEE 754-2019 Binary64 Double Precision Spec',
       condition: 'Client Host CPU / FPU Floating Point Arithmetic',
@@ -1505,10 +1505,10 @@ const VerificationModule: React.FC = () => {
             </span>
           </div>
           <h2 style={{ margin: '6px 0 0 0', fontSize: '1.4rem', letterSpacing: '0.03em' }}>
-            Automated Scientific Verification &amp; Validation (V&amp;V) Engine
+            Module 34 — Automated Scientific Verification &amp; Validation (V&amp;V) Engine
           </h2>
           <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
-            Formal quality assurance testing matrix evaluating analytical algorithms, boundary safeguards, and IEEE 754 floating-point integrity across all 35 platform tools (Modules 1–31).
+            Formal quality assurance testing matrix evaluating analytical algorithms, boundary safeguards, and IEEE 754 floating-point integrity across all 35 platform tools (Modules 1–35).
           </p>
         </div>
 
@@ -1554,7 +1554,7 @@ const VerificationModule: React.FC = () => {
             {analytics.grandTotal} <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>TESTS</span>
           </span>
           <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
-            {analytics.totalAnalytical} Analytical + {analytics.totalStress} Stress Vectors (Modules 1–31)
+            {analytics.totalAnalytical} Analytical + {analytics.totalStress} Stress Vectors (Modules 1–35)
           </span>
         </div>
 
@@ -2015,7 +2015,7 @@ const VerificationModule: React.FC = () => {
             {/* Certificate Body Ledger */}
             <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <p style={{ fontSize: '0.90rem', color: '#e2e8f0', lineHeight: '1.6', margin: 0 }}>
-                This document certifies that the computational algorithms, mathematical formulations, and boundary condition safeguards implemented within <strong>RadPro Calc (Modules 1 through 31)</strong> have been independently evaluated against peer-reviewed analytical literature, NCRP/ICRP recommendations, IAEA technical reports, and IEEE consensus standards.
+                This document certifies that the computational algorithms, mathematical formulations, and boundary condition safeguards implemented within <strong>RadPro Calc (Modules 1 through 35)</strong> have been independently evaluated against peer-reviewed analytical literature, NCRP/ICRP recommendations, IAEA technical reports, and IEEE consensus standards.
               </p>
 
               {/* Execution Telemetry Grid */}

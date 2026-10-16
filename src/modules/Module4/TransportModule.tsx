@@ -339,7 +339,7 @@ const TransportModule: React.FC = () => {
 
   const dossierPayload: CalculationDossierPayload = useMemo(() => ({
     reportTitle: 'IAEA SSR-6 Dangerous Goods Consignment & Transport Manifest',
-    moduleName: 'Module 4 (Transport Packaging & Shielding Optimization)',
+    moduleName: 'Module 15: Transport Packaging & Shielding Optimization',
     statuteCitation: 'IAEA Safety Standards Series No. SSR-6 (Rev. 1) / 49 CFR Part 173',
     verificationTestId: 'VTEST-05',
     operatorName: 'Certified Dangerous Goods Specialist',
@@ -367,7 +367,7 @@ const TransportModule: React.FC = () => {
     <div className="panel" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto' }}>
       <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
         <div>
-          <h2>Module 4 — Shielding &amp; Transport Eval (IAEA SSR-6)</h2>
+          <h2>Module 15 — Shielding &amp; Transport Eval (IAEA SSR-6)</h2>
           <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
             IAEA SSR-6 Rev. 1 transport packaging, Transport Index (TI), and multilayer attenuation optimization
           </span>

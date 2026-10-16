@@ -121,7 +121,7 @@ export const ScenarioBuilderModule: React.FC = () => {
           <span style={{ fontSize: '1.8rem' }}>📂</span>
           <div>
             <h2 style={{ margin: 0, fontSize: '1.35rem', color: 'var(--color-accent)' }}>
-              Unified Scenario Builder & Incident Case File System
+              Module 11 — Unified Scenario Builder &amp; Incident Case File System
             </h2>
             <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
               Multi-Module Historical Case Studies, Emergency Response Drills & Standalone .radcase Packages

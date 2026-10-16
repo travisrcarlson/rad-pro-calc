@@ -259,7 +259,7 @@ export const MedicalCountermeasuresModule: React.FC = () => {
   const dossierPayload: CalculationDossierPayload = useMemo(() => {
     return {
       reportTitle: 'Medical Countermeasure & Actinide Chelation Prescription Record',
-      moduleName: 'Module 27 (Medical Countermeasures & Chelation Biokinetics)',
+      moduleName: 'Module 9: Medical Countermeasures & Actinide Chelation Biokinetics',
       statuteCitation: 'NCRP Report No. 166 / ICRP Publication 78 / FDA Medical Guidance',
       verificationTestId: 'VTEST-30',
       operatorName: 'Clinical Health Physicist / Radiologist',
@@ -294,7 +294,7 @@ export const MedicalCountermeasuresModule: React.FC = () => {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
           <div>
             <h2 style={{ margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span>💊 Module 27: Medical Countermeasures &amp; Actinide Chelation Biokinetics</span>
+              <span>💊 Module 9: Medical Countermeasures &amp; Actinide Chelation Biokinetics</span>
               <VerificationBadge testId="VTEST-30" standard="NCRP-166 / ICRP-78" />
             </h2>
             <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: '0.88rem' }}>

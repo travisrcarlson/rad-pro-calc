@@ -174,7 +174,7 @@ const EquipmentLibraryModule: React.FC = () => {
                 <span className="hud-badge hud-badge-accent">IAEA SAFETY STANDARDS</span>
               </div>
               <h2 style={{ margin: '6px 0 0 0', fontSize: '1.4rem', letterSpacing: '0.03em' }}>
-                Radioactive Equipment &amp; Sealed Source Library
+                Module 29 — Radioactive Equipment &amp; Sealed Source Library
               </h2>
               <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
                 Identify commercial devices, industrial radiography cameras, well-logging tools, and medical teletherapy heads. Catalog contains {processedEquipment.length} validated profiles.

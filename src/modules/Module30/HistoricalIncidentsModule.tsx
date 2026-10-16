@@ -185,7 +185,7 @@ export const HistoricalIncidentsModule: React.FC = () => {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
           <div>
             <h2 style={{ margin: '0 0 6px 0', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-              <span>📜 Global Radiological Incidents &amp; Historical Forensics</span>
+              <span>📜 Module 30 — Global Radiological Incidents &amp; Historical Forensics</span>
               <span style={{ fontSize: '0.75rem', padding: '3px 8px', background: 'rgba(0, 229, 255, 0.1)', color: 'var(--color-primary)', border: '1px solid rgba(0, 229, 255, 0.3)', borderRadius: '4px' }}>
                 IAEA INES 0–7 // 2,370+ Research Events
               </span>

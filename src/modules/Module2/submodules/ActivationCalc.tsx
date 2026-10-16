@@ -43,7 +43,7 @@ const ActivationCalc: React.FC = () => {
 
   const dossierPayload: CalculationDossierPayload = useMemo(() => ({
     reportTitle: `Neutron Activation Analysis — ${selectedTarget.name} → ${selectedTarget.product}`,
-    moduleName: 'Module 2D: Neutron Activation & Saturation Kinetics Calculator',
+    moduleName: 'Module 1D: Neutron Activation & Saturation Kinetics Calculator',
     statuteCitation: 'IAEA TRS No. 273 / Knoll Radiation Detection and Measurement',
     verificationTestId: 'VTEST-17 (Neutron Activation Saturation)',
     operatorName: 'Reactor Health Physicist',

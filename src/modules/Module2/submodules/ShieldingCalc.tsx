@@ -55,7 +55,7 @@ const ShieldingCalc: React.FC = () => {
 
   const dossierPayload: CalculationDossierPayload = useMemo(() => ({
     reportTitle: `Broad-Beam TVL Shielding Assessment — ${selectedMaterial.name}`,
-    moduleName: 'Module 2B: Broad-Beam Tenth-Value Layer (TVL) Shielding Calculator',
+    moduleName: 'Module 1B: Broad-Beam Tenth-Value Layer (TVL) Shielding Calculator',
     statuteCitation: 'NCRP Report No. 151 / ANSI/ANS-6.4.3 / NIST XCOM',
     verificationTestId: 'VTEST-02 (Gamma Shielding TVL)',
     operatorName: 'Health Physicist',

@@ -442,7 +442,7 @@ const DecayModule: React.FC = () => {
     const totalSec = timeValue * timeUnit;
     return {
       reportTitle: `Bateman Decay Chain & Yield Kinematics — ${parentName}`,
-      moduleName: 'Module 6: Generalized Bateman Decay & Spectral Yield Solver',
+      moduleName: 'Module 24: Generalized Bateman Decay & Spectral Yield Solver',
       statuteCitation: 'ICRP Publication 107 / Bateman (1910) Proc. Cambridge Philos. Soc.',
       verificationTestId: 'VTEST-06 (Bateman Secular/Transient Equilibrium)',
       operatorName: 'Nuclear Physics Specialist',
@@ -478,7 +478,7 @@ const DecayModule: React.FC = () => {
       <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
           <div>
-            <h2 style={{ margin: 0 }}>Module 6 — Decay Kinematics & Yield Solver</h2>
+            <h2 style={{ margin: 0 }}>Module 24 — Decay Kinematics &amp; Yield Solver</h2>
             <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
               Generalized Bateman differential chains, secular/transient equilibria, and spectral yields
             </span>

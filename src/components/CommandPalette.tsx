@@ -14,402 +14,402 @@ export interface CommandItem {
 }
 
 const COMMAND_ITEMS: CommandItem[] = [
-  // --- DOSIMETRY & ALARA ---
+  // --- 1. DOSIMETRY & ALARA (Modules 1-5) ---
   {
     id: 'mod-dose',
-    title: 'Point Source Dose Calculator',
+    title: 'Module 1: Point Source Dose Calculator',
     category: 'Dosimetry & ALARA',
     categoryColor: '#00e5ff',
     badge: 'ICRP-103',
     path: '/dose',
     description: 'Calculate gamma & beta dose rates, inverse square law, attenuation with Taylor/Berger buildup factors.',
-    keywords: ['dose', 'calculator', 'inverse square', 'buildup', 'taylor', 'berger', 'curie', 'becquerel', 'alara'],
+    keywords: ['module 1', 'm01', 'dose', 'calculator', 'inverse square', 'buildup', 'taylor', 'berger', 'curie', 'becquerel', 'alara'],
     icon: '◎'
   },
   {
     id: 'mod-worker',
-    title: '3D Worker Dosimetry & ALARA Shift Tracker',
+    title: 'Module 2: 3D Worker Dosimetry & ALARA Shift Tracker',
     category: 'Dosimetry & ALARA',
     categoryColor: '#00e5ff',
     badge: 'Occupational',
     path: '/worker',
     description: 'Multi-worker stay-time tracking, 3D room voxel field, and multi-organ dose accumulation (Hp(10), Hp(3), Hp(0.07)).',
-    keywords: ['worker', 'dosimetry', 'alara', 'shift', 'stay time', 'organ dose', 'hp10', 'hp3', 'extremity'],
+    keywords: ['module 2', 'm02', 'worker', 'dosimetry', 'alara', 'shift', 'stay time', 'organ dose', 'hp10', 'hp3', 'extremity'],
     icon: '👤'
   },
   {
     id: 'mod-internal',
-    title: 'Internal Dosimetry & Biokinetics',
+    title: 'Module 3: Internal Dosimetry & Biokinetics',
     category: 'Dosimetry & ALARA',
     categoryColor: '#00e5ff',
     badge: 'MIRD / ICRP',
     path: '/internal-dose',
     description: 'ICRP 30/68/78 compartmental intake retention, inhalation classes (F/M/S), committed effective dose equivalent.',
-    keywords: ['internal', 'mird', 'biokinetics', 'intake', 'inhalation', 'ingestion', 'cede', 'organ burden'],
+    keywords: ['module 3', 'm03', 'internal', 'mird', 'biokinetics', 'intake', 'inhalation', 'ingestion', 'cede', 'organ burden'],
     icon: '🫁'
   },
   {
     id: 'mod-spatial3d',
-    title: '3D Spatial Room & Volumetric Workspace',
+    title: 'Module 4: 3D Spatial Room & Volumetric Workspace',
     category: 'Dosimetry & ALARA',
     categoryColor: '#00e5ff',
     badge: 'Point Cloud',
     path: '/spatial3d',
     description: 'Interactive WebGL 3D radiation voxel cloud, virtual sensor placement, and ray-AABB geometric shield boundaries.',
-    keywords: ['3d', 'spatial', 'cad', 'workspace', 'mesh', 'voxels', 'isodose', 'point cloud', 'sensors'],
+    keywords: ['module 4', 'm04', '3d', 'spatial', 'cad', 'workspace', 'mesh', 'voxels', 'isodose', 'point cloud', 'sensors'],
     icon: '📦'
   },
   {
     id: 'mod-visualisation',
-    title: 'Radiation Heatmap & Isodose Visualizer',
+    title: 'Module 5: Radiation Heatmap & Isodose Visualizer',
     category: 'Dosimetry & ALARA',
     categoryColor: '#00e5ff',
     badge: 'Heatmap',
     path: '/visualisation',
     description: '2D multi-source planar radiation field contours, isodose exclusion zones, and line-of-sight barrier shadowing.',
-    keywords: ['heatmap', 'isodose', 'contour', 'shadowing', '2d map', 'exclusion zone'],
+    keywords: ['module 5', 'm05', 'heatmap', 'isodose', 'contour', 'shadowing', '2d map', 'exclusion zone'],
     icon: '🗺️'
   },
 
-  // --- EMERGENCY & CBRN ---
+  // --- 2. EMERGENCY & CBRN (Modules 6-15) ---
   {
     id: 'mod-first-responder',
-    title: 'Tactical First Responder & CBRN Hazard Command',
+    title: 'Module 6: Tactical First Responder & CBRN Hazard Command',
     category: 'Emergency & CBRN',
     categoryColor: '#ff9f1c',
     badge: 'ERG 2024 / REAC-TS',
     path: '/first-responder',
     description: 'Immediate RDD blast/radiation zoning, 10 R/h turn-back limits, worker dose tiers, and field decontamination protocols.',
-    keywords: ['first responder', 'cbrn', 'hazmat', 'triage', 'cordon', 'standoff', 'dirty bomb', 'rdd', 'turn-back'],
+    keywords: ['module 6', 'm06', 'first responder', 'cbrn', 'hazmat', 'triage', 'cordon', 'standoff', 'dirty bomb', 'rdd', 'turn-back'],
     icon: '🚨'
   },
   {
     id: 'mod-cbrn-consequence',
-    title: 'CBRN Fallout & Consequence Management',
+    title: 'Module 7: CBRN Fallout & Consequence Management',
     category: 'Emergency & CBRN',
     categoryColor: '#ff9f1c',
     badge: 'Way-Wigner / NCRP-165',
     path: '/cbrn-consequence',
     description: 't^-1.2 fission product decay, multi-layer shelter protection factors, egress optimizer, and cytogenetic biodosimetry.',
-    keywords: ['fallout', 'way wigner', 'shelter', 'protection factor', 'egress', 'aegl', 'chemical', 'biodosimetry', 'metrepol'],
+    keywords: ['module 7', 'm07', 'fallout', 'way wigner', 'shelter', 'protection factor', 'egress', 'aegl', 'chemical', 'biodosimetry', 'metrepol'],
     icon: '🛡️'
   },
   {
     id: 'mod-nuclear-weapons',
-    title: 'Nuclear Weapon Effects Simulator',
+    title: 'Module 8: Nuclear Weapon Effects Simulator',
     category: 'Emergency & CBRN',
     categoryColor: '#ff9f1c',
     badge: 'Kingery-Bulmash',
     path: '/nuclear-weapons-effects',
-    description: 'Blast overpressure (psi), dynamic wind speed, prompt thermal fluence, initial radiation, and HEMP E1/E2/E3 fields.',
-    keywords: ['nuclear', 'weapon', 'blast', 'overpressure', 'shockwave', 'thermal', 'burn', 'hemp', 'emp', 'yield', 'hiroshima'],
+    description: 'Blast overpressure (psi), dynamic wind speed, prompt thermal fluence, initial radiation, HOB/DOB subterranean bursts, and HEMP.',
+    keywords: ['module 8', 'm08', 'nuclear', 'weapon', 'blast', 'overpressure', 'shockwave', 'thermal', 'burn', 'hemp', 'emp', 'yield', 'hiroshima'],
     icon: '💥'
   },
   {
     id: 'mod-medical-countermeasures',
-    title: 'Medical Countermeasures & Radioprotectants',
+    title: 'Module 9: Medical Countermeasures & Radioprotectants',
     category: 'Emergency & CBRN',
     categoryColor: '#ff9f1c',
     badge: 'DTPA / PB / KI',
     path: '/medical-countermeasures',
     description: 'Clinical pharmacokinetics: Potassium Iodide (KI), Prussian Blue decorporation, Ca/Zn-DTPA chelation, and G-CSF.',
-    keywords: ['medical', 'countermeasures', 'ki', 'potassium iodide', 'prussian blue', 'dtpa', 'chelation', 'decorporation', 'filgrastim'],
+    keywords: ['module 9', 'm09', 'medical', 'countermeasures', 'ki', 'potassium iodide', 'prussian blue', 'dtpa', 'chelation', 'decorporation', 'filgrastim'],
     icon: '💊'
   },
   {
     id: 'mod-tactical-gis',
-    title: 'Tactical GIS & Sensor Mesh ATAK Hub',
+    title: 'Module 10: Tactical GIS & Sensor Mesh ATAK Hub',
     category: 'Emergency & CBRN',
     categoryColor: '#ff9f1c',
     badge: 'CoT / ATAK',
     path: '/tactical-gis',
     description: 'Sensor mesh inverse multilateration, DoD Cursor-on-Target (CoT v2.0 XML) generation, and tactical GIS layers.',
-    keywords: ['gis', 'atak', 'wintak', 'cot', 'cursor on target', 'triangulation', 'multilateration', 'mesh', 'picket'],
+    keywords: ['module 10', 'm10', 'gis', 'atak', 'wintak', 'cot', 'cursor on target', 'triangulation', 'multilateration', 'mesh', 'picket'],
     icon: '📡'
   },
   {
-    id: 'mod-plume',
-    title: 'Atmospheric Dispersion & Gaussian Plume',
-    category: 'Emergency & CBRN',
-    categoryColor: '#ff9f1c',
-    badge: 'Gaussian / Briggs',
-    path: '/plume',
-    description: 'Pasquill-Gifford dispersion classes A–F, ground reflection image sources, and centerline touchdown peak solver.',
-    keywords: ['plume', 'atmospheric', 'pasquill', 'dispersion', 'gaussian', 'touchdown', 'wind', 'fallout'],
-    icon: '💨'
-  },
-  {
-    id: 'mod-global-map',
-    title: 'Global 3D Earth Hub & Nuclear Infrastructure',
-    category: 'Emergency & CBRN',
-    categoryColor: '#ff9f1c',
-    badge: 'Reactors & Tests',
-    path: '/global-map',
-    description: 'Interactive 3D WebGL globe with 400+ nuclear power reactors, historical test sites, EPZ keyhole planner, and CTBTO seismic yield inversion.',
-    keywords: ['globe', 'map', 'earth', 'reactor', 'detonation', 'test site', 'epz', 'evacuation', 'ctbto', 'seismic', '3d'],
-    icon: '🌍'
-  },
-  {
     id: 'mod-scenarios',
-    title: 'Incident Scenario Drills (.radcase)',
+    title: 'Module 11: Incident Scenario Drills (.radcase)',
     category: 'Emergency & CBRN',
     categoryColor: '#ff9f1c',
     badge: 'INES / Drills',
     path: '/scenarios',
     description: 'Interactive incident exercise authoring and replay (Goiânia, Tokaimura, Industrial Radiography loss, Transport rollover).',
-    keywords: ['scenario', 'drill', 'incident', 'exercise', 'radcase', 'training', 'triage'],
+    keywords: ['module 11', 'm11', 'scenario', 'drill', 'incident', 'exercise', 'radcase', 'training', 'triage'],
     icon: '🎯'
   },
   {
     id: 'mod-responder',
-    title: 'Reverse Triangulation & Source Term Locator',
+    title: 'Module 12: Reverse Triangulation & Source Term Locator',
     category: 'Emergency & CBRN',
     categoryColor: '#ff9f1c',
     badge: 'Isopleths',
     path: '/responder',
     description: 'Multi-sensor gradient search to pinpoint unshielded radioactive sources and unknown curie inventories.',
-    keywords: ['responder', 'reverse', 'triangulation', 'search', 'source term', 'pinpoint', 'localization'],
+    keywords: ['module 12', 'm12', 'responder', 'reverse', 'triangulation', 'search', 'source term', 'pinpoint', 'localization'],
     icon: '📍'
   },
   {
+    id: 'mod-plume',
+    title: 'Module 13: Atmospheric Dispersion & Gaussian Plume',
+    category: 'Emergency & CBRN',
+    categoryColor: '#ff9f1c',
+    badge: 'Gaussian / Briggs',
+    path: '/plume',
+    description: 'Pasquill-Gifford dispersion classes A–F, ground reflection image sources, and centerline touchdown peak solver.',
+    keywords: ['module 13', 'm13', 'plume', 'atmospheric', 'pasquill', 'dispersion', 'gaussian', 'touchdown', 'wind', 'fallout'],
+    icon: '💨'
+  },
+  {
     id: 'mod-shielding',
-    title: 'Shielding & ALARA Protective Action Guides',
+    title: 'Module 14: Shielding & ALARA Protective Action Guides',
     category: 'Emergency & CBRN',
     categoryColor: '#ff9f1c',
     badge: 'EPA PAG / NBS',
     path: '/shielding',
     description: 'TEDE / thyroid CDE projections, early-phase evacuation triggers, and building structural attenuation.',
-    keywords: ['shielding', 'pags', 'protective action', 'shelter', 'evacuation', 'epa 400', 'tede'],
+    keywords: ['module 14', 'm14', 'shielding', 'pags', 'protective action', 'shelter', 'evacuation', 'epa 400', 'tede'],
     icon: '🏢'
   },
   {
     id: 'mod-transport',
-    title: 'Transport Packaging & Type A/B Verification',
+    title: 'Module 15: Transport Packaging & Type A/B Verification',
     category: 'Emergency & CBRN',
     categoryColor: '#ff9f1c',
     badge: 'IAEA SSR-6 / DOT',
     path: '/transport',
     description: 'Class 7 radioactive material transport, Transport Index (TI), Criticality Safety Index (CSI), and placard evaluation.',
-    keywords: ['transport', 'packaging', 'ssr-6', 'type a', 'type b', 'ti', 'csi', 'placard', 'dot 49 cfr'],
+    keywords: ['module 15', 'm15', 'transport', 'packaging', 'ssr-6', 'type a', 'type b', 'ti', 'csi', 'placard', 'dot 49 cfr'],
     icon: '🚚'
   },
 
-  // --- BEAMS, X-RAY & EW ---
-  {
-    id: 'mod-xray-tube',
-    title: 'X-Ray Tube Simulator & Kramers Spectrum',
-    category: 'Beams, X-Ray & EW',
-    categoryColor: '#a78bfa',
-    badge: 'Birch & Marshall',
-    path: '/xray-tube',
-    description: 'Simulate bremsstrahlung and characteristic tungsten/molybdenum X-ray spectra, HVL filtration, and tube efficiency.',
-    keywords: ['xray', 'tube', 'spectrum', 'kramers', 'filtration', 'hvl', 'kvp', 'anode', 'bremsstrahlung'],
-    icon: '⚡'
-  },
-  {
-    id: 'mod-xray-distortion',
-    title: 'X-Ray Distortion & Projection Geometry',
-    category: 'Beams, X-Ray & EW',
-    categoryColor: '#a78bfa',
-    badge: 'SID / OID / Penumbra',
-    path: '/xray-distortion',
-    description: 'Geometric magnification, geometric penumbra unsharpness (Ug), focal spot blooming, and 3D projection frustum.',
-    keywords: ['distortion', 'xray', 'sid', 'oid', 'sod', 'penumbra', 'unsharpness', 'magnification', 'asme', 'ndt'],
-    icon: '📐'
-  },
+  // --- 3. BEAMS, X-RAY & EW (Modules 16-20) ---
   {
     id: 'mod-pulsed-xray',
-    title: 'Pulsed & Flash X-Ray Systems',
+    title: 'Module 16: Pulsed & Flash X-Ray Systems',
     category: 'Beams, X-Ray & EW',
     categoryColor: '#a78bfa',
     badge: 'NCRP-147',
     path: '/xray',
     description: 'Nanosecond pulse duty cycles, dead-time detector saturation burnout, and security inspection exclusion boundaries.',
-    keywords: ['pulsed', 'flash', 'x-ray', 'duty cycle', 'burnout', 'dead time', 'golden engineering'],
+    keywords: ['module 16', 'm16', 'pulsed', 'flash', 'x-ray', 'duty cycle', 'burnout', 'dead time', 'golden engineering'],
     icon: '⚡'
   },
   {
+    id: 'mod-xray-tube',
+    title: 'Module 17: X-Ray Tube Simulator & Kramers Spectrum',
+    category: 'Beams, X-Ray & EW',
+    categoryColor: '#a78bfa',
+    badge: 'Birch & Marshall',
+    path: '/xray-tube',
+    description: 'Simulate bremsstrahlung and characteristic tungsten/molybdenum X-ray spectra, HVL filtration, and tube efficiency.',
+    keywords: ['module 17', 'm17', 'xray', 'tube', 'spectrum', 'kramers', 'filtration', 'hvl', 'kvp', 'anode', 'bremsstrahlung'],
+    icon: '⚡'
+  },
+  {
+    id: 'mod-xray-distortion',
+    title: 'Module 18: X-Ray Distortion & Projection Geometry',
+    category: 'Beams, X-Ray & EW',
+    categoryColor: '#a78bfa',
+    badge: 'SID / OID / Penumbra',
+    path: '/xray-distortion',
+    description: 'Geometric magnification, geometric penumbra unsharpness (Ug), focal spot blooming, and 3D projection frustum.',
+    keywords: ['module 18', 'm18', 'distortion', 'xray', 'sid', 'oid', 'sod', 'penumbra', 'unsharpness', 'magnification', 'asme', 'ndt'],
+    icon: '📐'
+  },
+  {
     id: 'mod-laser',
-    title: 'Laser Safety & NOHD Optical Bench',
+    title: 'Module 19: Laser Safety & NOHD Optical Bench',
     category: 'Beams, X-Ray & EW',
     categoryColor: '#a78bfa',
     badge: 'ANSI Z136.1',
     path: '/laser',
     description: 'Nominal Ocular Hazard Distance (NOHD), Gaussian beam caustic waist, MPE limits, and optical density (OD) ratings.',
-    keywords: ['laser', 'nohd', 'mpe', 'optical density', 'gaussian beam', 'caustic', 'divergence', 'eyewear', 'ansi z136'],
+    keywords: ['module 19', 'm19', 'laser', 'nohd', 'mpe', 'optical density', 'gaussian beam', 'caustic', 'divergence', 'eyewear', 'ansi z136'],
     icon: '🔬'
   },
   {
     id: 'mod-emr-safety',
-    title: 'Electronic Warfare EMR & Microwave Safety',
+    title: 'Module 20: Electronic Warfare EMR & Microwave Safety',
     category: 'Beams, X-Ray & EW',
     categoryColor: '#a78bfa',
     badge: 'FCC OET-65 / IEEE',
     path: '/emr-safety',
     description: 'Tactical RF radar HUD, Controlled and Uncontrolled standoff boundaries, AESA phased array lobes, and radome reflections.',
-    keywords: ['emr', 'rf', 'microwave', 'radar', 'electromagnetic', 'sar', 'fcc oet 65', 'ieee c95', 'aesa'],
+    keywords: ['module 20', 'm20', 'emr', 'rf', 'microwave', 'radar', 'electromagnetic', 'sar', 'fcc oet 65', 'ieee c95', 'aesa'],
     icon: '📡'
   },
 
-  // --- NUCLEAR & PHYSICS ---
+  // --- 4. NUCLEAR & PHYSICS (Modules 21-25) ---
   {
     id: 'mod-criticality',
-    title: 'Criticality Safety & Reactor Core Simulator',
+    title: 'Module 21: Criticality Safety & Reactor Core Simulator',
     category: 'Nuclear & Physics',
     categoryColor: '#10b981',
     badge: 'Four-Factor',
     path: '/criticality',
     description: 'Four-factor formula, 7x7 heterogeneous fuel assembly, control rod insertion, soluble boron chemistry, and 2D diffusion flux.',
-    keywords: ['criticality', 'reactor', 'keff', 'multiplication', 'four factor', 'fuel', 'boron', 'flux', 'pwr', 'bwr', 'vver', 'candu'],
+    keywords: ['module 21', 'm21', 'criticality', 'reactor', 'keff', 'multiplication', 'four factor', 'fuel', 'boron', 'flux', 'pwr', 'bwr', 'vver', 'candu'],
     icon: '⚛️'
   },
   {
     id: 'mod-caas-criticality',
-    title: 'CAAS Criticality Accident Alarm Systems',
+    title: 'Module 22: CAAS Criticality Accident Alarm Systems',
     category: 'Nuclear & Physics',
     categoryColor: '#10b981',
     badge: 'ANSI/ANS-8.3',
     path: '/caas-criticality',
     description: 'Nordheim-Fuchs prompt-critical excursion kinetics, Godiva bare-metal bursts, 0.2 Gy/min alarm compliance, and flash kerma.',
-    keywords: ['caas', 'criticality', 'alarm', 'excursion', 'nordheim fuchs', 'godiva', 'ans 8.3', 'prompt critical', 'burst'],
+    keywords: ['module 22', 'm22', 'caas', 'criticality', 'alarm', 'excursion', 'nordheim fuchs', 'godiva', 'ans 8.3', 'prompt critical', 'burst'],
     icon: '⚠️'
   },
   {
     id: 'mod-monte-carlo',
-    title: 'Monte Carlo Micro-Kernel (Photon Transport)',
+    title: 'Module 23: Monte Carlo Micro-Kernel (Photon Transport)',
     category: 'Nuclear & Physics',
     categoryColor: '#10b981',
     badge: 'Klein-Nishina',
     path: '/monte-carlo',
     description: 'Stochastic photon transport simulator modeling photoelectric absorption, Compton scattering, and pair production.',
-    keywords: ['monte carlo', 'stochastic', 'klein nishina', 'compton', 'pair production', 'cross section', 'random walk'],
+    keywords: ['module 23', 'm23', 'monte carlo', 'stochastic', 'klein nishina', 'compton', 'pair production', 'cross section', 'random walk'],
     icon: '🎲'
   },
   {
     id: 'mod-decay',
-    title: 'Bateman Decay Kinematics & Radiolysis',
+    title: 'Module 24: Bateman Decay Kinematics & Radiolysis',
     category: 'Nuclear & Physics',
     categoryColor: '#10b981',
     badge: 'Bateman Chains',
     path: '/decay',
     description: 'Multi-generation radioactive decay and ingrowth differential equation solver with radiolytic G-value gas generation.',
-    keywords: ['decay', 'bateman', 'kinetics', 'daughter', 'ingrowth', 'radiolysis', 'g-value', 'half-life'],
+    keywords: ['module 24', 'm24', 'decay', 'bateman', 'kinetics', 'daughter', 'ingrowth', 'radiolysis', 'g-value', 'half-life'],
     icon: '⏳'
   },
   {
     id: 'mod-spectroscopy',
-    title: 'Gamma Spectroscopy & MCA Peak Search',
+    title: 'Module 25: Gamma Spectroscopy & MCA Peak Search',
     category: 'Nuclear & Physics',
     categoryColor: '#10b981',
     badge: 'HPGe / NaI(Tl)',
     path: '/spectroscopy',
     description: 'Multi-Channel Analyzer (MCA) spectrum simulator, Gaussian deconvolution, FWHM resolution calibration, and isotope identification.',
-    keywords: ['spectroscopy', 'mca', 'gamma', 'fwhm', 'channel', 'hpge', 'nai', 'peak search', 'photopeak'],
+    keywords: ['module 25', 'm25', 'spectroscopy', 'mca', 'gamma', 'fwhm', 'channel', 'hpge', 'nai', 'peak search', 'photopeak'],
     icon: '📊'
   },
 
-  // --- CLINICAL & DECOMMISSIONING ---
+  // --- 5. CLINICAL & DECOM (Modules 26-27) ---
   {
     id: 'mod-brachytherapy',
-    title: 'HDR/LDR Brachytherapy Clinical Treatment Planner',
-    category: 'Clinical & Decommissioning',
+    title: 'Module 26: HDR/LDR Brachytherapy Clinical Treatment Planner',
+    category: 'Clinical & Decom',
     categoryColor: '#14b8a6',
     badge: 'AAPM TG-43U1',
     path: '/brachytherapy',
     description: 'AAPM TG-43 formalism: air kerma strength, dose rate constant, radial dose function g_L(r), and 2D anisotropy F(r,θ).',
-    keywords: ['brachytherapy', 'tg-43', 'seed', 'prostate', 'anisotropy', 'dose rate constant', 'ir-192', 'i-125', 'air kerma'],
+    keywords: ['module 26', 'm26', 'brachytherapy', 'tg-43', 'seed', 'prostate', 'anisotropy', 'dose rate constant', 'ir-192', 'i-125', 'air kerma'],
     icon: '💉'
   },
   {
     id: 'mod-marssim',
-    title: 'MARSSIM Decommissioning & Site Release',
-    category: 'Clinical & Decommissioning',
+    title: 'Module 27: MARSSIM Decommissioning & Site Release',
+    category: 'Clinical & Decom',
     categoryColor: '#14b8a6',
     badge: 'NUREG-1575',
     path: '/marssim',
     description: 'Final status survey release: Wilcoxon Rank Sum (WRS) test, Sign Test, DCGL derivation, Class 1/2/3 grid spacing.',
-    keywords: ['marssim', 'decommissioning', 'dcgl', 'wrs', 'sign test', 'survey', 'nureg 1575', 'site release'],
+    keywords: ['module 27', 'm27', 'marssim', 'decommissioning', 'dcgl', 'wrs', 'sign test', 'survey', 'nureg 1575', 'site release'],
     icon: '📋'
   },
 
-  // --- DATABASES & REGULATORY ---
+  // --- 6. DATABASES & REGS (Modules 28-33) ---
   {
     id: 'mod-nuclides',
-    title: 'Comprehensive Radionuclide Database',
+    title: 'Module 28: Comprehensive Radionuclide Database',
     category: 'Databases & Regs',
     categoryColor: '#38bdf8',
     badge: 'ICRP-107',
     path: '/nuclides',
     description: 'Search hundreds of isotopes for decay modes, branching ratios, half-lives, gamma dose rate constants, and ALI/DAC limits.',
-    keywords: ['nuclide', 'isotope', 'half-life', 'decay mode', 'energy', 'branching', 'cs-137', 'co-60', 'i-131', 'am-241'],
+    keywords: ['module 28', 'm28', 'nuclide', 'isotope', 'half-life', 'decay mode', 'energy', 'branching', 'cs-137', 'co-60', 'i-131', 'am-241'],
     icon: '📖'
   },
   {
-    id: 'mod-incidents',
-    title: 'Historical Incidents Forensic Database',
-    category: 'Databases & Regs',
-    categoryColor: '#38bdf8',
-    badge: 'INES 1-7',
-    path: '/incidents',
-    description: '130+ years of civilian and defense radiological history: Chernobyl, Fukushima, Goiânia, Tokaimura, SL-1, and Kyshtym.',
-    keywords: ['historical', 'incident', 'accident', 'chernobyl', 'fukushima', 'goiania', 'tokaimura', 'sl-1', 'forensics', 'ines'],
-    icon: '🏛️'
-  },
-  {
     id: 'mod-equipment',
-    title: 'Industrial & Defense Equipment Catalog',
+    title: 'Module 29: Industrial & Defense Equipment Catalog',
     category: 'Databases & Regs',
     categoryColor: '#38bdf8',
     badge: 'Detectors & Gauges',
     path: '/equipment',
     description: 'Tactical reference of nuclear moisture gauges, well-logging tools, NDT projectors, RTGs, and first-responder protocols.',
-    keywords: ['equipment', 'detector', 'geiger', 'scintillator', 'moisture gauge', 'well logging', 'ndt', 'rtg'],
+    keywords: ['module 29', 'm29', 'equipment', 'detector', 'geiger', 'scintillator', 'moisture gauge', 'well logging', 'ndt', 'rtg'],
     icon: '🧰'
   },
   {
+    id: 'mod-incidents',
+    title: 'Module 30: Historical Incidents Forensic Database',
+    category: 'Databases & Regs',
+    categoryColor: '#38bdf8',
+    badge: 'INES 1-7',
+    path: '/incidents',
+    description: '130+ years of civilian and defense radiological history: Chernobyl, Fukushima, Goiânia, Tokaimura, SL-1, and Kyshtym.',
+    keywords: ['module 30', 'm30', 'historical', 'incident', 'accident', 'chernobyl', 'fukushima', 'goiania', 'tokaimura', 'sl-1', 'forensics', 'ines'],
+    icon: '🏛️'
+  },
+  {
+    id: 'mod-global-map',
+    title: 'Module 31: Global 3D Earth Hub & Nuclear Infrastructure',
+    category: 'Databases & Regs',
+    categoryColor: '#38bdf8',
+    badge: 'Reactors & Tests',
+    path: '/global-map',
+    description: 'Interactive 3D WebGL globe with 400+ nuclear power reactors, 2,000+ historical nuclear tests, EPZ keyhole planner, and CTBTO yield inversion.',
+    keywords: ['module 31', 'm31', 'globe', 'map', 'earth', 'reactor', 'detonation', 'test site', 'epz', 'evacuation', 'ctbto', 'seismic', '3d'],
+    icon: '🌍'
+  },
+  {
     id: 'mod-hardware',
-    title: 'Live Hardware & Detector Metrology Engine',
+    title: 'Module 32: Live Hardware & Detector Metrology Engine',
     category: 'Databases & Regs',
     categoryColor: '#38bdf8',
     badge: 'WebSerial / Audio',
     path: '/hardware',
     description: 'Real-time USB serial / audio pulse counter, Currie critical decision level (Lc/Ld), and paralyzable dead-time compensation.',
-    keywords: ['hardware', 'serial', 'audio', 'pulse', 'cpm', 'cps', 'currie', 'dead-time', 'geiger', 'webserial'],
+    keywords: ['module 32', 'm32', 'hardware', 'serial', 'audio', 'pulse', 'cpm', 'cps', 'currie', 'dead-time', 'geiger', 'webserial'],
     icon: '🔌'
   },
   {
     id: 'mod-reg',
-    title: 'Regulatory Compliance & ALARA Dashboard',
+    title: 'Module 33: Regulatory Compliance & ALARA Dashboard',
     category: 'Databases & Regs',
     categoryColor: '#38bdf8',
     badge: '10 CFR 20 / ICRP',
     path: '/reg',
     description: 'Statutory compliance engine tracking multi-organ worker limits under US NRC (10 CFR 20), ICRP 103, and IAEA GSR Part 3.',
-    keywords: ['regulatory', 'nrc', 'agreement state', 'compliance', 'limits', '10 cfr 20', 'icrp 103', 'iaea gsr part 3'],
+    keywords: ['module 33', 'm33', 'regulatory', 'nrc', 'agreement state', 'compliance', 'limits', '10 cfr 20', 'icrp 103', 'iaea gsr part 3'],
     icon: '⚖️'
   },
 
-  // --- VERIFICATION & SQA ---
+  // --- 7. VERIFICATION & QA (Modules 34-35) ---
   {
     id: 'mod-verify',
-    title: 'Institutional Verification & Validation Engine',
+    title: 'Module 34: Institutional Verification & Validation Engine',
     category: 'Verification & QA',
     categoryColor: '#c084fc',
     badge: '43/43 Pass',
     path: '/verify',
     description: '43 gold-standard analytical & numerical stress benchmarks (35 analytical + 8 stress tests) verifying IEEE 730 / NQA-1 software quality.',
-    keywords: ['verify', 'test', 'sqa', 'validation', 'benchmark', 'qa', 'audit', 'nqa-1', 'iso 17025'],
+    keywords: ['module 34', 'm34', 'verify', 'test', 'sqa', 'validation', 'benchmark', 'qa', 'audit', 'nqa-1', 'iso 17025'],
     icon: '✅'
   },
   {
     id: 'mod-literature',
-    title: 'Core Literature Citations & Mathematical Proofs',
+    title: 'Module 35: Core Literature Citations & Mathematical Proofs',
     category: 'Verification & QA',
     categoryColor: '#c084fc',
     badge: 'KaTeX Proofs',
     path: '/literature',
     description: 'Exhaustive bibliography of ICRU, ICRP, NCRP, IAEA, and ANSI publications with KaTeX equation proofs.',
-    keywords: ['literature', 'citations', 'physics', 'equations', 'formulations', 'references', 'katex'],
+    keywords: ['module 35', 'm35', 'literature', 'citations', 'physics', 'equations', 'formulations', 'references', 'katex'],
     icon: '📚'
   }
 ];

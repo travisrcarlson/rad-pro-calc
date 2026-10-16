@@ -151,7 +151,7 @@ export const TacticalGISModule: React.FC = () => {
   const dossierPayload: CalculationDossierPayload = useMemo(() => {
     return {
       reportTitle: 'ATAK / Cursor-on-Target (CoT) Tactical GIS Incident Dossier',
-      moduleName: 'Module 29 (Tactical GIS Map Engine & ATAK / CoT Mesh Hub)',
+      moduleName: 'Module 10: Tactical GIS Map Engine & ATAK / CoT Mesh Hub',
       statuteCitation: 'DoD CoT Interface Standard / MIL-STD-2525D / FEMA NIMS',
       verificationTestId: 'VTEST-32',
       operatorName: 'Tactical GIS & Sensor Operations Specialist',
@@ -185,7 +185,7 @@ export const TacticalGISModule: React.FC = () => {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
           <div>
             <h2 style={{ margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span>🗺️ Module 29: Tactical GIS Map Engine &amp; ATAK / CoT Mesh Hub</span>
+              <span>🗺️ Module 10: Tactical GIS Map Engine &amp; ATAK / CoT Mesh Hub</span>
               <VerificationBadge testId="VTEST-32" standard="Cursor-on-Target / Multilateration" />
             </h2>
             <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: '0.88rem' }}>

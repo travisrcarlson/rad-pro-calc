@@ -621,7 +621,7 @@ const FirstResponderModule: React.FC = () => {
     const erg = ERG_DATABASE[selectedGuideNumber];
     return {
       reportTitle: `ICS-208 Radiological Incident Safety Plan — ${incidentTitle}`,
-      moduleName: 'Module 24: Tactical First Responder & CBRN Hazard Command',
+      moduleName: 'Module 6: Tactical First Responder & CBRN Hazard Command',
       statuteCitation: `${currentFramework.name} (${currentFramework.citation}) / EPA-400 PAG / DOT ERG 2024`,
       verificationTestId: 'VTEST-21 (Stay-Time & Turn-Back)',
       operatorName: 'Incident Radiological Safety Officer',
@@ -663,7 +663,7 @@ const FirstResponderModule: React.FC = () => {
             <span className="hud-badge hud-badge-secondary">{currentFramework.flagEmoji} {currentFramework.name}</span>
           </div>
           <h2 style={{ margin: '4px 0 0 0', fontSize: '1.4rem' }}>
-            Module 24 — Tactical First Responder &amp; CBRN Hazard Command
+            Module 6 — Tactical First Responder &amp; CBRN Hazard Command
           </h2>
           <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
             Operational standoff zoning, emergency worker turn-back limits, DOT ERG decision trees, and REAC/TS medical countermeasure triage

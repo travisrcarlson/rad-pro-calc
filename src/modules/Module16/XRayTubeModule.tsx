@@ -155,7 +155,7 @@ const XRayTubeModule: React.FC = () => {
 
   const dossierPayload: CalculationDossierPayload = useMemo(() => ({
     reportTitle: 'Diagnostic X-Ray Tube Spectrum & Output Compliance Dossier',
-    moduleName: 'Module 16: Diagnostic X-Ray Tube Physics & Spectrum Generator',
+    moduleName: 'Module 17: Diagnostic X-Ray Tube Physics & Spectrum Generator',
     statuteCitation: 'NCRP Report No. 147 / 21 CFR 1020.30',
     verificationTestId: 'VTEST-11',
     operatorName: 'Diagnostic Medical Physicist',
@@ -185,7 +185,7 @@ const XRayTubeModule: React.FC = () => {
     <div className="xray-tube-module">
       <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
         <div>
-          <h2 style={{ margin: 0 }}>⚡ X-Ray Tube Physics & Spectrum Generator</h2>
+          <h2 style={{ margin: 0 }}>⚡ Module 17 — X-Ray Tube Physics &amp; Spectrum Generator</h2>
           <p style={{ color: 'var(--color-text-muted)', margin: '4px 0 0 0', fontSize: '0.85rem' }}>
             Model Bremsstrahlung continuum production, characteristic line peaks, filtration attenuation (beam hardening), and measure X-ray dose outputs.
           </p>

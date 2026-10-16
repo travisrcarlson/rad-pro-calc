@@ -508,7 +508,7 @@ const MARSSIMModule: React.FC = () => {
 
   const dossierPayload: CalculationDossierPayload = useMemo(() => ({
     reportTitle: 'MARSSIM Final Status Survey & Decommissioning Clearance Dossier',
-    moduleName: 'Module 22: MARSSIM Decommissioning & Statistical Site Release',
+    moduleName: 'Module 27: MARSSIM Decommissioning & Statistical Site Release',
     statuteCitation: 'NUREG-1575 Rev. 1 / NUREG-1757 / 10 CFR Part 20 Subpart E',
     verificationTestId: 'VTEST-15',
     operatorName: 'Certified Health Physicist (CHP)',
@@ -539,7 +539,7 @@ const MARSSIMModule: React.FC = () => {
     <div className="marssim-module">
       <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
         <div>
-          <h2 style={{ margin: 0 }}>🏗️ MARSSIM Decommissioning &amp; Statistical Site Release (NUREG-1575)</h2>
+          <h2 style={{ margin: 0 }}>🏗️ Module 27 — MARSSIM Decommissioning &amp; Statistical Site Release (NUREG-1575)</h2>
           <p style={{ color: 'var(--color-text-muted)', margin: '4px 0 0 0', fontSize: '0.85rem' }}>
             Design and analyze radiological Final Status Surveys (FSS), calculate Currie detection limits (MDA/MDC), plan triangular sample grids, and evaluate Sign/WRS hypothesis tests for license termination.
           </p>

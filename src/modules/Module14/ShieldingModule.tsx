@@ -363,7 +363,7 @@ export const ShieldingModule: React.FC = () => {
             <span className="hud-badge hud-badge-accent">NIST XCOM / NCRP-151</span>
           </div>
           <h2 style={{ margin: '6px 0 0 0', fontSize: '1.4rem', letterSpacing: '0.03em' }}>
-            Multi-Layer Shielding &amp; Attenuation Physics Engine
+            Module 14 — Multi-Layer Shielding &amp; Attenuation Physics Engine
           </h2>
           <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
             Energy-dependent mass attenuation coefficients (NIST XCOM), broad-beam Compton scatter buildup factors, structural floor load analysis, and automated ALARA thickness optimizer.

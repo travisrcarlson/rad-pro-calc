@@ -247,7 +247,7 @@ export const VisualisationModule: React.FC = () => {
   // Cryptographic Dossier Payload
   const dossierPayload: CalculationDossierPayload = useMemo(() => ({
     reportTitle: 'ICS-208 2D Radiation Field Mapping & Geometric Shielding Dossier',
-    moduleName: 'Module 3 (Radiation Field Visualisation & Shadow Mapping)',
+    moduleName: 'Module 5: Radiation Field Visualisation & Shadow Mapping',
     statuteCitation: 'NCRP Report No. 147 / ICRP Publication 103 / 10 CFR 20.1301',
     verificationTestId: 'VTEST-01 / VTEST-02',
     operatorName: 'Radiation Protection Lead',
@@ -279,7 +279,7 @@ export const VisualisationModule: React.FC = () => {
             <span className="hud-badge hud-badge-accent">RAY-CAST SHADOW ENGINE</span>
           </div>
           <h2 style={{ margin: '6px 0 0 0', fontSize: '1.4rem', letterSpacing: '0.03em' }}>
-            2D Radiation Field Visualisation &amp; Isodose Mapping
+            Module 5 — 2D Radiation Field Visualisation &amp; Isodose Mapping
           </h2>
           <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
             Multi-source inverse-square gamma mapping with ray-traced geometric barrier shadows (Lead, Concrete, Steel), isodose contour line overlays, and interactive virtual survey probe.

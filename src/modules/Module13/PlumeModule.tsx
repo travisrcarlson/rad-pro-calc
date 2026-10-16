@@ -328,7 +328,7 @@ const PlumeModule: React.FC = () => {
             <span className="hud-badge hud-badge-accent">GAUSSIAN PLUME / BRIGGS</span>
           </div>
           <h2 style={{ margin: '6px 0 0 0', fontSize: '1.4rem', letterSpacing: '0.03em' }}>
-            Atmospheric Dispersion &amp; Gaussian Plume Modeling
+            Module 13 — Atmospheric Dispersion &amp; Gaussian Plume Modeling
           </h2>
           <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
             Estimate downwind radioactive plume concentration, ground touch-down peak distances, and crosswind isopleths using standard Briggs dispersion coefficients.

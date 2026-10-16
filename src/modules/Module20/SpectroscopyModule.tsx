@@ -337,7 +337,7 @@ const SpectroscopyModule: React.FC = () => {
 
   const dossierPayload: CalculationDossierPayload = useMemo(() => ({
     reportTitle: 'Gamma-Ray Spectrometry & MCA Automated Isotope Identification Dossier',
-    moduleName: 'Module 20: Gamma Spectroscopy & MCA Spectrum Analyzer',
+    moduleName: 'Module 25: Gamma Spectroscopy & MCA Spectrum Analyzer',
     statuteCitation: 'IEEE Std 325-2014 / ANSI N42.14 / ISO 17025',
     verificationTestId: 'VTEST-14',
     operatorName: 'Gamma Radiometric Metrologist',
@@ -366,7 +366,7 @@ const SpectroscopyModule: React.FC = () => {
     <div className="spectroscopy-module">
       <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
         <div>
-          <h2 style={{ margin: 0 }}>🔬 Gamma Spectroscopy &amp; MCA Spectrum Analyzer</h2>
+          <h2 style={{ margin: 0 }}>🔬 Module 25 — Gamma Spectroscopy &amp; MCA Spectrum Analyzer</h2>
           <p style={{ color: 'var(--color-text-muted)', margin: '4px 0 0 0', fontSize: '0.85rem' }}>
             Simulate pulse-height energy spectra for NaI(Tl), HPGe, LaBr₃(Ce), and CZT detectors. Analyze photopeaks, Compton continuum, backscatter, escape peaks, and run automated isotopic identification.
           </p>

@@ -12,7 +12,7 @@ const DoseCalculatorModule: React.FC = () => {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div className="panel-header" style={{ marginBottom: '0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
         <div>
-          <h2>Module 2 — Dose Calculation Engine</h2>
+          <h2>Module 1 — Dose Calculation Engine</h2>
           <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
             Multi-pathway external, shielding, biokinetic internal, and neutron activation dosimetry
           </span>
@@ -26,28 +26,28 @@ const DoseCalculatorModule: React.FC = () => {
           style={{ borderTop: 'none', borderLeft: 'none', borderRight: 'none', background: 'none', cursor: 'pointer', fontSize: '1rem', borderBottom: activeTab === 'external' ? '2px solid var(--color-primary)' : 'none' }}
           onClick={() => setActiveTab('external')}
         >
-          2A. External Dose
+          1A. External Dose
         </button>
         <button 
           className={`nav-link ${activeTab === 'shielding' ? 'active' : ''}`}
           style={{ borderTop: 'none', borderLeft: 'none', borderRight: 'none', background: 'none', cursor: 'pointer', fontSize: '1rem', borderBottom: activeTab === 'shielding' ? '2px solid var(--color-primary)' : 'none' }}
           onClick={() => setActiveTab('shielding')}
         >
-          2B. Shielding
+          1B. Shielding
         </button>
         <button 
           className={`nav-link ${activeTab === 'internal' ? 'active' : ''}`}
           style={{ borderTop: 'none', borderLeft: 'none', borderRight: 'none', background: 'none', cursor: 'pointer', fontSize: '1rem', borderBottom: activeTab === 'internal' ? '2px solid var(--color-primary)' : 'none' }}
           onClick={() => setActiveTab('internal')}
         >
-          2C. Internal Dose
+          1C. Internal Dose
         </button>
         <button 
           className={`nav-link ${activeTab === 'activation' ? 'active' : ''}`}
           style={{ borderTop: 'none', borderLeft: 'none', borderRight: 'none', background: 'none', cursor: 'pointer', fontSize: '1rem', borderBottom: activeTab === 'activation' ? '2px solid var(--color-primary)' : 'none' }}
           onClick={() => setActiveTab('activation')}
         >
-          2D. Activation
+          1D. Activation
         </button>
       </div>
 

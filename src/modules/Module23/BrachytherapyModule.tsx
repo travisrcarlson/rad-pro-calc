@@ -455,7 +455,7 @@ const BrachytherapyModule: React.FC = () => {
 
   const dossierPayload: CalculationDossierPayload = useMemo(() => ({
     reportTitle: 'Clinical Brachytherapy Treatment Plan & DVH Quality Dossier',
-    moduleName: 'Module 23: Medical Physics & AAPM TG-43 Brachytherapy Planner',
+    moduleName: 'Module 26: Medical Physics & AAPM TG-43 Brachytherapy Planner',
     statuteCitation: 'AAPM TG-43 / TG-43U1 / AAPM TG-64 / 10 CFR 35 Subpart F',
     verificationTestId: 'VTEST-16',
     operatorName: 'Therapeutic Medical Physicist',
@@ -484,7 +484,7 @@ const BrachytherapyModule: React.FC = () => {
     <div className="brachytherapy-module">
       <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
         <div>
-          <h2 style={{ margin: 0 }}>🏥 Medical Physics &amp; AAPM TG-43 Brachytherapy Planner</h2>
+          <h2 style={{ margin: 0 }}>🏥 Module 26 — Medical Physics &amp; AAPM TG-43 Brachytherapy Planner</h2>
           <p style={{ color: 'var(--color-text-muted)', margin: '4px 0 0 0', fontSize: '0.85rem' }}>
             Clinical interstitial radioactive seed implant planning and High Dose Rate (HDR) afterloading using the gold-standard <strong>AAPM TG-43U1</strong> formalism with real-time isodose contours and Dose-Volume Histograms (DVH).
           </p>

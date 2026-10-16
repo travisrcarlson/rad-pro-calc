@@ -164,7 +164,7 @@ export const NuclideTableModule: React.FC = () => {
             <span className="hud-badge hud-badge-accent">{nuclides.length} GLOBAL ISOTOPES</span>
           </div>
           <h2 style={{ margin: '6px 0 0 0', fontSize: '1.4rem', letterSpacing: '0.03em' }}>
-            Master Radionuclide Database &amp; Cross-Module Action Dispatcher
+            Module 28 — Master Radionuclide Database &amp; Cross-Module Action Dispatcher
           </h2>
           <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
             Explore nuclear structure, decay energies, half-lives, and dispatch selected isotopes directly to Dose, Transport, Plume, or Decay Chain simulators.

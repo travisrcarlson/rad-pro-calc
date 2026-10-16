@@ -218,7 +218,7 @@ const Spatial3DModule: React.FC = () => {
 
   const dossierPayload: CalculationDossierPayload = useMemo(() => ({
     reportTitle: '3D Volumetric Shielding & Sensor Network Dossier',
-    moduleName: 'Module 8: 3D Volumetric Radiation Field & Shielding Workspace',
+    moduleName: 'Module 4: 3D Volumetric Radiation Field & Shielding Workspace',
     statuteCitation: 'NCRP Report No. 151 / 10 CFR Part 20 Subpart C',
     verificationTestId: 'STRESS-01',
     operatorName: 'Radiation Protection Physicist',
@@ -252,7 +252,7 @@ const Spatial3DModule: React.FC = () => {
             <span className="hud-badge hud-badge-accent">RAY-AABB RAYTRACER</span>
           </div>
           <h2 style={{ margin: '6px 0 0 0', fontSize: '1.4rem', letterSpacing: '0.03em' }}>
-            3D Volumetric Radiation Field &amp; Shielding Workspace
+            Module 4 — 3D Volumetric Radiation Field &amp; Shielding Workspace
           </h2>
           <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
             Simulate multi-source 3D radiation isodose volumes, geometric obstacle attenuation with Axis-Aligned Bounding Box (AABB) raytracing, and virtual sensor networks.

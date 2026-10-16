@@ -203,7 +203,7 @@ export const CAASCriticalityModule: React.FC = () => {
   const dossierPayload: CalculationDossierPayload = useMemo(() => {
     return {
       reportTitle: 'ANSI/ANS-8.3 Criticality Accident Alarm System (CAAS) & Excursion Dossier',
-      moduleName: 'Module 28 (CAAS & Criticality Accident Safety)',
+      moduleName: 'Module 22: CAAS & Criticality Accident Excursion Kinetics',
       statuteCitation: 'ANSI/ANS-8.3-1997 (R2017) / 10 CFR 70.24 / DOE-STD-3007',
       verificationTestId: 'VTEST-31',
       operatorName: 'Nuclear Criticality Safety Engineer',
@@ -238,7 +238,7 @@ export const CAASCriticalityModule: React.FC = () => {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
           <div>
             <h2 style={{ margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span>⚛️ Module 28: CAAS &amp; Criticality Accident Excursion Kinetics</span>
+              <span>⚛️ Module 22: CAAS &amp; Criticality Accident Excursion Kinetics</span>
               <VerificationBadge testId="VTEST-31" standard="ANSI/ANS-8.3 / Hansen &amp; Maier" />
             </h2>
             <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: '0.88rem' }}>

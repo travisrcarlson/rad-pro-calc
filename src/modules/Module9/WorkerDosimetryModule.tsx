@@ -335,7 +335,7 @@ const WorkerDosimetryModule: React.FC = () => {
 
   const dossierPayload: CalculationDossierPayload = useMemo(() => ({
     reportTitle: '3D Worker Dosimetry & ALARA Shift Analysis',
-    moduleName: 'Module 9: 3D Worker Dosimetry & ALARA Shift Tracker',
+    moduleName: 'Module 2: 3D Worker Dosimetry & ALARA Shift Tracker',
     statuteCitation: `${currentFramework.name} (${currentFramework.citation})`,
     verificationTestId: 'VTEST-07 / ICRP 103',
     operatorName: 'Lead Health Physicist',
@@ -372,7 +372,7 @@ const WorkerDosimetryModule: React.FC = () => {
             <VerificationBadge testId="VTEST-07" label="3D Ray-AABB Dosimetry" />
           </div>
           <h2 style={{ margin: '6px 0 0 0', fontSize: '1.4rem', letterSpacing: '0.03em' }}>
-            Advanced 3D Worker Dosimetry &amp; ALARA Shift Tracker
+            Module 2 — Advanced 3D Worker Dosimetry &amp; ALARA Shift Tracker
           </h2>
           <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
             Multi-node anatomical dosimeter modeling, posture variation (Standing / Crouching / Prone), dynamic Ray-AABB shielding attenuation, and cumulative stay-time limits.

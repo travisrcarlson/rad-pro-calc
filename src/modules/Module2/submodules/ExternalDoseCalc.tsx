@@ -111,7 +111,7 @@ const ExternalDoseCalc: React.FC = () => {
 
   const dossierPayload: CalculationDossierPayload = useMemo(() => ({
     reportTitle: `Point Source External Gamma Dosimetry — ${selectedNuclide?.Nuclide || 'Isotope'}`,
-    moduleName: 'Module 2: Point Source Calculation Engine',
+    moduleName: 'Module 1A: Point Source Calculation Engine',
     statuteCitation: `${currentFramework.name} (${currentFramework.citation}) / ICRP 107`,
     verificationTestId: 'VTEST-01 (Inverse Square Law)',
     operatorName: 'Health Physicist',
@@ -288,7 +288,7 @@ const ExternalDoseCalc: React.FC = () => {
             className="btn btn-sm btn-outline-primary"
             onClick={() => navigate('/internal-dose')}
           >
-            🫁 Internal MIRD (Module 17)
+            🫁 Internal MIRD (Module 3)
           </button>
         </div>
       </div>

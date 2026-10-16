@@ -151,7 +151,7 @@ export const MonteCarloModule: React.FC = () => {
 
   const dossierPayload: CalculationDossierPayload = useMemo(() => ({
     reportTitle: `Stochastic Monte Carlo Shielding Verification — ${materialId.toUpperCase()} (${thickness_cm.toFixed(1)} cm)`,
-    moduleName: 'Monte Carlo Micro-Kernel Photon Transport',
+    moduleName: 'Module 23: Monte Carlo Micro-Kernel Photon Transport',
     statuteCitation: `${currentFramework.name} (${currentFramework.citation}) / NCRP Report No. 147`,
     verificationTestId: 'VTEST-25 (Klein-Nishina Cross-Section)',
     operatorName: 'Shielding Design Physicist',
@@ -193,7 +193,7 @@ export const MonteCarloModule: React.FC = () => {
             <span style={{ fontSize: '1.6rem' }}>🎲</span>
             <div>
               <h2 style={{ margin: 0, fontSize: '1.35rem', color: '#10b981' }}>
-                Civil Radiation Shielding Monte Carlo Micro-Kernel
+                Module 23 — Civil Radiation Shielding Monte Carlo Micro-Kernel
               </h2>
               <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
                 Stochastic Klein-Nishina Compton Scatter, Photoelectric Absorption & Pair Production Transport Engine

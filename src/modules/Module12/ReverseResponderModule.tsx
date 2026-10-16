@@ -507,7 +507,7 @@ const ReverseResponderModule: React.FC = () => {
       <div style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: '20px', marginBottom: '20px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
           <div>
-            <h2 style={{ fontSize: '1.8rem', color: 'var(--color-primary)', margin: '0 0 10px 0' }}>Reverse Responder Tool</h2>
+            <h2 style={{ fontSize: '1.8rem', color: 'var(--color-primary)', margin: '0 0 10px 0' }}>Module 12 — Reverse Responder &amp; Source Inversion Tool</h2>
             <p style={{ margin: 0, color: 'var(--color-text-muted)' }}>
               Input field telemetry to back-calculate implied source activities (A₀) across the nuclide database.
             </p>

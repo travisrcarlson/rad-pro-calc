@@ -651,7 +651,7 @@ const CriticalityModule: React.FC = () => {
 
   const dossierPayload: CalculationDossierPayload = useMemo(() => ({
     reportTitle: 'Reactor Core Criticality & Four-Factor Safety Dossier',
-    moduleName: 'Module 19: Criticality Safety & Reactor Core Simulator',
+    moduleName: 'Module 21: Criticality Safety & Reactor Core Simulator',
     statuteCitation: 'ANSI/ANS-8.1 / IAEA Safety Standards Series No. SSG-27',
     verificationTestId: 'VTEST-13',
     operatorName: 'Reactor Physics & Criticality Safety Officer',
@@ -685,7 +685,7 @@ const CriticalityModule: React.FC = () => {
     <div className="criticality-module">
       <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
         <div>
-          <h2 style={{ margin: 0 }}>⚛️ Criticality Safety &amp; Reactor Core Simulator (Multi-Variable Engine)</h2>
+          <h2 style={{ margin: 0 }}>⚛️ Module 21 — Criticality Safety &amp; Reactor Core Simulator (Multi-Variable Engine)</h2>
           <p style={{ color: 'var(--color-text-muted)', margin: '4px 0 0 0', fontSize: '0.85rem' }}>
             Model nuclear criticality, four-factor neutron economy, heterogeneous pin-by-pin variables (burnable poisons, steam voids, enrichment grading), and 2D finite-difference spatial diffusion.
           </p>

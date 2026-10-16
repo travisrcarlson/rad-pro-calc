@@ -298,7 +298,7 @@ export const DetectorHardwareModule: React.FC = () => {
 
   const dossierPayload: CalculationDossierPayload = useMemo(() => ({
     reportTitle: `Live Detector Hardware & Poisson Metrology Assessment`,
-    moduleName: 'Detector Hardware Ingestion & Currie (1968) Metrology Engine',
+    moduleName: 'Module 32: Detector Hardware Ingestion & Currie (1968) Metrology Engine',
     statuteCitation: 'Currie (1968) Anal. Chem. 40(3):586 / NUREG-1575 (MARSSIM) / ANSI N42.17A',
     verificationTestId: 'VTEST-26 (Currie L_C & L_D Detection Limits)',
     operatorName: 'Instrumentation & Metrology Engineer',
@@ -341,7 +341,7 @@ export const DetectorHardwareModule: React.FC = () => {
           <span style={{ fontSize: '1.8rem' }}>📡</span>
           <div>
             <h2 style={{ margin: 0, fontSize: '1.35rem', color: 'var(--color-primary)' }}>
-              Live Detector Hardware Ingestion & Pulse Counter
+              Module 32 — Live Detector Hardware Ingestion &amp; Pulse Counter
             </h2>
             <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
               Direct USB Web Serial API, Audio Jack GM Discriminator & Real-Time Poisson Metrology Engine

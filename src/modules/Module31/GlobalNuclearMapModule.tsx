@@ -1669,7 +1669,7 @@ export const GlobalNuclearMapModule: React.FC = () => {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px' }}>
           <div>
             <h2 style={{ margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.4rem', flexWrap: 'wrap' }}>
-              <span>🌍 Global Nuclear Geospatial &amp; 3D Earth Hub</span>
+              <span>🌍 Module 31 — Global Nuclear Geospatial &amp; 3D Earth Hub</span>
               <span style={{ fontSize: '0.72rem', padding: '3px 8px', background: 'rgba(0, 229, 255, 0.12)', color: 'var(--color-primary)', border: '1px solid rgba(0, 229, 255, 0.3)', borderRadius: '4px', fontWeight: 600 }}>
                 IAEA PRIS (739 Units) // 2,038 Weapons Tests // Orthographic 3D
               </span>
@@ -3925,7 +3925,7 @@ export const GlobalNuclearMapModule: React.FC = () => {
                             justifyContent: 'center',
                             gap: '4px'
                           }}
-                          title={`Simulate detonation physics and mushroom cloud at ${pg.name} in Module 26`}
+                          title={`Simulate detonation physics and mushroom cloud at ${pg.name} in Module 8`}
                         >
                           <span>🌋 Simulate Blast ↗</span>
                         </button>

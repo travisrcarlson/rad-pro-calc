@@ -245,7 +245,7 @@ const InternalDosimetryModule: React.FC = () => {
 
   const dossierPayload: CalculationDossierPayload = useMemo(() => ({
     reportTitle: 'Internal Dosimetry & Biokinetic Intake Assessment Dossier',
-    moduleName: 'Module 17: Internal Dosimetry & ICRP Biokinetic Clearance Model',
+    moduleName: 'Module 3: Internal Dosimetry & ICRP Biokinetic Clearance Model',
     statuteCitation: 'ICRP Publication 68 / ICRP Publication 30 / 10 CFR 20 Subpart C',
     verificationTestId: 'VTEST-22',
     operatorName: 'Internal Dosimetrist / Health Physicist',
@@ -274,7 +274,7 @@ const InternalDosimetryModule: React.FC = () => {
     <div className="internal-dosimetry-module">
       <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
         <div>
-          <h2>☢️ Internal Dosimetry &amp; ICRP Biokinetic Model</h2>
+          <h2>☢️ Module 3 — Internal Dosimetry &amp; ICRP Biokinetic Model</h2>
           <p style={{ color: 'var(--color-text-muted)', margin: '4px 0 0 0' }}>
             Simulate nuclear intake clearance pathways, evaluate multi-compartment retention dynamics, and calculate committed equivalent doses (ICRP-60 standard).
           </p>

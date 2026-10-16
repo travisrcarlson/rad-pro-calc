@@ -50,7 +50,7 @@ const InternalDoseCalc: React.FC = () => {
 
   const dossierPayload: CalculationDossierPayload = useMemo(() => ({
     reportTitle: `Internal Dosimetry Committed Effective Dose E(50) — ${selectedNuclide?.Nuclide || 'Isotope'}`,
-    moduleName: 'Module 2C: Internal Dosimetry & ALI Engine',
+    moduleName: 'Module 1C: Internal Dosimetry & ALI Engine',
     statuteCitation: `${currentFramework.name} (${currentFramework.citation}) / ICRP Publication 119`,
     verificationTestId: 'VTEST-04 (Committed Effective Dose E(50))',
     operatorName: 'Internal Dosimetrist',

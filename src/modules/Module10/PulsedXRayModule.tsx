@@ -151,7 +151,7 @@ const PulsedXRayModule: React.FC = () => {
 
   const dossierPayload: CalculationDossierPayload = useMemo(() => ({
     reportTitle: 'Pulsed Flash Radiography & Detector Saturation Dossier',
-    moduleName: 'Module 10: Pulsed X-Ray Systems & Detector Saturation Analyzer',
+    moduleName: 'Module 16: Pulsed X-Ray Systems & Detector Saturation Analyzer',
     statuteCitation: 'ANSI N43.3-2008 / 29 CFR 1910.1096',
     verificationTestId: 'VTEST-08',
     operatorName: 'Radiological Safety Officer',
@@ -184,7 +184,7 @@ const PulsedXRayModule: React.FC = () => {
             <span className="hud-badge hud-badge-accent">FLASH X-RAY &amp; MEDICAL</span>
           </div>
           <h2 style={{ margin: '6px 0 0 0', fontSize: '1.4rem', letterSpacing: '0.03em' }}>
-            Pulsed X-Ray Systems &amp; Detector Burnout Analyzer
+            Module 16 — Pulsed X-Ray Systems &amp; Detector Burnout Analyzer
           </h2>
           <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
             Model nanosecond pulsed flash radiography (Golden Engineering XR series) vs. continuous medical beam physics, evaluate detector paralyzation, and plot OSHA exclusion zones.

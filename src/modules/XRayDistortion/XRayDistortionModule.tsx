@@ -595,7 +595,7 @@ const XRayDistortionModule: React.FC = () => {
   const dossierPayload: CalculationDossierPayload = useMemo(() => {
     return {
       reportTitle: `Radiographic Geometric Distortion & Penumbra Audit (SID: ${sid} cm, OID: ${oid} cm)`,
-      moduleName: 'X-Ray Distortion & Geometric Optics',
+      moduleName: 'Module 18: X-Ray Distortion & Geometric Optics',
       statuteCitation: 'Bushong Radiologic Science 12th Ed. Ch. 17 / ASME BPVC Sec V Art. 2 (Table T-274.1) / ISO 17636-1',
       verificationTestId: 'VTEST-27 (Geometric Magnification & Penumbra Unsharpness)',
       operatorName: 'Imaging Physicist / Radiographic Engineer',
@@ -647,7 +647,7 @@ const XRayDistortionModule: React.FC = () => {
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
             <span style={{ fontSize: '1.5rem' }}>📐</span>
             <h1 style={{ margin: 0, fontSize: '1.35rem', color: '#ffffff', letterSpacing: '0.5px' }}>
-              X-Ray Image Distortion, Magnification & Geometric Penumbra
+              Module 18 — X-Ray Image Distortion, Magnification &amp; Geometric Penumbra
             </h1>
             <span style={{
               background: 'rgba(0, 229, 255, 0.15)',

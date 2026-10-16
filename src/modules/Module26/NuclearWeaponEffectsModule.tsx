@@ -414,7 +414,7 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
         : `Air Burst (HOB +${burstAltitudeM}m)`;
     return {
       reportTitle: 'ICS-208 Nuclear Weapon Prompt Effects & Tactical Overpressure Dossier',
-      moduleName: 'Module 26 (Nuclear Weapon Effects & Prompt Radiations)',
+      moduleName: 'Module 8: Nuclear Weapon Prompt Effects, Blast & HEMP Simulator',
       statuteCitation: 'Glasstone & Dolan (1977) / Kingery-Bulmash (BRL-1972) / MIL-STD-188-125',
       verificationTestId: 'VTEST-29',
       operatorName: 'CBRN Weapons Effects Analyst',
@@ -450,7 +450,7 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
           <div>
             <h2 style={{ margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span>💥 Module 26: Nuclear Weapon Prompt Effects, Blast &amp; HEMP Simulator</span>
+              <span>💥 Module 8: Nuclear Weapon Prompt Effects, Blast &amp; HEMP Simulator</span>
               <VerificationBadge testId="VTEST-29" standard="Glasstone &amp; Dolan / Brode" />
             </h2>
             <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: '0.88rem' }}>

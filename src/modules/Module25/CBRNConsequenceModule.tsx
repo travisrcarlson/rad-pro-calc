@@ -452,7 +452,7 @@ export const CBRNConsequenceModule: React.FC = () => {
   const dossierPayload: CalculationDossierPayload = useMemo(() => {
     return {
       reportTitle: 'ICS-208 CBRN Tactical Consequence, Fallout & Shelter Optimization Dossier',
-      moduleName: 'Module 25 (CBRN Consequence & Consequence Management)',
+      moduleName: 'Module 7: CBRN Consequence & Fallout Shelter Management',
       statuteCitation: 'NCRP Report No. 165 / FEMA Nuclear Guidance / IAEA TRS-405 / EPA PAG-2017',
       verificationTestId: 'VTEST-28',
       operatorName: 'CBRN Consequence Assessment Specialist',
@@ -501,7 +501,7 @@ export const CBRNConsequenceModule: React.FC = () => {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
           <div>
             <h2 style={{ margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span>☢️ Module 25: CBRN Tactical Consequence, Fallout & Shelter Optimization</span>
+              <span>☢️ Module 7: CBRN Tactical Consequence, Fallout &amp; Shelter Optimization</span>
               <VerificationBadge testId="VTEST-28" standard="NCRP-165 / FEMA" />
             </h2>
             <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: '0.88rem' }}>

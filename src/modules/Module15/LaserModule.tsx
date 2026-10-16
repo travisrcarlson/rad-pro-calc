@@ -292,7 +292,7 @@ const LaserModule: React.FC = () => {
 
   const dossierPayload: CalculationDossierPayload = useMemo(() => ({
     reportTitle: 'Laser Radiation Hazard & NOHD Safety Assessment Dossier',
-    moduleName: 'Module 15: Laser Radiation Safety & NOHD Analyzer',
+    moduleName: 'Module 19: Laser Radiation Safety & NOHD Analyzer',
     statuteCitation: 'ANSI Z136.1-2022 / 29 CFR 1910.133 / IEC 60825-1',
     verificationTestId: 'VTEST-10',
     operatorName: 'Laser Safety Officer (LSO)',
@@ -323,7 +323,7 @@ const LaserModule: React.FC = () => {
       <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
         <div>
           <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: 0 }}>
-            <span>⚡ Laser Radiation Safety & NOHD Analyzer</span>
+            <span>⚡ Module 19 — Laser Radiation Safety &amp; NOHD Analyzer</span>
             <span style={{ fontSize: '0.75rem', padding: '3px 8px', background: 'rgba(0, 229, 255, 0.1)', color: 'var(--color-primary)', border: '1px solid rgba(0, 229, 255, 0.3)', borderRadius: '4px' }}>
               ANSI Z136.1-2022 / IEC 60825-1
             </span>
