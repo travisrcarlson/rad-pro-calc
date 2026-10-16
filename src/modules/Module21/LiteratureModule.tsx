@@ -13,7 +13,7 @@ export type DomainCategory =
   | 'Regulatory Standards & Transport Security'
   | 'Medical & Advanced Expansion';
 
-export type ViewTab = 'current' | 'expansion' | 'derivations' | 'standards';
+export type ViewTab = 'current' | 'expansion' | 'derivations' | 'constants' | 'standards';
 
 export interface MethodDoc {
   id: string;
@@ -42,46 +42,54 @@ const METHOD_DOCS: MethodDoc[] = [
   {
     id: 'M01-Dose',
     moduleId: 'Module 1',
-    moduleName: 'Dose Calculator',
+    moduleName: 'Dose Calculator (1A–1D)',
     domain: 'Dose, Transport & Shielding',
-    title: 'Point Source Gamma Kerma, Specific Gamma Constant & Taylor Buildup',
-    overview: 'Calculates air kerma and ambient dose equivalent rate H*(10) around isotropic unshielded or shielded point gamma emitters using specific gamma-ray constants and buildup factors.',
+    title: 'Multi-Modality Point/Extended Gamma Kerma, Taylor Buildup, Beta Bremsstrahlung & Neutron Activation (Submodules 1A–1D)',
+    overview: 'Unified four-part analytical dosimetry engine covering Submodule 1A (External Point/Line/Disc Gamma Kerma & Specific Gamma Constant Γ), Submodule 1B (Narrow/Broad-Beam Shielding & Taylor/G-P Buildup), Submodule 1C (Committed Effective Dose E(50) & Intake), and Submodule 1D (Thermal/Epithermal Neutron Activation & Beta Bremsstrahlung).',
     standards: [
-      { org: 'ICRP', code: 'Publication 74', year: '1996', title: 'Conversion Coefficients for use in Radiological Protection against External Radiation' },
-      { org: 'NCRP', code: 'Report No. 147', year: '2004', title: 'Structural Shielding Design for Medical X-Ray Imaging Facilities' },
-      { org: 'ICRU', code: 'Report 57', year: '1998', title: 'Conversion Coefficients for use in Radiological Protection against External Radiation' }
+      { org: 'ICRP', code: 'Publication 74 / 116', year: '2010', title: 'Conversion Coefficients for Radiological Protection Quantities for External Radiation' },
+      { org: 'NCRP', code: 'Report No. 147 / 151', year: '2005', title: 'Structural Shielding Design and Evaluation for Megavoltage X- and Gamma-Ray Facilities' },
+      { org: 'ICRU', code: 'Report 56 / 57', year: '1998', title: 'Dosimetry of External Beta Rays and Photon Conversion Coefficients' },
+      { org: 'IAEA', code: 'TRS No. 273', year: '1987', title: 'Handbook on Nuclear Activation Data' }
     ],
-    primaryFormula: '\\dot{H}^*(10) = \\frac{A \\cdot \\Gamma}{d^2} \\cdot B(\\mu x) \\cdot e^{-\\mu x}',
+    primaryFormula: '\\dot{H}^*(10) = \\frac{A \\cdot \\Gamma}{d^2} \\cdot B(\\mu x) \\cdot e^{-\\mu x}, \\quad E_{\\text{total}} = H_p(10) + \\sum_j I_j \\cdot e(50)_j',
     secondaryFormulas: [
-      { label: 'Specific Gamma Constant Conversion (SI)', formula: '\\Gamma_{\\text{SI}} = \\frac{\\Gamma_{\\text{old}}}{37.0} \\quad [\\mu\\text{Sv}\\cdot\\text{m}^2 / (\\text{h}\\cdot\\text{MBq})]' },
-      { label: 'Taylor Two-Parameter Buildup Factor', formula: 'B(\\mu x) = A_1 e^{-\\alpha_1 \\mu x} + (1 - A_1) e^{-\\alpha_2 \\mu x}' }
+      { label: 'Taylor Two-Exponential Buildup Factor (Submodule 1B)', formula: 'B(\\mu x) = A_1 e^{-\\alpha_1 \\mu x} + (1 - A_1) e^{-\\alpha_2 \\mu x}' },
+      { label: 'Bethe-Heitler Beta Bremsstrahlung Radiative Yield Fraction', formula: 'F_{\\text{brem}} = 3.5 \\times 10^{-4} \\cdot Z_{\\text{eff}} \\cdot E_{\\beta, \\max} \\quad [\\text{Katz-Penfold Range } R_p = 0.412 E_{\\beta}^{1.265 - 0.0954 \\ln E_{\\beta}}]' },
+      { label: 'Committed Effective Dose Over 50-Year Integration (Submodule 1C)', formula: 'E(50) = I_0 \\cdot e(50), \\quad \\text{ALI} = \\frac{20\\text{ mSv}}{e(50)}, \\quad \\text{DAC} = \\frac{\\text{ALI}}{2400\\text{ m}^3}' },
+      { label: 'Thermal Neutron Capture Activation & Cooling (Submodule 1D)', formula: 'A(t_{\\text{irr}}, t_{\\text{cool}}) = N_0 \\cdot \\sigma_{\\text{act}} \\cdot \\Phi_{\\text{th}} \\cdot \\left(1 - e^{-\\lambda t_{\\text{irr}}}\\right) \\cdot e^{-\\lambda t_{\\text{cool}}}' }
     ],
     derivationSteps: [
       {
-        stepTitle: '1. Geometric Inverse-Square Conservation',
-        explanation: 'For an isotropic emitter radiating into 4π steradians, energy fluence diminishes across expanding spherical surfaces of radius d:',
-        math: '\\Psi(d) = \\frac{\\dot{E}_{\\text{emit}}}{4\\pi d^2} = \\frac{A \\sum (y_i E_i)}{4\\pi d^2}'
+        stepTitle: '1. Geometric Inverse-Square Fluence & Air Kerma Rate',
+        explanation: 'For an isotropic point emitter radiating into 4π steradians, photon energy fluence diminishes across spherical surfaces of area 4πd². Multiplying by the mass energy-absorption coefficient (μ_en/ρ)_air yields the Specific Gamma Constant Γ:',
+        math: '\\dot{K}_{\\text{air}}(d) = \\frac{A}{d^2} \\left[ \\frac{1}{4\\pi} \\sum_i y_i E_i \\left(\\frac{\\mu_{\\text{en}}}{\\rho}\\right)_{\\text{air}, i} \\right] = \\frac{A \\cdot \\Gamma}{d^2}'
       },
       {
-        stepTitle: '2. Air Kerma Rate & Specific Gamma Constant',
-        explanation: 'Multiplying by the mass energy-absorption coefficient (μ_en / ρ)_air yields air kerma K_air. Combining nuclide emission yields gives the Specific Gamma Constant Γ:',
-        math: '\\dot{K}_{\\text{air}} = \\frac{A}{d^2} \\left[ \\frac{1}{4\\pi} \\sum_{i} y_i E_i \\left(\\frac{\\mu_{\\text{en}}}{\\rho}\\right)_{\\text{air}, i} \\right] = \\frac{A \\cdot \\Gamma}{d^2}'
+        stepTitle: '2. Broad-Beam Compton Scatter Buildup Correction',
+        explanation: 'In thick shielding slabs, Compton-scattered photons reach the detector alongside uncollided primary photons e^(-μx). The buildup factor B(μx) = D_total / D_uncollided is parameterized via Taylor two-exponential coefficients:',
+        math: '\\dot{H}(x) = \\dot{H}_0 \\cdot B(\\mu x) \\cdot e^{-\\mu x} = \\dot{H}_0 \\left[ A_1 e^{-(1 + \\alpha_1)\\mu x} + (1 - A_1) e^{-(1 + \\alpha_2)\\mu x} \\right]'
+      },
+      {
+        stepTitle: '3. Neutron Activation Differential Production Balance (Submodule 1D)',
+        explanation: 'During neutron irradiation at flux Φ_th, target nuclei N_0 transmute at constant rate N_0 σ_act Φ_th while radioactive daughters decay at rate λN*(t). Integrating with N*(0) = 0 yields saturation buildup:',
+        math: '\\frac{dN^*}{dt} = N_0 \\sigma_{\\text{act}} \\Phi_{\\text{th}} - \\lambda N^*(t) \\implies A(t_{\\text{irr}}) = \\lambda N^*(t_{\\text{irr}}) = N_0 \\sigma_{\\text{act}} \\Phi_{\\text{th}} \\left(1 - e^{-\\lambda t_{\\text{irr}}}\\right)'
       }
     ],
     variables: [
-      { symbol: '\\dot{H}^*(10)', description: 'Ambient dose equivalent rate at depth of 10 mm in ICRU sphere', units: 'µSv·h⁻¹' },
-      { symbol: 'A', description: 'Radioactive source activity', units: 'MBq' },
-      { symbol: '\\Gamma', description: 'Specific gamma-ray constant', units: 'µSv·m²·MBq⁻¹·h⁻¹' },
-      { symbol: 'd', description: 'Radial distance between source center and detector point', units: 'm' },
-      { symbol: 'B(\\mu x)', description: 'Radiation scatter buildup factor', units: 'dimensionless' },
-      { symbol: '\\mu', description: 'Linear attenuation coefficient of intervening shield', units: 'cm⁻¹' },
-      { symbol: 'x', description: 'Thickness of intervening shield', units: 'cm' }
+      { symbol: '\\dot{H}^*(10)', description: 'Ambient dose equivalent rate at 10 mm depth in ICRU tissue sphere', units: 'µSv·h⁻¹ or mSv·h⁻¹' },
+      { symbol: 'A', description: 'Source radionuclide activity', units: 'MBq, GBq, or Ci' },
+      { symbol: '\\Gamma', description: 'Specific gamma-ray constant (e.g., 308.5 µSv·m²/(h·GBq) for Co-60)', units: 'µSv·m²·GBq⁻¹·h⁻¹' },
+      { symbol: 'B(\\mu x)', description: 'Broad-beam multiple-scatter photon buildup factor', units: 'dimensionless' },
+      { symbol: 'e(50)', description: 'ICRP 119 50-year committed effective dose coefficient per unit intake', units: 'Sv·Bq⁻¹' },
+      { symbol: '\\sigma_{\\text{act}}', description: 'Thermal neutron capture cross-section at 2200 m/s (e.g., 98.65 b for Au-197)', units: 'barns (10⁻²⁴ cm²)' }
     ],
     assumptions: [
-      'Source dimensions are negligible compared to distance d (point source condition: d > 5 × source dimension).',
-      'Electronic equilibrium established at the 10 mm measurement depth in ICRU tissue.'
+      'Point source approximation valid when receptor distance d exceeds 5× maximum source dimension.',
+      'Electronic equilibrium established at 10 mm depth for penetrating gamma radiation.',
+      'Negligible parent target burnup during thermal neutron irradiation (σ_act Φ_th t_irr << 1).'
     ],
-    benchmarks: 'Validated against ICRP 74 Table A.1 and NCRP 147 transmission curve datasets.'
+    benchmarks: 'Validated against ICRP 107 Co-60/Cs-137 gamma constants (VTEST-01, VTEST-02), NCRP 147 TVL attenuation (VTEST-03), ICRP 119 I-131 ingestion (VTEST-04), and Au-198 saturation yield (VTEST-20).'
   },
 
   // 2. Module 2
@@ -90,34 +98,43 @@ const METHOD_DOCS: MethodDoc[] = [
     moduleId: 'Module 2',
     moduleName: 'Worker Dosimetry',
     domain: 'Dose, Transport & Shielding',
-    title: 'Inverse Square Law & Geometric Solid Angle Corrections',
-    overview: 'Solves source-to-receptor geometry problems for unshielded point sources, line sources, and disc sources using spherical dispersion and solid angle integrals.',
+    title: 'Occupational ALARA Stay-Time, Multi-Source 3D Worker Trajectory Integration, Line/Disc Geometries & DAC-Hour Tracking',
+    overview: 'Calculates occupational worker stay-times, turn-around dose ceilings, cumulative TEDE (DDE + CEDE from airborne DAC-hours), and extended source geometric solid-angle corrections (point, finite line pipe, and circular pool/disc sources).',
     standards: [
-      { org: 'NCRP', code: 'Report No. 107', year: '1989', title: 'Implementation of the Principle of As Low As Reasonably Achievable (ALARA)' },
-      { org: 'Cember', code: 'Textbook Ref', year: '2008', title: 'Introduction to Health Physics (4th Ed., McGraw-Hill)' }
+      { org: 'US NRC', code: '10 CFR Part 20', year: '2023', title: 'Standards for Protection Against Radiation (§ 20.1201 Occupational Limits & DAC/ALI)' },
+      { org: 'NCRP', code: 'Report No. 127', year: '1998', title: 'Operational Radiation Safety Program' },
+      { org: 'Cember & Johnson', code: 'Textbook Ref', year: '2009', title: 'Introduction to Health Physics (4th Ed., Extended Source Dosimetry)' }
     ],
-    primaryFormula: 'I_2 = I_1 \\cdot \\left(\\frac{d_1}{d_2}\\right)^2 \\iff d_2 = d_1 \\cdot \\sqrt{\\frac{I_1}{I_2}}',
+    primaryFormula: 'D_{\\text{worker}} = \\int_0^{T_{\\text{stay}}} \\sum_{k=1}^N \\frac{A_k \\Gamma_k}{\\|\\vec{r}_w(t) - \\vec{r}_k\\|^2} B_k e^{-\\mu_k x_k(t)} \\, dt + \\frac{\\text{DAC-hrs}}{2000} \\times \\frac{20\\text{ mSv}}{\\text{PF}_{\\text{resp}}}',
     secondaryFormulas: [
-      { label: 'Line Source Attenuation (Length L)', formula: 'I(d) = \\frac{S_L}{2\\pi d} \\left[ \\arctan\\left(\\frac{L/2}{d}\\right) \\right]' },
-      { label: 'Disc Source On-Axis Attenuation (Radius R)', formula: 'I(d) = I_0 \\cdot \\ln\\left(1 + \\frac{R^2}{d^2}\\right)' }
+      { label: 'Inverse-Square Standoff Distance Law', formula: 'I_2 = I_1 \\cdot \\left(\\frac{d_1}{d_2}\\right)^2 \\iff d_{\\text{safe}} = d_1 \\cdot \\sqrt{\\frac{\\dot{D}_1}{\\dot{D}_{\\text{limit}}}}' },
+      { label: 'Finite Line Source (Radioactive Pipe of Length L) On-Bisector', formula: '\\dot{D}_{\\text{line}}(h) = \\frac{S_L \\cdot \\Gamma}{h} \\cdot 2 \\arctan\\left(\\frac{L}{2h}\\right), \\quad S_L = \\frac{A_{\\text{total}}}{L}' },
+      { label: 'Circular Planar Disc Source (Contaminated Spill of Radius R)', formula: '\\dot{D}_{\\text{disc}}(h) = \\pi \\cdot S_A \\cdot \\Gamma \\cdot \\ln\\left(1 + \\frac{R^2}{h^2}\\right), \\quad S_A = \\frac{A_{\\text{total}}}{\\pi R^2}' },
+      { label: 'Allowable Worker Stay-Time to Administrative Dose Limit', formula: 't_{\\text{stay}} = \\frac{D_{\\text{admin}} - D_{\\text{prior}}}{\\dot{D}_{\\text{workplace}}} \\quad [\\text{in hours or minutes}]' }
     ],
     derivationSteps: [
       {
-        stepTitle: '1. Conservation of Radiant Energy Fluence',
-        explanation: 'In non-attenuating vacuum or air, total photon flux crossing sphere 1 equals flux crossing sphere 2:',
-        math: '4\\pi d_1^2 \\cdot I_1 = 4\\pi d_2^2 \\cdot I_2 \\implies \\frac{I_2}{I_1} = \\frac{d_1^2}{d_2^2} = \\left(\\frac{d_1}{d_2}\\right)^2'
+        stepTitle: '1. Differential Line Source Integration (Sievert Integral Basis)',
+        explanation: 'Consider a uniform radioactive pipe of length L and linear activity density S_L = A/L along the x-axis from -L/2 to +L/2. Integrating inverse-square contributions at perpendicular distance h:',
+        math: '\\dot{D}(h) = \\int_{-L/2}^{L/2} \\frac{\\Gamma S_L \\, dx}{x^2 + h^2} = \\frac{\\Gamma S_L}{h} \\left[ \\arctan\\left(\\frac{x}{h}\\right) \\right]_{-L/2}^{L/2} = \\frac{2 \\Gamma S_L}{h} \\arctan\\left(\\frac{L}{2h}\\right)'
+      },
+      {
+        stepTitle: '2. Planar Disc Source Integration Over Concentric Annuli',
+        explanation: 'For a circular spill of radius R and areal activity S_A (Bq/m²), integrating concentric rings of radius r and area 2πr dr at height h above center:',
+        math: '\\dot{D}(h) = \\int_0^R \\frac{\\Gamma S_A (2\\pi r \\, dr)}{r^2 + h^2} = \\pi \\Gamma S_A \\left[ \\ln(r^2 + h^2) \\right]_0^R = \\pi \\Gamma S_A \\ln\\left(1 + \\frac{R^2}{h^2}\\right)'
       }
     ],
     variables: [
-      { symbol: 'I_1, I_2', description: 'Radiation field intensities at distances d1 and d2', units: 'µSv·h⁻¹ or mR·h⁻¹' },
-      { symbol: 'd_1, d_2', description: 'Distances from radiation source center', units: 'm' },
-      { symbol: 'S_L', description: 'Linear source activity density', units: 'MBq·m⁻¹' }
+      { symbol: 'D_{\\text{worker}}', description: 'Total Effective Dose Equivalent (TEDE) accumulated during work task', units: 'mSv or µSv' },
+      { symbol: 'S_L, S_A', description: 'Linear (MBq/m) and areal (MBq/m²) source activity concentrations', units: 'MBq·m⁻¹ / MBq·m⁻²' },
+      { symbol: 'h', description: 'Perpendicular standoff distance from pipe axis or disc center', units: 'm' },
+      { symbol: '\\text{PF}_{\\text{resp}}', description: 'Assigned Protection Factor (APF) of respiratory PPE (e.g., 50 for full-face APR, 1000 for PAPR/SCBA)', units: 'dimensionless' }
     ],
     assumptions: [
-      'Negligible photon attenuation and coherent scatter in ambient air over the path length.',
-      'Detector volume is small relative to d (no spatial volume averaging effects).'
+      'Negligible self-absorption within thin surface contamination disc sources.',
+      'Worker torso receptor evaluated at standard chest dosimeter height z = 1.2 m.'
     ],
-    benchmarks: 'Matches classical analytical inverse-square solutions within <0.01% error.'
+    benchmarks: 'Validated against Cember 4th Ed. extended source analytical solutions and VTEST-07.'
   },
 
   // 3. Module 3
@@ -126,33 +143,43 @@ const METHOD_DOCS: MethodDoc[] = [
     moduleId: 'Module 3',
     moduleName: 'Internal Dosimetry',
     domain: 'Internal Dosimetry & Biokinetics',
-    title: 'ICRP Compartmental Biokinetic ODEs, Effective Half-Life & Committed Dose e(50)',
-    overview: 'Models metabolic intake, bloodstream uptake, target organ deposition, and systemic clearance using multi-compartment differential equations.',
+    title: 'ICRP Compartmental Biokinetic ODEs, Bioassay Excretion Functions m(t), Effective Half-Life & Committed Dose e(50)',
+    overview: 'Models metabolic intake (inhalation Types F/M/S and ingestion f1), systemic organ retention, urinary/fecal bioassay intake back-calculation I0 = M(t)/m(t), and 50-year committed effective dose E(50).',
     standards: [
-      { org: 'ICRP', code: 'Publication 30', year: '1979', title: 'Limits for Intakes of Radionuclides by Workers' },
-      { org: 'ICRP', code: 'Publication 60', year: '1991', title: '1990 Recommendations of the International Commission on Radiological Protection' },
-      { org: 'ICRP', code: 'Publication 119', year: '2012', title: 'Compendium of Dose Coefficients based on ICRP Publication 60' }
+      { org: 'ICRP', code: 'Publication 68 / 78', year: '1997', title: 'Individual Monitoring for Internal Exposure of Workers & Dose Coefficients' },
+      { org: 'ICRP', code: 'Publication 119 / 130', year: '2015', title: 'Compendium of Dose Coefficients & Occupational Intakes of Radionuclides (OIR)' },
+      { org: 'NCRP', code: 'Report No. 164', year: '2010', title: 'Uncertainties in Internal Radiation Dose Assessment' }
     ],
-    primaryFormula: '\\frac{1}{T_{1/2,\\text{eff}}} = \\frac{1}{T_{1/2,\\text{radio}}} + \\frac{1}{T_{1/2,\\text{bio}}} \\iff \\lambda_{\\text{eff}} = \\lambda_{\\text{radio}} + \\lambda_{\\text{bio}}',
+    primaryFormula: '\\lambda_{\\text{eff}} = \\lambda_{\\text{rad}} + \\lambda_{\\text{bio}} \\iff T_{1/2,\\text{eff}} = \\frac{T_p \\cdot T_b}{T_p + T_b}, \\quad I_0 = \\frac{M(t)}{m(t)}, \\quad E(50) = I_0 \\cdot e(50)',
     secondaryFormulas: [
-      { label: 'Intake Compartment ODE', formula: '\\frac{d A_{\\text{intake}}}{dt} = -(\\lambda_{\\text{clear}} + \\lambda_r) A_{\\text{intake}}' },
-      { label: 'Target Organ Retention ODE', formula: '\\frac{d A_{\\text{organ}}}{dt} = f_{\\text{organ}} \\lambda_{\\text{dist}} A_{\\text{blood}} - (\\lambda_{\\text{bio}} + \\lambda_r) A_{\\text{organ}}' },
-      { label: 'Committed Effective Dose (50 years)', formula: 'E(50) = A_0 \\cdot e(50)' },
-      { label: 'Annual Limit on Intake (ALI)', formula: '\\text{ALI} = \\frac{20\\text{ mSv}}{e(50)}' }
+      { label: 'Multi-Exponential Bioassay Retention / Excretion Function', formula: 'm(t) = \\sum_{j=1}^K a_j \\cdot e^{-(\\lambda_{\\text{bio}, j} + \\lambda_{\\text{rad}}) t}' },
+      { label: 'Target Organ Compartmental Retention ODE', formula: '\\frac{d A_{\\text{organ}}}{dt} = f_{\\text{organ}} \\lambda_{\\text{blood}} A_{\\text{blood}}(t) - (\\lambda_{\\text{bio}} + \\lambda_{\\text{rad}}) A_{\\text{organ}}(t)' },
+      { label: 'Annual Limit on Intake (ALI) & Derived Air Concentration (DAC)', formula: '\\text{ALI} = \\frac{0.020\\text{ Sv}}{e(50)}, \\quad \\text{DAC} = \\frac{\\text{ALI}}{2400\\text{ m}^3} \\quad [\\text{Bq/m}^3]' }
+    ],
+    derivationSteps: [
+      {
+        stepTitle: '1. Parallel Physical and Biological Clearance Rates',
+        explanation: 'A radionuclide in an organ is removed simultaneously by radioactive decay (rate λ_rad) and biological excretion (rate λ_bio). Because independent Poisson removal rates add linearly:',
+        math: '\\frac{dN}{dt} = -(\\lambda_{\\text{rad}} + \\lambda_{\\text{bio}}) N = -\\lambda_{\\text{eff}} N \\implies \\frac{\\ln 2}{T_e} = \\frac{\\ln 2}{T_p} + \\frac{\\ln 2}{T_b} \\implies T_e = \\frac{T_p T_b}{T_p + T_b}'
+      },
+      {
+        stepTitle: '2. Retrospective Intake Reconstruction from Bioassay M(t)',
+        explanation: 'Given a measured 24-hour urine/fecal sample or whole-body count M(t) at time t post-intake and the ICRP 78 reference retention/excretion fraction m(t), the acute intake I_0 and committed dose E(50) follow by linear convolution:',
+        math: 'M(t) = I_0 \\cdot m(t) \\implies I_0 = \\frac{M(t)}{m(t)} \\implies E(50) = \\frac{M(t)}{m(t)} \\cdot e(50)'
+      }
     ],
     variables: [
-      { symbol: 'T_{1/2,\\text{eff}}', description: 'Effective biological clearance half-life in target organ', units: 'days' },
-      { symbol: 'T_{1/2,\\text{radio}}', description: 'Radioactive physical half-life', units: 'days' },
-      { symbol: 'T_{1/2,\\text{bio}}', description: 'Biological clearance half-life via metabolic excretion', units: 'days' },
-      { symbol: 'e(50)', description: 'Committed effective dose coefficient per unit intake for adult worker', units: 'Sv·Bq⁻¹' },
-      { symbol: 'E(50)', description: '50-year committed effective dose', units: 'mSv or Sv' },
-      { symbol: '\\text{ALI}', description: 'Annual Limit on Intake corresponding to 20 mSv annual occupational limit', units: 'Bq' }
+      { symbol: 'T_{1/2,\\text{eff}}', description: 'Effective clearance half-life in target organ (e.g., 108.91 d for Cs-137)', units: 'days' },
+      { symbol: 'I_0', description: 'Reconstructed initial acute intake activity', units: 'Bq' },
+      { symbol: 'M(t)', description: 'Measured activity in 24-h excreta or whole-body counter at day t', units: 'Bq' },
+      { symbol: 'm(t)', description: 'ICRP 78 fractional retention or daily excretion function at day t', units: 'Bq per Bq intake' },
+      { symbol: 'e(50)', description: 'Committed effective dose coefficient over 50-year adult integration period', units: 'Sv·Bq⁻¹' }
     ],
     assumptions: [
-      'First-order linear compartmental transfer kinetics.',
-      'Integration window spans 50 years for adult occupational exposure following acute intake.'
+      'Linear first-order compartmental transfer kinetics between respiratory/GI tract, blood plasma, and target organs.',
+      'ICRP Reference Adult physiology (20 m³/day occupational breathing rate, 2,400 m³/year).'
     ],
-    benchmarks: 'Dose coefficients verified against ICRP Publication 119 Table A.1 and A.2.'
+    benchmarks: 'Validated against ICRP Publication 119 I-131 ingestion (VTEST-04) and ICRP 68 Cs-137 effective half-life (VTEST-22).'
   },
 
   // 4. Module 4
@@ -161,44 +188,42 @@ const METHOD_DOCS: MethodDoc[] = [
     moduleId: 'Module 4',
     moduleName: '3D Spatial Workspace',
     domain: 'Dose, Transport & Shielding',
-    title: 'Narrow-Beam Attenuation, Broad-Beam Buildup & Half-Value Layers (HVL)',
-    overview: 'Models exponential photon attenuation across structural shielding materials (Lead, Iron, Concrete, Tungsten, Water) incorporating Compton multiple-scatter buildup.',
+    title: 'Kay-Kajiya 3D Ray-AABB Slab Penetration, Multi-Source Vector Superposition & Broad-Beam Buildup',
+    overview: 'Computes real-time 3D dose fields across multi-source nuclear facilities with arbitrary 3D rectilinear shielding walls (Lead, Concrete, Steel, Water, Depleted Uranium) using exact analytical Kay-Kajiya ray-box intersection andANSI/ANS-6.4.3 buildup factors.',
     standards: [
-      { org: 'NIST', code: 'XCOM (SRD 8)', year: '2010', title: 'Photon Cross Sections Database' },
-      { org: 'ANSI/ANS', code: '6.4-2006', year: '2006', title: 'Nuclear Analysis & Design of Concrete Radiation Shielding for Nuclear Power Plants' },
-      { org: 'NCRP', code: 'Report No. 49', year: '1976', title: 'Structural Shielding Design and Evaluation for Medical Use of X Rays and Gamma Rays' }
+      { org: 'Kay & Kajiya', code: 'SIGGRAPH Comput. Graph. 20(4)', year: '1986', title: 'Ray Tracing Complex Scenes: Slab Intersection Algorithm for Bounding Volumes' },
+      { org: 'ANSI/ANS', code: '6.4.3-1991 / 6.4-2006', year: '2006', title: 'Gamma-Ray Attenuation Coefficients and Buildup Factors for Engineering Materials' },
+      { org: 'NIST', code: 'XCOM (SRD 8)', year: '2010', title: 'Photon Cross Sections Database' }
     ],
-    primaryFormula: 'I(x) = I_0 \\cdot B(E, \\mu x) \\cdot \\exp(-\\mu x) = I_0 \\cdot B(E, \\mu x) \\cdot \\exp\\left( -\\left(\\frac{\\mu}{\\rho}\\right) \\cdot \\rho x \\right)',
+    primaryFormula: '\\dot{H}(\\vec{p}) = \\sum_{s=1}^{N_s} \\frac{A_s \\Gamma_s}{\\|\\vec{p} - \\vec{s}\\|^2} \\prod_{w=1}^{N_w} B_w(\\mu_w L_{s,w}) \\cdot \\exp(-\\mu_w L_{s,w})',
     secondaryFormulas: [
-      { label: 'Half-Value Layer (HVL)', formula: '\\text{HVL} = \\frac{\\ln(2)}{\\mu} = \\frac{0.693147}{\\mu}' },
-      { label: 'Tenth-Value Layer (TVL)', formula: '\\text{TVL} = \\frac{\\ln(10)}{\\mu} = \\frac{2.302585}{\\mu} \\approx 3.3219 \\cdot \\text{HVL}' },
-      { label: 'Geometric Progression (G-P) Buildup', formula: 'B(E, x) = 1 + (b - 1) \\cdot \\frac{K^x - 1}{K - 1}' }
+      { label: 'Kay-Kajiya Ray-AABB Slab Entry & Exit Parameters', formula: 't_{\\text{enter}} = \\max_{i \\in \\{x,y,z\\}} \\min(t_{i,1}, t_{i,2}), \\quad t_{\\text{exit}} = \\min_{i \\in \\{x,y,z\\}} \\max(t_{i,1}, t_{i,2})' },
+      { label: 'Exact 3D Slant Penetration Path Length Through Shield Wall w', formula: 'L_{s,w} = \\max(0, \\, t_{\\text{exit}} - t_{\\text{enter}}) \\cdot \\|\\vec{p} - \\vec{s}\\| \\quad (\\text{for } 0 \\le t_{\\text{enter}} < t_{\\text{exit}} \\le 1)' },
+      { label: 'Half-Value Layer (HVL) & Tenth-Value Layer (TVL)', formula: '\\text{HVL} = \\frac{\\ln 2}{\\mu}, \\quad \\text{TVL} = \\frac{\\ln 10}{\\mu} \\approx 3.3219 \\cdot \\text{HVL}, \\quad I(x) = I_0 \\cdot 10^{-x / \\text{TVL}}' }
     ],
     derivationSteps: [
       {
-        stepTitle: '1. Lambert-Beer Narrow-Beam Law',
-        explanation: 'Probability of photon removal per differential path dx is proportional to linear attenuation coefficient μ:',
-        math: '\\frac{dI}{dx} = -\\mu I(x) \\implies \\int_{I_0}^I \\frac{dI}{I} = -\\mu \\int_0^x dx \\implies I(x) = I_0 e^{-\\mu x}'
+        stepTitle: '1. Parametric Ray Formulation Between Source and Detector',
+        explanation: 'A directed ray from point source s to receptor p is parameterized on t ∈ [0, 1] as r(t) = s + t(p - s). For an axis-aligned bounding box (AABB) wall [b_min, b_max], the slab intersection parameters along each axis i ∈ {x, y, z} are:',
+        math: 't_{i,1} = \\frac{b_{\\min, i} - s_i}{p_i - s_i}, \\quad t_{i,2} = \\frac{b_{\\max, i} - s_i}{p_i - s_i}'
       },
       {
-        stepTitle: '2. Half-Value Layer Derivation',
-        explanation: 'Thickness reducing transmitted intensity by exactly 50% (I = I_0 / 2):',
-        math: '\\frac{I_0}{2} = I_0 e^{-\\mu \\cdot \\text{HVL}} \\implies -\\ln(2) = -\\mu \\cdot \\text{HVL} \\implies \\text{HVL} = \\frac{\\ln(2)}{\\mu}'
+        stepTitle: '2. Exact Slant Path Length Through 3D Shielding Obstacle',
+        explanation: 'The ray lies inside all three orthogonal slabs simultaneously on the interval [t_enter, t_exit]. Multiplying the dimensionless parameter span by the Euclidean distance ||p - s|| yields the exact slant thickness L_shield without voxel discretization error:',
+        math: 'L_{\\text{shield}} = \\max\\left(0, \\, \\min(1, t_{\\text{exit}}) - \\max(0, t_{\\text{enter}})\\right) \\cdot \\sqrt{(p_x - s_x)^2 + (p_y - s_y)^2 + (p_z - s_z)^2}'
       }
     ],
     variables: [
-      { symbol: 'I_0, I(x)', description: 'Unshielded incident and shielded transmitted dose rates', units: 'µSv·h⁻¹' },
-      { symbol: '\\mu', description: 'Linear attenuation coefficient at incident photon energy', units: 'cm⁻¹' },
-      { symbol: '\\mu / \\rho', description: 'Mass attenuation coefficient from NIST XCOM', units: 'cm²·g⁻¹' },
-      { symbol: '\\rho', description: 'Mass density of shielding medium', units: 'g·cm⁻³' },
-      { symbol: 'B(E, \\mu x)', description: 'Multiple scatter buildup factor', units: 'dimensionless' },
-      { symbol: 'x', description: 'Physical thickness of shielding barrier', units: 'cm' }
+      { symbol: '\\vec{s}, \\vec{p}', description: '3D Cartesian coordinates of radiation source and detector point', units: 'm' },
+      { symbol: 't_{\\text{enter}}, t_{\\text{exit}}', description: 'Normalized ray intersection parameters at shield entry and exit faces', units: 'dimensionless ∈ [0, 1]' },
+      { symbol: 'L_{s,w}', description: 'Exact 3D slant penetration path length of ray s through wall w', units: 'm or cm' },
+      { symbol: '\\mu_w', description: 'Linear attenuation coefficient of wall material at source photon energy', units: 'cm⁻¹' }
     ],
     assumptions: [
-      'Monochromatic or multi-energy spectrum collapsed with energy-weighted attenuation.',
-      'Infinite planar slab geometry for buildup factor validity.'
+      'Straight-line primary ray optical path for slant thickness evaluation.',
+      'Broad-beam Compton scatter accounted for via material buildup factor B(μL).'
     ],
-    benchmarks: 'Calibrated against NIST XCOM database and ANSI/ANS-6.4.3 standard buildup tables.'
+    benchmarks: 'Validated against Kay-Kajiya 3D geometric obstacle penetration (VTEST-07) and NCRP 151 TVL attenuation (VTEST-03).'
   },
 
   // 5. Module 5
@@ -207,43 +232,42 @@ const METHOD_DOCS: MethodDoc[] = [
     moduleId: 'Module 5',
     moduleName: 'Radiation Map',
     domain: 'Dose, Transport & Shielding',
-    title: 'Bethe-Heitler Bremsstrahlung Fraction, Continuous Slowing Down Range & Loevinger Formalism',
-    overview: 'Calculates maximum and continuous beta ranges in matter, electronic stopping power, skin dose at 70 µm depth, and secondary Bremsstrahlung radiative yield in high-Z vs low-Z shielding.',
+    title: '2D/3D Isodose Contour Interpolation, 10 CFR 34.41 NDT Barricade Perimeters & Ground/Cloud Shine',
+    overview: 'Generates spatial 2D/3D isodose contour heatmaps around single or multiple unshielded/collimated sources, calculates mandatory 10 CFR § 34.41 industrial radiography restricted/public barricade boundaries, and evaluates EPA FGR-12 semi-infinite cloud/ground shine.',
     standards: [
-      { org: 'ICRU', code: 'Report 56', year: '1997', title: 'Dosimetry of External Beta Rays for Radiation Protection' },
-      { org: 'NCRP', code: 'Report No. 67', year: '1980', title: 'Radiofrequency Electromagnetic Fields' },
-      { org: 'ICRP', code: 'Publication 116', year: '2010', title: 'Conversion Coefficients for Radiological Protection Quantities for External Radiation' }
+      { org: 'US NRC', code: '10 CFR Part 34 (§ 34.41)', year: '2023', title: 'Licenses for Industrial Radiography and Radiation Safety Requirements for Radiographic Operations' },
+      { org: 'IAEA', code: 'Specific Safety Guide SSG-11', year: '2011', title: 'Radiation Safety in Industrial Radiography' },
+      { org: 'US EPA', code: 'Federal Guidance Report No. 12', year: '1993', title: 'External Exposure to Radionuclides in Air, Water, and Soil' }
     ],
-    primaryFormula: 'F_{\\text{brem}} = 3.5 \\times 10^{-4} \\cdot Z_{\\text{eff}} \\cdot E_{\\beta, \\max} \\quad [\\text{Fraction of beta kinetic energy converted to X-rays}]',
+    primaryFormula: 'd_{\\text{bound}} = \\sqrt{\\frac{\\Gamma \\cdot A \\cdot F_{\\text{coll}}(\\theta)}{\\dot{D}_{\\text{limit}}}}, \\quad \\dot{H}_{\\text{sub}} = C_{\\text{air}} \\cdot h_{\\text{sub}}, \\quad \\dot{H}_{\\text{ground}} = C_{\\text{surf}} \\cdot h_{\\text{surf}}',
     secondaryFormulas: [
-      { label: 'Katz-Penfold Practical Range (0.01 < E < 2.5 MeV)', formula: 'R_p = 0.412 \\cdot E_{\\beta, \\max}^{1.265 - 0.0954 \\ln(E_{\\beta, \\max})} \\quad [\\text{g/cm}^2]' },
-      { label: 'Feather Empirical Range (E > 2.5 MeV)', formula: 'R_p = 0.542 \\cdot E_{\\beta, \\max} - 0.133 \\quad [\\text{g/cm}^2]' },
-      { label: 'Loevinger Apparent Beta Attenuation', formula: '\\nu = \\frac{18.6}{(E_{\\beta, \\max} - 0.036)^{1.37}} \\quad [\\text{cm}^2/\\text{g}]' }
+      { label: '10 CFR 34.41 Public Unrestricted Area Barricade (20 µSv/h = 2 mrem/h)', formula: 'R_{2\\text{mrem/h}} = \\sqrt{\\frac{\\Gamma \\cdot A}{20.0\\text{ µSv/h}}}' },
+      { label: 'High Radiation Area (HRA) Boundary Radius (1.0 mSv/h = 100 mrem/h)', formula: 'R_{\\text{HRA}} = \\sqrt{\\frac{\\Gamma \\cdot A}{1000.0\\text{ µSv/h}}}' },
+      { label: 'Collimator Directional Transmission Factor (Tungsten/DU Conical Beam)', formula: 'F_{\\text{coll}}(\\theta) = \\begin{cases} 1.0 & |\\theta - \\theta_0| \\le \\theta_{\\text{beam}}/2 \\ 10^{-x_{\\text{coll}} / \\text{TVL}_{\\text{W}}} & \\text{outside primary cone} \\end{cases}' }
     ],
     derivationSteps: [
       {
-        stepTitle: '1. Radiative vs Collision Stopping Power',
-        explanation: 'Total electron stopping power is the sum of collisional Coulomb ionization and radiative nuclear Bremsstrahlung deceleration:',
-        math: '-\\left(\\frac{dE}{dx}\\right)_{\\text{total}} = -\\left(\\frac{dE}{dx}\\right)_{\\text{coll}} + -\\left(\\frac{dE}{dx}\\right)_{\\text{rad}}'
+        stepTitle: '1. Exact Inversion of Isodose Contour Radius',
+        explanation: 'For an isotropic or collimated source of activity A and specific gamma constant Γ, the locus of points receiving target dose rate Ddot_limit forms a circle (or directional lobe) of radius d_bound:',
+        math: '\\dot{D}(d) = \\frac{\\Gamma \\cdot A}{d^2} = \\dot{D}_{\\text{limit}} \\implies d_{\\text{bound}} = \\sqrt{\\frac{\\Gamma \\cdot A}{\\dot{D}_{\\text{limit}}}}'
       },
       {
-        stepTitle: '2. Bremsstrahlung Energy Conversion Fraction',
-        explanation: 'The ratio of radiative to collision stopping power scales directly with target atomic number Z and beta kinetic energy E:',
-        math: '\\frac{(dE/dx)_{\\text{rad}}}{(dE/dx)_{\\text{coll}}} \\approx \\frac{E \\cdot Z}{800 \\text{ MeV}} \\implies F_{\\text{brem}} \\approx 3.5 \\times 10^{-4} Z_{\\text{eff}} E_{\\beta, \\max}'
+        stepTitle: '2. Semi-Infinite Hemispherical Cloud Submersion (EPA FGR-12)',
+        explanation: 'A receptor immersed at ground level in a uniform semi-infinite cloud of concentration C_air (Bq/m³) receives half the 4π infinite-medium photon energy fluence, yielding the FGR-12 submersion coefficient h_sub:',
+        math: '\\dot{D}_{\\text{sub}} = \\frac{1}{2} \\frac{C_{\\text{air}} \\cdot E_\\gamma \\cdot Y_\\gamma}{\\rho_{\\text{air}}} \\implies \\dot{H}_{\\text{sub}} = C_{\\text{air}} \\cdot h_{\\text{sub}}'
       }
     ],
     variables: [
-      { symbol: 'F_{\\text{brem}}', description: 'Fraction of total incident beta kinetic energy converted into Bremsstrahlung photons', units: 'dimensionless' },
-      { symbol: 'Z_{\\text{eff}}', description: 'Effective atomic number of stopping medium (e.g., 82 for Lead, 13 for Aluminum, 7.4 for Tissue)', units: 'dimensionless' },
-      { symbol: 'E_{\\beta, \\max}', description: 'Maximum endpoint energy of beta emission spectrum', units: 'MeV' },
-      { symbol: 'R_p', description: 'Practical/projected beta range in stopping medium', units: 'g·cm⁻² (divide by density ρ to obtain cm)' },
-      { symbol: '\\nu', description: 'Apparent mass absorption coefficient for continuous beta spectrum', units: 'cm²·g⁻¹' }
+      { symbol: 'd_{\\text{bound}}', description: 'Radial barricade distance to regulatory dose rate threshold', units: 'm (or ft)' },
+      { symbol: '\\dot{D}_{\\text{limit}}', description: 'Target contour dose rate (e.g., 20 µSv/h public, 1000 µSv/h HRA)', units: 'µSv·h⁻¹' },
+      { symbol: 'C_{\\text{air}}, C_{\\text{surf}}', description: 'Volumetric air concentration (Bq/m³) and areal ground deposition (Bq/m²)', units: 'Bq·m⁻³ / Bq·m⁻²' },
+      { symbol: 'h_{\\text{sub}}, h_{\\text{surf}}', description: 'EPA FGR-12 dose rate conversion coefficients for air submersion and groundshine', units: '(Sv·s⁻¹)/(Bq·m⁻³)' }
     ],
     assumptions: [
-      'Continuous Slowing Down Approximation (CSDA) for electron trajectory paths.',
-      'Low-Z shielding (e.g., Plexiglas/Lucite Z≈6.6) precedes high-Z secondary gamma shielding to minimize Bremsstrahlung.'
+      'Flat open terrain without localized trench scattering.',
+      'Negligible air attenuation over short industrial radiography barricade distances (< 150 m).'
     ],
-    benchmarks: 'Validated against ICRU Report 56 and NIST ESTAR electron range tables.'
+    benchmarks: 'Validated against 10 CFR 34.41 Ir-192 50 Ci barricade benchmark (VTEST-17) and EPA FGR-12 Xe-133 submersion (VTEST-18).'
   },
 
   // 6. Module 6
@@ -371,51 +395,51 @@ const METHOD_DOCS: MethodDoc[] = [
     moduleId: 'Module 8',
     moduleName: 'Prompt Blast & HEMP',
     domain: 'Environmental Dispersion & Response',
-    title: 'Kingery-Bulmash Blast Overpressure, Dynamic Wind, Thermal Flashburns & MIL-STD-188-125 HEMP',
-    overview: 'Simulates prompt physical detonation phenomena from nuclear weapons: Brode/Kingery-Bulmash peak incident and dynamic overpressures, Mach stem formation, dual-pulse thermal radiation exposure, retinal flashblindness, prompt initial radiation flash, and stratospheric High-Altitude Electromagnetic Pulse (HEMP).',
+    title: 'Kingery-Bulmash Airblast, Height-of-Burst Mach Stem, Sub-Surface Crater/Seismic Coupling & MIL-STD-188-125 HEMP',
+    overview: 'Simulates nuclear weapon effects across all burst regimes (-2,000 m underground to +500 km exo-atmospheric): Brode/Kingery-Bulmash overpressure, Height-of-Burst (HOB) Mach reflection enhancement, sub-surface Scaled Depth of Burial (SDOB), apparent crater radius/depth, teleseismic mb, thermal flashburns, prompt gamma/neutron kerma, and HEMP.',
     standards: [
-      { org: 'Glasstone & Dolan', code: 'Effects of Nuclear Weapons 3rd Ed.', year: '1977', title: 'Chapters III, IV, VII, XI: Air Blast, Thermal Radiation, Initial Radiation, and EMP' },
-      { org: 'US Army BRL', code: 'BRL Report 1972', year: '1972', title: 'Kingery-Bulmash Airblast Parameters from TNT Spherical Air Burst and Hemispherical Surface Burst' },
+      { org: 'Glasstone & Dolan', code: 'Effects of Nuclear Weapons 3rd Ed.', year: '1977', title: 'Chapters III, IV, VI, VIII, XI: Air Blast, Underground Cratering, Thermal, Initial Radiation, and EMP' },
+      { org: 'US Army BRL', code: 'BRL Report 1341 / 1972', year: '1972', title: 'Kingery-Bulmash Airblast Parameters from Spherical Air Burst and Hemispherical Surface Burst' },
       { org: 'US DoD', code: 'MIL-STD-188-125-1', year: '2005', title: 'High-Altitude Electromagnetic Pulse (HEMP) Protection for Ground-Based C4I Facilities' },
-      { org: 'IEC', code: 'IEC 61000-2-9', year: '1996', title: 'Electromagnetic Compatibility: Description of HEMP Environment - Radiated Disturbance' }
+      { org: 'US AEC / Sedan', code: 'PNE-242F (Project Sedan)', year: '1962', title: 'Plowshare Program Cratering and Sub-Surface Containment Scaling Laws' }
     ],
-    primaryFormula: 'Z = \\frac{R}{Y^{1/3}}, \\quad \\Delta P = \\frac{A}{Z^3} + \\frac{B}{Z^2} + \\frac{C}{Z}, \\quad Q(R) = \\frac{\\eta_{\\text{th}} Y}{4\\pi R^2} \\tau_{\\text{atm}}',
+    primaryFormula: 'Z = \\frac{R}{Y^{1/3}}, \\quad \\Delta P = \\frac{A}{Z^3} + \\frac{B}{Z^2} + \\frac{C}{Z}, \\quad Q(R) = \\frac{\\eta_{\\text{th}} Y}{4\\pi R_{\\text{slant}}^2} \\tau_{\\text{atm}}, \\quad \\text{SDOB} = \\frac{|h|}{Y^{1/3}}',
     secondaryFormulas: [
-      { label: 'Dynamic Wind Pressure', formula: 'q(R) = \\frac{5}{2} \\frac{\\Delta P^2}{\\Delta P + 7 P_0}, \\quad P_0 = 14.7\\text{ psi}' },
-      { label: 'Thermal Second-Pulse Maximum Time', formula: 't_{\\max} \\approx 0.0417 \\cdot Y^{0.47} \\quad [\\text{seconds post-detonation}]' },
-      { label: 'Prompt Initial Radiation Flash Dose (60s)', formula: 'D_{\\text{prompt}}(R) = \\frac{D_0 Y}{R^2} e^{-R / \\lambda_{\\text{air}}} B(R)' },
-      { label: 'HEMP Horizon Footprint Radius', formula: 'R_{\\text{horizon}} = \\sqrt{2 R_E h + h^2}, \\quad R_E = 6,371\\text{ km}' }
+      { label: 'Rankine-Hugoniot Dynamic Wind Pressure', formula: 'q(R) = \\frac{5}{2} \\frac{\\Delta P^2}{\\Delta P + 7 P_0}, \\quad P_0 = 14.7\\text{ psi}' },
+      { label: 'Optimum Height of Burst (HOB) & Mach Stem Reflection Factor', formula: 'h_{\\text{scaled}} = \\frac{h}{Y^{1/3}}, \\quad R_{\\text{slant}} = \\sqrt{R_{\\text{ground}}^2 + h^2}' },
+      { label: 'Sub-Surface Apparent Crater Radius & Depth (Sedan Empirical Scaling)', formula: 'R_a = 18.0 \\cdot Y^{0.30} \\cdot f_{\\text{DOB}}(\\text{SDOB}) \\quad [\\text{m}], \\quad D_a = 0.50 \\cdot R_a' },
+      { label: 'HEMP Line-of-Sight Horizon Footprint & E1 Double-Exponential Pulse', formula: 'R_{\\text{horizon}} = \\sqrt{2 R_E h + h^2}, \\quad E_1(t) = E_0 k \\left(e^{-\\alpha t} - e^{-\\beta t}\\right)' }
     ],
     derivationSteps: [
       {
-        stepTitle: '1. Kingery-Bulmash Scaled Distance Invariance',
-        explanation: 'Hopkinson-Cranz cube-root scaling establishes that shockwave blast parameters are geometrically identical at equivalent scaled distance Z = R / Y^(1/3).',
-        math: 'Z = \\frac{R}{Y^{1/3}} \\implies \\Delta P(R, Y) = \\Delta P(Z, 1\\text{ kT})'
+        stepTitle: '1. Hopkinson-Cranz Cube-Root Blast Scaling & Mach Stem Enhancement',
+        explanation: 'At equivalent scaled distance Z = R / Y^(1/3), blast waves exhibit identical overpressures. For an airburst at height h > 0, the spherical incident wave reflects off the ground; when the reflection angle exceeds ~40°, the reflected wave overtakes the incident wave to form a vertical Mach stem that extends the 5–20 psi damage radius by up to 35%:',
+        math: 'Z_{\\text{slant}} = \\frac{\\sqrt{R_{\\text{ground}}^2 + h^2}}{Y^{1/3}}, \\quad \\text{SHOB} = \\frac{h}{Y^{1/3}}'
       },
       {
-        stepTitle: '2. Rankine-Hugoniot Dynamic Wind Pressure',
-        explanation: 'Behind the supersonic shock front, air particles acquire high mass velocity. From the Rankine-Hugoniot shock relations for ideal diatomic gas (gamma = 1.4):',
-        math: 'q = \\frac{1}{2} \\rho_{\\text{shock}} u^2 = \\frac{5 \\Delta P^2}{2 (\\Delta P + 7 P_0)}'
+        stepTitle: '2. Sub-Surface Scaled Depth of Burial (SDOB) & Cratering Mechanics',
+        explanation: 'For underground detonations (h < 0), throw-out crater volume peaks near SDOB = |h| / Y^(1/3) ≈ 42 m/kt^(1/3) (Project Sedan 104 kt benchmark). Beyond SDOB ≥ 120 m/kt^(1/3) (Baneberry threshold), the cavity is fully contained with only surface spall or a rubble collapse sink (retarc):',
+        math: '\\text{SDOB} = \\frac{|h|}{Y^{1/3}} \\implies \\begin{cases} < 60\\text{ m/kt}^{1/3}: & \\text{Throw-out Crater + Base Surge} \\ 60-120\\text{ m/kt}^{1/3}: & \\text{Retarc Mound / Partial Venting} \\ \\ge 120\\text{ m/kt}^{1/3}: & \\text{Fully Contained Camouflet Cavity} \\end{cases}'
       },
       {
-        stepTitle: '3. Dual-Pulse Thermal Fireball Mechanics',
-        explanation: 'Prompt X-rays ionize surrounding air, creating an opaque isothermal sphere. As the shock front cools below 300,000 K, the air becomes transparent, releasing the primary thermal pulse.',
-        math: 'Q(R) = \\int_0^\\infty F_{\\text{thermal}}(t, R) \\, dt = \\frac{\\eta_{\\text{th}} Y}{4\\pi R^2} e^{-R / (2 V_{\\text{vis}})}'
+        stepTitle: '3. Rankine-Hugoniot Dynamic Pressure & Thermal Fluence',
+        explanation: 'From ideal diatomic gas shock relations (γ = 1.4), dynamic wind pressure behind the shock front scales as ΔP² / (ΔP + 7P_0). Thermal radiant exposure Q(R) attenuates by inverse slant-distance squared and atmospheric visibility transmission τ_atm:',
+        math: 'q = \\frac{5 \\Delta P^2}{2(\\Delta P + 7 P_0)}, \\quad Q(R) = \\frac{\\eta_{\\text{th}} \\cdot (4.184 \\times 10^{12} \\, Y_{\\text{kt}})}{4\\pi (R^2 + h^2)} \\cdot \\tau_{\\text{atm}}'
       }
     ],
     variables: [
-      { symbol: 'Y', description: 'Total explosive yield of the nuclear detonation', units: 'kT TNT equivalent' },
-      { symbol: 'Z', description: 'Cube-root scaled distance from detonation epicenter', units: 'm·kt⁻¹/³' },
-      { symbol: '\\Delta P', description: 'Peak incident static overpressure at the shock front', units: 'psi' },
-      { symbol: 'q', description: 'Peak dynamic wind pressure behind the shock front', units: 'psi' },
-      { symbol: 'Q', description: 'Total thermal radiant exposure delivered to target surface', units: 'cal·cm⁻² or J·cm⁻²' },
-      { symbol: '\\eta_{\\text{th}}', description: 'Fraction of weapon energy released as thermal radiation (~0.35)', units: 'dimensionless' }
+      { symbol: 'Y', description: 'Nuclear weapon total explosive yield', units: 'kt TNT equivalent' },
+      { symbol: 'h', description: 'Height of Burst (+m for airburst/exo-atmospheric, -m for underground depth of burial)', units: 'm' },
+      { symbol: '\\Delta P, q', description: 'Peak static incident overpressure and dynamic wind pressure', units: 'psi' },
+      { symbol: 'Q', description: 'Prompt thermal radiation energy fluence at target', units: 'cal·cm⁻²' },
+      { symbol: '\\text{SDOB}', description: 'Scaled Depth of Burial for underground detonations (|h| / Y^(1/3))', units: 'm·kt⁻¹/³' },
+      { symbol: 'R_a, D_a', description: 'Apparent throw-out crater lip radius and depth', units: 'm' }
     ],
     assumptions: [
-      'Standard sea-level ambient atmospheric pressure P0 = 14.7 psi and temperature T0 = 288 K.',
-      'Surface burst produces hemispherical blast reflection factor of approximately 1.8 to 2.0.'
+      'Sea-level standard atmosphere P0 = 14.7 psi (101.325 kPa) for blast scaling.',
+      'Thermal partition fraction η_th ≈ 0.35 for atmospheric bursts, suppressed exponentially for sub-surface bursts.'
     ],
-    benchmarks: 'Validated against Glasstone & Dolan 3rd Edition Chapter 3 blast curves, BRL Kingery-Bulmash tables, and VTEST-29.'
+    benchmarks: 'Validated against Glasstone & Dolan 3rd Ed. blast/thermal curves, BRL Kingery-Bulmash tables, Project Sedan cratering benchmarks, and VTEST-29.'
   },
 
   // 9. Module 9
@@ -568,29 +592,43 @@ const METHOD_DOCS: MethodDoc[] = [
     id: 'M12-Responder',
     moduleId: 'Module 12',
     moduleName: 'Reverse Triangulation',
-    domain: 'Nuclear Kinetics & Reactivity',
-    title: 'Epithermal Resonance Integrals, Westcott g-Factors & Comparator NAA',
-    overview: 'Quantifies trace element concentrations from gamma-ray peak counting following thermal and epithermal neutron activation using k0-standardization and cadmium ratios.',
+    domain: 'Environmental Dispersion & Response',
+    title: 'Inverse-Square Standoff Source Reconstruction, Multi-Point Triangulation, Shielding Deduction & Activation Forensics',
+    overview: 'Reconstructs unknown orphan source activity A, 2D/3D spatial coordinates (x_s, y_s), intervening shield thickness x, and neutron fluence from standoff survey meter readings or comparator foil activation.',
     standards: [
-      { org: 'IAEA', code: 'IAEA-TECDOC-1215', year: '2001', title: 'Use of Research Reactors for Neutron Activation Analysis' },
-      { org: 'De Soete', code: 'Textbook Ref', year: '1972', title: 'Neutron Activation Analysis (John Wiley & Sons)' }
+      { org: 'IAEA', code: 'TECDOC-1388', year: '2004', title: 'Strengthening Control over Radioactive Sources in Authorized Use and Regaining Control over Orphan Sources' },
+      { org: 'ANSI / IEEE', code: 'ANSI N42.34', year: '2015', title: 'Performance Criteria for Hand-Held Instruments for the Detection and Identification of Radionuclides' },
+      { org: 'IAEA', code: 'TECDOC-1215', year: '2001', title: 'Comparator Neutron Activation Forensics & Flux Reconstruction' }
     ],
-    primaryFormula: 'm_x = m_{\\text{std}} \\cdot \\frac{C_p,x}{C_p, \\text{std}} \\cdot \\frac{(1 - e^{-\\lambda_{\\text{std}} t_i}) e^{-\\lambda_{\\text{std}} t_d} (1 - e^{-\\lambda_{\\text{std}} t_c})}{(1 - e^{-\\lambda_x t_i}) e^{-\\lambda_x t_d} (1 - e^{-\\lambda_x t_c})} \\cdot \\frac{\\epsilon_{\\text{std}} I_{\\gamma, \\text{std}}}{\\epsilon_x I_{\\gamma, x}}',
+    primaryFormula: 'A_{\\text{est}} = \\frac{(\\dot{D}_{\\text{meas}} - \\dot{D}_{\\text{bg}}) \\cdot d^2}{\\Gamma \\cdot B(\\mu x) \\cdot e^{-\\mu x}}, \\quad \\frac{\\dot{D}_1}{\\dot{D}_2} = \\left(\\frac{d + \\Delta d}{d}\\right)^2 \\implies d = \\frac{\\Delta d}{\\sqrt{\\dot{D}_1 / \\dot{D}_2} - 1}',
     secondaryFormulas: [
-      { label: 'Cadmium Ratio for Thermal vs Epithermal Flux', formula: 'R_{\\text{Cd}} = \\frac{A_{\\text{bare}}}{A_{\\text{Cd-shielded}}} = 1 + \\frac{\\Phi_{\\text{th}} \\sigma_0}{\\Phi_{\\text{epi}} I_0}' }
+      { label: 'Two-Point Standoff Distance Deduction (Unknown Source Position)', formula: 'd_1 = \\frac{\\Delta d}{\\sqrt{\\dot{D}_1 / \\dot{D}_2} - 1} \\quad [\\text{where } \\dot{D}_1 \\text{ is measured at } d_1 \\text{ and } \\dot{D}_2 \\text{ at } d_1 + \\Delta d]' },
+      { label: 'Intervening Shield Thickness Deduction from Known Source Activity', formula: 'x_{\\text{shield}} = \\frac{1}{\\mu} \\ln\\left(\\frac{A \\cdot \\Gamma}{\\dot{D}_{\\text{meas}} \\cdot d^2}\\right) = \\text{TVL} \\cdot \\log_{10}\\left(\\frac{\\dot{D}_{\\text{unshielded}}}{\\dot{D}_{\\text{meas}}}\\right)' },
+      { label: 'Comparator Neutron Activation Trace Element Mass Reconstruction', formula: 'm_x = m_{\\text{std}} \\cdot \\frac{C_{p,x}}{C_{p,\\text{std}}} \\cdot \\frac{(1 - e^{-\\lambda_{\\text{std}} t_i}) e^{-\\lambda_{\\text{std}} t_d}}{(1 - e^{-\\lambda_x t_i}) e^{-\\lambda_x t_d}} \\cdot \\frac{\\epsilon_{\\text{std}} I_{\\gamma,\\text{std}}}{\\epsilon_x I_{\\gamma,x}}' }
+    ],
+    derivationSteps: [
+      {
+        stepTitle: '1. Two-Reading Standoff Distance Localization Without Entering Hotzone',
+        explanation: 'A responder measures net dose rate Ddot_1 at an unknown distance d_1 from a concealed source, steps back a known distance Δd (so d_2 = d_1 + Δd), and records Ddot_2. Taking the square root of the inverse-square ratio eliminates unknown activity A·Γ:',
+        math: '\\frac{\\dot{D}_1}{\\dot{D}_2} = \\left(\\frac{d_1 + \\Delta d}{d_1}\\right)^2 \\implies \\sqrt{\\frac{\\dot{D}_1}{\\dot{D}_2}} = 1 + \\frac{\\Delta d}{d_1} \\implies d_1 = \\frac{\\Delta d}{\\sqrt{\\dot{D}_1 / \\dot{D}_2} - 1}'
+      },
+      {
+        stepTitle: '2. Multi-Sensor Planar Triangulation via Linearized Distance Spheres',
+        explanation: 'Given 3 or more spatial survey measurements (x_i, y_i, Ddot_i), each ratio Ddot_i / Ddot_j defines an Apollonius circle of constant distance ratio r_i / r_j = sqrt(Ddot_j / Ddot_i), whose intersection pinpoints (x_s, y_s) and source strength A:',
+        math: '(x_s - x_i)^2 + (y_s - y_i)^2 = \\frac{A \\cdot \\Gamma}{\\dot{D}_i - \\dot{D}_{\\text{bg}}}'
+      }
     ],
     variables: [
-      { symbol: 'm_x', description: 'Mass of unknown trace element in analytical sample', units: 'µg or mg' },
-      { symbol: 'C_p', description: 'Net full-energy photopeak counts recorded by MCA detector', units: 'counts' },
-      { symbol: 't_i, t_d, t_c', description: 'Irradiation, decay (cooling), and counting live times', units: 's' },
-      { symbol: 'I_\\gamma', description: 'Absolute gamma emission probability per decay branch', units: 'dimensionless' },
-      { symbol: '\\epsilon', description: 'Full-energy peak detection efficiency at photopeak energy', units: 'dimensionless' }
+      { symbol: 'A_{\\text{est}}', description: 'Reconstructed orphan source activity', units: 'GBq or Ci' },
+      { symbol: 'd_1, \\Delta d', description: 'Initial unknown distance to source and known step-back standoff increment', units: 'm' },
+      { symbol: '\\dot{D}_1, \\dot{D}_2', description: 'Background-subtracted ambient dose rates at positions 1 and 2', units: 'µSv·h⁻¹' },
+      { symbol: 'x_{\\text{shield}}', description: 'Deduced intervening barrier thickness', units: 'cm' }
     ],
     assumptions: [
-      'Identical neutron flux exposure for sample and co-irradiated comparator standard.',
-      'Dead-time losses corrected via live-time clock or loss-free counting (LFC).'
+      'Collinear step-back trajectory along radial vector from point source.',
+      'Constant ambient background subtracted prior to ratio calculation.'
     ],
-    benchmarks: 'Calibrated against NIST Standard Reference Material (SRM 1633c coal fly ash) activation benchmarks.'
+    benchmarks: 'Validated against IAEA TECDOC-1388 orphan source recovery algorithms and VTEST-20 / VTEST-32.'
   },
 
   // 13. Module 13
@@ -643,25 +681,43 @@ const METHOD_DOCS: MethodDoc[] = [
     moduleId: 'Module 14',
     moduleName: 'Shielding & ALARA PAGs',
     domain: 'Dose, Transport & Shielding',
-    title: 'Broder Empirical Multi-Layer Buildup & Stratified Attenuation',
-    overview: 'Solves complex composite shield walls containing sequential layers of lead, steel, concrete, and water, correctly accounting for spectral boundary interfaces and buildup regeneration.',
+    title: 'Broder Multi-Layer Composite Shielding, NUREG-1530 ALARA Cost-Benefit Optimization & EPA Early-Phase PAGs',
+    overview: 'Solves stratified multi-layer composite shields (Lead + Steel + Concrete + Water) using Broder empirical buildup recurrence, performs quantitative ALARA cost-benefit optimization ($/person-Sv), and evaluates EPA Early-Phase Protective Action Guides (Evacuation vs Sheltering).',
     standards: [
       { org: 'ANSI/ANS', code: '6.4.3-1991', year: '1991', title: 'Gamma-Ray Attenuation Coefficients and Buildup Factors for Engineering Materials' },
-      { org: 'Broder', code: 'Sov. J. At. Energy', year: '1962', title: 'Application of the Generalized Form of the Empirical Buildup Factor for Multi-Layer Shields' }
+      { org: 'Broder et al.', code: 'Sov. J. At. Energy 12', year: '1962', title: 'Application of the Generalized Empirical Buildup Factor for Multi-Layer Shields' },
+      { org: 'US NRC', code: 'NUREG-1530 Rev. 1', year: '2022', title: 'Reassessment of NRC Dollar Per Person-Rem Conversion Factor Policy' },
+      { org: 'US EPA', code: 'EPA-400/R-17/001', year: '2017', title: 'PAG Manual: Protective Action Guides and Planning Guidance for Radiological Incidents' }
     ],
-    primaryFormula: 'B_N\\left(\\sum_{i=1}^N \\mu_i x_i\\right) = B_N\\left(\\sum_{i=1}^N \\mu_i x_i\\right) + \\sum_{n=1}^{N-1} \\left[ B_n\\left(\\sum_{i=1}^n \\mu_i x_i\\right) - B_{n+1}\\left(\\sum_{i=1}^n \\mu_i x_i\\right) \\right]',
+    primaryFormula: 'B_N\\left(\\sum_{i=1}^N \\mu_i x_i\\right) = \\sum_{n=1}^N B_n\\left(\\sum_{i=1}^n \\mu_i x_i\\right) - \\sum_{n=1}^{N-1} B_{n+1}\\left(\\sum_{i=1}^n \\mu_i x_i\\right), \\quad \\frac{\\Delta X}{\\Delta S} \\le \\alpha_{\\text{ALARA}}',
     secondaryFormulas: [
-      { label: 'Two-Layer Broder Approximation (Lead + Concrete)', formula: 'B_{1+2}(x_1, x_2) = B_2(\\mu_1 x_1 + \\mu_2 x_2) + [B_1(\\mu_1 x_1) - B_2(\\mu_1 x_1)] e^{-\\mu_2 x_2}' }
+      { label: 'Two-Layer Composite Shield Buildup (High-Z Lead Preceding Low-Z Concrete)', formula: 'B_{1+2}(\\mu_1 x_1, \\mu_2 x_2) = B_2(\\mu_1 x_1 + \\mu_2 x_2) + \\left[B_1(\\mu_1 x_1) - B_2(\\mu_1 x_1)\\right] e^{-\\mu_2 x_2}' },
+      { label: 'ALARA Collective Dose Averted Valuation Criterion', formula: '\\Delta X \\le \\alpha \\cdot \\Delta S = \\alpha \\cdot N_{\\text{workers}} \\cdot (\\bar{E}_{\\text{base}} - \\bar{E}_{\\text{shielded}}) \\quad [\\alpha_{\\text{NRC}} = \\$520,000 / \\text{person-Sv}]' },
+      { label: 'EPA Early-Phase Protective Action Guide (PAG) Evacuation Ratio', formula: 'R_{\\text{PAG}} = \\frac{\\text{TEDE}_{\\text{4-day}}}{\\text{PAG}_{\\text{evac}}}, \\quad \\text{PAG}_{\\text{evac}} = 10\\text{ mSv (1 rem)}, \\quad \\text{PAG}_{\\text{KI}} = 50\\text{ mGy Child Thyroid}' }
+    ],
+    derivationSteps: [
+      {
+        stepTitle: '1. Broder Recurrence Relation for Stratified Multi-Layer Slabs',
+        explanation: 'In a composite shield of N distinct layers with optical thicknesses τ_i = μ_i x_i, each interface alters the Compton scatter angular and energy spectrum. Broder (1962) showed that the incremental buildup contribution across layer n is governed by the difference between material n and material n+1 evaluated at the cumulative optical depth:',
+        math: 'B_{\\text{total}} = B_N(\\tau_{\\text{total}}) + \\sum_{n=1}^{N-1} \\left[ B_n\\left(\\sum_{i=1}^n \\tau_i\\right) - B_{n+1}\\left(\\sum_{i=1}^n \\tau_i\\right) \\right]'
+      },
+      {
+        stepTitle: '2. ICRP 101 / NUREG-1530 Differential Cost-Benefit Optimization',
+        explanation: 'Total societal cost is the sum of protection expenditure X and radiation detriment cost Y = α·S. Minimizing X + α·S with respect to shielding thickness x yields the marginal ALARA optimality condition:',
+        math: '\\frac{d}{dx}(X(x) + \\alpha S(x)) = 0 \\implies -\\frac{dX}{dS} = \\alpha \\implies \\frac{\\Delta X}{\\Delta S} \\le \\alpha'
+      }
     ],
     variables: [
-      { symbol: 'B_N', description: 'Overall composite multi-layer radiation buildup factor', units: 'dimensionless' },
-      { symbol: '\\mu_i x_i', description: 'Mean free paths (relaxation lengths) of the i-th shield layer', units: 'dimensionless' }
+      { symbol: 'B_N', description: 'Composite multi-layer photon buildup factor across N strata', units: 'dimensionless' },
+      { symbol: '\\mu_i x_i', description: 'Optical thickness (mean free paths) of the i-th shield layer', units: 'mfp (dimensionless)' },
+      { symbol: '\\alpha_{\\text{ALARA}}', description: 'Monetary valuation per unit collective dose averted ($5,200/person-rem)', units: 'USD·(person-Sv)⁻¹' },
+      { symbol: '\\Delta S', description: 'Collective occupational or public dose averted by shielding upgrade', units: 'person-Sv' }
     ],
     assumptions: [
-      'Layer sequence ordering matters: high-Z first (absorbs primary photons via photoelectric) followed by low-Z to attenuate scatter.',
-      'Plane monodirectional or point isotropic source incidence.'
+      'Layer ordering is respected: placing high-Z (Lead) before low-Z (Concrete) suppresses low-energy Compton scatter buildup.',
+      'Projected EPA PAG dose integrates 4-day (96-hour) early-phase plume exposure.'
     ],
-    benchmarks: 'Matches MCNP6 Monte Carlo multi-layer penetration runs within 5-8% error across 10 mean free paths.'
+    benchmarks: 'Validated against MCNP6 multi-layer benchmarks, NRC NUREG-1530 Rev. 1 criteria, and EPA PAG evacuation threshold (VTEST-21).'
   },
 
   // 15. Module 15
@@ -712,50 +768,43 @@ const METHOD_DOCS: MethodDoc[] = [
     id: 'M16-PulsedXRay',
     moduleId: 'Module 16',
     moduleName: 'Pulsed & Flash X-Ray',
-    domain: 'Nuclear Kinetics & Reactivity',
-    title: 'Thermal Neutron Capture (n,γ), Radiative Saturation & Activation Buildup',
-    overview: 'Models thermal and epithermal neutron capture cross-sections, isotopic saturation activity during nuclear reactor or accelerator irradiation, and post-irradiation cooling.',
+    domain: 'Non-Ionizing EMR & Lasers',
+    title: 'Flash Pulsed Radiography Nanosecond Instantaneous Flux, Marx Bank Discharge & Active Detector Paralyzation',
+    overview: 'Models battery-powered cold-cathode flash X-ray generators (Golden Engineering XR200/XRS-3) and industrial pulsed LINACs: calculates peak instantaneous dose rate during nanosecond bursts, Marx capacitor bank discharge energy, and Geiger-Müller / proportional counter dead-time paralyzation.',
     standards: [
-      { org: 'IAEA', code: 'Technical Report Series No. 273', year: '1987', title: 'Handbook on Nuclear Activation Data' },
-      { org: 'ASTM', code: 'E261-16', year: '2016', title: 'Standard Practice for Determining Neutron Fluence, Fluence Rate, and Spectra by Radioactivation Techniques' }
+      { org: 'ANSI / HPS', code: 'ANSI N43.3-2008', year: '2008', title: 'Installations Using Non-Medical X-Ray and Sealed Gamma-Ray Sources, Energies Up to 10 MeV' },
+      { org: 'ICRU', code: 'Report 34', year: '1982', title: 'The Dosimetry of Pulsed Radiation' },
+      { org: 'NBS / NIST', code: 'Handbook 114', year: '1975', title: 'General Safety Standard for Installations Using Non-Medical X-Ray and Sealed Gamma-Ray Sources' }
     ],
-    primaryFormula: 'A(t_{\\text{irr}}, t_{\\text{cool}}) = N_0 \\cdot \\sigma_{\\text{act}} \\cdot \\Phi_{\\text{th}} \\cdot \\left(1 - e^{-\\lambda t_{\\text{irr}}}\\right) \\cdot e^{-\\lambda t_{\\text{cool}}}',
+    primaryFormula: '\\dot{D}_{\\text{inst}} = \\frac{D_{\\text{pulse}}}{\\tau_{\\text{pulse}}} \\times 3.6 \\times 10^{-3} \\quad [\\text{Sv/h}], \\quad D_{\\text{train}} = N_{\\text{pulses}} \\cdot D_{\\text{pulse}, 0} \\cdot \\left(\\frac{d_0}{d}\\right)^2',
     secondaryFormulas: [
-      { label: 'Target Nuclei Density', formula: 'N_0 = \\frac{m \\cdot w_i \\cdot N_A}{M}' },
-      { label: 'Saturation Activity Limit (t_irr >> T_1/2)', formula: 'A_{\\text{sat}} = N_0 \\cdot \\sigma_{\\text{act}} \\cdot \\Phi_{\\text{th}}' },
-      { label: 'Westcott Epithermal Resonance Formalism', formula: '\\sigma_{\\text{eff}} = \\sigma_0 \\left( g + r \\cdot s_0 \\right)' }
+      { label: 'Time-Averaged Dose Rate at Pulse Repetition Frequency f_rep (Hz)', formula: '\\dot{D}_{\\text{avg}} = D_{\\text{pulse}} \\cdot f_{\\text{rep}} \\cdot 3600 \\quad [\\mu\\text{Sv/h}]' },
+      { label: 'Active Counter Max Recorded Rate Under Ultra-Short Pulse (τ_pulse << τ_dead)', formula: 'm_{\\text{max}} \\le f_{\\text{rep}} \\quad [\\text{At most 1 count registered per X-ray burst regardless of true photon flux}]' },
+      { label: 'Marx Bank Stored Electrostatic Pulse Energy', formula: 'E_{\\text{Marx}} = \\frac{1}{2} C_{\\text{eq}} V_{\\text{out}}^2 = \\frac{1}{2} N_{\\text{stages}} C_{\\text{stage}} V_{\\text{charge}}^2 \\quad [\\text{Joules}]' }
     ],
     derivationSteps: [
       {
-        stepTitle: '1. Target Transmutation Differential Rate',
-        explanation: 'Rate of production of daughter nuclei equals neutron reaction rate minus radioactive decay rate:',
-        math: '\\frac{dN^*(t)}{dt} = N_0 \\sigma_{\\text{act}} \\Phi_{\\text{th}} - \\lambda N^*(t)'
+        stepTitle: '1. Nanosecond Peak Instantaneous Flux Rate',
+        explanation: 'A flash X-ray unit (e.g., XR200) delivers D_pulse ≈ 2.70 µSv at 30 cm in a single FWHM pulse of τ_pulse = 50 ns (5×10⁻⁸ s). Converting the instantaneous dose rate during the burst to Sv/h:',
+        math: '\\dot{D}_{\\text{inst}} = \\frac{2.70 \\times 10^{-6}\\text{ Sv}}{50 \\times 10^{-9}\\text{ s}} = 54.0\\text{ Sv/s} = 194,400\\text{ Sv/h} = 194.40\\text{ kSv/h}'
       },
       {
-        stepTitle: '2. Integrating Factor Solution',
-        explanation: 'Multiplying by integrating factor e^(λt) and integrating with initial condition N*(0) = 0 yields:',
-        math: 'N^*(t_{\\text{irr}}) = \\frac{N_0 \\sigma_{\\text{act}} \\Phi_{\\text{th}}}{\\lambda} \\left(1 - e^{-\\lambda t_{\\text{irr}}}\\right)'
-      },
-      {
-        stepTitle: '3. Activity and Post-Irradiation Cooling',
-        explanation: 'Multiplying by decay constant λ and applying exponential cooling for decay time t_cool:',
-        math: 'A(t) = \\lambda N^*(t) = N_0 \\sigma_{\\text{act}} \\Phi_{\\text{th}} \\left(1 - e^{-\\lambda t_{\\text{irr}}}\\right) e^{-\\lambda t_{\\text{cool}}}'
+        stepTitle: '2. Catastrophic Under-Response of Active Pulse Counters in Pulsed Fields',
+        explanation: 'Because the 50 ns X-ray burst is 1,000× shorter than a Geiger-Müller or NaI detector resolving dead time (τ_dead ≈ 50–200 µs), all photons arriving in a burst coalesce into a single electronic pulse. At repetition rate f_rep = 25 Hz, the meter reads at most 25 cps even in a lethal field, mandating integrating passive dosimeters (TLD/OSLD/Ion Chamber):',
+        math: '\\tau_{\\text{pulse}} \\ll \\tau_{\\text{dead}} \\implies N_{\\text{recorded per pulse}} \\le 1 \\implies m_{\\text{apparent}} = f_{\\text{rep}}'
       }
     ],
     variables: [
-      { symbol: 'A', description: 'Radioactivity of activated daughter product', units: 'Bq' },
-      { symbol: 'N_0', description: 'Number of parent target nuclei in sample', units: 'nuclei' },
-      { symbol: '\\sigma_{\\text{act}}', description: 'Thermal neutron capture cross-section at 2200 m/s', units: 'barns (1 b = 10⁻²⁴ cm²)' },
-      { symbol: '\\Phi_{\\text{th}}', description: 'Thermal neutron flux rate', units: 'n·cm⁻²·s⁻¹' },
-      { symbol: 't_{\\text{irr}}', description: 'Duration of irradiation in neutron field', units: 's (or h)' },
-      { symbol: 't_{\\text{cool}}', description: 'Cooling / decay elapsed time post-irradiation', units: 's (or h)' },
-      { symbol: 'w_i', description: 'Natural isotopic abundance weight fraction', units: 'dimensionless' }
+      { symbol: '\\dot{D}_{\\text{inst}}', description: 'Peak instantaneous dose equivalent rate during the nanosecond X-ray pulse', units: 'kSv·h⁻¹ or Sv·s⁻¹' },
+      { symbol: 'D_{\\text{pulse}}', description: 'Integrated dose delivered per individual X-ray pulse', units: 'µSv or mR' },
+      { symbol: '\\tau_{\\text{pulse}}', description: 'Full-width at half-maximum (FWHM) X-ray pulse duration (typically 10–100 ns)', units: 'ns' },
+      { symbol: 'f_{\\text{rep}}', description: 'Pulse repetition frequency of generator', units: 'Hz (pulses·s⁻¹)' }
     ],
     assumptions: [
-      'Negligible burnup / depletion of target parent nuclei during irradiation (low-fluence approximation: σ Φ t << 1).',
-      'Target is thermally thin (negligible neutron self-shielding within sample volume).'
+      'Rectangular or Gaussian temporal pulse profile of effective width τ_pulse.',
+      'Ionization chambers operated with sufficient bias voltage to prevent volume ion recombination (ICRU 34 Boag correction).'
     ],
-    benchmarks: 'Cross-checked against IAEA TRS 273 and ASTM E261 activation foil gold/cobalt standards.'
+    benchmarks: 'Validated against Golden Engineering XR200 technical specifications, ICRU Report 34 pulsed dosimetry, and VTEST-08.'
   },
 
   // 17. Module 17
@@ -931,6 +980,18 @@ const METHOD_DOCS: MethodDoc[] = [
       { label: 'Radome Standing Wave Reflection Hotspot', formula: 'S_{\\text{internal}} = S_{\\text{incident}} \\cdot (1 + \\sqrt{\\Gamma_{\\text{refl}}})^2' },
       { label: 'FCC Controlled Limit (300-1500 MHz)', formula: 'S_{\\text{limit}} = \\frac{f_{\\text{MHz}}}{300} \\text{ mW/cm}^2 \\quad [5.0\\text{ mW/cm}^2 \\text{ for } > 1500\\text{ MHz}]' }
     ],
+    derivationSteps: [
+      {
+        stepTitle: '1. Fraunhofer Far-Field Phase Coherence Criterion',
+        explanation: 'At distance R from an aperture of diameter D, the path-length difference between center and edge rays is Δr ≈ D² / (2R). Requiring phase error Δφ = (2π/λ)Δr ≤ π/8 yields the Fraunhofer far-field boundary R_ff:',
+        math: '\\frac{2\\pi}{\\lambda} \\frac{D^2}{2 R_{\\text{ff}}} = \\frac{\\pi}{2} \\implies R_{\\text{ff}} = \\frac{2 D^2}{\\lambda} = \\frac{2 D^2 f}{c}'
+      },
+      {
+        stepTitle: '2. Equivalent Isotropically Radiated Power (EIRP) Inverse-Square Law',
+        explanation: 'In the far field (R ≥ R_ff), time-averaged transmitter power P_avg = P_peak × DF focused by numeric antenna gain G spreads across spherical area 4πR²:',
+        math: 'S_{\\text{far}}(R) = \\frac{P_{\\text{peak}} \\cdot \\text{DF} \\cdot G}{4\\pi R^2} \\le S_{\\text{MPE}} \\implies R_{\\text{safe}} = \\sqrt{\\frac{P_{\\text{peak}} \\cdot \\text{DF} \\cdot G}{4\\pi \\cdot S_{\\text{MPE}}}}'
+      }
+    ],
     variables: [
       { symbol: 'S', description: 'Planar equivalent electromagnetic power density', units: 'W·m⁻² or mW·cm⁻²' },
       { symbol: '\\text{EIRP}_{\\text{avg}}', description: 'Equivalent Isotropically Radiated Power (time-averaged)', units: 'W' },
@@ -953,52 +1014,49 @@ const METHOD_DOCS: MethodDoc[] = [
     moduleId: 'Module 21',
     moduleName: 'Criticality & Reactor Core',
     domain: 'Nuclear Kinetics & Reactivity',
-    title: 'Multi-Variable Heterogeneous Lattice, Four-Factor Formula, 2D Jacobi Diffusion & Peaking Factor F_xy',
-    overview: 'Simulates heterogeneous reactor core physics: cell-specific material cross-sections (enrichment, void fraction, burnable poison wt%, and control depth), 2D finite-difference Jacobi diffusion, local k-infinity mapping, and radial power peaking factor F_xy.',
+    title: 'Four-Factor Lattice Physics, 2D Jacobi Diffusion, ANSI/ANS-8.1 Subcritical Limits & 6-Group Nordheim Inhour Kinetics',
+    overview: 'Comprehensive nuclear reactor and criticality safety suite: simulates 2D heterogeneous assembly diffusion and radial power peaking F_xy, evaluates ANSI/ANS-8.1 single-parameter subcritical limits and solid-angle array interaction, and solves the 6-group delayed neutron Nordheim Inhour equation.',
     standards: [
-      { org: 'ANS', code: 'ANSI/ANS-8.1', year: '2014', title: 'Nuclear Criticality Safety in Operations with Fissionable Materials Outside Reactors' },
-      { org: 'IAEA', code: 'Safety Standards Series No. SSG-27', year: '2014', title: 'Criticality Safety in the Handling of Fissile Material' },
-      { org: 'Lamarsh & Baratta', code: 'Textbook Ref', year: '2001', title: 'Introduction to Nuclear Engineering (3rd Ed., Prentice Hall)' },
-      { org: 'Stacey', code: 'Textbook Ref', year: '2007', title: 'Nuclear Reactor Physics (2nd Ed., John Wiley & Sons)' }
+      { org: 'ANS / ANSI', code: 'ANSI/ANS-8.1-2014', year: '2014', title: 'Nuclear Criticality Safety in Operations with Fissionable Materials Outside Reactors' },
+      { org: 'IAEA', code: 'SSG-27 / TECDOC-808', year: '2014', title: 'Criticality Safety in the Handling of Fissile Material & LWR Benchmarks' },
+      { org: 'Keepin', code: 'Physics of Nuclear Kinetics', year: '1965', title: 'Delayed Neutron Precursor Groups & Inhour Reactivity Equations' },
+      { org: 'Lamarsh & Baratta', code: 'Introduction to Nuclear Engineering 3rd Ed.', year: '2001', title: 'Heterogeneous Core Diffusion and Six-Factor Multiplication' }
     ],
-    primaryFormula: 'k_{\\text{eff}} = k_\\infty \\cdot P_{\\text{FNL}} \\cdot P_{\\text{TNL}} = (\\eta \\cdot f \\cdot p \\cdot \\varepsilon) \\cdot \\frac{1}{1 + M^2 B^2}',
+    primaryFormula: 'k_{\\text{eff}} = \\frac{\\eta \\cdot f \\cdot p \\cdot \\varepsilon}{(1 + L_s^2 B_g^2)(1 + L_d^2 B_g^2)}, \\quad \\rho = \\frac{k_{\\text{eff}} - 1}{k_{\\text{eff}}} = \\frac{\\ell^*}{k_{\\text{eff}} T} + \\sum_{i=1}^6 \\frac{\\beta_i}{1 + \\lambda_i T}',
     secondaryFormulas: [
-      { label: 'Local Infinite Multiplication Factor k_inf(r, c)', formula: 'k_\\infty(r, c) = \\frac{\\nu\\Sigma_f(r, c)}{\\Sigma_a(r, c)} \\cdot p(r, c) \\cdot \\epsilon(r, c)' },
-      { label: 'Local Heterogeneous Absorption Cross-Section', formula: '\\Sigma_a(r,c) = \\Sigma_{a,\\text{fuel}}(e) (1 - 0.7\\alpha) + \\Sigma_{a,\\text{mod}}(1 - \\alpha) + \\Sigma_{a,\\text{boron}} + \\Sigma_{a,\\text{poison}} + \\Sigma_{a,\\text{control}}(z)' },
-      { label: '2D Finite-Difference Jacobi Diffusion Scheme', formula: '\\phi_{i,j}^{(k+1)} = \\frac{\\frac{D}{\\Delta^2}\\left(\\phi_{i+1,j} + \\phi_{i-1,j} + \\phi_{i,j+1} + \\phi_{i,j-1}\\right) + \\frac{1}{k_{\\text{eff}}} \\nu\\Sigma_f(i,j) \\phi_{i,j}}{\\frac{4D}{\\Delta^2} + \\Sigma_a(i,j)}' },
-      { label: 'Radial Power Peaking Factor F_xy', formula: 'F_{xy} = \\frac{\\max_{(r,c)} P(r,c)}{P_{\\text{avg}}} = \\frac{\\max_{(r,c)} [\\kappa \\Sigma_f(r,c) \\phi(r,c)]}{\\frac{1}{N_{\\text{fuel}}} \\sum \\kappa \\Sigma_f \\phi}' }
+      { label: '2D Finite-Difference Jacobi Flux Iteration & Peaking Factor F_xy', formula: '\\phi_{i,j}^{(k+1)} = \\frac{\\frac{D}{\\Delta^2}(\\phi_{i+1,j} + \\phi_{i-1,j} + \\phi_{i,j+1} + \\phi_{i,j-1}) + \\frac{1}{k_{\\text{eff}}}\\nu\\Sigma_f \\phi_{i,j}}{\\frac{4D}{\\Delta^2} + \\Sigma_a(i,j)}, \\quad F_{xy} = \\frac{\\max P(r,c)}{P_{\\text{avg}}}' },
+      { label: 'ANSI/ANS-8.1 Multi-Unit Solid Angle Interaction Criterion', formula: '\\Omega_{\\text{total}} = \\sum_{m=1}^M \\frac{2\\pi R_m^2}{d_m^2} \\le \\Omega_{\\text{allow}} = 9 - 10 k_{\\text{eff, unit}}' },
+      { label: 'Reactivity in Dollars ($) & Prompt-Critical Period (ρ > β_eff)', formula: '\\$ = \\frac{\\rho}{\\beta_{\\text{eff}}}, \\quad T_{\\text{prompt}} \\approx \\frac{\\ell^*}{\\rho - \\beta_{\\text{eff}}}' }
     ],
     derivationSteps: [
       {
-        stepTitle: '1. Six-Factor Neutron Balance & Geometric Buckling',
-        explanation: 'In a finite multiplying system, the effective multiplication factor accounts for both infinite medium multiplication and non-leakage probabilities during slowing down and thermal diffusion:',
-        math: 'k_{\\text{eff}} = \\eta \\cdot f \\cdot p \\cdot \\varepsilon \\cdot P_{\\text{FNL}} \\cdot P_{\\text{TNL}} = \\frac{k_\\infty}{(1 + L_s^2 B^2)(1 + L_d^2 B^2)} \\approx \\frac{k_\\infty}{1 + M^2 B^2}'
+        stepTitle: '1. Six-Factor Neutron Balance & Geometric Buckling Eigenvalue',
+        explanation: 'In a finite multiplying assembly of geometric buckling B_g², infinite medium multiplication k_∞ = η·f·p·ε is reduced by fast (1 + L_s² B_g²)⁻¹ and thermal (1 + L_d² B_g²)⁻¹ non-leakage probabilities:',
+        math: 'k_{\\text{eff}} = k_\\infty \\cdot P_{\\text{FNL}} \\cdot P_{\\text{TNL}} = \\frac{\\eta f p \\varepsilon}{(1 + L_s^2 B_g^2)(1 + L_d^2 B_g^2)} \\approx \\frac{k_\\infty}{1 + M^2 B_g^2}'
       },
       {
-        stepTitle: '2. Heterogeneous 2D Finite-Difference Discretization',
-        explanation: 'Applying central second-order finite differences to the Helmholtz diffusion equation -D ∇²φ + Σ_a φ = (1/k_eff) νΣ_f φ on a grid of pitch Δ with localized cross-sections yields the Jacobi point iteration:',
-        math: '-D \\left( \\frac{\\phi_{i+1,j} - 2\\phi_{i,j} + \\phi_{i-1,j}}{\\Delta^2} + \\frac{\\phi_{i,j+1} - 2\\phi_{i,j} + \\phi_{i,j-1}}{\\Delta^2} \\right) + \\Sigma_a(i,j) \\phi_{i,j} = S_{i,j}'
+        stepTitle: '2. Point Reactor Kinetics & Nordheim 6-Group Inhour Equation',
+        explanation: 'Coupling neutron population n(t) with 6 delayed precursor concentrations C_i(t) and substituting asymptotic exponential growth n(t) = n_0 e^(t/T) yields the characteristic 7-root Inhour relation:',
+        math: '\\frac{dn}{dt} = \\frac{\\rho - \\beta}{\\ell^*} n + \\sum_{i=1}^6 \\lambda_i C_i \\implies \\rho = \\frac{\\ell^*}{T} + \\sum_{i=1}^6 \\frac{\\beta_i}{1 + \\lambda_i T}'
       },
       {
-        stepTitle: '3. Radial Power Peaking Factor (F_xy)',
-        explanation: 'Local fission heat rate is proportional to macroscopic fission cross-section multiplied by thermal flux: P(r, c) = κ Σ_f(r, c) φ(r, c). The 2D peaking factor quantifies thermal margin to DNB (departure from nucleate boiling):',
-        math: 'F_{xy} = \\frac{\\max_{(r,c)} P(r,c)}{\\frac{1}{N_{\\text{fuel}}} \\sum_{\\text{fuel}} P(r,c)} \\quad (\\text{Design Limit: } F_{xy} \\le 1.65)'
+        stepTitle: '3. Heterogeneous 2D Finite-Difference Discretization',
+        explanation: 'Discretizing -D∇²φ + Σ_a φ = (1/k_eff) νΣ_f φ on a square assembly lattice of pitch Δ yields the Jacobi point-relaxation solver for spatial flux distribution φ(i,j) and thermal peaking factor F_xy:',
+        math: 'F_{xy} = \\frac{\\max_{(r,c)} [\\kappa \\Sigma_f(r,c) \\phi(r,c)]}{\\frac{1}{N_{\\text{fuel}}} \\sum \\kappa \\Sigma_f \\phi} \\le 1.65'
       }
     ],
     variables: [
-      { symbol: 'k_{\\text{eff}}', description: 'Effective neutron multiplication factor of the 3D core', units: 'dimensionless' },
-      { symbol: 'k_\\infty(r,c)', description: 'Local infinite multiplication factor of fuel assembly at lattice coordinate (r, c)', units: 'dimensionless' },
-      { symbol: '\\Sigma_a(r,c)', description: 'Local macroscopic absorption cross-section', units: 'cm⁻¹' },
-      { symbol: '\\nu\\Sigma_f(r,c)', description: 'Local macroscopic fission yield cross-section (neutrons released per cm path)', units: 'cm⁻¹' },
-      { symbol: 'F_{xy}', description: 'Radial power peaking factor (ratio of peak assembly power to core average)', units: 'dimensionless' },
-      { symbol: 'B^2', description: 'Geometric buckling eigenvalue for reactor geometry', units: 'm⁻²' },
-      { symbol: 'M^2', description: 'Neutron migration area (L_s² + L_d²)', units: 'cm²' }
+      { symbol: 'k_{\\text{eff}}, k_\\infty', description: 'Effective and infinite-medium neutron multiplication factors', units: 'dimensionless' },
+      { symbol: '\\rho', description: 'Core reactivity ((k_eff - 1)/k_eff)', units: 'dimensionless, pcm, or Dollars ($)' },
+      { symbol: '\\beta_{\\text{eff}}', description: 'Effective delayed neutron fraction (0.0065 for U-235, 0.0021 for Pu-239)', units: 'dimensionless' },
+      { symbol: 'T', description: 'Asymptotic stable reactor period (e-folding time)', units: 's' },
+      { symbol: 'F_{xy}', description: 'Radial assembly power peaking factor', units: 'dimensionless' }
     ],
     assumptions: [
-      'One-group thermal neutron diffusion with reflective boundary conditions at outer core baffle.',
-      'Heterogeneous assembly parameters homogenized within each cell pitch.'
+      'Diffusion theory valid outside strongly absorbing control rod interiors.',
+      'Keepin 6-group delayed neutron parameters evaluated for thermal U-235 or fast Pu-239 fission.'
     ],
-    benchmarks: 'Validated against standard PWR, BWR, CANDU, NuScale SMR, and Godiva fast burst benchmarks.'
+    benchmarks: 'Validated against IAEA light-water reactor lattice benchmark k_∞ = 1.3420 (VTEST-13) and ANSI/ANS-8.1 Table 1 limits.'
   },
 
   // 22. Module 22
@@ -1112,46 +1170,43 @@ const METHOD_DOCS: MethodDoc[] = [
     moduleId: 'Module 24',
     moduleName: 'Radiolysis & Decay Chains',
     domain: 'Nuclear Kinetics & Reactivity',
-    title: 'Coupled First-Order Decay ODEs, Bateman Formula & Secular Equilibrium',
-    overview: 'Solves linear and branching multi-generation radioisotope decay chains, calculating instantaneous inventories, secular/transient equilibrium points, and ingestion hazards.',
+    title: 'Bateman Multi-Generation Decay ODEs, Transient Equilibrium & Water Radiolysis H₂ Flammability Kinetics',
+    overview: 'Solves coupled multi-generation Bateman decay chains (secular/transient equilibrium and decay heat) alongside aqueous radiolysis G-value hydrogen gas generation, headspace pressure buildup, and time to reach the 4.0% Lower Flammability Limit (LFL) in sealed waste tanks/casks.',
     standards: [
       { org: 'Bateman', code: 'Proc. Cambridge Phil. Soc. 15', year: '1910', title: 'The Solution of a System of Differential Equations Occurring in the Theory of Radioactive Transformations' },
-      { org: 'ICRP', code: 'Publication 107', year: '2008', title: 'Nuclear Decay Data for Dosimetric Calculations' }
+      { org: 'US NRC', code: 'NUREG/CR-6673', year: '2000', title: 'Hydrogen Generation in TRU Waste Transportation Packages (Radiolysis G-Values)' },
+      { org: 'US DOE', code: 'DOE-STD-5506-2021', year: '2021', title: 'Preparation of Safety Basis Document for Transuranic (TRU) Waste Facilities (4% H2 LFL Criterion)' }
     ],
-    primaryFormula: 'N_n(t) = N_1(0) \\cdot \\left( \\prod_{i=1}^{n-1} \\lambda_i \\right) \\cdot \\sum_{i=1}^n \\frac{e^{-\\lambda_i t}}{\\prod_{j=1, j \\ne i}^n (\\lambda_j - \\lambda_i)}',
+    primaryFormula: 'N_n(t) = N_1(0) \\left(\\prod_{i=1}^{n-1} \\lambda_i\\right) \\sum_{i=1}^n \\frac{e^{-\\lambda_i t}}{\\prod_{j \\ne i} (\\lambda_j - \\lambda_i)}, \\quad n_{\\text{H}_2}(t) = \\frac{E_{\\text{dep}}(t) \\cdot G(\\text{H}_2)}{100\\text{ eV} \\cdot N_A}',
     secondaryFormulas: [
-      { label: 'Two-Step Daughter Activity (General)', formula: 'A_2(t) = \\frac{\\lambda_2}{\\lambda_2 - \\lambda_1} A_1(0) (e^{-\\lambda_1 t} - e^{-\\lambda_2 t}) + A_2(0) e^{-\\lambda_2 t}' },
-      { label: 'Time of Maximum Daughter Activity (Transient Equilibrium)', formula: 't_{\\max} = \\frac{\\ln(\\lambda_2 / \\lambda_1)}{\\lambda_2 - \\lambda_1}' },
-      { label: 'Secular Equilibrium Condition (T1 >> T2)', formula: 'A_2(t) \\approx A_1(0) \\cdot (1 - e^{-\\lambda_2 t}) \\implies A_2 = A_1' }
+      { label: 'Transient Equilibrium Daughter Activity Peak Time (t_max)', formula: 't_{\\max} = \\frac{\\ln(\\lambda_2 / \\lambda_1)}{\\lambda_2 - \\lambda_1}, \\quad A_2(t) = A_1(0) \\frac{\\lambda_2}{\\lambda_2 - \\lambda_1}(e^{-\\lambda_1 t} - e^{-\\lambda_2 t})' },
+      { label: 'LET-Weighted Effective Radiolytic Hydrogen G-Value', formula: 'G_{\\text{eff}}(\\text{H}_2) = f_\\alpha G_\\alpha(\\text{H}_2) + f_{\\beta\\gamma} G_{\\beta\\gamma}(\\text{H}_2) \\quad [G_\\alpha \\approx 1.6, \\, G_{\\beta\\gamma} \\approx 0.45 \\text{ molecules/100 eV}]' },
+      { label: 'Sealed Cask Headspace H₂ Volume Fraction & Time to 4% LFL', formula: 'y_{\\text{H}_2}(t) = \\frac{P_{\\text{H}_2}(t)}{P_0 + P_{\\text{H}_2}(t)} = \\frac{n_{\\text{H}_2}(t) R T / V_{\\text{head}}}{P_0 + n_{\\text{H}_2}(t) R T / V_{\\text{head}}} \\le 0.04 \\text{ (LFL)}' }
     ],
     derivationSteps: [
       {
-        stepTitle: '1. Coupled Differential Master Equation',
-        explanation: 'For an unbranched decay chain where each member decays into the next:',
-        math: '\\frac{dN_1}{dt} = -\\lambda_1 N_1, \\quad \\frac{dN_i}{dt} = \\lambda_{i-1} N_{i-1} - \\lambda_i N_i'
+        stepTitle: '1. Laplace Transform Solution of Coupled Bateman Decay Chain',
+        explanation: 'Applying the Laplace transform L{N_i(t)} = n_i(s) to dN_i/dt = λ_{i-1} N_{i-1} - λ_i N_i converts the coupled differential system into an algebraic product over poles s = -λ_j, which inverts via partial fractions to the Bateman sum:',
+        math: 'n_n(s) = \\frac{N_1(0) \\prod_{i=1}^{n-1} \\lambda_i}{\\prod_{j=1}^n (s + \\lambda_j)} \\implies N_n(t) = N_1(0) \\left(\\prod_{i=1}^{n-1} \\lambda_i\\right) \\sum_{i=1}^n \\frac{e^{-\\lambda_i t}}{\\prod_{j \\ne i} (\\lambda_j - \\lambda_i)}'
       },
       {
-        stepTitle: '2. Laplace Transform Solution',
-        explanation: 'Applying the Laplace transform L{N_i(t)} = n_i(s) converts the ODE chain into algebraic products:',
-        math: 's n_i(s) - N_i(0) = \\lambda_{i-1} n_{i-1}(s) - \\lambda_i n_i(s) \\implies n_n(s) = \\frac{N_1(0) \\prod_{i=1}^{n-1} \\lambda_i}{\\prod_{j=1}^n (s + \\lambda_j)}'
-      },
-      {
-        stepTitle: '3. Inverse Partial Fraction Expansion',
-        explanation: 'Inverting the transform back into the time domain yields the classical Bateman summation over distinct poles:',
-        math: 'N_n(t) = N_1(0) \\left( \\prod_{i=1}^{n-1} \\lambda_i \\right) \\sum_{i=1}^n \\frac{e^{-\\lambda_i t}}{\\prod_{j \\ne i} (\\lambda_j - \\lambda_i)}'
+        stepTitle: '2. Radiolytic Hydrogen Molar Yield & Ideal Gas Headspace Accumulation',
+        explanation: 'Ionizing radiation breaks H₂O bonds into H• and OH• radicals that recombine into dissolved and gaseous H₂. For absorbed radiation energy E_dep(t) = ∫ P_decay(t) dt (in eV), the molar yield of H₂ gas in headspace volume V_head at temperature T is:',
+        math: 'P_{\\text{H}_2}(t) = \\frac{n_{\\text{H}_2}(t) \\cdot R \\cdot T}{V_{\\text{head}}} = \\frac{G_{\\text{eff}}(\\text{H}_2)}{100\\text{ eV} \\cdot N_A} \\cdot \\frac{R T}{V_{\\text{head}}} \\int_0^t P_{\\text{rad}}(\\tau) \\, d\\tau'
       }
     ],
     variables: [
-      { symbol: 'N_n(t)', description: 'Number of atoms of the n-th decay chain generation at time t', units: 'atoms' },
-      { symbol: 'A_n(t)', description: 'Activity of the n-th generation radionuclide (λ_n × N_n)', units: 'Bq' },
-      { symbol: '\\lambda_i', description: 'Radioactive decay constant of the i-th radionuclide', units: 's⁻¹' },
-      { symbol: 't_{\\max}', description: 'Time required for daughter product to reach peak activity', units: 's, h, or days' }
+      { symbol: 'N_n(t), A_n(t)', description: 'Atom population and activity of the n-th decay chain member at time t', units: 'atoms / Bq' },
+      { symbol: 't_{\\max}', description: 'Elapsed time to maximum daughter activity in transient equilibrium', units: 'h or s' },
+      { symbol: 'G(\\text{H}_2)', description: 'Radiolytic chemical yield of H₂ molecules formed per 100 eV absorbed energy', units: 'molecules / 100 eV' },
+      { symbol: 'V_{\\text{head}}', description: 'Unoccupied gasullage headspace volume inside sealed waste drum or cask', units: 'L or m³' },
+      { symbol: 'y_{\\text{H}_2}', description: 'Molar volume percentage of hydrogen gas in headspace (regulatory cap: 4.0% LFL)', units: 'vol %' }
     ],
     assumptions: [
-      'No cyclic decay pathways (acyclic directed graph).',
-      'All decay constants are distinct (λ_i ≠ λ_j) in the analytical partial fractions.'
+      'Acyclic decay chain with distinct decay constants λ_i ≠ λ_j.',
+      'Zero catalytic recombiner mitigation when evaluating worst-case unvented drum LFL time.'
     ],
-    benchmarks: 'Validated against standard Mo-99/Tc-99m and Cs-137/Ba-137m equilibrium test curves.'
+    benchmarks: 'Validated against Mo-99/Tc-99m transient equilibrium peak t_max = 22.84 h (VTEST-06), Bateman long-term decay (STRESS-03, STRESS-04), and NUREG/CR-6673 radiolysis benchmarks.'
   },
 
   // 25. Module 25
@@ -1390,38 +1445,43 @@ const METHOD_DOCS: MethodDoc[] = [
     id: 'M29-Equipment',
     moduleId: 'Module 29',
     moduleName: 'Equipment Catalog',
-    domain: 'Internal Dosimetry & Biokinetics',
-    title: 'ICRP Bioassay Excretion Functions, Intake Back-Calculation & In Vivo Counting',
-    overview: 'Estimates acute or chronic intake activities from urinary and fecal bioassay measurements or whole-body counter (WBC) organ retention using ICRP metabolic models.',
+    domain: 'Spectroscopy & Radiation Detection',
+    title: 'Gas-Filled Ionization/Proportional/GM Detector Physics, Scintillator/CZT Response & Synchrotron Critical Energy',
+    overview: 'Technical specification database and detector physics analyzer covering ionization chambers, proportional counters (Diethorn gas multiplication), Geiger-Müller Townsend avalanches, NaI/CsI/LaBr3/CZT/HPGe spectrometers, and accelerator synchrotron bending magnet radiation.',
     standards: [
-      { org: 'ICRP', code: 'Publication 78', year: '1997', title: 'Individual Monitoring for Internal Exposure of Workers' },
-      { org: 'ICRP', code: 'Publication 130', year: '2015', title: 'Occupational Intakes of Radionuclides: Part 1' },
-      { org: 'NCRP', code: 'Report No. 164', year: '2010', title: 'Management of Persons Contaminated with Radionuclides' }
+      { org: 'ANSI / IEEE', code: 'ANSI N42.17A-2003', year: '2003', title: 'Performance Specifications for Health Physics Instrumentation - Portable Instrumentation' },
+      { org: 'IEC', code: 'IEC 60846-1', year: '2009', title: 'Radiation protection instrumentation - Ambient and/or directional dose equivalent (rate) meters' },
+      { org: 'Knoll', code: 'Radiation Detection & Measurement 4th Ed.', year: '2010', title: 'Chapters 5–7: Ionization Chambers, Proportional Counters, and Geiger-Müller Counters' }
     ],
-    primaryFormula: 'I_0 = \\frac{M(t)}{m(t)} \\iff E(50) = I_0 \\cdot e(50) = \\frac{M(t)}{m(t)} \\cdot e(50)',
+    primaryFormula: 'Q_{\\text{coll}} = \\frac{E_{\\text{dep}}}{W_i} \\cdot e \\cdot M(V), \\quad \\ln M = \\frac{V}{\\ln(b/a)} \\frac{\\ln 2}{\\Delta V} \\ln\\left(\\frac{V}{K p a \\ln(b/a)}\\right), \\quad E_c = 0.665 E_{\\text{GeV}}^2 B_{\\text{T}}',
     secondaryFormulas: [
-      { label: 'Excretion Fraction Function (Sum of Exponentials)', formula: 'm(t) = \\sum_{j=1}^n a_j \\cdot e^{-\\lambda_j t}' },
-      { label: 'Whole Body In Vivo Retention', formula: 'R(t) = \\frac{A_{\\text{body}}(t)}{I_0}' }
+      { label: 'Ion Chamber Saturation Current in Radiation Field', formula: 'I_{\\text{sat}} = \\frac{\\dot{X} \\cdot \\rho_{\\text{gas}} \\cdot V_{\\text{chamber}} \\cdot e}{W_{\\text{air}}}, \\quad W_{\\text{air}} = 33.97\\text{ eV/ion pair}' },
+      { label: 'Fano-Limited Intrinsic Energy Resolution of Semiconductor/Scintillator', formula: 'R_{\\text{int}} = \\frac{\\text{FWHM}}{E_0} = 2.3548 \\sqrt{\\frac{F \\cdot W_i}{E_0}} \\quad [F_{\\text{Ge}} \\approx 0.08, \\, W_{\\text{Ge}} = 2.96\\text{ eV}]' },
+      { label: 'Synchrotron Bending Magnet Critical Photon Energy & Relativistic γ', formula: 'E_c [\\text{keV}] = 0.665 \\cdot E^2 [\\text{GeV}] \\cdot B [\\text{T}], \\quad \\gamma = \\frac{1}{\\sqrt{1 - \\beta^2}} = \\frac{E_{\\text{GeV}}}{0.000511}' }
     ],
     derivationSteps: [
       {
-        stepTitle: '1. Linear Biokinetic Response Convolution',
-        explanation: 'For an acute intake occurring at t = 0, the observed 24-hour excretion or organ retention M(t) is directly proportional to initial intake I_0 scaled by reference bioassay function m(t):',
-        math: 'M(t) = I_0 \\cdot m(t) \\implies I_0 = \\frac{M(t)}{m(t)}'
+        stepTitle: '1. Primary Ion Pair Generation & Diethorn Proportional Gas Multiplication',
+        explanation: 'An ionizing particle depositing energy E_dep in a gas with mean ionization energy W_i creates n_0 = E_dep / W_i primary ion pairs. In a cylindrical proportional counter (anode radius a, cathode radius b) above threshold electric field K, Townsend avalanche multiplication M(V) scales exponentially with applied bias V:',
+        math: 'n_{\\text{total}} = M(V) \\cdot \\frac{E_{\\text{dep}}}{W_i}, \\quad \\ln M = \\frac{V}{\\ln(b/a)} \\frac{\\ln 2}{\\Delta V} \\ln\\left(\\frac{V}{K p a \\ln(b/a)}\\right)'
+      },
+      {
+        stepTitle: '2. Synchrotron Dipole Critical Photon Energy (Schwinger Formulation)',
+        explanation: 'Relativistic electrons of energy E (Lorentz factor γ = E / m_e c²) deflected in a dipole magnetic field B emit a broadband synchrotron fan whose median power photon energy is the critical energy E_c:',
+        math: 'E_c = \\frac{3}{2} \\hbar c \\frac{\\gamma^3}{\\rho_{\\text{mag}}} = 0.665 \\cdot E^2 [\\text{GeV}] \\cdot B [\\text{T}] \\quad [\\text{keV}]'
       }
     ],
     variables: [
-      { symbol: 'I_0', description: 'Estimated initial acute intake activity', units: 'Bq' },
-      { symbol: 'M(t)', description: 'Measured activity in 24-hour urine/feces or whole-body counter at post-intake day t', units: 'Bq' },
-      { symbol: 'm(t)', description: 'Fraction of intake excreted per day or retained in organ at elapsed time t', units: 'dimensionless' },
-      { symbol: 'e(50)', description: 'Committed effective dose coefficient per unit intake', units: 'Sv·Bq⁻¹' },
-      { symbol: 'E(50)', description: 'Committed effective dose over 50-year integration period', units: 'mSv or Sv' }
+      { symbol: 'W_i', description: 'Mean energy required to create one electron-ion pair (33.97 eV air, 2.96 eV HPGe, 3.62 eV Si)', units: 'eV' },
+      { symbol: 'M(V)', description: 'Townsend gas multiplication factor (1 for Ion Chamber, 10³–10⁴ for Proportional)', units: 'dimensionless' },
+      { symbol: 'F', description: 'Fano factor quantifying sub-Poisson variance in charge carrier creation', units: 'dimensionless' },
+      { symbol: 'E_c', description: 'Synchrotron dipole critical photon energy dividing emitted power in half', units: 'keV' }
     ],
     assumptions: [
-      'Standard reference man physiology (70 kg adult male, 1.4 L/day urinary output).',
-      'Intake occurred via inhalation (Type F, M, or S lung clearance) or ingestion (f_1 gastrointestinal uptake).'
+      'Negligible columnar recombination in ionization chambers operated on the saturation plateau.',
+      'Quench gas (e.g., 10% methane P-10 or halogen) suppresses secondary UV photoelectric avalanches in GM tubes.'
     ],
-    benchmarks: 'Directly follows ICRP Publication 78 Reference Bioassay tables and IDEAS EU Project guidelines.'
+    benchmarks: 'Validated against ANSI N42.17A instrument standards, synchrotron critical energy E_c = 7.182 keV (VTEST-19), and relativistic Lorentz guard (STRESS-05).'
   },
 
   // 30. Module 30
@@ -1687,48 +1747,43 @@ const METHOD_DOCS: MethodDoc[] = [
     id: 'M35-Literature',
     moduleId: 'Module 35',
     moduleName: 'Core Literature & Physics',
-    domain: 'Nuclear Kinetics & Reactivity',
-    title: 'Nordheim Inhour Equation, 6 Delayed Neutron Precursor Groups & Prompt Criticality',
-    overview: 'Solves the point reactor kinetics inhour equation to map reactivity insertions ρ to asymptotic stable reactor period T across sub-prompt and super-prompt regimes.',
+    domain: 'Dose, Transport & Shielding',
+    title: 'ICRP 103/116 Protection Quantities, FAA CARI-7 Cosmic Aviation Dosimetry & Metrological Unit Harmonization',
+    overview: 'Foundational health physics framework governing the relationship between physical field quantities (fluence Φ, kerma K, absorbed dose D) and protection quantities (equivalent dose H_T, effective dose E, operational ambient dose equivalent H*(10)), plus FAA CARI-7 high-altitude cosmic ray aviation dosimetry.',
     standards: [
-      { org: 'Keepin', code: 'Textbook Ref', year: '1965', title: 'Physics of Nuclear Kinetics (Addison-Wesley)' },
-      { org: 'Hetrick', code: 'Textbook Ref', year: '1971', title: 'Dynamics of Nuclear Reactors (Univ. of Chicago Press)' }
+      { org: 'ICRP', code: 'Publication 103', year: '2007', title: 'The 2007 Recommendations of the International Commission on Radiological Protection' },
+      { org: 'ICRP / ICRU', code: 'Publication 116 / Report 85', year: '2010', title: 'Fundamental Quantities and Units for Ionizing Radiation & Conversion Coefficients' },
+      { org: 'FAA / ICRP', code: 'CARI-7 / Publication 132', year: '2016', title: 'Radiological Protection from Cosmic Radiation in Aviation' }
     ],
-    primaryFormula: '\\rho = \\frac{\\ell^*}{k_{\\text{eff}} T} + \\sum_{i=1}^6 \\frac{\\beta_i}{1 + \\lambda_i T}',
+    primaryFormula: 'E = \\sum_T w_T H_T = \\sum_T w_T \\sum_R w_R D_{T,R}, \\quad w_R(E_n) = \\begin{cases} 2.5 + 18.2 \\, e^{-[\\ln(E_n)]^2 / 6} & E_n < 1\\text{ MeV} \\ 5.0 + 17.0 \\, e^{-[\\ln(2 E_n)]^2 / 6} & 1 \\le E_n \\le 50\\text{ MeV} \\ 2.5 + 3.25 \\, e^{-[\\ln(0.04 E_n)]^2 / 6} & E_n > 50\\text{ MeV} \\end{cases}',
     secondaryFormulas: [
-      { label: 'Stable Period for Small Reactivity (ρ << β)', formula: 'T \\approx \\frac{\\beta - \\rho}{\\lambda_{\\text{eff}} \\rho} \\approx \\frac{\\sum \\beta_i / \\lambda_i}{\\rho}' },
-      { label: 'Prompt Critical Period (ρ ≥ β)', formula: 'T_{\\text{prompt}} \\approx \\frac{\\ell^*}{\\rho - \\beta}' },
-      { label: 'Reactivity in Dollars ($)', formula: '\\$ = \\frac{\\rho}{\\beta_{\\text{eff}}}' }
+      { label: 'ICRP 103 Tissue Weighting Factor Normalization', formula: '\\sum_T w_T = 1.00 \\quad [w_T = 0.12 \\text{ (Marrow, Colon, Lung, Stomach, Breast, Remainder)}, \\, 0.08 \\text{ (Gonads)}, \\, 0.04 \\text{ (Bladder, Esophagus, Liver, Thyroid)}]' },
+      { label: 'FAA CARI-7 Barometric Altitude & Geomagnetic Cutoff Aviation Dose Rate', formula: '\\dot{H}^*(10)(z, R_c, \\Phi) = \\dot{H}_{\\text{polar}}(z, \\Phi) \\cdot \\left[1 - 0.78 \\exp(-0.22 \\cdot z_{\\text{km}}) \\cdot \\left(\\frac{R_c}{15\\text{ GV}}\\right)^{1.4}\\right]' },
+      { label: 'Exact SI ↔ Traditional Metrological Identity Conversions', formula: '1\\text{ Ci} \\equiv 3.7 \\times 10^{10}\\text{ Bq}, \\quad 1\\text{ Gy} \\equiv 100\\text{ rad} \\equiv 1\\text{ J/kg}, \\quad 1\\text{ Sv} \\equiv 100\\text{ rem}, \\quad 1\\text{ R} \\equiv 2.58 \\times 10^{-4}\\text{ C/kg}' }
     ],
     derivationSteps: [
       {
-        stepTitle: '1. Point Reactor Kinetics Equations (PRKE)',
-        explanation: 'Coupling the neutron population n(t) to the 6 delayed precursor emitter concentrations C_i(t):',
-        math: '\\frac{dn}{dt} = \\frac{\\rho - \\beta}{\\ell^*} n(t) + \\sum_{i=1}^6 \\lambda_i C_i(t), \\quad \\frac{dC_i}{dt} = \\frac{\\beta_i}{\\ell^*} n(t) - \\lambda_i C_i(t)'
+        stepTitle: '1. Transition from Physical Absorbed Dose D to Effective Dose E (ICRP 103)',
+        explanation: 'Absorbed dose D = dε̄/dm (J/kg = Gy) measures physical energy imparted per unit mass. To account for microscopic track ionization density (LET), D_{T,R} is multiplied by radiation weighting factor w_R to yield organ equivalent dose H_T, and then weighted across organs by stochastic detriment factor w_T:',
+        math: 'H_T = \\sum_R w_R D_{T,R} \\implies E = \\sum_T w_T H_T \\quad [\\text{Sv}]'
       },
       {
-        stepTitle: '2. Asymptotic Exponential Ansatz',
-        explanation: 'Assuming an exponential solution n(t) = n_0 e^(ωt) where T = 1/ω, substituting into precursor ODEs gives:',
-        math: 'C_i(t) = \\frac{\\beta_i / \\ell^*}{\\omega + \\lambda_i} n_0 e^{\\omega t} \\implies \\omega = \\frac{\\rho - \\beta}{\\ell^*} + \\sum_{i=1}^6 \\frac{\\lambda_i \\beta_i / \\ell^*}{\\omega + \\lambda_i}'
-      },
-      {
-        stepTitle: '3. Nordheim Inhour Formulation',
-        explanation: 'Rearranging for reactivity ρ with asymptotic period T = 1/ω yields the 7-root Inhour equation:',
-        math: '\\rho = \\frac{\\ell^*}{T} + \\sum_{i=1}^6 \\frac{\\beta_i}{1 + \\lambda_i T}'
+        stepTitle: '2. Atmospheric Secondary Neutron Cascade & Aviation Dose at FL390',
+        explanation: 'Primary Galactic Cosmic Ray (GCR) protons collide with stratospheric N/O nuclei to produce a Pfotzer-maximum secondary neutron/muon cascade near 20 km. At commercial cruise altitude FL390 (11.89 km) at high geomagnetic latitude (R_c < 1 GV) during solar minimum, ambient dose equivalent rate reaches:',
+        math: '\\dot{H}^*(10)_{\\text{FL390}} \\approx 5.50 \\, \\mu\\text{Sv/h} \\quad (0.55\\text{ mrem/h})'
       }
     ],
     variables: [
-      { symbol: '\\rho', description: 'Reactivity of reactor system ((k_eff - 1) / k_eff)', units: 'dimensionless (or pcm, 1 pcm = 10⁻⁵)' },
-      { symbol: 'T', description: 'Asymptotic stable reactor period (e-folding time)', units: 's' },
-      { symbol: '\\ell^*', description: 'Prompt neutron generation lifetime (~20-50 µs for LWRs, 1 ms for Heavy Water)', units: 's' },
-      { symbol: '\\beta_i', description: 'Delayed neutron fraction for the i-th precursor group (sum β = 0.0065 for U-235)', units: 'dimensionless' },
-      { symbol: '\\lambda_i', description: 'Decay constant of the i-th delayed neutron precursor group', units: 's⁻¹' }
+      { symbol: 'E, H_T, D', description: 'Effective dose (Sv), Organ equivalent dose (Sv), and Physical absorbed dose (Gy)', units: 'Sv / Gy' },
+      { symbol: 'w_R, w_T', description: 'ICRP 103 radiation weighting factor and tissue stochastic detriment weighting factor', units: 'dimensionless' },
+      { symbol: 'E_n', description: 'Incident neutron kinetic energy for continuous w_R(E_n) curve', units: 'MeV' },
+      { symbol: 'R_c', description: 'Vertical geomagnetic cutoff rigidity (0 GV at poles to ~15 GV at equator)', units: 'GV' }
     ],
     assumptions: [
-      'Spatial fundamental mode dominates (negligible higher-order spatial harmonics).',
-      'No thermal Doppler feedback during initial asymptotic exponential rise.'
+      'Tissue weighting factors w_T represent sex- and age-averaged stochastic cancer/hereditary detriment across a nominal population.',
+      'Operational quantity H*(10) provides a conservative envelope for effective dose E under anterior-posterior (AP) irradiation.'
     ],
-    benchmarks: 'Matches Keepin 6-group delayed neutron parameters for thermal U-235 fission.'
+    benchmarks: 'Validated against ICRP Publication 103 Annex A/B, FAA CARI-7 FL390 cosmic benchmark (VTEST-23), and NIST SP 811 SI conversion tables.'
   },
 
   // === FORWARD-LOOKING EXPANSION METHODOLOGIES (FUTURE RESEARCH & SPECIFICATIONS) ===
@@ -1752,6 +1807,18 @@ const METHOD_DOCS: MethodDoc[] = [
       { label: 'Long-Lived Radionuclides Table 1 Check (C-14, Ni-59, Nb-94, Tc-99, I-129, TRU)', formula: '\\text{SOF}_{\\text{T1}} = \\frac{[\\text{C-14}]}{8} + \\frac{[\\text{Tc-99}]}{3} + \\frac{[\\text{I-129}]}{0.08} + \\frac{[\\text{TRU } \\alpha]}{100}' },
       { label: 'Short-Lived Radionuclides Table 2 Check (H-3, Co-60, Ni-63, Sr-90, Cs-137)', formula: '\\text{Class A if } \\text{SOF}_{\\text{Col1}} \\le 1.0; \\, \\text{Class B if } \\text{SOF}_{\\text{Col2}} \\le 1.0; \\, \\text{Class C if } \\text{SOF}_{\\text{Col3}} \\le 1.0' },
       { label: 'Package Decay Heat Thermal Power (Watts)', formula: 'P_{\\text{thermal}} = 1.6022 \\times 10^{-13} \\sum_{k} A_k \\cdot E_{\\text{decay}, k} \\quad [\\text{W}]' }
+    ],
+    derivationSteps: [
+      {
+        stepTitle: '1. Multi-Nuclide Sum of Fractions (Unity Rule) Formulation',
+        explanation: 'When a waste stream contains multiple radionuclides from 10 CFR 61.55 Table 1 (long-lived) or Table 2 (short-lived), each concentration C_i is normalized by its class limit L_i. The package qualifies for a given waste class if and only if the sum of fractions does not exceed 1.0:',
+        math: '\\text{SOF} = \\sum_{i=1}^n \\frac{C_i}{L_i} \\le 1.0'
+      },
+      {
+        stepTitle: '2. Radiolytic Decay Heat Thermal Power Conversion',
+        explanation: 'Converting total decay energy release rate (MeV/s) from activity A_k (Bq) into Watts via the elementary charge factor 1 MeV = 1.60218 × 10⁻¹³ J:',
+        math: 'P_{\\text{thermal}} [\\text{W}] = 1.60218 \\times 10^{-13} \\sum_k A_k [\\text{Bq}] \\cdot E_{\\text{decay}, k} [\\text{MeV}]'
+      }
     ],
     variables: [
       { symbol: 'C_i', description: 'Concentration of i-th radionuclide in waste matrix', units: 'Ci·m⁻³ (or nCi·g⁻¹ for TRU)' },
@@ -1783,6 +1850,18 @@ const METHOD_DOCS: MethodDoc[] = [
     secondaryFormulas: [
       { label: 'Relativistic Velocity Parameter', formula: '\\beta = \\frac{v}{c} = \\sqrt{1 - \\left(\\frac{M_0 c^2}{E + M_0 c^2}\\right)^2}' },
       { label: 'Bragg-Kleeman Range Rule for Alphas', formula: 'R_{\\alpha} = 0.318 \\cdot E^{1.5} \\quad [\\text{cm in air at 15°C, 1 atm}]' }
+    ],
+    derivationSteps: [
+      {
+        stepTitle: '1. Relativistic Impulse Momentum Transfer to Orbital Electrons',
+        explanation: 'A heavy ion of charge ze and velocity v = βc passing an orbital electron at impact parameter b imparts transverse impulse Δp = 2 z e² / (b v). Integrating energy transfer ΔE = (Δp)² / (2 m_e) over all impact parameters from b_min (quantum kinematic limit) to b_max (adiabatic ionization threshold I) yields the Bethe-Bloch equation:',
+        math: '-\\frac{dE}{dx} = \\frac{4\\pi e^4 z^2}{m_e v^2} N Z \\left[ \\ln\\left(\\frac{2 m_e v^2}{I(1 - \\beta^2)}\\right) - \\beta^2 \\right]'
+      },
+      {
+        stepTitle: '2. The Bragg Peak Near Particle Stopping Endpoint (v → 0)',
+        explanation: 'Because linear stopping power scales inversely with squared projectile velocity (-dE/dx ∝ z²/v²), energy deposition rises dramatically as the ion slows down just before coming to rest, creating the characteristic clinical Bragg peak before dropping to zero after electron pickup:',
+        math: 'R_{\\text{CSDA}} = \\int_0^{E_0} \\left(-\\frac{dE}{dx}\\right)^{-1} dE'
+      }
     ],
     variables: [
       { symbol: '-dE/dx', description: 'Linear stopping power (energy loss per unit path length)', units: 'MeV·cm⁻¹' },
@@ -1817,6 +1896,13 @@ const METHOD_DOCS: MethodDoc[] = [
       { label: 'Energy Shift via Solar Modulation', formula: '\\Delta E = \\frac{Z_i e}{A_i} \\cdot \\Phi(t) \\quad [\\text{in MV}]' },
       { label: 'Linear Energy Transfer (LET) Dose', formula: 'H = Q(L) \\cdot D = \\int Q(L) \\cdot L \\cdot \\Phi(L) \\, dL' }
     ],
+    derivationSteps: [
+      {
+        stepTitle: '1. Gleeson-Axford Heliospheric Force-Field Approximation',
+        explanation: 'As galactic cosmic ray ions of charge Z_i e and mass number A_i penetrate the outward-flowing magnetized solar wind to 1 AU, they experience adiabatic deceleration equivalent to an electrostatic potential Φ(t) (400 MV solar min to 1200 MV solar max). Liouville phase-space conservation p² j(E) = const yields:',
+        math: 'j_i(E, \\Phi) = j_i^{\\text{LIS}}(E + \\Delta E) \\cdot \\frac{E(E + 2 E_0)}{(E + \\Delta E)(E + \\Delta E + 2 E_0)}, \\quad \\Delta E = \\frac{Z_i e}{A_i} \\Phi(t)'
+      }
+    ],
     variables: [
       { symbol: 'j_i(E, \\Phi)', description: 'Differential flux of i-th GCR ion species at 1 AU', units: '(m²·s·sr·MeV/n)⁻¹' },
       { symbol: '\\Phi(t)', description: 'Heliospheric solar modulation potential parameter', units: 'MV' },
@@ -1828,6 +1914,97 @@ const METHOD_DOCS: MethodDoc[] = [
       'Nuclear fragmentation cross-sections modeled via semi-empirical NUCFRG2 formalism.'
     ],
     benchmarks: 'Validated against Badhwar-O\'Neill 2020 GCR model and ACE/CRIS satellite measurements.'
+  },
+
+  // EXP-4: Module 39 (Expansion)
+  {
+    id: 'EXP-MIRD',
+    moduleId: 'Module 39 (Expansion)',
+    moduleName: 'MIRD Schema & Radiopharmaceutical Theranostics',
+    domain: 'Medical & Advanced Expansion',
+    title: 'MIRD Organ-Level Internal Dosimetry Schema, S-Values (Lu-177 / Ac-225) & Linear-Quadratic BED',
+    overview: 'Formal Society of Nuclear Medicine and Molecular Imaging (SNMMI) MIRD committee formalism for targeted radionuclide therapy (Lu-177 DOTATATE/PSMA, I-131, Y-90 microspheres, Ac-225 alpha-theranostics), integrating time-activity curves Ã(r_S), phantom S-values, and Lea-Catcheside Biologically Effective Dose (BED).',
+    isExpansion: true,
+    standards: [
+      { org: 'MIRD / SNMMI', code: 'MIRD Pamphlet No. 21', year: '2009', title: 'A Generalized Schema for Radiopharmaceutical Dosimetry: Standardization of Nomenclature' },
+      { org: 'ICRP', code: 'Publication 128 / 133', year: '2016', title: 'Radiation Dose to Patients from Radiopharmaceuticals & SAF Phantom Values' },
+      { org: 'AAPM', code: 'TG-195 / TG-221', year: '2019', title: 'Quantitative SPECT/CT Dosimetry for Lu-177 and Y-90 Radionuclide Therapy' }
+    ],
+    primaryFormula: 'D(r_T) = \\sum_{r_S} \\tilde{A}(r_S) \\cdot S(r_T \\leftarrow r_S), \\quad \\tilde{A}(r_S) = \\int_0^\\infty A(r_S, t) \\, dt, \\quad S(r_T \\leftarrow r_S) = \\frac{1}{M(r_T)} \\sum_i E_i Y_i \\phi(r_T \\leftarrow r_S; E_i)',
+    secondaryFormulas: [
+      { label: 'Mono-Exponential & Bi-Exponential Time-Integrated Activity (Cumulated Activity Ã)', formula: '\\tilde{A}(r_S) = A_0 \\int_0^\\infty \\left(f_1 e^{-\\lambda_{\\text{eff},1} t} + f_2 e^{-\\lambda_{\\text{eff},2} t}\\right) dt = A_0 \\left(\\frac{f_1}{\\lambda_{\\text{eff},1}} + \\frac{f_2}{\\lambda_{\\text{eff},2}}\\right)' },
+      { label: 'Dale-Lea-Catcheside Biologically Effective Dose (BED) for Exponentially Decaying Therapy', formula: '\\text{BED} = D \\left[ 1 + \\frac{\\lambda_{\\text{eff}}}{\\mu_{\\text{rep}} + \\lambda_{\\text{eff}}} \\cdot \\frac{D}{\\alpha / \\beta} \\right] \\quad [\\text{Renal Toxicity Limit: BED}_{\\text{kidney}} \\le 28-40\\text{ Gy}_{2.5}]' }
+    ],
+    derivationSteps: [
+      {
+        stepTitle: '1. MIRD Source-to-Target Specific Absorbed Fraction (SAF) Factorization',
+        explanation: 'The mean absorbed dose D(r_T) delivered to target organ r_T of mass M(r_T) from cumulated disintegrations Ã(r_S) in source organ r_S is separated into patient-specific biokinetics Ã(r_S) and radionuclide/phantom transport S(r_T ← r_S):',
+        math: 'D(r_T) = \\sum_{r_S} \\tilde{A}(r_S) \\cdot \\left[ \\sum_i \\Delta_i \\cdot \\Phi(r_T \\leftarrow r_S; E_i) \\right] = \\sum_{r_S} \\tilde{A}(r_S) \\cdot S(r_T \\leftarrow r_S)'
+      },
+      {
+        stepTitle: '2. Sublethal DNA Repair During Continuous Low-Dose-Rate Radionuclide Therapy',
+        explanation: 'Unlike acute external beam fractions, radiopharmaceutical dose rate decays exponentially at rate λ_eff while sublethal DNA damage repairs at rate μ_rep = ln(2)/T_rep. Integrating the Lea-Catcheside protraction factor G(∞) = λ_eff / (μ_rep + λ_eff) yields the clinical BED formula:',
+        math: 'G(\\infty) = \\frac{\\lambda_{\\text{eff}}}{\\mu_{\\text{rep}} + \\lambda_{\\text{eff}}} \\implies \\text{BED} = D \\left(1 + G(\\infty) \\frac{D}{\\alpha / \\beta}\\right)'
+      }
+    ],
+    variables: [
+      { symbol: 'D(r_T)', description: 'Mean absorbed dose to target organ or tumor volume r_T', units: 'Gy' },
+      { symbol: '\\tilde{A}(r_S)', description: 'Time-integrated activity (total number of nuclear transformations in source region r_S)', units: 'Bq·s or MBq·h' },
+      { symbol: 'S(r_T \\leftarrow r_S)', description: 'MIRD S-value: absorbed dose to r_T per unit cumulated activity in r_S', units: 'Gy·(Bq·s)⁻¹' },
+      { symbol: '\\phi(r_T \\leftarrow r_S)', description: 'Absorbed fraction of energy emitted in r_S that is deposited in r_T', units: 'dimensionless' },
+      { symbol: '\\text{BED}', description: 'Biologically Effective Dose accounting for dose-rate repair kinetics', units: 'Gy_(α/β)' }
+    ],
+    assumptions: [
+      'Uniform activity distribution within each macro-organ or voxelized SPECT/PET source region.',
+      'Non-penetrating beta/alpha emissions (e.g., Lu-177 β⁻, Y-90 β⁻, Ac-225 α) satisfy local deposition φ(r_T ← r_T) ≈ 1.0.'
+    ],
+    benchmarks: 'Validated against MIRD Pamphlet No. 21, OLINDA/EXM 2.0 phantom S-values, and EANM Lu-177 dosimetry guidelines.'
+  },
+
+  // EXP-5: Module 40 (Expansion)
+  {
+    id: 'EXP-Fusion',
+    moduleId: 'Module 40 (Expansion)',
+    moduleName: 'Fusion Neutronics & 14.1 MeV D-T Shielding',
+    domain: 'Nuclear Kinetics & Reactivity',
+    title: 'D-T 14.1 MeV Fusion Neutronics, Lawson Triple Product, Tritium Breeding Ratio (TBR) & First-Wall DPA',
+    overview: 'Models Deuterium-Tritium (D-T) and Deuterium-Deuterium (D-D) magnetic/inertial fusion plasma neutronics: 14.1 MeV fast neutron removal attenuation across WC/B4C/Eurofer blankets, Li-6/Li-7 Tritium Breeding Ratio (TBR), and displacements per atom (DPA) radiation damage.',
+    isExpansion: true,
+    standards: [
+      { org: 'IAEA', code: 'ITER / FENDL-3.2', year: '2021', title: 'Fusion Evaluated Nuclear Data Library for ITER and DEMO Neutronics' },
+      { org: 'US DOE / PPPL', code: 'FESAC Report', year: '2020', title: 'Power Plant Physics and Technology for Magnetic Fusion Energy' },
+      { org: 'ASTM', code: 'E693-17', year: '2017', title: 'Standard Practice for Characterizing Neutron Exposures in Iron and Low Alloy Steels in Terms of Displacements Per Atom (DPA)' }
+    ],
+    primaryFormula: '\\text{D} + \\text{T} \\longrightarrow \\, ^4\\text{He} \\, (3.52\\text{ MeV}) + n \\, (14.06\\text{ MeV}), \\quad n_i T_i \\tau_E \\ge 3 \\times 10^{21}\\text{ m}^{-3}\\cdot\\text{keV}\\cdot\\text{s}',
+    secondaryFormulas: [
+      { label: 'Lithium Blanket Tritium Breeding Reactions (Exothermic Li-6 & Endothermic Threshold Li-7)', formula: '^6\\text{Li} + n_{\\text{th}} \\to \\text{T} + \\, ^4\\text{He} + 4.78\\text{ MeV}, \\quad ^7\\text{Li} + n_{\\text{fast}} \\to \\text{T} + \\, ^4\\text{He} + n^{\prime} - 2.47\\text{ MeV}' },
+      { label: '14.1 MeV Fast Neutron Macroscopic Removal Attenuation Through Blanket/Shield', formula: '\\Phi_{14.1}(x) = \\frac{S_{\\text{fusion}}}{4\\pi r^2} \\exp\\left(-\\sum_k \\Sigma_{R, k} \\cdot x_k\\right), \\quad S_{\\text{fusion}} = \\frac{P_{\\text{fus}} [\\text{W}]}{17.59\\text{ MeV} \\cdot 1.6022 \\times 10^{-13}}' },
+      { label: 'Norgett-Robinson-Torrens (NRT) Structural Displacements Per Atom (DPA)', formula: '\\text{DPA}(t) = \\int_0^t \\int_0^{E_{\\max}} \\sigma_d(E_n) \\, \\phi(E_n, \\tau) \\, dE_n \\, d\\tau, \\quad N_d(T_{\\text{PKA}}) = \\frac{0.8 \\cdot T_{\\text{damage}}}{2 E_d}' }
+    ],
+    derivationSteps: [
+      {
+        stepTitle: '1. Relativistic Two-Body Kinematics of the D-T Fusion Reaction (Q = 17.59 MeV)',
+        explanation: 'In the center-of-mass frame of a stationary D + T reaction (Q = 17.589 MeV), conservation of momentum p_n = p_α partitions kinetic energy inversely with product mass (m_n ≈ 1 u, m_α ≈ 4 u), assigning 4/5 of Q (14.06 MeV) to the escaping fast neutron:',
+        math: 'E_n = Q \\cdot \\frac{m_\\alpha}{m_n + m_\\alpha} \\approx 17.59\\text{ MeV} \\times \\frac{4}{5} = 14.07\\text{ MeV}, \\quad E_\\alpha = 3.52\\text{ MeV}'
+      },
+      {
+        stepTitle: '2. Tritium Self-Sufficiency Condition (TBR ≥ 1.05–1.15)',
+        explanation: 'Because each D-T fusion consumes one Tritium nucleus (T_1/2 = 12.32 yr), the lithium breeding blanket (enriched in Li-6 with Pb or Be (n,2n) neutron multipliers) must achieve a net Tritium Breeding Ratio TBR > 1.05 to compensate for decay, port leakage, and fuel processing hold-up:',
+        math: '\\text{TBR} = \\frac{\\int_{V_{\\text{blanket}}} \\left( N_{^6\\text{Li}} \\sigma_{(n,t)} + N_{^7\\text{Li}} \\sigma_{(n,n^{\prime}t)} \\right) \\phi \\, dV}{S_{\\text{fusion}}} \\ge 1.10'
+      }
+    ],
+    variables: [
+      { symbol: 'S_{\\text{fusion}}', description: '14.1 MeV neutron source emission rate (3.55 × 10¹⁷ n/s per MW fusion power)', units: 'n·s⁻¹' },
+      { symbol: 'n_i T_i \\tau_E', description: 'Lawson fusion ignition triple product (density × ion temperature × confinement time)', units: 'm⁻³·keV·s' },
+      { symbol: '\\text{TBR}', description: 'Tritium Breeding Ratio (tritons bred in blanket per D-T fusion neutron)', units: 'dimensionless' },
+      { symbol: '\\Sigma_R', description: '14.1 MeV fast neutron macroscopic removal cross-section', units: 'cm⁻¹' },
+      { symbol: '\\text{DPA}', description: 'Cumulative lattice atomic displacements per atom in first-wall steel', units: 'dpa' }
+    ],
+    assumptions: [
+      'Isotropic 14.06 MeV monoenergetic primary D-T neutron emission in plasma rest frame.',
+      'Threshold Displacement Energy E_d = 40 eV for ferritic-martensitic Eurofer/SS316 first-wall steel per ASTM E693.'
+    ],
+    benchmarks: 'Validated against IAEA FENDL-3.2 14.1 MeV cross-sections and ITER nuclear analysis benchmarks.'
   }
 ];
 
@@ -1848,6 +2025,15 @@ const LiteratureModule: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [activeTab, setActiveTab] = useState<ViewTab>('current');
   const [activeDocId, setActiveDocId] = useState<string>(METHOD_DOCS[0].id);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  const handleCopyLatex = (tex: string, key: string) => {
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(tex);
+      setCopiedKey(key);
+      setTimeout(() => setCopiedKey(null), 1800);
+    }
+  };
 
   // Filter documents based on domain, search query, and active tab
   const filteredDocs = useMemo(() => {
@@ -1886,7 +2072,7 @@ const LiteratureModule: React.FC = () => {
         <div>
           <h2 style={{ margin: '0 0 6px 0' }}>📚 Module 35 — Core Literature, Physics Formulations &amp; Regulatory Standards</h2>
           <p style={{ color: 'var(--color-text-muted)', margin: 0 }}>
-            Comprehensive peer-reviewed scientific methodology compendium documenting the governing mathematical equations, analytical derivations, boundary limits, and international regulatory standards across all 35 active and expansion modules.
+            Comprehensive peer-reviewed scientific methodology compendium documenting the governing mathematical equations, analytical derivations, boundary limits, and international regulatory standards across all 35 active and 5 expansion modules.
           </p>
         </div>
         <VerificationBadge testId="VTEST-01" label="43/43 Benchmarks Indexed" />
@@ -1899,33 +2085,40 @@ const LiteratureModule: React.FC = () => {
           style={{ borderTop: 'none', borderLeft: 'none', borderRight: 'none', background: 'none', cursor: 'pointer', fontSize: '0.95rem', padding: '10px 18px', borderBottom: activeTab === 'current' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'current' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'current' ? 'bold' : 'normal' }}
           onClick={() => setActiveTab('current')}
         >
-          🔬 Active Validated Modules & Core Physics
+          🔬 Active Validated Modules (1–35)
         </button>
         <button
           className={`nav-link ${activeTab === 'derivations' ? 'active' : ''}`}
           style={{ borderTop: 'none', borderLeft: 'none', borderRight: 'none', background: 'none', cursor: 'pointer', fontSize: '0.95rem', padding: '10px 18px', borderBottom: activeTab === 'derivations' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'derivations' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'derivations' ? 'bold' : 'normal' }}
           onClick={() => setActiveTab('derivations')}
         >
-          📐 Analytical Derivations & Proofs
+          📐 Analytical Derivations &amp; Proofs
         </button>
         <button
           className={`nav-link ${activeTab === 'expansion' ? 'active' : ''}`}
           style={{ borderTop: 'none', borderLeft: 'none', borderRight: 'none', background: 'none', cursor: 'pointer', fontSize: '0.95rem', padding: '10px 18px', borderBottom: activeTab === 'expansion' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'expansion' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'expansion' ? 'bold' : 'normal' }}
           onClick={() => setActiveTab('expansion')}
         >
-          🚀 Research & Expansion Specifications (Modules 36–38+)
+          🚀 Research &amp; Expansion Specs (36–40)
+        </button>
+        <button
+          className={`nav-link ${activeTab === 'constants' ? 'active' : ''}`}
+          style={{ borderTop: 'none', borderLeft: 'none', borderRight: 'none', background: 'none', cursor: 'pointer', fontSize: '0.95rem', padding: '10px 18px', borderBottom: activeTab === 'constants' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'constants' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'constants' ? 'bold' : 'normal' }}
+          onClick={() => setActiveTab('constants')}
+        >
+          🧮 Constants, ICRP 103 Weights &amp; Conversions
         </button>
         <button
           className={`nav-link ${activeTab === 'standards' ? 'active' : ''}`}
           style={{ borderTop: 'none', borderLeft: 'none', borderRight: 'none', background: 'none', cursor: 'pointer', fontSize: '0.95rem', padding: '10px 18px', borderBottom: activeTab === 'standards' ? '2px solid var(--color-primary)' : 'none', color: activeTab === 'standards' ? '#00e5ff' : 'var(--color-text-muted)', fontWeight: activeTab === 'standards' ? 'bold' : 'normal' }}
           onClick={() => setActiveTab('standards')}
         >
-          🏛️ Standards Registry & Bibliography
+          🏛️ Standards Registry &amp; Bibliography
         </button>
       </div>
 
       {/* Domain Navigation & Search Controls (for methodology views) */}
-      {activeTab !== 'standards' && (
+      {activeTab !== 'standards' && activeTab !== 'constants' && (
         <div className="panel" style={{ padding: '20px', marginBottom: '20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', flexWrap: 'wrap', gap: '10px' }}>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -1987,7 +2180,7 @@ const LiteratureModule: React.FC = () => {
       )}
 
       {/* Detailed Methodology View */}
-      {activeTab !== 'standards' && activeDoc && (
+      {activeTab !== 'standards' && activeTab !== 'constants' && activeDoc && (
         <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', marginBottom: '25px' }}>
           {/* Main Equation & Theory Panel */}
           <div className="panel" style={{ flex: '2 1 650px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
@@ -2005,27 +2198,36 @@ const LiteratureModule: React.FC = () => {
             </div>
 
             {/* Primary Governing Equation Box */}
-            <div style={{ padding: '20px', background: 'rgba(3, 7, 18, 0.75)', border: '1px solid var(--color-primary)', borderRadius: '8px', textAlign: 'center' }}>
-              <div style={{ fontSize: '0.75rem', color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '10px', fontWeight: 'bold' }}>
-                Primary Mathematical Formulation
+            <div style={{ padding: '20px', background: 'rgba(3, 7, 18, 0.75)', border: '1px solid var(--color-primary)', borderRadius: '8px', textAlign: 'center', position: 'relative' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 'bold' }}>
+                  Primary Mathematical Formulation
+                </div>
+                <button
+                  onClick={() => handleCopyLatex(activeDoc.primaryFormula, `${activeDoc.id}-primary`)}
+                  style={{ fontSize: '0.72rem', padding: '3px 9px', background: 'rgba(0, 229, 255, 0.1)', color: '#00e5ff', border: '1px solid rgba(0, 229, 255, 0.35)', borderRadius: '4px', cursor: 'pointer' }}
+                  title="Copy raw LaTeX equation to clipboard"
+                >
+                  {copiedKey === `${activeDoc.id}-primary` ? '✓ Copied LaTeX' : '📋 Copy LaTeX'}
+                </button>
               </div>
-              <div style={{ fontSize: '1.3rem', color: '#fff', margin: '10px 0' }}>
+              <div style={{ fontSize: '1.3rem', color: '#fff', margin: '10px 0', overflowX: 'auto' }}>
                 <BlockMath math={activeDoc.primaryFormula} />
               </div>
             </div>
 
-            {/* Step-by-Step Analytical Derivation (if present or in derivations mode) */}
+            {/* Step-by-Step Analytical Derivation */}
             {activeDoc.derivationSteps && activeDoc.derivationSteps.length > 0 && (
               <div style={{ background: 'rgba(0, 229, 255, 0.03)', border: '1px solid rgba(0, 229, 255, 0.2)', borderRadius: '8px', padding: '16px' }}>
                 <h4 style={{ fontSize: '0.9rem', color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px' }}>
-                  📐 Step-by-Step Analytical Derivation & Proof
+                  📐 Step-by-Step Analytical Derivation &amp; Proof
                 </h4>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                   {activeDoc.derivationSteps.map((step, idx) => (
                     <div key={idx} style={{ padding: '10px 14px', background: 'rgba(3, 7, 18, 0.6)', borderLeft: '3px solid var(--color-primary)', borderRadius: '4px' }}>
                       <strong style={{ color: '#fff', fontSize: '0.85rem' }}>{step.stepTitle}</strong>
                       <p style={{ color: 'var(--color-text-muted)', fontSize: '0.82rem', margin: '4px 0 8px 0' }}>{step.explanation}</p>
-                      <div style={{ fontSize: '1.05rem', color: '#00e5ff' }}>
+                      <div style={{ fontSize: '1.05rem', color: '#00e5ff', overflowX: 'auto' }}>
                         <BlockMath math={step.math} />
                       </div>
                     </div>
@@ -2038,15 +2240,24 @@ const LiteratureModule: React.FC = () => {
             {activeDoc.secondaryFormulas && activeDoc.secondaryFormulas.length > 0 && (
               <div>
                 <h4 style={{ fontSize: '0.9rem', color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '10px' }}>
-                  Auxiliary & Governing Sub-Equations
+                  Auxiliary &amp; Governing Sub-Equations
                 </h4>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '12px' }}>
                   {activeDoc.secondaryFormulas.map((sub, idx) => (
                     <div key={idx} style={{ padding: '12px', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--color-border)', borderRadius: '6px' }}>
-                      <span style={{ fontSize: '0.8rem', color: 'var(--color-accent)', fontWeight: 'bold', display: 'block', marginBottom: '6px' }}>
-                        {sub.label}
-                      </span>
-                      <div style={{ fontSize: '1rem', color: '#fff' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px', gap: '6px' }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--color-accent)', fontWeight: 'bold' }}>
+                          {sub.label}
+                        </span>
+                        <button
+                          onClick={() => handleCopyLatex(sub.formula, `${activeDoc.id}-sub-${idx}`)}
+                          style={{ fontSize: '0.68rem', padding: '2px 6px', background: 'rgba(255, 255, 255, 0.05)', color: 'var(--color-text-muted)', border: '1px solid var(--color-border)', borderRadius: '4px', cursor: 'pointer', flexShrink: 0 }}
+                          title="Copy sub-equation LaTeX"
+                        >
+                          {copiedKey === `${activeDoc.id}-sub-${idx}` ? '✓' : 'LaTeX'}
+                        </button>
+                      </div>
+                      <div style={{ fontSize: '1rem', color: '#fff', overflowX: 'auto' }}>
                         <BlockMath math={sub.formula} />
                       </div>
                     </div>
@@ -2058,7 +2269,7 @@ const LiteratureModule: React.FC = () => {
             {/* Variable Nomenclature Table */}
             <div>
               <h4 style={{ fontSize: '0.9rem', color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '10px' }}>
-                Symbol Nomenclature & Units
+                Symbol Nomenclature &amp; Units
               </h4>
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
@@ -2087,7 +2298,7 @@ const LiteratureModule: React.FC = () => {
 
           {/* Standards & Boundaries Sidebar */}
           <div className="panel" style={{ flex: '1 1 350px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
-            <h3>Regulatory Codes & Standards</h3>
+            <h3>Regulatory Codes &amp; Standards</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {activeDoc.standards.map((s, idx) => (
                 <div key={idx} style={{ padding: '10px 12px', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--color-border)', borderRadius: '6px' }}>
@@ -2102,7 +2313,7 @@ const LiteratureModule: React.FC = () => {
 
             <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '15px' }}>
               <h4 style={{ fontSize: '0.85rem', color: 'var(--color-primary)', textTransform: 'uppercase', marginBottom: '8px' }}>
-                Physical Assumptions & Validity
+                Physical Assumptions &amp; Validity
               </h4>
               <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '0.82rem', color: 'var(--color-text-muted)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 {activeDoc.assumptions.map((a, idx) => (
@@ -2123,10 +2334,252 @@ const LiteratureModule: React.FC = () => {
         </div>
       )}
 
+      {/* Fundamental Constants, ICRP 103 Weighting Factors & Unit Conversions Reference Tab */}
+      {activeTab === 'constants' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '25px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(460px, 1fr))', gap: '20px' }}>
+            {/* CODATA Physical & Radiological Constants */}
+            <div className="panel">
+              <h3 style={{ marginTop: 0, color: '#00e5ff' }}>⚛️ Fundamental Physical &amp; Radiological Constants (CODATA / ICRU)</h3>
+              <p style={{ color: 'var(--color-text-muted)', fontSize: '0.84rem', marginBottom: '12px' }}>
+                Exact and consensus physical constants embedded across the RadPro Analyst calculation engines.
+              </p>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.83rem' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--color-border)', color: 'var(--color-primary)' }}>
+                    <th style={{ padding: '8px', textAlign: 'left' }}>Symbol</th>
+                    <th style={{ padding: '8px', textAlign: 'left' }}>Constant Name</th>
+                    <th style={{ padding: '8px', textAlign: 'left' }}>Adopted Value</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                    <td style={{ padding: '7px 8px', color: '#00e5ff' }}><InlineMath math="c" /></td>
+                    <td style={{ padding: '7px 8px' }}>Speed of light in vacuum</td>
+                    <td style={{ padding: '7px 8px', fontFamily: 'monospace' }}>2.99792458 × 10⁸ m/s</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                    <td style={{ padding: '7px 8px', color: '#00e5ff' }}><InlineMath math="m_e c^2" /></td>
+                    <td style={{ padding: '7px 8px' }}>Electron rest-mass energy</td>
+                    <td style={{ padding: '7px 8px', fontFamily: 'monospace' }}>0.51099895 MeV (511.0 keV)</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                    <td style={{ padding: '7px 8px', color: '#00e5ff' }}><InlineMath math="m_n c^2" /></td>
+                    <td style={{ padding: '7px 8px' }}>Neutron rest-mass energy</td>
+                    <td style={{ padding: '7px 8px', fontFamily: 'monospace' }}>939.56542 MeV</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                    <td style={{ padding: '7px 8px', color: '#00e5ff' }}><InlineMath math="r_0" /></td>
+                    <td style={{ padding: '7px 8px' }}>Classical electron radius (<InlineMath math="e^2 / 4\pi\varepsilon_0 m_e c^2" />)</td>
+                    <td style={{ padding: '7px 8px', fontFamily: 'monospace' }}>2.81794032 × 10⁻¹⁵ m</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                    <td style={{ padding: '7px 8px', color: '#00e5ff' }}><InlineMath math="\sigma_T" /></td>
+                    <td style={{ padding: '7px 8px' }}>Thomson scattering cross-section (<InlineMath math="\frac{8}{3}\pi r_0^2" />)</td>
+                    <td style={{ padding: '7px 8px', fontFamily: 'monospace' }}>0.66524587 barns (6.652 × 10⁻²⁹ m²)</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                    <td style={{ padding: '7px 8px', color: '#00e5ff' }}><InlineMath math="\alpha" /></td>
+                    <td style={{ padding: '7px 8px' }}>Fine-structure constant</td>
+                    <td style={{ padding: '7px 8px', fontFamily: 'monospace' }}>1 / 137.035999 (7.29735 × 10⁻³)</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                    <td style={{ padding: '7px 8px', color: '#00e5ff' }}><InlineMath math="N_A" /></td>
+                    <td style={{ padding: '7px 8px' }}>Avogadro constant</td>
+                    <td style={{ padding: '7px 8px', fontFamily: 'monospace' }}>6.02214076 × 10²³ mol⁻¹</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                    <td style={{ padding: '7px 8px', color: '#00e5ff' }}><InlineMath math="e" /></td>
+                    <td style={{ padding: '7px 8px' }}>Elementary charge</td>
+                    <td style={{ padding: '7px 8px', fontFamily: 'monospace' }}>1.602176634 × 10⁻¹⁹ C</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                    <td style={{ padding: '7px 8px', color: '#00e5ff' }}><InlineMath math="(W/e)_{\text{air}}" /></td>
+                    <td style={{ padding: '7px 8px' }}>Mean energy per ion pair in dry air (ICRU 90)</td>
+                    <td style={{ padding: '7px 8px', fontFamily: 'monospace' }}>33.97 eV / ion pair (J/C)</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                    <td style={{ padding: '7px 8px', color: '#00e5ff' }}><InlineMath math="W_{\text{Ge}} / W_{\text{Si}}" /></td>
+                    <td style={{ padding: '7px 8px' }}>Electron-hole pair creation energy (HPGe / Si)</td>
+                    <td style={{ padding: '7px 8px', fontFamily: 'monospace' }}>2.96 eV (Ge @ 77K) / 3.62 eV (Si)</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                    <td style={{ padding: '7px 8px', color: '#00e5ff' }}><InlineMath math="G(\text{H}_2)_{\gamma,\alpha}" /></td>
+                    <td style={{ padding: '7px 8px' }}>Water radiolysis hydrogen yield (<InlineMath math="\gamma/\beta" /> vs <InlineMath math="\alpha" />)</td>
+                    <td style={{ padding: '7px 8px', fontFamily: 'monospace' }}>0.45 vs 1.6 molecules / 100 eV</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* SI <-> Traditional Radiological Unit Conversions */}
+            <div className="panel">
+              <h3 style={{ marginTop: 0, color: '#00e5ff' }}>🔄 Exact SI ↔ Traditional Radiological Unit Conversions</h3>
+              <p style={{ color: 'var(--color-text-muted)', fontSize: '0.84rem', marginBottom: '12px' }}>
+                Statutory conversion factors linking SI radiological quantities to US/traditional health physics units.
+              </p>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.83rem' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--color-border)', color: 'var(--color-primary)' }}>
+                    <th style={{ padding: '8px', textAlign: 'left' }}>Quantity</th>
+                    <th style={{ padding: '8px', textAlign: 'left' }}>SI Unit</th>
+                    <th style={{ padding: '8px', textAlign: 'left' }}>Exact Conversion Identity</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                    <td style={{ padding: '7px 8px', fontWeight: 'bold' }}>Activity (<InlineMath math="A" />)</td>
+                    <td style={{ padding: '7px 8px' }}>Becquerel (<InlineMath math="\text{Bq} = \text{s}^{-1}" />)</td>
+                    <td style={{ padding: '7px 8px', fontFamily: 'monospace' }}>1 Ci = 3.7 × 10¹⁰ Bq = 37 GBq</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                    <td style={{ padding: '7px 8px', fontWeight: 'bold' }}>Absorbed Dose (<InlineMath math="D" />)</td>
+                    <td style={{ padding: '7px 8px' }}>Gray (<InlineMath math="\text{Gy} = \text{J/kg}" />)</td>
+                    <td style={{ padding: '7px 8px', fontFamily: 'monospace' }}>1 Gy = 100 rad | 1 rad = 10 mGy</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                    <td style={{ padding: '7px 8px', fontWeight: 'bold' }}>Equivalent / Effective Dose (<InlineMath math="H, E" />)</td>
+                    <td style={{ padding: '7px 8px' }}>Sievert (<InlineMath math="\text{Sv} = \text{J/kg}" />)</td>
+                    <td style={{ padding: '7px 8px', fontFamily: 'monospace' }}>1 Sv = 100 rem | 1 mSv = 100 mrem</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                    <td style={{ padding: '7px 8px', fontWeight: 'bold' }}>Exposure (<InlineMath math="X" />)</td>
+                    <td style={{ padding: '7px 8px' }}>Coulomb/kg (<InlineMath math="\text{C/kg}" />)</td>
+                    <td style={{ padding: '7px 8px', fontFamily: 'monospace' }}>1 R = 2.58 × 10⁻⁴ C/kg (dry air)</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                    <td style={{ padding: '7px 8px', fontWeight: 'bold' }}>Exposure → Air Kerma (<InlineMath math="K_{\text{air}}" />)</td>
+                    <td style={{ padding: '7px 8px' }}>Gy per Roentgen</td>
+                    <td style={{ padding: '7px 8px', fontFamily: 'monospace' }}>1 R ≈ 0.00877 Gy (air) ≈ 0.0096 Gy (tissue)</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                    <td style={{ padding: '7px 8px', fontWeight: 'bold' }}>Radon Concentration / PAEC</td>
+                    <td style={{ padding: '7px 8px' }}><InlineMath math="\text{Bq/m}^3" /> / <InlineMath math="\text{WL}" /></td>
+                    <td style={{ padding: '7px 8px', fontFamily: 'monospace' }}>1 pCi/L = 37 Bq/m³ | 1 WL = 2.08 × 10⁻⁵ J/m³</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                    <td style={{ padding: '7px 8px', fontWeight: 'bold' }}>Reactivity (<InlineMath math="\rho" />)</td>
+                    <td style={{ padding: '7px 8px' }}><InlineMath math="\Delta k / k" /></td>
+                    <td style={{ padding: '7px 8px', fontFamily: 'monospace' }}>1 pcm = 10⁻⁵ Δk/k | 1 $ = β_eff (≈ 650 pcm U-235)</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                    <td style={{ padding: '7px 8px', fontWeight: 'bold' }}>Microscopic Cross-Section (<InlineMath math="\sigma" />)</td>
+                    <td style={{ padding: '7px 8px' }}>Barn (<InlineMath math="\text{b}" />)</td>
+                    <td style={{ padding: '7px 8px', fontFamily: 'monospace' }}>1 barn = 10⁻²⁴ cm² = 10⁻²⁸ m²</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                    <td style={{ padding: '7px 8px', fontWeight: 'bold' }}>Explosive Yield (<InlineMath math="W" />)</td>
+                    <td style={{ padding: '7px 8px' }}>Kiloton TNT (<InlineMath math="\text{kt}" />)</td>
+                    <td style={{ padding: '7px 8px', fontFamily: 'monospace' }}>1 kt TNT = 4.184 × 10¹² J ≈ 1.45 × 10²³ fissions</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                    <td style={{ padding: '7px 8px', fontWeight: 'bold' }}>Blast Overpressure (<InlineMath math="\Delta P" />)</td>
+                    <td style={{ padding: '7px 8px' }}>Kilopascal (<InlineMath math="\text{kPa}" />)</td>
+                    <td style={{ padding: '7px 8px', fontFamily: 'monospace' }}>1 psi = 6.89476 kPa | 1 atm = 101.325 kPa</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* ICRP Publication 103 Radiation & Tissue Weighting Factors */}
+          <div className="panel">
+            <h3 style={{ marginTop: 0, color: '#00e5ff' }}>🛡️ ICRP Publication 103 (2007) Radiation (<InlineMath math="w_R" />) &amp; Tissue (<InlineMath math="w_T" />) Weighting Factors</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: '20px', marginTop: '12px' }}>
+              <div>
+                <h4 style={{ fontSize: '0.88rem', color: 'var(--color-primary)', textTransform: 'uppercase', marginBottom: '8px' }}>
+                  Table 2: Radiation Weighting Factors (<InlineMath math="H_T = \sum_R w_R D_{T,R}" />)
+                </h4>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.83rem' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid var(--color-border)', color: 'var(--color-primary)' }}>
+                      <th style={{ padding: '8px', textAlign: 'left' }}>Radiation Type</th>
+                      <th style={{ padding: '8px', textAlign: 'left' }}>Weighting Factor <InlineMath math="w_R" /></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                      <td style={{ padding: '7px 8px' }}>Photons (X-rays, <InlineMath math="\gamma" />-rays, bremsstrahlung, all energies)</td>
+                      <td style={{ padding: '7px 8px', fontWeight: 'bold', color: '#00e5ff' }}>1.0</td>
+                    </tr>
+                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                      <td style={{ padding: '7px 8px' }}>Electrons (<InlineMath math="\beta^\pm" />, Auger, internal conversion) and Muons</td>
+                      <td style={{ padding: '7px 8px', fontWeight: 'bold', color: '#00e5ff' }}>1.0</td>
+                    </tr>
+                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                      <td style={{ padding: '7px 8px' }}>Protons and charged pions</td>
+                      <td style={{ padding: '7px 8px', fontWeight: 'bold', color: '#00e5ff' }}>2.0</td>
+                    </tr>
+                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                      <td style={{ padding: '7px 8px' }}>Alpha particles (<InlineMath math="\alpha" />), fission fragments, heavy ions</td>
+                      <td style={{ padding: '7px 8px', fontWeight: 'bold', color: '#f59e0b' }}>20.0</td>
+                    </tr>
+                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                      <td style={{ padding: '7px 8px' }}>Neutrons (<InlineMath math="E_n < 1\text{ MeV}" />)</td>
+                      <td style={{ padding: '7px 8px', color: '#00e5ff' }}><InlineMath math="2.5 + 18.2\exp\!\left[-(\ln E_n)^2 / 6\right]" /></td>
+                    </tr>
+                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                      <td style={{ padding: '7px 8px' }}>Neutrons (<InlineMath math="1\text{ MeV} \le E_n \le 50\text{ MeV}" />)</td>
+                      <td style={{ padding: '7px 8px', color: '#00e5ff' }}><InlineMath math="5.0 + 17.0\exp\!\left[-(\ln(2E_n))^2 / 6\right]" /></td>
+                    </tr>
+                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                      <td style={{ padding: '7px 8px' }}>Neutrons (<InlineMath math="E_n > 50\text{ MeV}" />)</td>
+                      <td style={{ padding: '7px 8px', color: '#00e5ff' }}><InlineMath math="2.5 + 3.25\exp\!\left[-(\ln(0.04E_n))^2 / 6\right]" /></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div>
+                <h4 style={{ fontSize: '0.88rem', color: 'var(--color-primary)', textTransform: 'uppercase', marginBottom: '8px' }}>
+                  Table 3: Tissue Weighting Factors (<InlineMath math="E = \sum_T w_T H_T,\; \sum w_T = 1.00" />)
+                </h4>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.83rem' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid var(--color-border)', color: 'var(--color-primary)' }}>
+                      <th style={{ padding: '8px', textAlign: 'left' }}>Organ / Tissue Group</th>
+                      <th style={{ padding: '8px', textAlign: 'left' }}><InlineMath math="w_T" /></th>
+                      <th style={{ padding: '8px', textAlign: 'left' }}><InlineMath math="\sum w_T" /></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                      <td style={{ padding: '7px 8px' }}>Red bone-marrow, Colon, Lung, Stomach, Breast, Remainder tissues (13 organs)</td>
+                      <td style={{ padding: '7px 8px', fontWeight: 'bold', color: '#00e5ff' }}>0.12</td>
+                      <td style={{ padding: '7px 8px', fontFamily: 'monospace' }}>0.72</td>
+                    </tr>
+                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                      <td style={{ padding: '7px 8px' }}>Gonads (heritable stochastic risk)</td>
+                      <td style={{ padding: '7px 8px', fontWeight: 'bold', color: '#00e5ff' }}>0.08</td>
+                      <td style={{ padding: '7px 8px', fontFamily: 'monospace' }}>0.08</td>
+                    </tr>
+                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                      <td style={{ padding: '7px 8px' }}>Bladder, Oesophagus, Liver, Thyroid</td>
+                      <td style={{ padding: '7px 8px', fontWeight: 'bold', color: '#00e5ff' }}>0.04</td>
+                      <td style={{ padding: '7px 8px', fontFamily: 'monospace' }}>0.16</td>
+                    </tr>
+                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                      <td style={{ padding: '7px 8px' }}>Bone surface, Brain, Salivary glands, Skin</td>
+                      <td style={{ padding: '7px 8px', fontWeight: 'bold', color: '#00e5ff' }}>0.01</td>
+                      <td style={{ padding: '7px 8px', fontFamily: 'monospace' }}>0.04</td>
+                    </tr>
+                    <tr style={{ borderTop: '1px solid var(--color-border)', background: 'rgba(0, 229, 255, 0.05)' }}>
+                      <td style={{ padding: '7px 8px', fontWeight: 'bold' }}>Total Whole-Body Effective Dose Normalization</td>
+                      <td style={{ padding: '7px 8px' }}>—</td>
+                      <td style={{ padding: '7px 8px', fontWeight: 'bold', color: '#00e5ff', fontFamily: 'monospace' }}>1.00</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Master Peer-Reviewed Bibliography & Standards Register (Full View or Tab) */}
       {(activeTab === 'standards' || activeTab === 'current') && (
         <div className="panel" style={{ marginTop: activeTab === 'current' ? '15px' : '0' }}>
-          <h3>Master Scientific Bibliography & International Standards Register</h3>
+          <h3>Master Scientific Bibliography &amp; International Standards Register</h3>
           <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', marginBottom: '15px' }}>
             The mathematical and physical models in RadPro Analyst are certified against the following international regulatory authorities, technical consensus reports, and academic treatises.
           </p>
@@ -2155,7 +2608,7 @@ const LiteratureModule: React.FC = () => {
                   <td style={{ padding: '10px' }}>ICRP</td>
                   <td style={{ padding: '10px' }}>2007</td>
                   <td style={{ padding: '10px' }}>The 2007 Recommendations of the International Commission on Radiological Protection</td>
-                  <td style={{ padding: '10px', color: 'var(--color-text-muted)' }}>System of radiological protection, occupational and public dose limits, tissue weighting factors.</td>
+                  <td style={{ padding: '10px', color: 'var(--color-text-muted)' }}>System of radiological protection, occupational and public dose limits, w_R(E_n) and tissue weighting factors w_T.</td>
                 </tr>
                 <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                   <td style={{ padding: '10px', fontWeight: 'bold', color: '#00E5FF' }}>IAEA SSR-6 (Rev. 1)</td>
@@ -2176,7 +2629,7 @@ const LiteratureModule: React.FC = () => {
                   <td style={{ padding: '10px' }}>NRC / EPA / DOE / DOD</td>
                   <td style={{ padding: '10px' }}>2000</td>
                   <td style={{ padding: '10px' }}>Multi-Agency Radiation Survey and Site Investigation Manual (Rev. 1)</td>
-                  <td style={{ padding: '10px', color: 'var(--color-text-muted)' }}>Nonparametric statistical testing (WRS & Sign), Currie detection limits (MDA/MDC), and site release surveys.</td>
+                  <td style={{ padding: '10px', color: 'var(--color-text-muted)' }}>Nonparametric statistical testing (WRS &amp; Sign), Currie detection limits (MDA/MDC), and site release surveys.</td>
                 </tr>
                 <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                   <td style={{ padding: '10px', fontWeight: 'bold', color: '#00E5FF' }}>ISO 11929-1:2019</td>
@@ -2266,7 +2719,7 @@ const LiteratureModule: React.FC = () => {
                   <td style={{ padding: '10px', fontWeight: 'bold', color: '#00E5FF' }}>ASME BPVC Sec. V T-274.1</td>
                   <td style={{ padding: '10px' }}>ASME</td>
                   <td style={{ padding: '10px' }}>2023</td>
-                  <td style={{ padding: '10px' }}>Boiler & Pressure Vessel Code, Section V, Article 2, Table T-274.1</td>
+                  <td style={{ padding: '10px' }}>Boiler &amp; Pressure Vessel Code, Section V, Article 2, Table T-274.1</td>
                   <td style={{ padding: '10px', color: 'var(--color-text-muted)' }}>Maximum geometric unsharpness (Ug) limits (0.51 mm to 1.78 mm) as function of weld thickness.</td>
                 </tr>
                 <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
@@ -2284,7 +2737,7 @@ const LiteratureModule: React.FC = () => {
                   <td style={{ padding: '10px', color: 'var(--color-text-muted)' }}>Photon stochastic transport micro-kernel, Kahn Klein-Nishina rejection sampling, Woodcock tracking.</td>
                 </tr>
                 <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                  <td style={{ padding: '10px', fontWeight: 'bold', color: '#00E5FF' }}>Klein & Nishina (1929)</td>
+                  <td style={{ padding: '10px', fontWeight: 'bold', color: '#00E5FF' }}>Klein &amp; Nishina (1929)</td>
                   <td style={{ padding: '10px' }}>Z. Phys.</td>
                   <td style={{ padding: '10px' }}>1929</td>
                   <td style={{ padding: '10px' }}>Über die Streuung von Strahlung durch freie Elektronen nach der neuen relativistischen Quantendynamik von Dirac</td>
@@ -2315,7 +2768,7 @@ const LiteratureModule: React.FC = () => {
                   <td style={{ padding: '10px', fontWeight: 'bold', color: '#00E5FF' }}>NATO STANAG 2470</td>
                   <td style={{ padding: '10px' }}>NATO / Military</td>
                   <td style={{ padding: '10px' }}>2019</td>
-                  <td style={{ padding: '10px' }}>AMedP-7.1 Commander's Guide on Radiation Protection in Military Operations</td>
+                  <td style={{ padding: '10px' }}>AMedP-7.1 Commander&apos;s Guide on Radiation Protection in Military Operations</td>
                   <td style={{ padding: '10px', color: 'var(--color-text-muted)' }}>Military tactical Operational Exposure Guidance (OEG 1: 0.05 Gy, OEG 2: 0.25 Gy, OEG 3: 0.70 Gy).</td>
                 </tr>
                 <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
@@ -2329,7 +2782,7 @@ const LiteratureModule: React.FC = () => {
                   <td style={{ padding: '10px', fontWeight: 'bold', color: '#00E5FF' }}>IAEA INES Manual</td>
                   <td style={{ padding: '10px' }}>IAEA / OECD-NEA</td>
                   <td style={{ padding: '10px' }}>2008</td>
-                  <td style={{ padding: '10px' }}>The International Nuclear and Radiological Event Scale User's Manual</td>
+                  <td style={{ padding: '10px' }}>The International Nuclear and Radiological Event Scale User&apos;s Manual</td>
                   <td style={{ padding: '10px', color: 'var(--color-text-muted)' }}>INES severity Levels 1 through 7, radiotoxicity equivalence multipliers normalized to Iodine-131.</td>
                 </tr>
                 <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
@@ -2368,11 +2821,18 @@ const LiteratureModule: React.FC = () => {
                   <td style={{ padding: '10px', color: 'var(--color-text-muted)' }}>Dicentric chromosome aberration calibration curves (linear-quadratic yield) and mass casualty biodosimetry triage.</td>
                 </tr>
                 <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                  <td style={{ padding: '10px', fontWeight: 'bold', color: '#00E5FF' }}>Glasstone & Dolan (1977)</td>
+                  <td style={{ padding: '10px', fontWeight: 'bold', color: '#00E5FF' }}>Glasstone &amp; Dolan (1977)</td>
                   <td style={{ padding: '10px' }}>US DoD / ERDA</td>
                   <td style={{ padding: '10px' }}>1977</td>
                   <td style={{ padding: '10px' }}>The Effects of Nuclear Weapons (3rd Edition)</td>
-                  <td style={{ padding: '10px', color: 'var(--color-text-muted)' }}>Blast overpressure scaling, thermal radiant exposure, prompt radiation flash attenuation, and dynamic pressure.</td>
+                  <td style={{ padding: '10px', color: 'var(--color-text-muted)' }}>Blast overpressure scaling, Height-of-Burst Mach stem enhancement, thermal exposure, and prompt radiation flash.</td>
+                </tr>
+                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  <td style={{ padding: '10px', fontWeight: 'bold', color: '#00E5FF' }}>PNE-242F (Project Sedan)</td>
+                  <td style={{ padding: '10px' }}>US AEC / Lawrence Livermore</td>
+                  <td style={{ padding: '10px' }}>1962</td>
+                  <td style={{ padding: '10px' }}>Project Sedan: 104 kt Thermonuclear Excavation Experiment (Nordyke Scaling)</td>
+                  <td style={{ padding: '10px', color: 'var(--color-text-muted)' }}>Sub-surface Scaled Depth of Burst (SDOB), throwout crater radius, cavity camouflet containment, and venting fraction.</td>
                 </tr>
                 <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                   <td style={{ padding: '10px', fontWeight: 'bold', color: '#00E5FF' }}>Kingery-Bulmash (BRL-1972)</td>
@@ -2408,6 +2868,34 @@ const LiteratureModule: React.FC = () => {
                   <td style={{ padding: '10px' }}>2009</td>
                   <td style={{ padding: '10px' }}>Cursor-on-Target XML Schema and Mesh Protocol Specification</td>
                   <td style={{ padding: '10px', color: 'var(--color-text-muted)' }}>Tactical machine-to-machine geospatial radiation telemetry (a-f-G-U-C-rad) and WinTAK/ATAK inter-agency sensor situational awareness.</td>
+                </tr>
+                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  <td style={{ padding: '10px', fontWeight: 'bold', color: '#00E5FF' }}>NUREG/CR-6673</td>
+                  <td style={{ padding: '10px' }}>US NRC / ANL</td>
+                  <td style={{ padding: '10px' }}>2000</td>
+                  <td style={{ padding: '10px' }}>Hydrogen Generation in TRU Waste Transportation Packages</td>
+                  <td style={{ padding: '10px', color: 'var(--color-text-muted)' }}>Radiolytic G(H₂) water decomposition yields, headspace accumulation kinetics, and 4% Lower Flammability Limit (LFL) time-to-reach.</td>
+                </tr>
+                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  <td style={{ padding: '10px', fontWeight: 'bold', color: '#00E5FF' }}>FAA CARI-7A</td>
+                  <td style={{ padding: '10px' }}>US FAA / CAMI</td>
+                  <td style={{ padding: '10px' }}>2019</td>
+                  <td style={{ padding: '10px' }}>Galactic Cosmic Ray Aviation Dosimetry Model</td>
+                  <td style={{ padding: '10px', color: 'var(--color-text-muted)' }}>Barometric altitude e-folding scale height (L = 135 g/cm²) and geomagnetic cutoff rigidity modulation for aircrew dose.</td>
+                </tr>
+                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  <td style={{ padding: '10px', fontWeight: 'bold', color: '#00E5FF' }}>MIRD Pamphlet No. 21</td>
+                  <td style={{ padding: '10px' }}>SNMMI / MIRD</td>
+                  <td style={{ padding: '10px' }}>2009</td>
+                  <td style={{ padding: '10px' }}>A Generalized Schema for Radiopharmaceutical Dosimetry (Bolch et al.)</td>
+                  <td style={{ padding: '10px', color: 'var(--color-text-muted)' }}>Time-integrated activity (TIA), S-value phantom matrices, and Lea-Catcheside Biologically Effective Dose (BED) for Lu-177 / Ac-225.</td>
+                </tr>
+                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  <td style={{ padding: '10px', fontWeight: 'bold', color: '#00E5FF' }}>IAEA FENDL-3.2</td>
+                  <td style={{ padding: '10px' }}>IAEA Nuclear Data Section</td>
+                  <td style={{ padding: '10px' }}>2021</td>
+                  <td style={{ padding: '10px' }}>Fusion Evaluated Nuclear Data Library (D-T 14.1 MeV Neutronics)</td>
+                  <td style={{ padding: '10px', color: 'var(--color-text-muted)' }}>14.1 MeV D-T fusion kinematics, Lawson triple product ignition criteria, and Li-6/Li-7 Tritium Breeding Ratio (TBR).</td>
                 </tr>
               </tbody>
             </table>
