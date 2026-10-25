@@ -454,6 +454,70 @@ const tests = [
     },
     tolerance: 0.01,
     units: 'px (Marker Radius)'
+  },
+  {
+    id: 'VTEST-36',
+    name: 'ANSI/ANS-6.4.3-1991 Geometric Progression (GP) 5-Parameter Buildup Factor (Water 1.0 MeV, 10 mfp)',
+    module: 'Module 1B / 14 (Shielding & Buildup)',
+    standard: 'ANSI/ANS-6.4.3-1991 Table 6.4.3-1 (Harima GP Formulation)',
+    expected: 42.7485,
+    compute: () => {
+      const b = 2.13, c = 1.15, a = 0.044, Xk = 13.7, d = -0.025, x = 10.0;
+      const t0 = Math.tanh(-2.0);
+      const tx = Math.tanh(x / Xk - 2.0);
+      const K = c * Math.pow(x, a) + (d * (tx - t0)) / (1.0 - t0);
+      return 1.0 + ((b - 1.0) * (Math.pow(K, x) - 1.0)) / (K - 1.0);
+    },
+    tolerance: 0.01,
+    units: 'Buildup Factor B_GP'
+  },
+  {
+    id: 'VTEST-37',
+    name: 'NIST XCOM Lead K-Shell Photoelectric Absorption Edge Jump Ratio (88.005 keV)',
+    module: 'Module 1B / 14 (NIST XCOM Cross-Sections)',
+    standard: 'NIST Standard Reference Database 8 (XCOM / Hubbell & Seltzer)',
+    expected: 4.0209,
+    compute: () => {
+      const muRhoPreK = 1.910;  // cm2/g at 88.004 keV
+      const muRhoPostK = 7.680; // cm2/g at 88.006 keV
+      return muRhoPostK / muRhoPreK;
+    },
+    tolerance: 0.01,
+    units: 'Jump Ratio J_K'
+  },
+  {
+    id: 'VTEST-38',
+    name: 'Turner (1964) / EPA-454/R-99-005 Solar Insolation & Wind Speed Pasquill Stability Classification',
+    module: 'Module 6 / 11 (Live Meteorology & Plume Dispersion)',
+    standard: 'EPA-454/R-99-005 Table 6-1 / Turner (1964) Journal of Applied Meteorology',
+    expected: 200.0000,
+    compute: () => {
+      const windSpeed10m = 2.5; // m/s (2-3 m/s band)
+      const solarWm2 = 680.0;   // >= 600 W/m2 -> Strong Insolation
+      const stabilityClass = (solarWm2 >= 600 && windSpeed10m < 3.0) ? 'A' : 'D';
+      const xMeters = 1000.0;
+      return stabilityClass === 'A' ? 0.20 * xMeters : 0.06 * xMeters / Math.sqrt(1 + 0.0015 * xMeters);
+    },
+    tolerance: 0.01,
+    units: 'm (σ_z at 1 km)'
+  },
+  {
+    id: 'VTEST-39',
+    name: 'Mariscotti (1967) Generalized Second-Difference Photopeak Significance (Z_Mariscotti)',
+    module: 'Module 28 (Gamma Spectroscopy MCA & ANSI N42.42)',
+    standard: 'Mariscotti M.A. (1967) NIM 50(2):309-320 / IEEE Std 325',
+    expected: 16.8496,
+    compute: () => {
+      const B = 100.0;
+      const A = 2500.0;
+      const nCenter = B + A;
+      const nSide = B + A * Math.exp(-0.5);
+      const negSecondDiff = 2.0 * nCenter - 2.0 * nSide;
+      const sigmaSecondDiff = Math.sqrt(nSide + 4.0 * nCenter + nSide);
+      return negSecondDiff / sigmaSecondDiff;
+    },
+    tolerance: 0.01,
+    units: 'σ (Peak Significance)'
   }
 ];
 

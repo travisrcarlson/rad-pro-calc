@@ -1,9 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import VerificationBadge from '../../components/VerificationBadge';
 import PlotComponent from 'react-plotly.js';
 import { BlockMath } from 'react-katex';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
+import { parseMarssimSurveyCsv, generateSampleMarssimCsv } from '../../utils/spectrumAndSurveyParsers';
 
 const Plot = (PlotComponent as any).default || PlotComponent;
 
@@ -234,7 +235,45 @@ const MARSSIMModule: React.FC = () => {
   // --- STATE FOR HYPOTHESIS DECISION ENGINE (TAB 3) ---
   const [datasetString, setDatasetString] = useState<string>('2400, 3100, 1850, 4200, 2900, 3300, 4800, 2100, 3650, 2750, 3900, 1950, 3200, 2600');
   const [refDatasetString, setRefDatasetString] = useState<string>('35, 42, 38, 55, 40, 48, 52, 39, 44, 46, 50, 37');
+  const [csvImportStatus, setCsvImportStatus] = useState<string | null>(null);
+  const csvFileInputRef = useRef<HTMLInputElement | null>(null);
   const [isDossierOpen, setIsDossierOpen] = useState<boolean>(false);
+
+  const handleMarssimCsvUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const text = String(ev.target?.result || '');
+      const parsed = parseMarssimSurveyCsv(text);
+      if (parsed.suValues.length > 0) {
+        setDatasetString(parsed.suValues.join(', '));
+      }
+      if (parsed.refValues.length > 0) {
+        setRefDatasetString(parsed.refValues.join(', '));
+      }
+      setCsvImportStatus(`Ingested "${file.name}": ${parsed.suValues.length} Survey Unit (SU) points & ${parsed.refValues.length} Reference (REF) points.`);
+    };
+    reader.readAsText(file);
+  };
+
+  const handleExportMarssimCsv = () => {
+    const suVals = datasetString.split(',').map(s => parseFloat(s.trim())).filter(n => !isNaN(n));
+    const refVals = refDatasetString.split(',').map(s => parseFloat(s.trim())).filter(n => !isNaN(n));
+    const rows = [
+      '# MARSSIM NUREG-1575 Final Status Survey (FSS) Export',
+      'sample_id,area_type,activity_value,x_m,y_m',
+      ...suVals.map((v, i) => `FSS-${String(i + 1).padStart(2, '0')},SU,${v},${((i % 5) * 2.5 + 1.2).toFixed(1)},${(Math.floor(i / 5) * 2.2 + 1.1).toFixed(1)}`),
+      ...refVals.map((v, i) => `REF-${String(i + 1).padStart(2, '0')},REF,${v},0.0,0.0`)
+    ];
+    const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `MARSSIM_FSS_Class${classType}_${testType}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
 
   // 1. CALCULATIONS: CURRIE DETECTION LIMITS
   const detectionLimits = useMemo(() => {
@@ -1043,18 +1082,59 @@ const MARSSIMModule: React.FC = () => {
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
+            <input
+              ref={csvFileInputRef}
+              type="file"
+              accept=".csv,.txt,.tsv"
+              style={{ display: 'none' }}
+              onChange={handleMarssimCsvUpload}
+            />
+
+            {csvImportStatus && (
+              <div style={{ marginTop: '10px', padding: '8px 10px', background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.4)', borderRadius: '6px', color: '#10b981', fontSize: '0.8rem' }}>
+                ✓ {csvImportStatus}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '15px' }}>
               <button
                 className="btn btn-primary"
-                style={{ flex: 1, fontSize: '0.85rem' }}
+                style={{ flex: '1 1 180px', fontSize: '0.8rem' }}
+                onClick={() => csvFileInputRef.current?.click()}
+              >
+                📂 Import Survey CSV
+              </button>
+              <button
+                className="btn btn-secondary"
+                style={{ flex: '1 1 180px', fontSize: '0.8rem', borderColor: '#10b981', color: '#10b981' }}
                 onClick={() => {
-                  // Quick synthetic dataset generation
+                  const csv = generateSampleMarssimCsv(dcglW);
+                  const parsed = parseMarssimSurveyCsv(csv);
+                  setDatasetString(parsed.suValues.join(', '));
+                  setRefDatasetString(parsed.refValues.join(', '));
+                  setCsvImportStatus(`Loaded NUREG-1575 Reference FSS CSV (${parsed.suValues.length} SU & ${parsed.refValues.length} REF samples).`);
+                }}
+              >
+                📥 Load NUREG-1575 Reference CSV
+              </button>
+              <button
+                className="btn btn-secondary"
+                style={{ flex: '1 1 140px', fontSize: '0.8rem' }}
+                onClick={handleExportMarssimCsv}
+              >
+                💾 Export CSV
+              </button>
+              <button
+                className="btn btn-primary"
+                style={{ flex: '1 1 160px', fontSize: '0.8rem' }}
+                onClick={() => {
                   const count = surveyPlanning.recommendedN;
-                  const synth = Array.from({ length: count }, () => {
-                    const val = lbgr * 0.95 + (Math.random() - 0.5) * sigma * 1.4;
+                  const synth = Array.from({ length: count }, (_, idx) => {
+                    const val = lbgr * 0.95 + Math.sin(idx * 4.13) * sigma * 0.65;
                     return Math.max(10, Math.round(val));
                   });
                   setDatasetString(synth.join(', '));
+                  setCsvImportStatus(null);
                 }}
               >
                 🎲 Generate Synthetic Data

@@ -5,10 +5,15 @@ import PlotComponent from 'react-plotly.js';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
 import { VisualDetonationSimulator } from './VisualDetonationSimulator';
+import {
+  fetchAndComputeTerrainShadowing,
+  REFERENCE_MET_SITES,
+  type TerrainShadowTransectResult
+} from '../../utils/liveMeteoAndTerrain';
 
 const Plot = (PlotComponent as any).default || PlotComponent;
 
-export type NukeTab = 'visual_detonation' | 'blast' | 'thermal' | 'prompt_rad' | 'hemp' | 'cordon_summary';
+export type NukeTab = 'visual_detonation' | 'blast' | 'thermal' | 'prompt_rad' | 'terrain_shadow' | 'hemp' | 'cordon_summary';
 
 interface WeaponPreset {
   id: string;
@@ -45,7 +50,33 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
   const [atmosphericVisibilityKm, setAtmosphericVisibilityKm] = useState<number>(20);
   const [targetDistanceKm, setTargetDistanceKm] = useState<number>(2.0);
   const [hydratedDetonationName, setHydratedDetonationName] = useState<string | null>(null);
+  const [terrainSiteId, setTerrainSiteId] = useState<string>('punggye');
+  const [terrainLat, setTerrainLat] = useState<number>(41.2980);
+  const [terrainLon, setTerrainLon] = useState<number>(129.0780);
+  const [terrainBearingDeg, setTerrainBearingDeg] = useState<number>(135);
+  const [terrainTransect, setTerrainTransect] = useState<TerrainShadowTransectResult | null>(null);
+  const [isFetchingTerrain, setIsFetchingTerrain] = useState<boolean>(false);
   const [isDossierOpen, setIsDossierOpen] = useState<boolean>(false);
+
+  const handleComputeTerrainTransect = async (
+    lat = terrainLat,
+    lon = terrainLon,
+    brg = terrainBearingDeg,
+    hob = burstAltitudeM
+  ) => {
+    setIsFetchingTerrain(true);
+    try {
+      const maxDist = Math.max(5.0, Math.min(40.0, targetDistanceKm * 3.0));
+      const res = await fetchAndComputeTerrainShadowing(lat, lon, brg, maxDist, hob);
+      setTerrainTransect(res);
+    } finally {
+      setIsFetchingTerrain(false);
+    }
+  };
+
+  useEffect(() => {
+    handleComputeTerrainTransect(terrainLat, terrainLon, terrainBearingDeg, burstAltitudeM);
+  }, [terrainLat, terrainLon, terrainBearingDeg, burstAltitudeM, targetDistanceKm]);
   const initialCityPresetId = useMemo(() => {
     return searchParams.get('city') || searchParams.get('preset') || undefined;
   }, [searchParams]);
@@ -838,6 +869,25 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
         </button>
 
         <button
+          className={`nav-link ${activeTab === 'terrain_shadow' ? 'active' : ''}`}
+          style={{
+            background: 'none',
+            borderTop: 'none',
+            borderLeft: 'none',
+            borderRight: 'none',
+            cursor: 'pointer',
+            padding: '10px 16px',
+            fontSize: '0.9rem',
+            borderBottom: activeTab === 'terrain_shadow' ? '2px solid #10b981' : 'none',
+            color: activeTab === 'terrain_shadow' ? '#10b981' : 'var(--color-text-muted)',
+            fontWeight: activeTab === 'terrain_shadow' ? 'bold' : 'normal'
+          }}
+          onClick={() => setActiveTab('terrain_shadow')}
+        >
+          🏔️ Topographic Terrain Ray-Shadowing (DEM)
+        </button>
+
+        <button
           className={`nav-link ${activeTab === 'hemp' ? 'active' : ''}`}
           style={{
             background: 'none',
@@ -1083,6 +1133,151 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
                 <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>50% lethal dose without specialized medical care</div>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 3B: TOPOGRAPHIC TERRAIN LINE-OF-SIGHT RAY-SHADOWING & DEM TRANSECT */}
+      {/* ========================================================================= */}
+      {activeTab === 'terrain_shadow' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div className="panel" style={{ padding: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '14px' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', color: '#10b981' }}>
+                  🏔️ Topographic DEM Line-of-Sight (LOS) Fireball Ray-Shadowing &amp; Ridge Reflection
+                </h3>
+                <p style={{ margin: '4px 0 0 0', fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>
+                  Samples real-world SRTM / Copernicus Digital Elevation Model (DEM) profiles along a radial bearing from Ground Zero. Intervening ridges cast line-of-sight shadows that block direct thermal flash (×0.04) and prompt radiation (×0.12), while forward slopes amplify Mach airblast reflection.
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <select
+                  className="form-control"
+                  value={terrainSiteId}
+                  onChange={e => {
+                    const id = e.target.value;
+                    setTerrainSiteId(id);
+                    const found = REFERENCE_MET_SITES.find(s => s.id === id);
+                    if (found) {
+                      setTerrainLat(found.latitude);
+                      setTerrainLon(found.longitude);
+                    }
+                  }}
+                  style={{ fontSize: '0.8rem', width: '240px', padding: '5px 8px' }}
+                >
+                  {REFERENCE_MET_SITES.map(s => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.78rem' }}>
+                  <span>Bearing:</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="359"
+                    step="15"
+                    className="form-control"
+                    value={terrainBearingDeg}
+                    onChange={e => setTerrainBearingDeg(Math.max(0, Math.min(359, Number(e.target.value) || 0)))}
+                    style={{ width: '70px', fontSize: '0.8rem', padding: '4px 6px' }}
+                  />
+                  <span>deg</span>
+                </div>
+                <button
+                  className="btn btn-primary"
+                  style={{ fontSize: '0.78rem', padding: '6px 12px' }}
+                  disabled={isFetchingTerrain}
+                  onClick={() => handleComputeTerrainTransect(terrainLat, terrainLon, terrainBearingDeg, burstAltitudeM)}
+                >
+                  {isFetchingTerrain ? '⏳ Sampling DEM...' : '🛰️ Re-Sample SRTM Elevation'}
+                </button>
+              </div>
+            </div>
+
+            {terrainTransect && (
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '16px' }}>
+                  <div style={{ background: 'rgba(16, 185, 129, 0.08)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(16, 185, 129, 0.35)' }}>
+                    <div style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)' }}>GROUND ZERO ELEVATION</div>
+                    <div style={{ fontSize: '1.35rem', fontWeight: 'bold', color: '#10b981' }}>
+                      {terrainTransect.groundZeroElevationM} m MSL
+                    </div>
+                    <div style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)' }}>
+                      Source: {terrainTransect.sourceMode === 'LIVE_SRTM_DEM' ? 'Live SRTM / COP-DEM' : 'Analytical Ridge DEM'}
+                    </div>
+                  </div>
+
+                  <div style={{ background: 'rgba(0, 229, 255, 0.08)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(0, 229, 255, 0.35)' }}>
+                    <div style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)' }}>FIREBALL ABSOLUTE ALTITUDE</div>
+                    <div style={{ fontSize: '1.35rem', fontWeight: 'bold', color: '#00e5ff' }}>
+                      {terrainTransect.burstAbsoluteElevationM} m MSL
+                    </div>
+                    <div style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)' }}>
+                      HOB: {burstAltitudeM >= 0 ? `+${burstAltitudeM} m AGL` : `${burstAltitudeM} m Sub-Surface`}
+                    </div>
+                  </div>
+
+                  <div style={{ background: 'rgba(245, 158, 11, 0.08)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(245, 158, 11, 0.35)' }}>
+                    <div style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)' }}>TERRAIN-SHADOWED FRACTION</div>
+                    <div style={{ fontSize: '1.35rem', fontWeight: 'bold', color: '#f59e0b' }}>
+                      {terrainTransect.shadowedFractionPct.toFixed(1)}% of Transect
+                    </div>
+                    <div style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)' }}>
+                      {terrainTransect.firstShadowStartKm !== null
+                        ? `First ridge shadow at ${terrainTransect.firstShadowStartKm.toFixed(2)} km`
+                        : '100% Exposed (Airburst clears all ridges)'}
+                    </div>
+                  </div>
+                </div>
+
+                <Plot
+                  data={[
+                    {
+                      x: terrainTransect.points.map(p => p.distanceKm),
+                      y: terrainTransect.points.map(p => p.groundElevationM),
+                      type: 'scatter',
+                      mode: 'lines',
+                      name: 'Topographic Ground Profile (m MSL)',
+                      fill: 'tozeroy',
+                      fillcolor: 'rgba(16, 185, 129, 0.2)',
+                      line: { color: '#10b981', width: 2.5 }
+                    },
+                    {
+                      x: terrainTransect.points.map(p => p.distanceKm),
+                      y: terrainTransect.points.map(p => p.lineOfSightRayHeightM),
+                      type: 'scatter',
+                      mode: 'lines',
+                      name: 'Limiting Fireball Line-of-Sight Horizon Ray',
+                      line: { color: '#f59e0b', width: 2, dash: 'dash' }
+                    },
+                    {
+                      x: terrainTransect.points.filter(p => p.isShadowed).map(p => p.distanceKm),
+                      y: terrainTransect.points.filter(p => p.isShadowed).map(p => p.groundElevationM),
+                      type: 'scatter',
+                      mode: 'markers',
+                      name: 'Terrain-Shadowed Zone (Thermal ×0.04, Gamma ×0.12)',
+                      marker: { color: '#ef4444', size: 8, symbol: 'x' }
+                    }
+                  ]}
+                  layout={{
+                    autosize: true,
+                    height: 360,
+                    margin: { l: 60, r: 25, t: 25, b: 45 },
+                    paper_bgcolor: 'transparent',
+                    plot_bgcolor: 'transparent',
+                    font: { color: 'var(--color-text-muted)', size: 11 },
+                    xaxis: { title: `Radial Distance Along Bearing ${terrainBearingDeg}° (km)`, gridcolor: 'rgba(255,255,255,0.06)' },
+                    yaxis: { title: 'Elevation (Meters above Sea Level)', gridcolor: 'rgba(255,255,255,0.06)' },
+                    legend: { orientation: 'h', y: -0.22 }
+                  }}
+                  style={{ width: '100%' }}
+                  config={{ responsive: true, displayModeBar: false }}
+                />
+              </>
+            )}
           </div>
         </div>
       )}

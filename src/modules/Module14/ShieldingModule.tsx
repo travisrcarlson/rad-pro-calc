@@ -4,107 +4,18 @@ import PlotComponent from 'react-plotly.js';
 import { BlockMath } from 'react-katex';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
+import {
+  XCOM_GP_MATERIALS,
+  evaluateXCOMAttenuation,
+  evaluateGPBuildup,
+  evaluateMultiLayerBuildup,
+  solveBroadBeamThicknessCm,
+  type BuildupModelType
+} from '../../utils/xcomAndGpBuildup';
 
 const Plot = (PlotComponent as any).default || PlotComponent;
 
 export type ShieldTab = 'layers' | 'buildup' | 'solver' | 'physics';
-
-interface ShieldMaterialData {
-  name: string;
-  symbol: string;
-  density: number; // g/cm³
-  // Energy grid in MeV: [0.015, 0.05, 0.1, 0.2, 0.5, 0.662, 1.0, 1.25, 2.0, 6.0, 10.0]
-  // Mass attenuation mu/rho in cm²/g from NIST XCOM
-  massAtten: number[];
-  // Berger buildup parameter 'a' at ~1 MeV
-  buildupA: number;
-  buildupB: number;
-}
-
-const ENERGY_GRID_MEV = [0.015, 0.05, 0.1, 0.2, 0.5, 0.662, 1.0, 1.25, 2.0, 6.0, 10.0];
-
-const MATERIALS_DATABASE: Record<string, ShieldMaterialData> = {
-  LEAD: {
-    name: 'Lead (Pb)',
-    symbol: 'Pb',
-    density: 11.34,
-    massAtten: [110.0, 8.04, 5.55, 0.999, 0.161, 0.110, 0.071, 0.059, 0.046, 0.044, 0.050],
-    buildupA: 0.65,
-    buildupB: 0.02
-  },
-  TUNGSTEN: {
-    name: 'Tungsten (W)',
-    symbol: 'W',
-    density: 19.30,
-    massAtten: [98.2, 6.78, 4.43, 0.812, 0.138, 0.098, 0.066, 0.055, 0.043, 0.043, 0.049],
-    buildupA: 0.70,
-    buildupB: 0.02
-  },
-  DU: {
-    name: 'Depleted Uranium (DU)',
-    symbol: 'U-238',
-    density: 19.10,
-    massAtten: [125.0, 9.12, 6.10, 1.15, 0.185, 0.125, 0.079, 0.066, 0.051, 0.049, 0.056],
-    buildupA: 0.60,
-    buildupB: 0.015
-  },
-  STEEL: {
-    name: 'Carbon Steel / Iron (Fe)',
-    symbol: 'Fe',
-    density: 7.87,
-    massAtten: [24.5, 1.96, 0.370, 0.146, 0.084, 0.074, 0.0599, 0.0535, 0.0425, 0.0305, 0.0300],
-    buildupA: 1.10,
-    buildupB: 0.04
-  },
-  CONCRETE: {
-    name: 'Standard Ordinary Concrete',
-    symbol: 'Conc',
-    density: 2.35,
-    massAtten: [8.50, 0.435, 0.171, 0.124, 0.087, 0.078, 0.0637, 0.0569, 0.0445, 0.0275, 0.0230],
-    buildupA: 1.45,
-    buildupB: 0.06
-  },
-  BARITE_CONCRETE: {
-    name: 'Heavy Barite Concrete (BaSO4)',
-    symbol: 'Barite',
-    density: 3.50,
-    massAtten: [32.0, 2.45, 0.850, 0.220, 0.098, 0.085, 0.066, 0.058, 0.044, 0.032, 0.031],
-    buildupA: 1.25,
-    buildupB: 0.045
-  },
-  ALUMINUM: {
-    name: 'Aluminum (Al)',
-    symbol: 'Al',
-    density: 2.70,
-    massAtten: [12.2, 0.368, 0.170, 0.122, 0.084, 0.075, 0.0614, 0.0549, 0.0432, 0.0264, 0.0218],
-    buildupA: 1.55,
-    buildupB: 0.07
-  },
-  WATER: {
-    name: 'Water (H2O)',
-    symbol: 'H2O',
-    density: 1.00,
-    massAtten: [2.50, 0.226, 0.171, 0.137, 0.097, 0.086, 0.0707, 0.0632, 0.0494, 0.0277, 0.0222],
-    buildupA: 1.80,
-    buildupB: 0.08
-  },
-  HDPE: {
-    name: 'High-Density Polyethylene (HDPE)',
-    symbol: 'HDPE',
-    density: 0.95,
-    massAtten: [1.80, 0.210, 0.175, 0.141, 0.100, 0.089, 0.073, 0.065, 0.051, 0.028, 0.022],
-    buildupA: 1.85,
-    buildupB: 0.085
-  },
-  LEAD_GLASS: {
-    name: 'Lead Glass (5.2 g/cm³)',
-    symbol: 'Pb-Glass',
-    density: 5.20,
-    massAtten: [65.0, 4.80, 3.20, 0.600, 0.125, 0.092, 0.065, 0.056, 0.044, 0.038, 0.042],
-    buildupA: 0.85,
-    buildupB: 0.03
-  }
-};
 
 interface IsotopePreset {
   id: string;
@@ -114,14 +25,16 @@ interface IsotopePreset {
 }
 
 const ISOTOPE_PRESETS: IsotopePreset[] = [
-  { id: 'am241', name: 'Am-241 (59.5 keV)', energyMev: 0.0595, description: 'Low-energy alpha/gamma emitter. Extremely high photoelectric absorption.' },
-  { id: 'tc99m', name: 'Tc-99m (140.5 keV)', energyMev: 0.1405, description: 'Diagnostic nuclear medicine. Modest lead shielding provides near-total attenuation.' },
+  { id: 'ba133_x', name: 'Ba-133 / Pb-Edge Below (81.0 keV)', energyMev: 0.081, description: 'Just below Lead K-edge (88.005 keV) — demonstrates K-edge transmission window.' },
+  { id: 'pb_above', name: 'Above Pb K-Edge (90.0 keV)', energyMev: 0.090, description: 'Just above Lead K-edge (88.005 keV) — 4.02× surge in photoelectric absorption.' },
+  { id: 'am241', name: 'Am-241 (59.5 keV)', energyMev: 0.0595, description: 'Low-energy alpha/gamma emitter. High photoelectric absorption.' },
+  { id: 'tc99m', name: 'Tc-99m (140.5 keV)', energyMev: 0.1405, description: 'Diagnostic nuclear medicine. Above Pb & U K-edges.' },
   { id: 'i131', name: 'I-131 (364 keV)', energyMev: 0.364, description: 'Medical radioiodine therapy. Intermediate gamma energy.' },
-  { id: 'ir192', name: 'Ir-192 (380 keV avg)', energyMev: 0.380, description: 'Industrial radiography & brachytherapy.' },
+  { id: 'ir192', name: 'Ir-192 (380 keV avg)', energyMev: 0.380, description: 'Industrial radiography & HDR brachytherapy.' },
   { id: 'cs137', name: 'Cs-137 (661.7 keV)', energyMev: 0.6617, description: 'Standard industrial & irradiator reference gamma line.' },
-  { id: 'co60', name: 'Co-60 (1.25 MeV avg)', energyMev: 1.25, description: 'Teletherapy & industrial irradiator. High penetration requiring thick barriers.' },
-  { id: 'linac6', name: '6 MV Radiotherapy Linac (2.0 MeV eff)', energyMev: 2.0, description: 'Clinical linear accelerator broad spectrum.' },
-  { id: 'high10', name: 'High-Energy Bremsstrahlung (10.0 MeV)', energyMev: 10.0, description: 'Industrial radiography linac. Pair production starts dominating.' }
+  { id: 'co60', name: 'Co-60 (1.25 MeV avg)', energyMev: 1.25, description: 'Teletherapy & industrial irradiator. Compton-dominated deep penetration.' },
+  { id: 'linac6', name: '6 MV Linac (2.0 MeV eff)', energyMev: 2.0, description: 'Clinical linear accelerator broad spectrum.' },
+  { id: 'high10', name: 'High-Energy Bremsstrahlung (10.0 MeV)', energyMev: 10.0, description: 'Industrial linac. Pair production starts dominating in high-Z media.' }
 ];
 
 interface ShieldLayer {
@@ -135,45 +48,19 @@ export const ShieldingModule: React.FC = () => {
   const [selectedPresetId, setSelectedPresetId] = useState<string>('cs137');
   const [photonEnergyMev, setPhotonEnergyMev] = useState<number>(0.6617);
   const [incidentDoseRate, setIncidentDoseRate] = useState<number>(1000.0); // µSv/h
-  const [includeBuildup, setIncludeBuildup] = useState<boolean>(true);
+  const [buildupModel, setBuildupModel] = useState<BuildupModelType>('GP_ANS643');
+  const [inspectMaterialKey, setInspectMaterialKey] = useState<string>('LEAD');
   const [isDossierOpen, setIsDossierOpen] = useState<boolean>(false);
 
   // Initial multi-layer stack
   const [layers, setLayers] = useState<ShieldLayer[]>([
-    { id: 'l1', materialKey: 'LEAD', thicknessCm: 2.0 },
-    { id: 'l2', materialKey: 'CONCRETE', thicknessCm: 15.0 }
+    { id: 'l1', materialKey: 'CONCRETE', thicknessCm: 15.0 },
+    { id: 'l2', materialKey: 'LEAD', thicknessCm: 2.0 }
   ]);
 
   // Solver target limit
-  const [targetDoseLimit, setTargetDoseLimit] = useState<number>(2.5); // µSv/h (Occupational Controlled Area limit)
+  const [targetDoseLimit, setTargetDoseLimit] = useState<number>(2.5); // µSv/h
 
-  // Energy interpolation for mass attenuation coefficient
-  const getLinearAttenuation = (matKey: string, energyMev: number): { muLinear: number; muMass: number; density: number } => {
-    const mat = MATERIALS_DATABASE[matKey];
-    if (!mat) return { muLinear: 0.1, muMass: 0.05, density: 2.0 };
-
-    const e = Math.max(ENERGY_GRID_MEV[0], Math.min(ENERGY_GRID_MEV[ENERGY_GRID_MEV.length - 1], energyMev));
-    // Find grid interval
-    let idx = 0;
-    while (idx < ENERGY_GRID_MEV.length - 1 && ENERGY_GRID_MEV[idx + 1] < e) {
-      idx++;
-    }
-    const e0 = ENERGY_GRID_MEV[idx];
-    const e1 = ENERGY_GRID_MEV[idx + 1] || e0;
-    const mu0 = mat.massAtten[idx];
-    const mu1 = mat.massAtten[idx + 1] || mu0;
-
-    // Log-log interpolation
-    let muMass = mu0;
-    if (e1 > e0 && mu0 > 0 && mu1 > 0) {
-      const frac = (Math.log(e) - Math.log(e0)) / (Math.log(e1) - Math.log(e0));
-      muMass = Math.exp(Math.log(mu0) + frac * (Math.log(mu1) - Math.log(mu0)));
-    }
-    const muLinear = muMass * mat.density;
-    return { muLinear, muMass, density: mat.density };
-  };
-
-  // Handle Preset Selection
   const handleSelectPreset = (presetId: string) => {
     setSelectedPresetId(presetId);
     const p = ISOTOPE_PRESETS.find(x => x.id === presetId);
@@ -182,52 +69,83 @@ export const ShieldingModule: React.FC = () => {
     }
   };
 
-  // Stack Calculations
+  const handleReverseLayers = () => {
+    setLayers(prev => [...prev].reverse());
+  };
+
+  // Stack Calculations with ANSI/ANS-6.4.3 GP + Kalos/Broder Multi-Layer Stratification
   const stackAnalytics = useMemo(() => {
-    let currentDose = incidentDoseRate;
     let accumulatedOpticalThickness = 0;
     let totalMassArealGcm2 = 0;
     let totalThicknessCm = 0;
-    let cumulativeBuildup = 1.0;
 
-    const layerDetails = layers.map((layer, idx) => {
-      const { muLinear, muMass, density } = getLinearAttenuation(layer.materialKey, photonEnergyMev);
-      const opticalX = muLinear * layer.thicknessCm;
-      accumulatedOpticalThickness += opticalX;
-
-      const mat = MATERIALS_DATABASE[layer.materialKey];
-      // Berger buildup for this layer
-      const localBuildup = 1.0 + (mat?.buildupA || 1.0) * opticalX * Math.exp((mat?.buildupB || 0.05) * opticalX);
-      cumulativeBuildup *= Math.max(1.0, localBuildup);
-
-      const pureAtten = Math.exp(-opticalX);
-      const layerDoseOut = currentDose * pureAtten * (includeBuildup ? localBuildup : 1.0);
-      currentDose = layerDoseOut;
-
-      const layerArealDensity = density * layer.thicknessCm;
-      totalMassArealGcm2 += layerArealDensity;
-      totalThicknessCm += layer.thicknessCm;
-
-      const hvlCm = Math.LN2 / muLinear;
-      const tvlCm = Math.LN10 / muLinear;
-
+    const rawLayers = layers.map(l => {
+      const xcom = evaluateXCOMAttenuation(l.materialKey, photonEnergyMev);
+      const mfp = xcom.muLinear * l.thicknessCm;
       return {
-        ...layer,
-        index: idx + 1,
-        name: mat?.name || layer.materialKey,
-        density,
-        muLinear,
-        muMass,
-        hvlCm,
-        tvlCm,
-        opticalX,
-        arealDensityGcm2: layerArealDensity,
-        exitDose: layerDoseOut
+        ...l,
+        ...xcom,
+        mfp
       };
     });
 
-    const finalDoseRate = currentDose;
-    const totalAttenuationRatio = incidentDoseRate > 0 ? (incidentDoseRate / Math.max(1e-12, finalDoseRate)) : 1.0;
+    const multiBuildup = evaluateMultiLayerBuildup(
+      rawLayers.map(r => ({ materialKey: r.materialKey, mfp: r.mfp })),
+      photonEnergyMev,
+      buildupModel
+    );
+
+    // Also evaluate reversed stack to show Kalos stratification effect
+    const reversedRaw = [...rawLayers].reverse();
+    const reversedBuildup = evaluateMultiLayerBuildup(
+      reversedRaw.map(r => ({ materialKey: r.materialKey, mfp: r.mfp })),
+      photonEnergyMev,
+      buildupModel
+    );
+
+    const layerDetails = rawLayers.map((r, idx) => {
+      accumulatedOpticalThickness += r.mfp;
+      const layerArealDensity = r.density * r.thicknessCm;
+      totalMassArealGcm2 += layerArealDensity;
+      totalThicknessCm += r.thicknessCm;
+
+      const cumMfp = multiBuildup.cumulativeMfpByLayer[idx];
+      const cumB = multiBuildup.effectiveBuildupAtLayerExit[idx];
+      const exitDose = incidentDoseRate * cumB * Math.exp(-cumMfp);
+
+      const gpEval = evaluateGPBuildup(r.materialKey, photonEnergyMev, r.mfp);
+      const mat = XCOM_GP_MATERIALS[r.materialKey];
+
+      return {
+        id: r.id,
+        materialKey: r.materialKey,
+        thicknessCm: r.thicknessCm,
+        index: idx + 1,
+        name: mat?.name || r.materialKey,
+        symbol: mat?.symbol || r.materialKey,
+        effectiveZ: r.effectiveZ,
+        density: r.density,
+        muLinear: r.muLinear,
+        muMass: r.muMass,
+        muEnMass: r.muEnMass,
+        activeEdgeNote: r.activeEdgeNote,
+        hvlCm: Math.LN2 / r.muLinear,
+        tvlCm: Math.LN10 / r.muLinear,
+        opticalX: r.mfp,
+        cumulativeMfp: cumMfp,
+        cumulativeBuildupAtExit: cumB,
+        gpSingleLayer: gpEval,
+        arealDensityGcm2: layerArealDensity,
+        exitDose
+      };
+    });
+
+    const cumulativeBuildup = multiBuildup.totalBuildup;
+    const narrowBeamDoseRate = incidentDoseRate * Math.exp(-accumulatedOpticalThickness);
+    const finalDoseRate = narrowBeamDoseRate * cumulativeBuildup;
+    const reversedDoseRate = narrowBeamDoseRate * reversedBuildup.totalBuildup;
+
+    const totalAttenuationRatio = incidentDoseRate > 0 ? incidentDoseRate / Math.max(1e-15, finalDoseRate) : 1.0;
     const totalDecades = Math.log10(Math.max(1.0, totalAttenuationRatio));
     const structuralLoadKgM2 = totalMassArealGcm2 * 10.0;
     const structuralLoadLbFt2 = structuralLoadKgM2 * 0.204816;
@@ -235,6 +153,9 @@ export const ShieldingModule: React.FC = () => {
     return {
       layerDetails,
       finalDoseRate,
+      narrowBeamDoseRate,
+      reversedDoseRate,
+      reversedBuildupFactor: reversedBuildup.totalBuildup,
       totalThicknessCm,
       totalMassArealGcm2,
       structuralLoadKgM2,
@@ -244,74 +165,129 @@ export const ShieldingModule: React.FC = () => {
       accumulatedOpticalThickness,
       cumulativeBuildup
     };
-  }, [layers, photonEnergyMev, incidentDoseRate, includeBuildup]);
+  }, [layers, photonEnergyMev, incidentDoseRate, buildupModel]);
 
-  // Continuous penetration curve
+  // Continuous penetration curve (Broad-Beam vs Narrow-Beam)
   const depthProfile = useMemo(() => {
-    const points: { depthCm: number; doseRate: number; layerName: string }[] = [];
+    const points: { depthCm: number; broadDoseRate: number; narrowDoseRate: number; layerName: string }[] = [];
+    points.push({ depthCm: 0, broadDoseRate: incidentDoseRate, narrowDoseRate: incidentDoseRate, layerName: 'Incident Field' });
+
     let curDepth = 0;
-    let curDose = incidentDoseRate;
-    points.push({ depthCm: 0, doseRate: curDose, layerName: 'Incident Air' });
+    const completedLayers: { materialKey: string; mfp: number }[] = [];
+    let cumMfpBefore = 0;
 
     layers.forEach(layer => {
-      const { muLinear } = getLinearAttenuation(layer.materialKey, photonEnergyMev);
-      const mat = MATERIALS_DATABASE[layer.materialKey];
-      const steps = 15;
+      const { muLinear } = evaluateXCOMAttenuation(layer.materialKey, photonEnergyMev);
+      const mat = XCOM_GP_MATERIALS[layer.materialKey];
+      const steps = 16;
       const dStep = layer.thicknessCm / steps;
+
       for (let s = 1; s <= steps; s++) {
         const xStep = s * dStep;
-        const optX = muLinear * xStep;
-        const b = includeBuildup ? (1.0 + (mat?.buildupA || 1.0) * optX * Math.exp((mat?.buildupB || 0.05) * optX)) : 1.0;
-        const stepDose = curDose * Math.exp(-optX) * b;
+        const partialMfp = muLinear * xStep;
+        const totalMfpAtStep = cumMfpBefore + partialMfp;
+
+        const partialStack = [...completedLayers, { materialKey: layer.materialKey, mfp: partialMfp }];
+        const bStep = evaluateMultiLayerBuildup(partialStack, photonEnergyMev, buildupModel).totalBuildup;
+
+        const narrowStep = incidentDoseRate * Math.exp(-totalMfpAtStep);
+        const broadStep = narrowStep * bStep;
+
         points.push({
           depthCm: curDepth + xStep,
-          doseRate: Math.max(1e-6, stepDose),
+          broadDoseRate: Math.max(1e-6, broadStep),
+          narrowDoseRate: Math.max(1e-6, narrowStep),
           layerName: mat?.name || layer.materialKey
         });
       }
+
       curDepth += layer.thicknessCm;
-      curDose = points[points.length - 1].doseRate;
+      const fullLayerMfp = muLinear * layer.thicknessCm;
+      completedLayers.push({ materialKey: layer.materialKey, mfp: fullLayerMfp });
+      cumMfpBefore += fullLayerMfp;
     });
 
     return points;
-  }, [layers, photonEnergyMev, incidentDoseRate, includeBuildup]);
+  }, [layers, photonEnergyMev, incidentDoseRate, buildupModel]);
 
-  // Solver table: required thickness for each material to hit targetDoseLimit
+  // NIST XCOM K/L-Edge Continuous Energy Curve for inspected material
+  const xcomSpectrumCurve = useMemo(() => {
+    const mat = XCOM_GP_MATERIALS[inspectMaterialKey] || XCOM_GP_MATERIALS.LEAD;
+    const energiesKeV: number[] = [];
+    const muMassVals: number[] = [];
+    const muEnVals: number[] = [];
+
+    // Sample every segment including exact edge endpoints to render vertical K/L-edge jumps cleanly
+    for (const seg of mat.segments) {
+      const nSamples = 25;
+      const logMin = Math.log(seg.minEnergyMev);
+      const logMax = Math.log(seg.maxEnergyMev);
+      for (let i = 0; i <= nSamples; i++) {
+        // Offset endpoints by 1e-6 MeV to stay strictly inside segment boundaries
+        let eMev = Math.exp(logMin + (i / nSamples) * (logMax - logMin));
+        if (i === 0) eMev = seg.minEnergyMev + 1e-6;
+        if (i === nSamples) eMev = seg.maxEnergyMev - 1e-6;
+
+        const pts = seg.points;
+        let idx = 0;
+        while (idx < pts.length - 2 && pts[idx + 1][0] < eMev) idx++;
+        const [e0, m0, me0] = pts[idx];
+        const [e1, m1, me1] = pts[Math.min(pts.length - 1, idx + 1)];
+        let mu = m0;
+        let muEn = me0;
+        if (e1 > e0) {
+          const f = Math.max(0, Math.min(1, (Math.log(eMev) - Math.log(e0)) / (Math.log(e1) - Math.log(e0))));
+          mu = Math.exp(Math.log(m0) + f * (Math.log(m1) - Math.log(m0)));
+          muEn = Math.exp(Math.log(me0) + f * (Math.log(me1) - Math.log(me0)));
+        }
+        energiesKeV.push(eMev * 1000);
+        muMassVals.push(mu);
+        muEnVals.push(muEn);
+      }
+    }
+
+    const currentPoint = evaluateXCOMAttenuation(inspectMaterialKey, photonEnergyMev);
+    return { mat, energiesKeV, muMassVals, muEnVals, currentPoint };
+  }, [inspectMaterialKey, photonEnergyMev]);
+
+  // Exact Bisection Solver Table for required barrier thickness
   const solverResults = useMemo(() => {
     const target = Math.max(1e-4, targetDoseLimit);
     const requiredRatio = Math.max(1.0, incidentDoseRate / target);
     const requiredDecades = Math.log10(requiredRatio);
 
-    return Object.entries(MATERIALS_DATABASE).map(([key, mat]) => {
-      const { muLinear, muMass } = getLinearAttenuation(key, photonEnergyMev);
-      const hvlCm = Math.LN2 / muLinear;
-      const tvlCm = Math.LN10 / muLinear;
-      // Narrow beam requirement: x = ln(ratio) / mu
-      const narrowThicknessCm = Math.log(requiredRatio) / muLinear;
-      // With buildup approximation (approx 15-25% thicker)
-      const broadThicknessCm = narrowThicknessCm * (1.0 + 0.18 * (mat.buildupA || 1.0));
-      const requiredThicknessCm = includeBuildup ? broadThicknessCm : narrowThicknessCm;
-      const arealDensityGcm2 = requiredThicknessCm * mat.density;
-      const loadKgM2 = arealDensityGcm2 * 10;
+    return Object.entries(XCOM_GP_MATERIALS)
+      .map(([key, mat]) => {
+        const { muLinear, muMass } = evaluateXCOMAttenuation(key, photonEnergyMev);
+        const hvlCm = Math.LN2 / muLinear;
+        const tvlCm = Math.LN10 / muLinear;
+        const narrowThicknessCm = Math.log(requiredRatio) / muLinear;
 
-      return {
-        key,
-        name: mat.name,
-        density: mat.density,
-        muLinear,
-        muMass,
-        hvlCm,
-        tvlCm,
-        requiredDecades,
-        requiredThicknessCm,
-        arealDensityGcm2,
-        loadKgM2,
-        status: loadKgM2 > 1000 ? 'HEAVY FLOOR LOAD' : 'STANDARD LOAD'
-      };
-    }).sort((a, b) => a.requiredThicknessCm - b.requiredThicknessCm);
-  }, [incidentDoseRate, targetDoseLimit, photonEnergyMev, includeBuildup]);
+        const solved = solveBroadBeamThicknessCm(key, photonEnergyMev, requiredRatio, buildupModel);
+        const requiredThicknessCm = solved.thicknessCm;
+        const arealDensityGcm2 = requiredThicknessCm * mat.density;
+        const loadKgM2 = arealDensityGcm2 * 10;
 
-  // Layer manipulation helpers
+        return {
+          key,
+          name: mat.name,
+          density: mat.density,
+          muLinear,
+          muMass,
+          hvlCm,
+          tvlCm,
+          requiredDecades,
+          narrowThicknessCm,
+          requiredThicknessCm,
+          opticalMfp: solved.opticalMfp,
+          buildupAtSolution: solved.buildupAtSolution,
+          arealDensityGcm2,
+          loadKgM2
+        };
+      })
+      .sort((a, b) => a.requiredThicknessCm - b.requiredThicknessCm);
+  }, [incidentDoseRate, targetDoseLimit, photonEnergyMev, buildupModel]);
+
   const handleAddLayer = (materialKey: string = 'LEAD') => {
     const newId = `layer_${Date.now()}`;
     setLayers([...layers, { id: newId, materialKey, thicknessCm: 2.0 }]);
@@ -322,36 +298,63 @@ export const ShieldingModule: React.FC = () => {
   };
 
   const handleUpdateLayer = (id: string, field: 'materialKey' | 'thicknessCm', val: any) => {
-    setLayers(layers.map(l => l.id === id ? { ...l, [field]: val } : l));
+    setLayers(layers.map(l => (l.id === id ? { ...l, [field]: val } : l)));
   };
 
-  // Cryptographic Dossier Payload
-  const dossierPayload: CalculationDossierPayload = useMemo(() => ({
-    reportTitle: 'ICS-208 Radiation Shielding & Barrier Attenuation Engineering Dossier',
-    moduleName: 'Module 14 (Shielding & ALARA Design)',
-    statuteCitation: 'NCRP Report No. 151 / NCRP Report No. 147 / NIST XCOM Database',
-    verificationTestId: 'VTEST-02',
-    operatorName: 'Radiation Shielding Physicist',
-    operatorCredentials: 'CHP / Medical Physicist',
-    facility: 'Central Radiotherapy & Industrial Shielding Facility',
-    notes: `Multi-layer barrier analysis for ${photonEnergyMev.toFixed(3)} MeV photons. Initial field: ${incidentDoseRate.toFixed(1)} µSv/h. Attenuated: ${stackAnalytics.finalDoseRate.toFixed(2)} µSv/h. Total layers: ${layers.length}. Total areal mass: ${stackAnalytics.totalMassArealGcm2.toFixed(1)} g/cm².`,
-    formulaDescription: 'I(x) = B(\\mu x) \\cdot I_0 \\cdot e^{-\\sum \\mu_i x_i}, \\quad HVL = \\frac{\\ln 2}{\\mu}, \\quad TVL = \\frac{\\ln 10}{\\mu}, \\quad M_A = \\sum \\rho_i x_i',
-    inputs: [
-      { label: 'Photon Energy', value: photonEnergyMev, unit: 'MeV' },
-      { label: 'Incident Dose Rate', value: incidentDoseRate, unit: 'µSv/h' },
-      { label: 'Buildup Geometry', value: includeBuildup ? 'Broad-Beam (Berger Buildup Active)' : 'Narrow-Beam (B=1.0)' },
-      { label: 'Layer Count', value: layers.length },
-      { label: 'Target ALARA Limit', value: targetDoseLimit, unit: 'µSv/h' }
-    ],
-    outputs: [
-      { label: 'Attenuated Dose Rate', value: stackAnalytics.finalDoseRate.toFixed(2), unit: 'µSv/h', status: stackAnalytics.finalDoseRate <= targetDoseLimit ? 'COMPLIANT' : 'WARNING' },
-      { label: 'Total Barrier Thickness', value: stackAnalytics.totalThicknessCm.toFixed(2), unit: 'cm', status: 'PASS' },
-      { label: 'Attenuation Factor', value: stackAnalytics.totalAttenuationRatio.toExponential(2), unit: 'x', status: 'PASS' },
-      { label: 'Decades of Attenuation', value: stackAnalytics.totalDecades.toFixed(2), unit: 'decades', status: 'PASS' },
-      { label: 'Structural Floor Load', value: stackAnalytics.structuralLoadKgM2.toFixed(1), unit: 'kg/m²', status: stackAnalytics.structuralLoadKgM2 > 1500 ? 'WARNING' : 'PASS' },
-      { label: 'Floor Load (Imperial)', value: stackAnalytics.structuralLoadLbFt2.toFixed(1), unit: 'lb/ft²', status: 'PASS' }
-    ]
-  }), [photonEnergyMev, incidentDoseRate, includeBuildup, layers, targetDoseLimit, stackAnalytics]);
+  const dossierPayload: CalculationDossierPayload = useMemo(
+    () => ({
+      reportTitle: 'ICS-208 Radiation Shielding & ANSI/ANS-6.4.3 GP Buildup Engineering Dossier',
+      moduleName: 'Module 14 (Shielding & ALARA Design)',
+      statuteCitation: 'ANSI/ANS-6.4.3-1991 / NCRP Report No. 151 / NIST XCOM SRD 8',
+      verificationTestId: 'VTEST-03',
+      operatorName: 'Radiation Shielding Physicist',
+      operatorCredentials: 'CHP / Medical Physicist',
+      facility: 'Central Radiotherapy & Industrial Shielding Facility',
+      notes: `Multi-layer barrier analysis for ${photonEnergyMev.toFixed(4)} MeV photons using ${buildupModel}. Initial field: ${incidentDoseRate.toFixed(1)} µSv/h. Broad-beam exit: ${stackAnalytics.finalDoseRate.toFixed(2)} µSv/h (B_total = ${stackAnalytics.cumulativeBuildup.toFixed(2)}×). Reversed stack exit: ${stackAnalytics.reversedDoseRate.toFixed(2)} µSv/h.`,
+      formulaDescription:
+        'I(x) = I_0 \\cdot B_{\\text{GP}}(E, \\sum \\mu_i x_i) \\cdot e^{-\\sum \\mu_i x_i}, \\quad K(E,x) = c x^a + d\\frac{\\tanh(x/X_k - 2) - \\tanh(-2)}{1 - \\tanh(-2)}',
+      inputs: [
+        { label: 'Photon Energy', value: photonEnergyMev, unit: 'MeV' },
+        { label: 'Incident Dose Rate', value: incidentDoseRate, unit: 'µSv/h' },
+        { label: 'Buildup Formulation', value: buildupModel },
+        { label: 'Layer Count', value: layers.length },
+        { label: 'Target ALARA Limit', value: targetDoseLimit, unit: 'µSv/h' }
+      ],
+      outputs: [
+        {
+          label: 'Broad-Beam Exit Dose Rate',
+          value: stackAnalytics.finalDoseRate.toFixed(2),
+          unit: 'µSv/h',
+          status: stackAnalytics.finalDoseRate <= targetDoseLimit ? 'COMPLIANT' : 'WARNING'
+        },
+        {
+          label: 'Total Stratified Buildup B(μx)',
+          value: stackAnalytics.cumulativeBuildup.toFixed(3),
+          unit: '×',
+          status: 'PASS'
+        },
+        {
+          label: 'Total Optical Depth',
+          value: stackAnalytics.accumulatedOpticalThickness.toFixed(2),
+          unit: 'mfp',
+          status: 'PASS'
+        },
+        {
+          label: 'Total Barrier Thickness',
+          value: stackAnalytics.totalThicknessCm.toFixed(2),
+          unit: 'cm',
+          status: 'PASS'
+        },
+        {
+          label: 'Structural Floor Load',
+          value: stackAnalytics.structuralLoadKgM2.toFixed(1),
+          unit: 'kg/m²',
+          status: stackAnalytics.structuralLoadKgM2 > 1500 ? 'WARNING' : 'PASS'
+        }
+      ]
+    }),
+    [photonEnergyMev, incidentDoseRate, buildupModel, layers, targetDoseLimit, stackAnalytics]
+  );
 
   return (
     <div className="panel" style={{ height: '100%', display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -360,17 +363,17 @@ export const ShieldingModule: React.FC = () => {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <span className="hud-badge hud-badge-primary">SHIELDING &amp; ALARA</span>
-            <span className="hud-badge hud-badge-accent">NIST XCOM / NCRP-151</span>
+            <span className="hud-badge hud-badge-accent">ANSI/ANS-6.4.3 GP / NIST XCOM K-EDGES</span>
           </div>
           <h2 style={{ margin: '6px 0 0 0', fontSize: '1.4rem', letterSpacing: '0.03em' }}>
-            Module 14 — Multi-Layer Shielding &amp; Attenuation Physics Engine
+            Module 14 — Multi-Layer Shielding, GP Buildup &amp; NIST XCOM K-Edge Engine
           </h2>
           <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
-            Energy-dependent mass attenuation coefficients (NIST XCOM), broad-beam Compton scatter buildup factors, structural floor load analysis, and automated ALARA thickness optimizer.
+            Exact NIST XCOM mass attenuation with explicit K/L-shell photoelectric discontinuities, ANSI/ANS-6.4.3 5-parameter Geometric Progression (GP) buildup matrices, and Kalos stratified multi-layer synthesis.
           </p>
         </div>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-          <VerificationBadge testId="VTEST-02" standard="NCRP-151" />
+          <VerificationBadge testId="VTEST-03" standard="ANSI/ANS-6.4.3 & NCRP-151" />
           <button
             className="btn btn-secondary"
             onClick={() => setIsDossierOpen(true)}
@@ -389,29 +392,29 @@ export const ShieldingModule: React.FC = () => {
             {incidentDoseRate >= 1000 ? `${(incidentDoseRate / 1000).toFixed(2)} mSv/h` : `${incidentDoseRate.toFixed(1)} µSv/h`}
           </span>
           <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
-            Energy: {(photonEnergyMev * 1000).toFixed(1)} keV ({photonEnergyMev.toFixed(3)} MeV)
+            Energy: {(photonEnergyMev * 1000).toFixed(2)} keV ({photonEnergyMev.toFixed(4)} MeV)
           </span>
         </div>
 
         <div className="hud-card">
-          <span className="hud-metric-label">ATTENUATED FIELD RATE</span>
+          <span className="hud-metric-label">BROAD-BEAM EXIT RATE</span>
           <span className="hud-metric-value" style={{ color: stackAnalytics.finalDoseRate <= targetDoseLimit ? '#10b981' : '#f59e0b' }}>
             {stackAnalytics.finalDoseRate >= 1000
               ? `${(stackAnalytics.finalDoseRate / 1000).toFixed(2)} mSv/h`
               : `${stackAnalytics.finalDoseRate < 0.01 ? stackAnalytics.finalDoseRate.toExponential(2) : stackAnalytics.finalDoseRate.toFixed(2)} µSv/h`}
           </span>
           <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
-            Status: {stackAnalytics.finalDoseRate <= targetDoseLimit ? 'COMPLIANT WITH ALARA' : 'EXCEEDS TARGET LIMIT'}
+            Narrow-Beam: {stackAnalytics.narrowBeamDoseRate < 0.01 ? stackAnalytics.narrowBeamDoseRate.toExponential(2) : stackAnalytics.narrowBeamDoseRate.toFixed(2)} µSv/h | B = {stackAnalytics.cumulativeBuildup.toFixed(2)}×
           </span>
         </div>
 
         <div className="hud-card">
-          <span className="hud-metric-label">TOTAL ATTENUATION</span>
+          <span className="hud-metric-label">KALOS LAYER ORDERING</span>
           <span className="hud-metric-value" style={{ color: '#00e5ff' }}>
-            10<sup>-{stackAnalytics.totalDecades.toFixed(2)}</sup>
+            B<sub>GP</sub> = {stackAnalytics.cumulativeBuildup.toFixed(2)}×
           </span>
           <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
-            Factor: {stackAnalytics.totalAttenuationRatio.toExponential(2)}× ({((1 - stackAnalytics.finalDoseRate / incidentDoseRate) * 100).toFixed(2)}%)
+            If Reversed: B = {stackAnalytics.reversedBuildupFactor.toFixed(2)}× ({stackAnalytics.reversedDoseRate.toFixed(1)} µSv/h)
           </span>
         </div>
 
@@ -421,7 +424,7 @@ export const ShieldingModule: React.FC = () => {
             {stackAnalytics.structuralLoadKgM2.toFixed(0)} kg/m²
           </span>
           <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
-            {stackAnalytics.structuralLoadLbFt2.toFixed(1)} lb/ft² ({stackAnalytics.totalThicknessCm.toFixed(1)} cm total)
+            {stackAnalytics.structuralLoadLbFt2.toFixed(1)} lb/ft² ({stackAnalytics.accumulatedOpticalThickness.toFixed(2)} mfp total)
           </span>
         </div>
       </div>
@@ -430,17 +433,21 @@ export const ShieldingModule: React.FC = () => {
       <div style={{ background: 'rgba(0,0,0,0.3)', padding: '14px', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
           <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-primary)' }}>
-            RADIOISOTOPE PRESETS &amp; PHOTON ENERGY
+            RADIOISOTOPE &amp; K-EDGE PRESETS
           </span>
-          <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
-            <label style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-              <input
-                type="checkbox"
-                checked={includeBuildup}
-                onChange={e => setIncludeBuildup(e.target.checked)}
-              />
-              Include Broad-Beam Compton Buildup B(&mu;x)
-            </label>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>Buildup Formulation:</span>
+            <select
+              className="form-control"
+              value={buildupModel}
+              onChange={e => setBuildupModel(e.target.value as BuildupModelType)}
+              style={{ fontSize: '0.8rem', padding: '4px 10px', width: 'auto' }}
+            >
+              <option value="GP_ANS643">ANSI/ANS-6.4.3 GP 5-Parameter (Harima / Kalos)</option>
+              <option value="BERGER">Berger 2-Parameter Empirical Formula</option>
+              <option value="TAYLOR">Taylor Two-Exponential Sum</option>
+              <option value="NARROW_BEAM">Narrow-Beam Exponential Only (B = 1.0)</option>
+            </select>
           </div>
         </div>
 
@@ -451,8 +458,8 @@ export const ShieldingModule: React.FC = () => {
               onClick={() => handleSelectPreset(p.id)}
               className="btn"
               style={{
-                fontSize: '0.78rem',
-                padding: '6px 12px',
+                fontSize: '0.76rem',
+                padding: '6px 11px',
                 whiteSpace: 'nowrap',
                 background: selectedPresetId === p.id ? 'var(--color-primary)' : 'rgba(255,255,255,0.04)',
                 color: selectedPresetId === p.id ? '#000' : 'var(--color-text-muted)',
@@ -467,17 +474,17 @@ export const ShieldingModule: React.FC = () => {
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px', marginTop: '12px' }}>
           <div>
-            <label className="form-label" style={{ fontSize: '0.78rem' }}>Arbitrary Photon Energy (MeV):</label>
+            <label className="form-label" style={{ fontSize: '0.78rem' }}>Photon Energy (MeV, 0.010–15.0):</label>
             <input
               type="number"
-              step="0.05"
-              min="0.015"
-              max="10.0"
+              step="0.005"
+              min="0.010"
+              max="15.0"
               className="form-control"
               value={photonEnergyMev}
               onChange={e => {
                 setSelectedPresetId('custom');
-                setPhotonEnergyMev(Math.max(0.015, Math.min(10.0, parseFloat(e.target.value) || 0.5)));
+                setPhotonEnergyMev(Math.max(0.010, Math.min(15.0, parseFloat(e.target.value) || 0.5)));
               }}
               style={{ width: '100%', fontSize: '0.85rem' }}
             />
@@ -517,42 +524,54 @@ export const ShieldingModule: React.FC = () => {
           className={`tab-btn ${activeTab === 'layers' ? 'active' : ''}`}
           onClick={() => setActiveTab('layers')}
         >
-          🛡️ Multi-Layer Stack &amp; Depth Profile
+          🛡️ Multi-Layer Stack &amp; Kalos Stratification
         </button>
         <button
           className={`tab-btn ${activeTab === 'buildup' ? 'active' : ''}`}
           onClick={() => setActiveTab('buildup')}
         >
-          🌊 Broad-Beam Buildup Analysis
+          🌊 ANS-6.4.3 GP Matrices &amp; NIST XCOM K/L-Edges
         </button>
         <button
           className={`tab-btn ${activeTab === 'solver' ? 'active' : ''}`}
           onClick={() => setActiveTab('solver')}
         >
-          🎯 ALARA Barrier Thickness Optimizer
+          🎯 Exact Broad-Beam Thickness Solver
         </button>
         <button
           className={`tab-btn ${activeTab === 'physics' ? 'active' : ''}`}
           onClick={() => setActiveTab('physics')}
         >
-          📐 NCRP-151 &amp; NIST Physics Derivations
+          📐 ANS-6.4.3 &amp; NIST XCOM Formulations
         </button>
       </div>
 
       {/* TAB 1: Multi-Layer Stack & Depth Profile */}
       {activeTab === 'layers' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(340px, 1fr) minmax(400px, 1.3fr)', gap: '16px', flex: 1 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(360px, 1.05fr) minmax(400px, 1.25fr)', gap: '16px', flex: 1 }}>
           {/* Left Column: Stack Controls */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
               <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>Configured Attenuation Layers ({layers.length})</span>
-              <button
-                className="btn btn-primary"
-                onClick={() => handleAddLayer('LEAD')}
-                style={{ fontSize: '0.78rem', padding: '6px 12px' }}
-              >
-                + Add Layer
-              </button>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                {layers.length >= 2 && (
+                  <button
+                    className="btn btn-secondary"
+                    onClick={handleReverseLayers}
+                    style={{ fontSize: '0.75rem', padding: '5px 10px' }}
+                    title="Swap layer sequence to observe Kalos Low-Z -> High-Z vs High-Z -> Low-Z buildup difference"
+                  >
+                    🔄 Reverse Order (Kalos Test)
+                  </button>
+                )}
+                <button
+                  className="btn btn-primary"
+                  onClick={() => handleAddLayer('LEAD')}
+                  style={{ fontSize: '0.78rem', padding: '6px 12px' }}
+                >
+                  + Add Layer
+                </button>
+              </div>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -576,9 +595,9 @@ export const ShieldingModule: React.FC = () => {
                         className="form-control"
                         value={l.materialKey}
                         onChange={e => handleUpdateLayer(l.id, 'materialKey', e.target.value)}
-                        style={{ fontSize: '0.85rem', width: '220px' }}
+                        style={{ fontSize: '0.84rem', width: '240px' }}
                       >
-                        {Object.entries(MATERIALS_DATABASE).map(([key, mat]) => (
+                        {Object.entries(XCOM_GP_MATERIALS).map(([key, mat]) => (
                           <option key={key} value={key}>{mat.name}</option>
                         ))}
                       </select>
@@ -591,6 +610,12 @@ export const ShieldingModule: React.FC = () => {
                       Remove
                     </button>
                   </div>
+
+                  {l.activeEdgeNote && (
+                    <div style={{ fontSize: '0.75rem', color: '#f59e0b', background: 'rgba(245, 158, 11, 0.12)', border: '1px solid rgba(245, 158, 11, 0.35)', padding: '4px 8px', borderRadius: '4px' }}>
+                      ⚡ <strong>Photoelectric Edge Active:</strong> {l.activeEdgeNote}
+                    </div>
+                  )}
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                     <div>
@@ -606,18 +631,19 @@ export const ShieldingModule: React.FC = () => {
                       />
                     </div>
                     <div>
-                      <label className="form-label" style={{ fontSize: '0.75rem' }}>Layer Exit Rate:</label>
+                      <label className="form-label" style={{ fontSize: '0.75rem' }}>Cumulative Exit Rate (B={l.cumulativeBuildupAtExit.toFixed(2)}×):</label>
                       <div style={{ padding: '6px 10px', background: 'rgba(0,0,0,0.3)', borderRadius: '4px', fontSize: '0.85rem', color: '#10b981', fontWeight: 'bold' }}>
-                        {l.exitDose >= 1000 ? `${(l.exitDose / 1000).toFixed(2)} mSv/h` : `${l.exitDose.toFixed(1)} µSv/h`}
+                        {l.exitDose >= 1000 ? `${(l.exitDose / 1000).toFixed(2)} mSv/h` : `${l.exitDose.toFixed(2)} µSv/h`}
                       </div>
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--color-text-muted)', paddingTop: '4px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px', fontSize: '0.74rem', color: 'var(--color-text-muted)', paddingTop: '4px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
                     <span>HVL: {l.hvlCm.toFixed(2)} cm</span>
                     <span>TVL: {l.tvlCm.toFixed(2)} cm</span>
-                    <span>Mass: {l.arealDensityGcm2.toFixed(1)} g/cm²</span>
-                    <span>&mu;: {l.muLinear.toFixed(3)} cm⁻¹</span>
+                    <span>&mu;/&rho;: {l.muMass.toFixed(4)} cm²/g</span>
+                    <span>&mu;x: {l.opticalX.toFixed(2)} mfp</span>
+                    <span>GP K: {l.gpSingleLayer.K.toFixed(3)}</span>
                   </div>
                 </div>
               ))}
@@ -627,20 +653,29 @@ export const ShieldingModule: React.FC = () => {
           {/* Right Column: Interactive Plot */}
           <div style={{ background: 'rgba(5, 10, 18, 0.6)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '14px', minHeight: '440px', display: 'flex', flexDirection: 'column' }}>
             <span style={{ fontSize: '0.9rem', fontWeight: 600, color: '#00e5ff', marginBottom: '8px' }}>
-              Continuous Attenuation Depth Profile (Log Scale)
+              Broad-Beam (GP Stratified) vs. Narrow-Beam Attenuation Profile
             </span>
             <div style={{ flex: 1, minHeight: '380px' }}>
               <Plot
                 data={[
                   {
                     x: depthProfile.map(p => p.depthCm),
-                    y: depthProfile.map(p => p.doseRate),
+                    y: depthProfile.map(p => p.broadDoseRate),
                     type: 'scatter',
                     mode: 'lines+markers',
-                    name: 'Field Attenuation',
-                    line: { color: '#00e5ff', width: 2.5 },
+                    name: `Broad-Beam (${buildupModel})`,
+                    line: { color: '#00e5ff', width: 2.8 },
                     marker: { size: 4 },
-                    hovertemplate: 'Depth: %{x:.2f} cm<br>Dose Rate: %{y:.2f} µSv/h<extra></extra>'
+                    hovertemplate: 'Depth: %{x:.2f} cm<br>Broad-Beam: %{y:.2f} µSv/h<extra></extra>'
+                  },
+                  {
+                    x: depthProfile.map(p => p.depthCm),
+                    y: depthProfile.map(p => p.narrowDoseRate),
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'Narrow-Beam Uncollided (e^-μx)',
+                    line: { color: '#f59e0b', dash: 'dot', width: 2 },
+                    hovertemplate: 'Depth: %{x:.2f} cm<br>Uncollided: %{y:.2f} µSv/h<extra></extra>'
                   },
                   {
                     x: [0, stackAnalytics.totalThicknessCm * 1.05],
@@ -670,48 +705,168 @@ export const ShieldingModule: React.FC = () => {
         </div>
       )}
 
-      {/* TAB 2: Broad-Beam Buildup Analysis */}
+      {/* TAB 2: ANS-6.4.3 GP Matrices & NIST XCOM K/L-Edges */}
       {activeTab === 'buildup' && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', flex: 1 }}>
-          <div style={{ background: 'rgba(5, 10, 18, 0.6)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '16px' }}>
-            <h4 style={{ margin: '0 0 10px 0', color: 'var(--color-primary)' }}>Compton Scatter &amp; Buildup Factors</h4>
-            <p style={{ fontSize: '0.85rem', color: '#94a3b8', lineHeight: '1.6' }}>
-              In practical radiation shielding with broad beams and large barrier surfaces, secondary scattered photons build up within the material matrix. 
-              Pure exponential decay <code>e^(-&mu;x)</code> applies strictly to narrow pencil beams. For thick walls, broad-beam buildup factor <code>B(&mu;x)</code> can increase transmitted dose rates by <strong>200% to 500%</strong> compared to simple narrow-beam approximations.
-            </p>
-            <div style={{ background: 'rgba(0,0,0,0.3)', padding: '12px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.06)', marginTop: '14px' }}>
-              <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>CURRENT STACK BUILDUP STATUS</div>
-              <div style={{ fontSize: '1.3rem', fontWeight: 'bold', color: '#f59e0b', marginTop: '4px' }}>
-                Total Buildup B(&mu;x) = {stackAnalytics.cumulativeBuildup.toFixed(2)}×
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', flex: 1 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(380px, 1.2fr) minmax(350px, 1fr)', gap: '16px' }}>
+            {/* Left: Interactive NIST XCOM Mass Attenuation Curve with K/L Shell Jumps */}
+            <div style={{ background: 'rgba(5, 10, 18, 0.6)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '14px', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
+                <span style={{ fontSize: '0.9rem', fontWeight: 600, color: '#00e5ff' }}>
+                  NIST XCOM Mass Attenuation (&mu;/&rho;) &amp; Photoelectric K/L-Edges
+                </span>
+                <select
+                  className="form-control"
+                  value={inspectMaterialKey}
+                  onChange={e => setInspectMaterialKey(e.target.value)}
+                  style={{ fontSize: '0.8rem', width: '240px', padding: '4px 8px' }}
+                >
+                  {Object.entries(XCOM_GP_MATERIALS).map(([k, m]) => (
+                    <option key={k} value={k}>{m.name}</option>
+                  ))}
+                </select>
               </div>
-              <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '4px' }}>
-                Mean Optical Thickness: &mu;x = {stackAnalytics.accumulatedOpticalThickness.toFixed(2)} mean free paths
-              </div>
-            </div>
-          </div>
 
-          <div style={{ background: 'rgba(5, 10, 18, 0.6)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '16px' }}>
-            <h4 style={{ margin: '0 0 10px 0', color: 'var(--color-accent)' }}>Berger Formula Parameterization</h4>
-            <div className="formula-box" style={{ fontSize: '0.9rem', padding: '12px' }}>
-              <BlockMath math="B(\mu x) = 1 + a \cdot (\mu x) \cdot e^{b \cdot (\mu x)}" />
+              <div style={{ minHeight: '320px', flex: 1 }}>
+                <Plot
+                  data={[
+                    {
+                      x: xcomSpectrumCurve.energiesKeV,
+                      y: xcomSpectrumCurve.muMassVals,
+                      type: 'scatter',
+                      mode: 'lines',
+                      name: 'Total Attenuation (μ/ρ)',
+                      line: { color: '#00e5ff', width: 2.5 }
+                    },
+                    {
+                      x: xcomSpectrumCurve.energiesKeV,
+                      y: xcomSpectrumCurve.muEnVals,
+                      type: 'scatter',
+                      mode: 'lines',
+                      name: 'Energy-Absorption (μ_en/ρ)',
+                      line: { color: '#10b981', dash: 'dot', width: 2 }
+                    },
+                    {
+                      x: [photonEnergyMev * 1000],
+                      y: [xcomSpectrumCurve.currentPoint.muMass],
+                      type: 'scatter',
+                      mode: 'markers',
+                      name: `Active Energy (${(photonEnergyMev * 1000).toFixed(1)} keV)`,
+                      marker: { color: '#ef4444', size: 11, symbol: 'diamond' }
+                    }
+                  ]}
+                  layout={{
+                    autosize: true,
+                    margin: { l: 60, r: 20, t: 20, b: 45 },
+                    paper_bgcolor: 'transparent',
+                    plot_bgcolor: 'transparent',
+                    font: { color: '#E0E1DD', size: 11 },
+                    xaxis: { title: 'Photon Energy E (keV, Log Scale)', type: 'log', gridcolor: '#1e293b' },
+                    yaxis: { title: 'Mass Coefficient (cm²/g, Log Scale)', type: 'log', gridcolor: '#1e293b' },
+                    legend: { orientation: 'h', y: -0.22 }
+                  }}
+                  useResizeHandler={true}
+                  style={{ width: '100%', height: '100%' }}
+                  config={{ responsive: true, displayModeBar: false }}
+                />
+              </div>
+
+              {xcomSpectrumCurve.mat.edges.length > 0 && (
+                <div style={{ marginTop: '8px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  {xcomSpectrumCurve.mat.edges.map((ed, idx) => (
+                    <span
+                      key={idx}
+                      onClick={() => setPhotonEnergyMev(ed.energyMev + 0.0005)}
+                      style={{
+                        cursor: 'pointer',
+                        fontSize: '0.74rem',
+                        padding: '4px 8px',
+                        borderRadius: '4px',
+                        background: 'rgba(245, 158, 11, 0.14)',
+                        border: '1px solid rgba(245, 158, 11, 0.4)',
+                        color: '#f59e0b'
+                      }}
+                      title="Click to jump photon energy to this shell absorption edge"
+                    >
+                      <strong>{ed.shell}-Edge ({(ed.energyMev * 1000).toFixed(2)} keV):</strong> {ed.muMassBelow} → {ed.muMassAbove} cm²/g ({ed.jumpRatio}× jump)
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
-            <p style={{ fontSize: '0.85rem', color: '#94a3b8', lineHeight: '1.6', marginTop: '10px' }}>
-              RadPro Calc utilizes empirical Berger coefficients parameterized against evaluated NCRP Report No. 151 and ANS-6.4.3 point isotropic data. High-Z materials (Lead, Tungsten) feature minimal buildup due to dominant photoelectric re-absorption, whereas low-Z materials (Water, Concrete) exhibit extensive multiple-scatter buildup.
-            </p>
+
+            {/* Right: ANSI/ANS-6.4.3 5-Parameter GP Table for Active Stack */}
+            <div style={{ background: 'rgba(5, 10, 18, 0.6)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <h4 style={{ margin: 0, color: 'var(--color-primary)' }}>
+                ANSI/ANS-6.4.3 Geometric Progression (GP) Parameters @ {(photonEnergyMev * 1000).toFixed(1)} keV
+              </h4>
+              <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: 0, lineHeight: '1.5' }}>
+                Interpolated 5-parameter Harima GP state vector <code style={{ color: '#00e5ff' }}>(b, c, a, X_k, d)</code> and dose multiplication factor <code style={{ color: '#f59e0b' }}>K(E, &mu;x)</code> for each configured barrier layer:
+              </p>
+
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid var(--color-border)', color: 'var(--color-primary)', textAlign: 'left' }}>
+                      <th style={{ padding: '6px' }}>Layer</th>
+                      <th style={{ padding: '6px' }}>b (1 mfp)</th>
+                      <th style={{ padding: '6px' }}>c</th>
+                      <th style={{ padding: '6px' }}>a</th>
+                      <th style={{ padding: '6px' }}>X<sub>k</sub></th>
+                      <th style={{ padding: '6px' }}>d</th>
+                      <th style={{ padding: '6px' }}>K(&mu;x)</th>
+                      <th style={{ padding: '6px', color: '#f59e0b' }}>B<sub>GP</sub></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stackAnalytics.layerDetails.map(l => {
+                      const p = l.gpSingleLayer.params;
+                      return (
+                        <tr key={l.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                          <td style={{ padding: '6px', fontWeight: 'bold' }}>#{l.index} {l.symbol} ({l.opticalX.toFixed(2)} mfp)</td>
+                          <td style={{ padding: '6px', fontFamily: 'monospace' }}>{p.b.toFixed(3)}</td>
+                          <td style={{ padding: '6px', fontFamily: 'monospace' }}>{p.c.toFixed(3)}</td>
+                          <td style={{ padding: '6px', fontFamily: 'monospace' }}>{p.a.toFixed(3)}</td>
+                          <td style={{ padding: '6px', fontFamily: 'monospace' }}>{p.Xk.toFixed(1)}</td>
+                          <td style={{ padding: '6px', fontFamily: 'monospace' }}>{p.d.toFixed(3)}</td>
+                          <td style={{ padding: '6px', fontFamily: 'monospace', color: '#00e5ff' }}>{l.gpSingleLayer.K.toFixed(3)}</td>
+                          <td style={{ padding: '6px', fontFamily: 'monospace', fontWeight: 'bold', color: '#f59e0b' }}>{l.gpSingleLayer.B.toFixed(2)}×</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              <div style={{ background: 'rgba(0,0,0,0.35)', padding: '12px', borderRadius: '6px', border: '1px solid rgba(0, 229, 255, 0.2)', marginTop: 'auto' }}>
+                <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
+                  KALOS STRATIFIED MULTI-LAYER SYNTHESIS
+                </div>
+                <div style={{ fontSize: '1.15rem', fontWeight: 'bold', color: '#00e5ff', marginTop: '4px' }}>
+                  Current Order Buildup: {stackAnalytics.cumulativeBuildup.toFixed(3)}× → {stackAnalytics.finalDoseRate.toFixed(2)} µSv/h
+                </div>
+                <div style={{ fontSize: '0.82rem', color: '#f59e0b', marginTop: '4px' }}>
+                  Reversed Order Buildup: {stackAnalytics.reversedBuildupFactor.toFixed(3)}× → {stackAnalytics.reversedDoseRate.toFixed(2)} µSv/h
+                </div>
+                <div style={{ fontSize: '0.76rem', color: '#94a3b8', marginTop: '4px' }}>
+                  Placing high-Z Lead downstream of low-Z Concrete photoelectrically absorbs degraded Compton scatter generated in Concrete.
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}
 
-      {/* TAB 3: ALARA Barrier Thickness Optimizer */}
+      {/* TAB 3: Exact Broad-Beam ALARA Barrier Thickness Optimizer */}
       {activeTab === 'solver' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', flex: 1 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.25)', padding: '12px 16px', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.25)', padding: '12px 16px', borderRadius: '8px', border: '1px solid var(--color-border)', flexWrap: 'wrap', gap: '10px' }}>
             <div>
               <span style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--color-primary)' }}>
                 Target Regulatory Dose Limit: {targetDoseLimit} µSv/h
               </span>
               <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginLeft: '12px' }}>
-                Required Attenuation Ratio: {(incidentDoseRate / targetDoseLimit).toFixed(1)}×
+                Required Net Attenuation: {(incidentDoseRate / targetDoseLimit).toFixed(1)}× ({Math.log10(Math.max(1, incidentDoseRate / targetDoseLimit)).toFixed(2)} TVLs)
               </span>
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
@@ -722,16 +877,16 @@ export const ShieldingModule: React.FC = () => {
           </div>
 
           <div style={{ overflowX: 'auto', border: '1px solid var(--color-border)', borderRadius: '8px' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.84rem' }}>
               <thead>
                 <tr style={{ background: 'rgba(255,255,255,0.04)', borderBottom: '1px solid var(--color-border)', textAlign: 'left', color: 'var(--color-primary)' }}>
                   <th style={{ padding: '10px' }}>Shielding Material</th>
-                  <th style={{ padding: '10px' }}>Density</th>
                   <th style={{ padding: '10px' }}>Linear &mu;</th>
-                  <th style={{ padding: '10px' }}>HVL</th>
-                  <th style={{ padding: '10px' }}>TVL</th>
-                  <th style={{ padding: '10px', color: '#00e5ff' }}>Required Thickness</th>
-                  <th style={{ padding: '10px' }}>Areal Weight</th>
+                  <th style={{ padding: '10px' }}>Narrow-Beam</th>
+                  <th style={{ padding: '10px', color: '#f59e0b' }}>Converged B(&mu;x)</th>
+                  <th style={{ padding: '10px', color: '#00e5ff' }}>Exact Broad-Beam Thickness</th>
+                  <th style={{ padding: '10px' }}>Optical Depth</th>
+                  <th style={{ padding: '10px' }}>Floor Load</th>
                   <th style={{ padding: '10px' }}>Action</th>
                 </tr>
               </thead>
@@ -739,13 +894,13 @@ export const ShieldingModule: React.FC = () => {
                 {solverResults.map(res => (
                   <tr key={res.key} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                     <td style={{ padding: '10px', fontWeight: 'bold' }}>{res.name}</td>
-                    <td style={{ padding: '10px' }}>{res.density.toFixed(2)} g/cm³</td>
-                    <td style={{ padding: '10px' }}>{res.muLinear.toFixed(3)} cm⁻¹</td>
-                    <td style={{ padding: '10px' }}>{res.hvlCm.toFixed(2)} cm</td>
-                    <td style={{ padding: '10px' }}>{res.tvlCm.toFixed(2)} cm</td>
+                    <td style={{ padding: '10px', fontFamily: 'monospace' }}>{res.muLinear.toFixed(3)} cm⁻¹</td>
+                    <td style={{ padding: '10px', color: 'var(--color-text-muted)' }}>{res.narrowThicknessCm.toFixed(2)} cm</td>
+                    <td style={{ padding: '10px', color: '#f59e0b', fontWeight: 'bold' }}>{res.buildupAtSolution.toFixed(2)}×</td>
                     <td style={{ padding: '10px', color: '#00e5ff', fontWeight: 'bold', fontSize: '0.95rem' }}>
                       {res.requiredThicknessCm.toFixed(2)} cm
                     </td>
+                    <td style={{ padding: '10px', fontFamily: 'monospace' }}>{res.opticalMfp.toFixed(2)} mfp</td>
                     <td style={{ padding: '10px', color: res.loadKgM2 > 1500 ? '#ef4444' : 'var(--color-text-muted)' }}>
                       {res.loadKgM2.toFixed(0)} kg/m²
                     </td>
@@ -753,7 +908,7 @@ export const ShieldingModule: React.FC = () => {
                       <button
                         className="btn btn-sm btn-outline-primary"
                         onClick={() => {
-                          setLayers([{ id: `l_${Date.now()}`, materialKey: res.key, thicknessCm: parseFloat(res.requiredThicknessCm.toFixed(1)) }]);
+                          setLayers([{ id: `l_${Date.now()}`, materialKey: res.key, thicknessCm: parseFloat(res.requiredThicknessCm.toFixed(2)) }]);
                           setActiveTab('layers');
                         }}
                       >
@@ -768,36 +923,36 @@ export const ShieldingModule: React.FC = () => {
         </div>
       )}
 
-      {/* TAB 4: NCRP-151 & NIST Physics */}
+      {/* TAB 4: ANS-6.4.3 & NIST Physics */}
       {activeTab === 'physics' && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px', flex: 1 }}>
           <div style={{ background: 'rgba(5, 10, 18, 0.6)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '16px' }}>
-            <h4 style={{ margin: '0 0 10px 0', color: 'var(--color-primary)' }}>1. Linear Attenuation &amp; NIST XCOM</h4>
-            <div className="formula-box" style={{ padding: '10px', fontSize: '0.85rem' }}>
-              <BlockMath math="I(x) = I_0 \cdot \exp\left(-\sum_{i=1}^N \mu_i x_i\right)" />
+            <h4 style={{ margin: '0 0 10px 0', color: 'var(--color-primary)' }}>1. ANSI/ANS-6.4.3 Geometric Progression (GP)</h4>
+            <div className="formula-box" style={{ padding: '10px', fontSize: '0.82rem' }}>
+              <BlockMath math="B_{\text{GP}}(E, x) = 1 + \frac{b - 1}{K - 1}(K^x - 1), \quad K(E, x) = c x^a + d\frac{\tanh(x/X_k - 2) - \tanh(-2)}{1 - \tanh(-2)}" />
             </div>
             <p style={{ fontSize: '0.82rem', color: '#94a3b8', lineHeight: '1.5' }}>
-              Linear attenuation coefficient <code>&mu; = (&mu;/&rho;) &times; &rho;</code>. Mass attenuation data <code>(&mu;/&rho;)</code> is dynamically interpolated across NIST XCOM cross-section tables from 15 keV to 10 MeV.
+              Harima&apos;s 5-parameter Geometric Progression formulation reproduces point-isotropic Boltzmann transport and moments-method reference benchmarks within &pm;3% up to 40 mean free paths.
             </p>
           </div>
 
           <div style={{ background: 'rgba(5, 10, 18, 0.6)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '16px' }}>
-            <h4 style={{ margin: '0 0 10px 0', color: 'var(--color-accent)' }}>2. Half-Value &amp; Tenth-Value Layers</h4>
-            <div className="formula-box" style={{ padding: '10px', fontSize: '0.85rem' }}>
-              <BlockMath math="\text{HVL} = \frac{\ln(2)}{\mu} \approx \frac{0.69315}{\mu}, \quad \text{TVL} = \frac{\ln(10)}{\mu} \approx \frac{2.30259}{\mu}" />
+            <h4 style={{ margin: '0 0 10px 0', color: 'var(--color-accent)' }}>2. Photoelectric K/L-Shell Absorption Edges</h4>
+            <div className="formula-box" style={{ padding: '10px', fontSize: '0.82rem' }}>
+              <BlockMath math="\tau_{\text{pe}}(E) \propto \frac{Z^{4.5}}{E^{3.5}} \cdot \Theta(E - E_K), \quad \left.\frac{\mu}{\rho}\right|_{E_K^+} \approx 4.02 \times \left.\frac{\mu}{\rho}\right|_{E_K^-} \ (\text{Pb})" />
             </div>
             <p style={{ fontSize: '0.82rem', color: '#94a3b8', lineHeight: '1.5' }}>
-              One TVL reduces photon fluence by an order of magnitude (90% reduction), while one HVL reduces fluence by 50%.
+              When photon energy crosses an inner atomic shell binding energy (<code style={{ color: '#f59e0b' }}>88.005 keV</code> for Lead, <code style={{ color: '#f59e0b' }}>69.525 keV</code> for Tungsten), K-shell electrons become energetically accessible for photoelectric ejection, causing an abrupt 4×–5× surge in attenuation.
             </p>
           </div>
 
           <div style={{ background: 'rgba(5, 10, 18, 0.6)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '16px' }}>
-            <h4 style={{ margin: '0 0 10px 0', color: '#10b981' }}>3. Structural Load Engineering</h4>
-            <div className="formula-box" style={{ padding: '10px', fontSize: '0.85rem' }}>
-              <BlockMath math="M_A = \sum \rho_i x_i \ [\text{g/cm}^2], \quad L = 10 \cdot M_A \ [\text{kg/m}^2]" />
+            <h4 style={{ margin: '0 0 10px 0', color: '#10b981' }}>3. Kalos / Broder Multi-Layer Stratification</h4>
+            <div className="formula-box" style={{ padding: '10px', fontSize: '0.82rem' }}>
+              <BlockMath math="B_{\text{total}} = B_N(\tau_N) + \sum_{k=1}^{N-1} \left[B_k(\tau_k) - B_{k+1}(\tau_k)\right] e^{-(\tau_N - \tau_k)\delta_{Z_k < Z_{k+1}}}" />
             </div>
             <p style={{ fontSize: '0.82rem', color: '#94a3b8', lineHeight: '1.5' }}>
-              Heavy shielding materials (Lead, Tungsten, Barite) present substantial architectural dead loads that must comply with structural building codes (IBC / ASCE 7).
+              Multi-layer buildup is non-commutative: placing a high-Z absorber (Pb) downstream of a low-Z scatterer (Concrete) strips out low-energy Compton scatter and substantially lowers transmitted dose compared to the reverse order.
             </p>
           </div>
         </div>

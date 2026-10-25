@@ -1,8 +1,15 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import VerificationBadge from '../../components/VerificationBadge';
 import PlotComponent from 'react-plotly.js';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
+import {
+  parseAnsiN42Xml,
+  parseOrtecSpeOrCsv,
+  runMariscottiPeakSearch,
+  generateSampleAnsiN42Xml,
+  type IngestedSpectrum
+} from '../../utils/spectrumAndSurveyParsers';
 
 const Plot = (PlotComponent as any).default || PlotComponent;
 
@@ -65,7 +72,7 @@ const ISOTOPES: IsotopeSpec[] = [
     category: 'Calibration Standard',
     gammas: [
       { energyKeV: 661.7, intensityPct: 85.1 },
-      { energyKeV: 32.1, intensityPct: 5.8 } // Ba-137m K-alpha X-ray
+      { energyKeV: 32.1, intensityPct: 5.8 }
     ],
     description: 'Fission product standard featuring a single prominent 661.7 keV photopeak and distinct Compton edge at 477 keV.'
   },
@@ -112,7 +119,7 @@ const ISOTOPES: IsotopeSpec[] = [
     symbol: 'Na-22',
     category: 'Calibration Standard',
     gammas: [
-      { energyKeV: 511.0, intensityPct: 180.7 }, // Positron annihilation pair
+      { energyKeV: 511.0, intensityPct: 180.7 },
       { energyKeV: 1274.5, intensityPct: 99.9 }
     ],
     description: 'Positron emitter producing a strong 511 keV annihilation peak along with a 1274.5 keV nuclear gamma.'
@@ -144,30 +151,109 @@ const ISOTOPES: IsotopeSpec[] = [
     symbol: 'SNM-Mix',
     category: 'Special Nuclear Material',
     gammas: [
-      { energyKeV: 185.7, intensityPct: 57.0 }, // U-235
-      { energyKeV: 661.7, intensityPct: 85.1 }, // Cs-137
-      { energyKeV: 1173.2, intensityPct: 99.85 }, // Co-60
-      { energyKeV: 1332.5, intensityPct: 99.98 }  // Co-60
+      { energyKeV: 185.7, intensityPct: 57.0 },
+      { energyKeV: 661.7, intensityPct: 85.1 },
+      { energyKeV: 1173.2, intensityPct: 99.85 },
+      { energyKeV: 1332.5, intensityPct: 99.98 }
     ],
     description: 'Complex urban nuclear security threat scenario containing HEU, Cs-137, and Co-60.'
   }
 ];
 
 const SpectroscopyModule: React.FC = () => {
-  const [detector, setDetector] = useState<DetectorSpec>(DETECTORS[0]); // HPGe by default
-  const [isotope, setIsotope] = useState<IsotopeSpec>(ISOTOPES[0]); // Cs-137 default
-  const [activityKBq, setActivityKBq] = useState<number>(50); // 50 kBq
-  const [liveTimeSec, setLiveTimeSec] = useState<number>(300); // 300s acquisition
-  const [hasShielding, setHasShielding] = useState<boolean>(true); // Lead shield
-  const [isLogScale, setIsLogScale] = useState<boolean>(true); // Log y-axis
+  const [detector, setDetector] = useState<DetectorSpec>(DETECTORS[0]);
+  const [isotope, setIsotope] = useState<IsotopeSpec>(ISOTOPES[0]);
+  const [activityKBq, setActivityKBq] = useState<number>(50);
+  const [liveTimeSec, setLiveTimeSec] = useState<number>(300);
+  const [hasShielding, setHasShielding] = useState<boolean>(true);
+  const [isLogScale, setIsLogScale] = useState<boolean>(true);
   const [addPoissonNoise, setAddPoissonNoise] = useState<boolean>(true);
 
-  // Auto-ID search tolerance
+  // Ingested ANSI N42.42 / .SPE / .CSV Spectrum State
+  const [ingestedSpectrum, setIngestedSpectrum] = useState<IngestedSpectrum | null>(null);
+  const [ingestError, setIngestError] = useState<string | null>(null);
+  const [mariscottiZThreshold, setMariscottiZThreshold] = useState<number>(3.5);
+  const [showMariscottiTrace, setShowMariscottiTrace] = useState<boolean>(false);
+
   const [idToleranceKeV, setIdToleranceKeV] = useState<number>(5.0);
   const [isDossierOpen, setIsDossierOpen] = useState<boolean>(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Generate 2048-Channel MCA Spectrum Data
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIngestError(null);
+
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const text = String(ev.target?.result || '');
+        const lower = file.name.toLowerCase();
+        let parsed: IngestedSpectrum;
+        if (lower.endsWith('.n42') || lower.endsWith('.xml') || text.trim().startsWith('<')) {
+          parsed = parseAnsiN42Xml(text, file.name);
+        } else {
+          parsed = parseOrtecSpeOrCsv(text, file.name);
+        }
+        setIngestedSpectrum(parsed);
+      } catch (err: any) {
+        setIngestError(err?.message || 'Failed to parse spectrum file.');
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleLoadReferenceN42 = () => {
+    setIngestError(null);
+    const xml = generateSampleAnsiN42Xml();
+    const parsed = parseAnsiN42Xml(xml, 'ORTEC_DetectiveX_Field_SNM_Mix.n42');
+    setIngestedSpectrum(parsed);
+  };
+
+  const handleExportCurrentN42 = () => {
+    const a0 = spectrumData.energies[0] || 0;
+    const a1 = spectrumData.keVPerChannel;
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<RadInstrumentData xmlns="http://physics.nist.gov/N42/2006/N42" n42DocUUID="radpro-export-${Date.now()}">
+  <RadInstrumentInformation id="RIID-1">
+    <RadInstrumentManufacturerName>RadPro Analyst MCA Engine</RadInstrumentManufacturerName>
+    <RadInstrumentModelName>${ingestedSpectrum ? ingestedSpectrum.instrumentModel : detector.name}</RadInstrumentModelName>
+  </RadInstrumentInformation>
+  <RadMeasurement id="MEAS-01">
+    <MeasurementClassCode>Foreground</MeasurementClassCode>
+    <RealTimeDuration>PT${(ingestedSpectrum ? ingestedSpectrum.realTimeSec : liveTimeSec).toFixed(1)}S</RealTimeDuration>
+    <Spectrum id="SPEC-01">
+      <LiveTimeDuration>PT${(ingestedSpectrum ? ingestedSpectrum.liveTimeSec : liveTimeSec).toFixed(1)}S</LiveTimeDuration>
+      <EnergyCalibration id="ECAL-01">
+        <CoefficientValues>${a0.toFixed(4)} ${a1.toFixed(4)} 0.0000</CoefficientValues>
+      </EnergyCalibration>
+      <ChannelData>${spectrumData.finalCounts.join(' ')}</ChannelData>
+    </Spectrum>
+  </RadMeasurement>
+</RadInstrumentData>`;
+    const blob = new Blob([xml], { type: 'application/xml' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `RadPro_${ingestedSpectrum ? ingestedSpectrum.fileName.replace(/\.[^.]+$/, '') : isotope.symbol}.n42`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Generate 2048-Channel MCA Spectrum Data or use Ingested Spectrum
   const spectrumData = useMemo(() => {
+    if (ingestedSpectrum) {
+      const numChannels = ingestedSpectrum.counts.length;
+      const keVPerChannel = ingestedSpectrum.calibrationCoeffs[1] || 1.4648;
+      return {
+        numChannels,
+        keVPerChannel,
+        channels: ingestedSpectrum.channels,
+        energies: ingestedSpectrum.energiesKeV,
+        finalCounts: ingestedSpectrum.counts
+      };
+    }
+
     const numChannels = 2048;
     const maxEnergyKeV = 3000;
     const keVPerChannel = maxEnergyKeV / numChannels;
@@ -183,46 +269,29 @@ const SpectroscopyModule: React.FC = () => {
 
     const detectorResAt662 = detector.fwhmAt662keV;
 
-    // Process each gamma emission line
     isotope.gammas.forEach((gamma) => {
       const E_g = gamma.energyKeV;
       const intensity = gamma.intensityPct / 100;
-      
-      // Calculate FWHM at energy E_g: FWHM(E) = FWHM(662) * sqrt(E / 662)
       const fwhm = Math.max(0.5, detectorResAt662 * Math.sqrt(E_g / 662.0));
-      const sigma = fwhm / 2.355; // Gaussian standard deviation
-
-      // Total expected photopeak events
+      const sigma = fwhm / 2.355;
       const peakYield = activityKBq * 1000 * intensity * (detector.relativeEffPct / 100) * liveTimeSec * 0.005;
-
-      // Compton Edge calculation: E_C = E_g / (1 + 511 / (2 * E_g))
       const comptonEdge = E_g / (1 + 511 / (2 * E_g));
-
-      // Backscatter Peak energy: E_B = E_g / (1 + 2 * E_g / 511)
       const backscatterEnergy = E_g / (1 + (2 * E_g) / 511);
-
-      // Single & Double Escape Energies
       const singleEscapeE = E_g - 511;
       const doubleEscapeE = E_g - 1022;
 
       for (let ch = 0; ch < numChannels; ch++) {
         const E = ch * keVPerChannel;
-
-        // 1. Photopeak (Gaussian Distribution)
         const dE = E - E_g;
         if (Math.abs(dE) < 4 * sigma) {
           const photopeakCount = (peakYield / (sigma * Math.sqrt(2 * Math.PI))) * Math.exp(-(dE * dE) / (2 * sigma * sigma)) * keVPerChannel;
           rawCounts[ch] += photopeakCount;
         }
-
-        // 2. Compton Continuum (Flat step / Klein-Nishina ramp up to Compton Edge)
         if (E > 10 && E <= comptonEdge) {
           const comptonHeight = (peakYield * 0.45) / comptonEdge;
-          const ramp = 0.8 + 0.4 * (E / comptonEdge); // slightly higher near Compton edge
+          const ramp = 0.8 + 0.4 * (E / comptonEdge);
           rawCounts[ch] += comptonHeight * ramp * keVPerChannel;
         }
-
-        // 3. Backscatter Peak
         if (backscatterEnergy > 20) {
           const backscatterSigma = fwhm * 1.2;
           const dB = E - backscatterEnergy;
@@ -231,8 +300,6 @@ const SpectroscopyModule: React.FC = () => {
             rawCounts[ch] += bsCount;
           }
         }
-
-        // 4. Single & Double Escape Peaks (if E_g > 1022 keV)
         if (E_g > 1022) {
           if (singleEscapeE > 0 && Math.abs(E - singleEscapeE) < 3 * sigma) {
             const seCount = (peakYield * 0.05 / (sigma * Math.sqrt(2 * Math.PI))) * Math.exp(-Math.pow(E - singleEscapeE, 2) / (2 * sigma * sigma)) * keVPerChannel;
@@ -246,129 +313,73 @@ const SpectroscopyModule: React.FC = () => {
       }
     });
 
-    // 5. Environmental Background & Lead X-Rays
     const bgLevel = 0.05 * liveTimeSec;
     for (let ch = 0; ch < numChannels; ch++) {
       const E = ch * keVPerChannel;
-      
-      // Ambient background continuum
       rawCounts[ch] += bgLevel * Math.exp(-E / 1200);
-
-      // Lead X-Rays (75 keV K-alpha) if Lead Shielding is enabled
       if (hasShielding && Math.abs(E - 75) < 3 * (detectorResAt662 * 0.4)) {
         const leadSigma = Math.max(1.0, detectorResAt662 * 0.35);
         rawCounts[ch] += (liveTimeSec * 0.8 / (leadSigma * Math.sqrt(2 * Math.PI))) * Math.exp(-Math.pow(E - 75, 2) / (2 * leadSigma * leadSigma));
       }
     }
 
-    // 6. Apply Poisson Counting Noise
-    const finalCounts = rawCounts.map((val) => {
+    const finalCounts = rawCounts.map((val, ch) => {
       const counts = Math.max(0, val);
       if (!addPoissonNoise || counts === 0) return Math.round(counts);
-      // Gaussian approximation to Poisson noise: N + N(0, sqrt(N))
-      const noise = (Math.random() + Math.random() + Math.random() - 1.5) * 1.15 * Math.sqrt(counts);
-      return Math.max(1, Math.round(counts + noise));
+      // Deterministic repeatable pseudo-Poisson noise so peaks don't jump on UI re-renders
+      const pseudoRand = Math.sin(ch * 12.9898 + activityKBq * 78.233) * 43758.5453;
+      const frac = pseudoRand - Math.floor(pseudoRand) - 0.5;
+      return Math.max(1, Math.round(counts + frac * 1.6 * Math.sqrt(counts)));
     });
 
     return { numChannels, keVPerChannel, channels, energies, finalCounts };
-  }, [detector, isotope, activityKBq, liveTimeSec, hasShielding, addPoissonNoise]);
+  }, [ingestedSpectrum, detector, isotope, activityKBq, liveTimeSec, hasShielding, addPoissonNoise]);
 
-  // Automated Peak Search & Isotope Identification Engine
-  const identifiedPeaks = useMemo(() => {
-    const { energies, finalCounts } = spectrumData;
-    const peaks: {
-      channel: number;
-      energyKeV: number;
-      counts: number;
-      fwhmKeV: number;
-      matchedIsotope: string;
-      matchedLineKeV: number;
-    }[] = [];
+  // Mariscotti Generalized Second-Difference Peak Search & Trapezoidal Net-Area Solver
+  const mariscottiAnalysis = useMemo(() => {
+    return runMariscottiPeakSearch(spectrumData.energies, spectrumData.finalCounts, {
+      zThreshold: mariscottiZThreshold,
+      idToleranceKeV,
+      nominalFwhmAt662KeV: detector.fwhmAt662keV
+    });
+  }, [spectrumData, mariscottiZThreshold, idToleranceKeV, detector.fwhmAt662keV]);
 
-    // Simple peak detection: local maximum above threshold
-    const windowSize = 5;
-    const minCounts = Math.max(...finalCounts) * 0.02; // 2% of max spectrum height
-
-    for (let i = windowSize; i < finalCounts.length - windowSize; i++) {
-      const current = finalCounts[i];
-      if (current < minCounts) continue;
-
-      let isMax = true;
-      for (let j = i - windowSize; j <= i + windowSize; j++) {
-        if (j !== i && finalCounts[j] > current) {
-          isMax = false;
-          break;
-        }
-      }
-
-      if (isMax) {
-        const energy = energies[i];
-        const fwhm = detector.fwhmAt662keV * Math.sqrt(energy / 662.0);
-
-        // Search isotope database for matching gamma line
-        let bestMatch = 'Unidentified';
-        let bestLine = 0;
-        let minDiff = idToleranceKeV;
-
-        ISOTOPES.forEach((iso) => {
-          iso.gammas.forEach((gamma) => {
-            const diff = Math.abs(gamma.energyKeV - energy);
-            if (diff < minDiff) {
-              minDiff = diff;
-              bestMatch = iso.name;
-              bestLine = gamma.energyKeV;
-            }
-          });
-        });
-
-        peaks.push({
-          channel: i,
-          energyKeV: energy,
-          counts: current,
-          fwhmKeV: fwhm,
-          matchedIsotope: bestMatch,
-          matchedLineKeV: bestLine
-        });
-      }
-    }
-
-    return peaks;
-  }, [spectrumData, detector, idToleranceKeV]);
+  const identifiedPeaks = mariscottiAnalysis.peaks;
 
   const dossierPayload: CalculationDossierPayload = useMemo(() => ({
-    reportTitle: 'Gamma-Ray Spectrometry & MCA Automated Isotope Identification Dossier',
-    moduleName: 'Module 25: Gamma Spectroscopy & MCA Spectrum Analyzer',
-    statuteCitation: 'IEEE Std 325-2014 / ANSI N42.14 / ISO 17025',
+    reportTitle: 'Gamma-Ray Spectrometry, ANSI N42.42 Ingestion & Mariscotti Peak Analysis Dossier',
+    moduleName: 'Module 28: Gamma Spectroscopy & MCA Spectrum Analyzer',
+    statuteCitation: 'ANSI N42.42-2020 / IEEE Std 325-2014 / ANSI N42.14 / Mariscotti (1967)',
     verificationTestId: 'VTEST-14',
     operatorName: 'Gamma Radiometric Metrologist',
     operatorCredentials: 'CHP / ISO 17025 Qualified Technical Signatory',
     facility: 'Low-Background Radiometrics & MCA Counting Laboratory',
-    notes: `Acquisition spectrum for ${isotope.name} (${activityKBq} kBq) using ${detector.name}. Live time: ${liveTimeSec} s. Resolved photopeaks: ${identifiedPeaks.length}.`,
-    formulaDescription: 'R = \\frac{\\text{FWHM}}{E_0} \\times 100\\%, \\quad G(E) = \\frac{A}{\\sigma \\sqrt{2\\pi}} \\exp\\left(-\\frac{(E - E_0)^2}{2\\sigma^2}\\right)',
+    notes: ingestedSpectrum
+      ? `Ingested ${ingestedSpectrum.sourceFormat} file "${ingestedSpectrum.fileName}" from ${ingestedSpectrum.instrumentModel}. Live time: ${ingestedSpectrum.liveTimeSec} s. Mariscotti second-difference peaks resolved: ${identifiedPeaks.length}.`
+      : `Synthetic acquisition spectrum for ${isotope.name} (${activityKBq} kBq) using ${detector.name}. Live time: ${liveTimeSec} s. Mariscotti peaks resolved: ${identifiedPeaks.length}.`,
+    formulaDescription: 'S_i = \\sum_{k=-m}^m w_k (C_{i+k+1} - 2C_{i+k} + C_{i+k-1}), \\quad Z_i = \\frac{-S_i}{\\sqrt{\\sum w_k^2 (C_{i+k+1} + 4C_{i+k} + C_{i+k-1})}}',
     inputs: [
-      { label: 'Spectrometer Detector', value: detector.name },
-      { label: 'Detector Sensor Class', value: detector.type },
-      { label: 'Source Standard', value: isotope.name },
-      { label: 'Standard Activity', value: activityKBq, unit: 'kBq' },
-      { label: 'Acquisition Live Time', value: liveTimeSec, unit: 's' },
-      { label: 'Background Shielding', value: hasShielding ? 'Low-Background Lead Castle' : 'Unshielded Ambient Air' },
-      { label: 'Peak Identification Tolerance', value: `±${idToleranceKeV} keV` }
+      { label: 'Acquisition Source', value: ingestedSpectrum ? `${ingestedSpectrum.sourceFormat} (${ingestedSpectrum.fileName})` : 'Synthetic MCA Physics Kernel' },
+      { label: 'Spectrometer / Instrument', value: ingestedSpectrum ? ingestedSpectrum.instrumentModel : detector.name },
+      { label: 'Acquisition Live Time', value: ingestedSpectrum ? ingestedSpectrum.liveTimeSec : liveTimeSec, unit: 's' },
+      { label: 'Mariscotti Significance Threshold', value: `${mariscottiZThreshold.toFixed(1)} σ` },
+      { label: 'Library Match Window', value: `±${idToleranceKeV} keV` }
     ],
     outputs: [
-      { label: 'FWHM Resolution at 662 keV', value: `${detector.fwhmAt662keV} keV (${((detector.fwhmAt662keV / 661.7) * 100).toFixed(2)}%)`, status: 'PASS' },
       { label: 'Resolved Photopeak Count', value: identifiedPeaks.length, status: 'PASS' },
-      { label: 'Dominant Identified Isotope', value: identifiedPeaks[0]?.matchedIsotope || 'Unresolved', status: 'PASS' },
-      { label: 'Primary Energy Centroid', value: identifiedPeaks[0] ? `${identifiedPeaks[0].energyKeV.toFixed(1)} keV` : 'N/A', status: 'PASS' }
+      { label: 'Primary Identified Isotope', value: identifiedPeaks[0]?.matchedIsotope || 'Unresolved', status: 'PASS' },
+      { label: 'Primary Energy Centroid', value: identifiedPeaks[0] ? `${identifiedPeaks[0].energyKeV.toFixed(2)} keV` : 'N/A', status: 'PASS' },
+      { label: 'Primary Net Peak Area', value: identifiedPeaks[0] ? `${identifiedPeaks[0].netAreaCounts.toLocaleString()} ± ${identifiedPeaks[0].netAreaUncertainty} cts` : 'N/A', status: 'PASS' }
     ]
-  }), [detector, isotope, activityKBq, liveTimeSec, hasShielding, idToleranceKeV, identifiedPeaks]);
+  }), [ingestedSpectrum, detector, isotope, activityKBq, liveTimeSec, mariscottiZThreshold, idToleranceKeV, identifiedPeaks]);
 
   return (
     <div className="spectroscopy-module">
       <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
         <div>
-          <h2 style={{ margin: 0 }}>🔬 Module 25 — Gamma Spectroscopy &amp; MCA Spectrum Analyzer</h2>
+          <h2 style={{ margin: 0 }}>🔬 Module 28 — Gamma Spectroscopy, ANSI N42.42 Ingestion &amp; Mariscotti Peak Solver</h2>
           <p style={{ color: 'var(--color-text-muted)', margin: '4px 0 0 0', fontSize: '0.85rem' }}>
-            Simulate pulse-height energy spectra for NaI(Tl), HPGe, LaBr₃(Ce), and CZT detectors. Analyze photopeaks, Compton continuum, backscatter, escape peaks, and run automated isotopic identification.
+            Ingest real-world ANSI N42.42 XML, ORTEC Maestro (.SPE), or MCA CSV spectra—or simulate HPGe/NaI(Tl)/LaBr₃/CZT detectors with Mariscotti generalized second-difference peak search and trapezoidal Compton continuum subtraction.
           </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -389,50 +400,123 @@ const SpectroscopyModule: React.FC = () => {
             <span>🛡️</span>
             <span>Audit Dossier (21 CFR Part 11)</span>
           </button>
-          <VerificationBadge testId="VTEST-14" standard="IEEE Std 325" />
+          <VerificationBadge testId="VTEST-14" standard="ANSI N42.42 & IEEE 325" />
         </div>
       </div>
 
-      {/* Isotope Standard Presets */}
-      <div className="panel" style={{ padding: '15px', marginBottom: '20px' }}>
-        <h4 style={{ fontSize: '0.9rem', color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '10px' }}>
-          Select Isotope Source / Standard
-        </h4>
-        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-          {ISOTOPES.map((iso) => {
-            const isSelected = isotope.name === iso.name;
-            return (
+      {/* Real-World File Ingestion Bar (ANSI N42.42 / .SPE / .CSV) */}
+      <div className="panel" style={{ padding: '16px', marginBottom: '20px', border: '1px solid rgba(0, 229, 255, 0.3)', background: 'rgba(5, 14, 26, 0.85)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span className="hud-badge hud-badge-primary">REAL-WORLD SPECTRUM I/O</span>
+              <strong style={{ color: '#fff', fontSize: '0.95rem' }}>
+                ANSI N42.42 XML / ORTEC Maestro (.SPE) / MCA (.CSV, .TKA) Ingestion
+              </strong>
+            </div>
+            <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+              Upload a field RIID or laboratory MCA spectrum file, or load the built-in ANSI N42.42 multi-isotope safeguard reference file.
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".n42,.xml,.spe,.chn,.csv,.tka,.txt"
+              style={{ display: 'none' }}
+              onChange={handleFileUpload}
+            />
+            <button
+              className="btn btn-primary"
+              style={{ fontSize: '0.8rem', padding: '7px 14px' }}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              📂 Upload .N42 / .SPE / .CSV File
+            </button>
+            <button
+              className="btn btn-secondary"
+              style={{ fontSize: '0.8rem', padding: '7px 14px', borderColor: '#10b981', color: '#10b981' }}
+              onClick={handleLoadReferenceN42}
+            >
+              📥 Load Reference ANSI N42.42 RIID File
+            </button>
+            <button
+              className="btn btn-secondary"
+              style={{ fontSize: '0.8rem', padding: '7px 14px' }}
+              onClick={handleExportCurrentN42}
+            >
+              💾 Export Current as .N42 XML
+            </button>
+            {ingestedSpectrum && (
               <button
-                key={iso.name}
-                className="btn btn-primary"
-                style={{
-                  fontSize: '0.8rem',
-                  padding: '6px 12px',
-                  background: isSelected ? 'rgba(0, 229, 255, 0.2)' : 'rgba(22, 36, 56, 0.8)',
-                  color: isSelected ? '#00e5ff' : '#fff',
-                  border: `1px solid ${isSelected ? '#00e5ff' : 'var(--color-border)'}`
-                }}
-                onClick={() => setIsotope(iso)}
+                className="btn btn-sm btn-outline-danger"
+                style={{ fontSize: '0.8rem', padding: '7px 12px' }}
+                onClick={() => setIngestedSpectrum(null)}
               >
-                {iso.name}
+                ✕ Return to Synthetic Simulator
               </button>
-            );
-          })}
+            )}
+          </div>
         </div>
-        {isotope && (
-          <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginTop: '10px', margin: 0 }}>
-            {isotope.description}
-          </p>
+
+        {ingestError && (
+          <div style={{ marginTop: '10px', padding: '8px 12px', background: 'rgba(239, 68, 68, 0.15)', border: '1px solid #ef4444', borderRadius: '6px', color: '#fca5a5', fontSize: '0.82rem' }}>
+            ⚠️ {ingestError}
+          </div>
+        )}
+
+        {ingestedSpectrum && (
+          <div style={{ marginTop: '12px', padding: '10px 14px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.4)', borderRadius: '6px', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', fontSize: '0.82rem' }}>
+            <span><strong>Active File:</strong> <code style={{ color: '#10b981' }}>{ingestedSpectrum.fileName}</code> ({ingestedSpectrum.sourceFormat})</span>
+            <span><strong>Instrument:</strong> {ingestedSpectrum.instrumentModel}</span>
+            <span><strong>Live / Real Time:</strong> {ingestedSpectrum.liveTimeSec}s / {ingestedSpectrum.realTimeSec}s</span>
+            <span><strong>Calibration:</strong> E(ch) = {ingestedSpectrum.calibrationCoeffs[0].toFixed(2)} + {ingestedSpectrum.calibrationCoeffs[1].toFixed(4)}·ch keV</span>
+            <span><strong>Channels:</strong> {ingestedSpectrum.counts.length}</span>
+          </div>
         )}
       </div>
+
+      {/* Isotope Standard Presets (When in Synthetic Mode) */}
+      {!ingestedSpectrum && (
+        <div className="panel" style={{ padding: '15px', marginBottom: '20px' }}>
+          <h4 style={{ fontSize: '0.9rem', color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '10px' }}>
+            Select Synthetic Isotope Source / Standard
+          </h4>
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            {ISOTOPES.map((iso) => {
+              const isSelected = isotope.name === iso.name;
+              return (
+                <button
+                  key={iso.name}
+                  className="btn btn-primary"
+                  style={{
+                    fontSize: '0.8rem',
+                    padding: '6px 12px',
+                    background: isSelected ? 'rgba(0, 229, 255, 0.2)' : 'rgba(22, 36, 56, 0.8)',
+                    color: isSelected ? '#00e5ff' : '#fff',
+                    border: `1px solid ${isSelected ? '#00e5ff' : 'var(--color-border)'}`
+                  }}
+                  onClick={() => setIsotope(iso)}
+                >
+                  {iso.name}
+                </button>
+              );
+            })}
+          </div>
+          <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginTop: '10px', marginBottom: 0 }}>
+            {isotope.description}
+          </p>
+        </div>
+      )}
 
       <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', marginBottom: '20px' }}>
         {/* Controls Panel */}
         <div className="panel" style={{ flex: '1 1 450px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
-          <h3>Detector & Acquisition Config</h3>
+          <h3>Detector &amp; Mariscotti Peak-Finder Config</h3>
 
           <div className="form-group">
-            <label className="form-label">Detector System</label>
+            <label className="form-label">Detector System (Resolution Baseline)</label>
             <select
               className="form-control"
               value={detector.name}
@@ -447,15 +531,12 @@ const SpectroscopyModule: React.FC = () => {
                 </option>
               ))}
             </select>
-            <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
-              {detector.description}
-            </span>
           </div>
 
-          <div style={{ display: 'flex', gap: '15px' }}>
-            <div className="form-group" style={{ flex: 1 }}>
-              <label className="form-label">Source Activity</label>
-              <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
+          {!ingestedSpectrum && (
+            <div style={{ display: 'flex', gap: '15px' }}>
+              <div className="form-group" style={{ flex: 1 }}>
+                <label className="form-label">Source Activity (kBq)</label>
                 <input
                   type="number"
                   className="form-control"
@@ -465,13 +546,10 @@ const SpectroscopyModule: React.FC = () => {
                   step="10"
                   onChange={(e) => setActivityKBq(Math.max(1, Number(e.target.value)))}
                 />
-                <span style={{ color: 'var(--color-text-muted)' }}>kBq</span>
               </div>
-            </div>
 
-            <div className="form-group" style={{ flex: 1 }}>
-              <label className="form-label">Acquisition Live Time</label>
-              <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
+              <div className="form-group" style={{ flex: 1 }}>
+                <label className="form-label">Acquisition Live Time (sec)</label>
                 <input
                   type="number"
                   className="form-control"
@@ -481,119 +559,115 @@ const SpectroscopyModule: React.FC = () => {
                   step="30"
                   onChange={(e) => setLiveTimeSec(Math.max(10, Number(e.target.value)))}
                 />
-                <span style={{ color: 'var(--color-text-muted)' }}>sec</span>
               </div>
             </div>
-          </div>
-
-          <div style={{ display: 'flex', gap: '20px', alignItems: 'center', borderTop: '1px solid var(--color-border)', paddingTop: '12px' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.85rem' }}>
-              <input
-                type="checkbox"
-                checked={hasShielding}
-                onChange={(e) => setHasShielding(e.target.checked)}
-              />
-              Lead Shielding (75 keV Lead X-Rays)
-            </label>
-
-            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.85rem' }}>
-              <input
-                type="checkbox"
-                checked={addPoissonNoise}
-                onChange={(e) => setAddPoissonNoise(e.target.checked)}
-              />
-              Poisson Noise
-            </label>
-          </div>
+          )}
 
           <div style={{ display: 'flex', gap: '15px', borderTop: '1px solid var(--color-border)', paddingTop: '12px' }}>
             <div className="form-group" style={{ flex: 1 }}>
-              <label className="form-label">Auto-ID Tolerance</label>
-              <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
-                <input
-                  type="number"
-                  className="form-control"
-                  value={idToleranceKeV}
-                  min="0.5"
-                  max="20.0"
-                  step="0.5"
-                  onChange={(e) => setIdToleranceKeV(Math.max(0.5, Number(e.target.value)))}
-                />
-                <span style={{ color: 'var(--color-text-muted)' }}>keV</span>
-              </div>
+              <label className="form-label">Mariscotti Peak Threshold (σ)</label>
+              <input
+                type="number"
+                className="form-control"
+                value={mariscottiZThreshold}
+                min="1.5"
+                max="15.0"
+                step="0.5"
+                onChange={(e) => setMariscottiZThreshold(Math.max(1.5, Number(e.target.value)))}
+              />
             </div>
-            <div className="form-group" style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
-              <button
-                className="btn btn-primary"
-                style={{ width: '100%', height: '38px', fontSize: '0.85rem' }}
-                onClick={() => setIsLogScale(!isLogScale)}
-              >
-                Toggle Y-Axis ({isLogScale ? 'Logarithmic' : 'Linear'})
-              </button>
+            <div className="form-group" style={{ flex: 1 }}>
+              <label className="form-label">Isotope Match Window (keV)</label>
+              <input
+                type="number"
+                className="form-control"
+                value={idToleranceKeV}
+                min="0.5"
+                max="25.0"
+                step="0.5"
+                onChange={(e) => setIdToleranceKeV(Math.max(0.5, Number(e.target.value)))}
+              />
             </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap', borderTop: '1px solid var(--color-border)', paddingTop: '12px' }}>
+            {!ingestedSpectrum && (
+              <>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '0.82rem' }}>
+                  <input type="checkbox" checked={hasShielding} onChange={(e) => setHasShielding(e.target.checked)} />
+                  Lead Castle (75 keV X-Ray)
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '0.82rem' }}>
+                  <input type="checkbox" checked={addPoissonNoise} onChange={(e) => setAddPoissonNoise(e.target.checked)} />
+                  Poisson Counting Statistics
+                </label>
+              </>
+            )}
+            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '0.82rem', color: '#f59e0b' }}>
+              <input type="checkbox" checked={showMariscottiTrace} onChange={(e) => setShowMariscottiTrace(e.target.checked)} />
+              Overlay Mariscotti -Sᵢ/Fᵢ Second-Difference Trace
+            </label>
+            <button
+              className="btn btn-primary"
+              style={{ marginLeft: 'auto', fontSize: '0.8rem', padding: '6px 12px' }}
+              onClick={() => setIsLogScale(!isLogScale)}
+            >
+              Y-Axis: {isLogScale ? 'Logarithmic' : 'Linear'}
+            </button>
           </div>
         </div>
 
         {/* Spectral Physics Summary Panel */}
         <div className="panel" style={{ flex: '1 1 450px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
           <div>
-            <h3>Spectral Physics & Resolution Metrics</h3>
+            <h3>Spectral Metrology &amp; Mariscotti Summary</h3>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '15px' }}>
               <div style={{ padding: '10px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--color-border)', borderRadius: '6px' }}>
-                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>FWHM @ 662 keV:</span>
-                <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--color-primary)' }}>
-                  {detector.fwhmAt662keV.toFixed(1)} keV ({((detector.fwhmAt662keV / 661.7) * 100).toFixed(2)}%)
-                </div>
-              </div>
-              <div style={{ padding: '10px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--color-border)', borderRadius: '6px' }}>
-                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Total Spectrum Counts:</span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Total Integral Counts:</span>
                 <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#fff' }}>
                   {spectrumData.finalCounts.reduce((a, b) => a + b, 0).toLocaleString()}
                 </div>
               </div>
               <div style={{ padding: '10px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--color-border)', borderRadius: '6px' }}>
-                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Detected Photopeaks:</span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Mariscotti Photopeaks (&ge;{mariscottiZThreshold}&sigma;):</span>
                 <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--color-accent)' }}>
-                  {identifiedPeaks.length} Peaks
+                  {identifiedPeaks.length} Peaks Resolved
                 </div>
               </div>
               <div style={{ padding: '10px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--color-border)', borderRadius: '6px' }}>
-                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>MCA Calibration:</span>
-                <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#fff' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Energy Calibration Slope:</span>
+                <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--color-primary)' }}>
                   {spectrumData.keVPerChannel.toFixed(3)} keV/ch
+                </div>
+              </div>
+              <div style={{ padding: '10px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--color-border)', borderRadius: '6px' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Identified Nuclides:</span>
+                <div style={{ fontSize: '0.95rem', fontWeight: 'bold', color: '#10b981' }}>
+                  {Array.from(new Set(identifiedPeaks.filter(p => p.matchedIsotope !== 'Unidentified').map(p => p.matchedIsotope.split(' ')[0]))).join(', ') || 'None'}
                 </div>
               </div>
             </div>
 
-            <div style={{ padding: '12px', background: 'rgba(0, 229, 255, 0.04)', border: '1px solid rgba(0, 229, 255, 0.2)', borderRadius: '6px', fontSize: '0.85rem' }}>
-              <h4 style={{ color: 'var(--color-primary)', margin: '0 0 6px 0', fontSize: '0.85rem', textTransform: 'uppercase' }}>
-                Gamma Line Decay Table ({isotope.name})
+            <div style={{ padding: '12px', background: 'rgba(0, 229, 255, 0.04)', border: '1px solid rgba(0, 229, 255, 0.2)', borderRadius: '6px', fontSize: '0.82rem' }}>
+              <h4 style={{ color: 'var(--color-primary)', margin: '0 0 6px 0', fontSize: '0.82rem', textTransform: 'uppercase' }}>
+                Mariscotti Generalized Second-Difference Algorithm (1967)
               </h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                {isotope.gammas.map((g, idx) => (
-                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px stroke rgba(255,255,255,0.05)' }}>
-                    <span>E = <strong>{g.energyKeV.toFixed(1)} keV</strong></span>
-                    <span style={{ color: 'var(--color-text-muted)' }}>Intensity: {g.intensityPct.toFixed(1)}%</span>
-                  </div>
-                ))}
-              </div>
+              <p style={{ margin: 0, color: 'var(--color-text-muted)', lineHeight: '1.45' }}>
+                Computes smoothed 2nd-difference <code style={{ color: '#00e5ff' }}>Sᵢ = ∑ wₖ(Cᵢ₊ₖ₊₁ - 2Cᵢ₊ₖ + Cᵢ₊ₖ₋₁)</code> normalized by Poisson propagation uncertainty <code style={{ color: '#00e5ff' }}>Fᵢ</code>. Statistically significant photopeaks satisfy <code style={{ color: '#f59e0b' }}>Zᵢ = -Sᵢ/Fᵢ &ge; {mariscottiZThreshold}σ</code>, eliminating false positives from Compton edges.
+              </p>
             </div>
           </div>
 
           <div style={{ marginTop: '15px', fontSize: '0.8rem', color: 'var(--color-text-muted)', borderTop: '1px solid var(--color-border)', paddingTop: '8px' }}>
-            Detector Technology: <strong>{detector.type}</strong> | Channels: <strong>2048 MCA</strong>
+            Mode: <strong>{ingestedSpectrum ? `Field File (${ingestedSpectrum.sourceFormat})` : `Synthetic (${detector.type})`}</strong> | Channels: <strong>{spectrumData.numChannels} MCA</strong>
           </div>
         </div>
       </div>
 
-      {/* Plotly 2048-Channel MCA Pulse-Height Spectrum */}
+      {/* Plotly MCA Pulse-Height Spectrum */}
       <div className="panel" style={{ marginBottom: '20px' }}>
-        <h3>2048-Channel Multi-Channel Analyzer (MCA) Pulse-Height Spectrum</h3>
-        <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', marginBottom: '10px' }}>
-          Real-time energy spectrum (Counts vs keV). Vertical markers indicate detected photopeaks and auto-identified isotopes.
-        </p>
-
+        <h3>Multi-Channel Analyzer (MCA) Pulse-Height Spectrum &amp; Photopeak Centroids</h3>
         <div style={{ width: '100%' }}>
           <Plot
             data={[
@@ -602,18 +676,30 @@ const SpectroscopyModule: React.FC = () => {
                 y: spectrumData.finalCounts,
                 type: 'scatter',
                 mode: 'lines',
-                name: `${isotope.symbol} Spectrum`,
+                name: ingestedSpectrum ? ingestedSpectrum.fileName : `${isotope.symbol} Spectrum`,
                 line: { color: 'var(--color-primary)', width: 2 },
                 fill: 'tozeroy',
                 fillcolor: 'rgba(0, 229, 255, 0.08)'
               },
+              ...(showMariscottiTrace
+                ? [
+                    {
+                      x: spectrumData.energies,
+                      y: mariscottiAnalysis.mariscottiSignal.map(z => Math.max(1, z * 10)),
+                      type: 'scatter',
+                      mode: 'lines',
+                      name: 'Mariscotti Significance (-Sᵢ/Fᵢ × 10)',
+                      line: { color: '#f59e0b', width: 1.5, dash: 'dot' }
+                    }
+                  ]
+                : []),
               ...identifiedPeaks.map((p) => ({
                 x: [p.energyKeV, p.energyKeV],
-                y: [1, p.counts * 1.15],
+                y: [1, p.peakHeightCounts * 1.18],
                 type: 'scatter',
                 mode: 'lines+text',
                 name: `${p.energyKeV.toFixed(1)} keV`,
-                text: [`${p.energyKeV.toFixed(1)} keV`],
+                text: [`${p.energyKeV.toFixed(1)} keV (${p.matchedIsotope.split(' ')[0]})`],
                 textposition: 'top center',
                 line: { color: '#EF4444', width: 1.5, dash: 'dash' },
                 showlegend: false
@@ -621,15 +707,15 @@ const SpectroscopyModule: React.FC = () => {
             ] as any}
             layout={{
               autosize: true,
-              xaxis: { 
-                title: { text: 'Energy (keV)' }, 
-                color: '#94A3B8', 
+              xaxis: {
+                title: { text: 'Energy (keV)' },
+                color: '#94A3B8',
                 gridcolor: 'rgba(255,255,255,0.05)',
-                range: [0, Math.max(1500, Math.max(...isotope.gammas.map(g => g.energyKeV)) * 1.25)]
+                range: [0, Math.min(3000, Math.max(1600, (identifiedPeaks[identifiedPeaks.length - 1]?.energyKeV || 1400) * 1.2))]
               },
-              yaxis: { 
-                title: { text: 'Counts per Channel' }, 
-                type: isLogScale ? 'log' : 'linear', 
+              yaxis: {
+                title: { text: 'Counts per Channel' },
+                type: isLogScale ? 'log' : 'linear',
                 color: '#94A3B8',
                 gridcolor: 'rgba(255,255,255,0.05)'
               },
@@ -637,7 +723,7 @@ const SpectroscopyModule: React.FC = () => {
               plot_bgcolor: 'transparent',
               font: { color: '#F8FAFC' },
               margin: { l: 60, r: 20, t: 30, b: 60 },
-              legend: { x: 0.7, y: 0.9, bgcolor: 'rgba(5, 10, 18, 0.8)' }
+              legend: { x: 0.65, y: 0.92, bgcolor: 'rgba(5, 10, 18, 0.8)' }
             }}
             useResizeHandler={true}
             style={{ width: '100%', height: '420px' }}
@@ -646,42 +732,51 @@ const SpectroscopyModule: React.FC = () => {
         </div>
       </div>
 
-      {/* Auto-ID & Peak Search Analysis Table */}
+      {/* Auto-ID & Mariscotti Peak Search Analysis Table */}
       <div className="panel">
-        <h3>Automated Isotope Identification (Auto-ID) & Peak Search</h3>
+        <h3>Mariscotti Second-Difference ROI Analysis &amp; Nuclide Library Identification</h3>
         <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', marginBottom: '15px' }}>
-          Peak fitting and centroid matching against nuclear decay energy database (Tolerance: ±{idToleranceKeV} keV).
+          Sub-channel parabolic centroid fit, trapezoidal Compton continuum subtraction, net photopeak area uncertainty, and ICRP-107 / ANSI N42.14 library matching.
         </p>
 
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.83rem' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--color-border)', color: 'var(--color-primary)' }}>
                 <th style={{ padding: '8px' }}>Peak #</th>
                 <th style={{ padding: '8px' }}>Centroid Energy</th>
-                <th style={{ padding: '8px' }}>Peak Height</th>
-                <th style={{ padding: '8px' }}>FWHM (keV)</th>
-                <th style={{ padding: '8px' }}>FWHM (%)</th>
-                <th style={{ padding: '8px' }}>Matched Isotope</th>
+                <th style={{ padding: '8px' }}>Gross ROI</th>
+                <th style={{ padding: '8px' }}>Compton Continuum</th>
+                <th style={{ padding: '8px', color: '#00e5ff' }}>Net Peak Area (&pm;1&sigma;)</th>
+                <th style={{ padding: '8px' }}>FWHM</th>
+                <th style={{ padding: '8px' }}>Mariscotti Z</th>
+                <th style={{ padding: '8px' }}>Identified Nuclide</th>
                 <th style={{ padding: '8px' }}>Library Line</th>
               </tr>
             </thead>
             <tbody>
-              {identifiedPeaks.map((peak, idx) => {
-                const fwhmPct = (peak.fwhmKeV / peak.energyKeV) * 100;
+              {identifiedPeaks.map((peak) => {
                 const isMatched = peak.matchedIsotope !== 'Unidentified';
                 return (
-                  <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                    <td style={{ padding: '8px', fontWeight: 'bold' }}>#{idx + 1}</td>
-                    <td style={{ padding: '8px', color: '#00E5FF', fontWeight: 'bold' }}>{peak.energyKeV.toFixed(1)} keV</td>
-                    <td style={{ padding: '8px' }}>{peak.counts.toLocaleString()} counts</td>
-                    <td style={{ padding: '8px' }}>{peak.fwhmKeV.toFixed(2)} keV</td>
-                    <td style={{ padding: '8px' }}>{fwhmPct.toFixed(2)} %</td>
+                  <tr key={peak.peakIndex} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                    <td style={{ padding: '8px', fontWeight: 'bold' }}>#{peak.peakIndex}</td>
+                    <td style={{ padding: '8px', color: '#00E5FF', fontWeight: 'bold' }}>
+                      {peak.energyKeV.toFixed(2)} keV <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>(ch {peak.channelCentroid.toFixed(1)})</span>
+                    </td>
+                    <td style={{ padding: '8px', fontFamily: 'monospace' }}>{peak.grossCounts.toLocaleString()}</td>
+                    <td style={{ padding: '8px', fontFamily: 'monospace', color: 'var(--color-text-muted)' }}>{peak.continuumCounts.toLocaleString()}</td>
+                    <td style={{ padding: '8px', fontFamily: 'monospace', fontWeight: 'bold', color: '#00e5ff' }}>
+                      {peak.netAreaCounts.toLocaleString()} &plusmn; {peak.netAreaUncertainty}
+                    </td>
+                    <td style={{ padding: '8px' }}>
+                      {peak.fwhmKeV.toFixed(2)} keV ({peak.fwhmPct.toFixed(2)}%)
+                    </td>
+                    <td style={{ padding: '8px', color: '#f59e0b', fontWeight: 'bold' }}>{peak.mariscottiZScore.toFixed(1)} &sigma;</td>
                     <td style={{ padding: '8px', color: isMatched ? '#10B981' : '#F59E0B', fontWeight: 'bold' }}>
                       {peak.matchedIsotope}
                     </td>
                     <td style={{ padding: '8px', color: 'var(--color-text-muted)' }}>
-                      {isMatched ? `${peak.matchedLineKeV.toFixed(1)} keV` : 'N/A'}
+                      {isMatched ? `${peak.matchedLineKeV.toFixed(2)} keV (${peak.branchingIntensityPct}%)` : 'N/A'}
                     </td>
                   </tr>
                 );

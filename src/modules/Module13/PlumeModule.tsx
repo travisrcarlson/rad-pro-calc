@@ -5,6 +5,11 @@ import PlotComponent from 'react-plotly.js';
 import { BlockMath, InlineMath } from 'react-katex';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
+import {
+  fetchLiveSiteMeteorology,
+  REFERENCE_MET_SITES,
+  type LiveMeteorologySnapshot
+} from '../../utils/liveMeteoAndTerrain';
 
 const Plot = (PlotComponent as any).default || PlotComponent;
 
@@ -70,7 +75,24 @@ const PlumeModule: React.FC = () => {
   const [stability, setStability] = useState<string>('D'); // D is neutral
   const [maxDistance, setMaxDistance] = useState<number>(1000); // meters downwind
   const [sourceFacility, setSourceFacility] = useState<string | null>(null);
+  const [selectedMetSiteId, setSelectedMetSiteId] = useState<string>('ornl');
+  const [metLat, setMetLat] = useState<number>(35.9311);
+  const [metLon, setMetLon] = useState<number>(-84.3100);
+  const [liveMet, setLiveMet] = useState<LiveMeteorologySnapshot | null>(null);
+  const [isFetchingMet, setIsFetchingMet] = useState<boolean>(false);
   const [isDossierOpen, setIsDossierOpen] = useState<boolean>(false);
+
+  const handleFetchLiveWeather = async (lat = metLat, lon = metLon, label = 'Custom Site') => {
+    setIsFetchingMet(true);
+    try {
+      const snap = await fetchLiveSiteMeteorology(lat, lon, label);
+      setLiveMet(snap);
+      setWindSpeed(Number(Math.max(0.5, Math.min(15, snap.windSpeed10mMs)).toFixed(1)));
+      setStability(snap.turner.stabilityClass);
+    } finally {
+      setIsFetchingMet(false);
+    }
+  };
 
   useEffect(() => {
     const actParam = searchParams.get('activity');
@@ -395,6 +417,97 @@ const PlumeModule: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Live Meteorological Station & Turner Stability Auto-Classifier */}
+      <div style={{
+        background: 'rgba(5, 14, 26, 0.85)',
+        border: '1px solid rgba(0, 229, 255, 0.28)',
+        borderRadius: '8px',
+        padding: '12px 16px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '10px'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <span className="hud-badge hud-badge-primary">LIVE METEOROLOGY</span>
+            <strong style={{ fontSize: '0.88rem', color: '#fff' }}>
+              Open-Meteo Real-Time Wind &amp; Turner (1964) Solar Insolation Stability Classifier
+            </strong>
+          </div>
+
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <select
+              className="form-control"
+              value={selectedMetSiteId}
+              onChange={(e) => {
+                const id = e.target.value;
+                setSelectedMetSiteId(id);
+                const found = REFERENCE_MET_SITES.find(s => s.id === id);
+                if (found) {
+                  setMetLat(found.latitude);
+                  setMetLon(found.longitude);
+                  handleFetchLiveWeather(found.latitude, found.longitude, found.name);
+                }
+              }}
+              style={{ fontSize: '0.78rem', width: '250px', padding: '4px 8px' }}
+            >
+              {REFERENCE_MET_SITES.map(s => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+
+            <input
+              type="number"
+              step="0.01"
+              className="form-control"
+              value={metLat}
+              onChange={e => setMetLat(parseFloat(e.target.value) || 0)}
+              style={{ width: '88px', fontSize: '0.78rem', padding: '4px 6px' }}
+              title="Latitude"
+            />
+            <input
+              type="number"
+              step="0.01"
+              className="form-control"
+              value={metLon}
+              onChange={e => setMetLon(parseFloat(e.target.value) || 0)}
+              style={{ width: '92px', fontSize: '0.78rem', padding: '4px 6px' }}
+              title="Longitude"
+            />
+            <button
+              className="btn btn-primary"
+              style={{ fontSize: '0.78rem', padding: '5px 12px' }}
+              disabled={isFetchingMet}
+              onClick={() => {
+                const found = REFERENCE_MET_SITES.find(s => s.id === selectedMetSiteId);
+                handleFetchLiveWeather(metLat, metLon, found ? found.name : 'Custom Coordinates');
+              }}
+            >
+              {isFetchingMet ? '⏳ Fetching...' : '🌐 Fetch Live Weather & Auto-Classify'}
+            </button>
+          </div>
+        </div>
+
+        {liveMet && (
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '10px',
+            padding: '8px 12px',
+            background: 'rgba(16, 185, 129, 0.08)',
+            border: '1px solid rgba(16, 185, 129, 0.35)',
+            borderRadius: '6px',
+            fontSize: '0.78rem'
+          }}>
+            <span><strong>Station:</strong> <span style={{ color: '#10b981' }}>{liveMet.siteName}</span> ({liveMet.sourceMode === 'LIVE_OPEN_METEO' ? 'Live Open-Meteo Telemetry' : 'Climatology Fallback'})</span>
+            <span><strong>10m / 80m Wind:</strong> {liveMet.windSpeed10mMs.toFixed(1)} / {liveMet.windSpeed80mMs.toFixed(1)} m/s @ {liveMet.windDirectionDeg.toFixed(0)}° (Plume → {liveMet.downwindBearingDeg.toFixed(0)}°)</span>
+            <span><strong>Solar / Clouds:</strong> {liveMet.shortwaveSolarWm2.toFixed(0)} W/m² | {liveMet.cloudCoverPct.toFixed(0)}% clouds | {liveMet.temperatureC.toFixed(1)}°C</span>
+            <span><strong>Turner Class:</strong> <strong style={{ color: '#00e5ff' }}>Class {liveMet.turner.stabilityClass}</strong> (PBL Mix Height: {liveMet.turner.mixingHeightMeters}m)</span>
+          </div>
+        )}
+      </div>
 
       {/* Top HUD Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '12px' }}>

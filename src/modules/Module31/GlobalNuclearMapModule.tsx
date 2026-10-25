@@ -41,6 +41,10 @@ import {
 } from '../../services/tacticalGisExportService';
 import { TacticalCompassRose } from '../../components/TacticalCompassRose';
 import VerificationBadge from '../../components/VerificationBadge';
+import {
+  fetchLiveSiteMeteorology,
+  type LiveMeteorologySnapshot,
+} from '../../utils/liveMeteoAndTerrain';
 
 const Plot = (PlotComponent as any).default || PlotComponent;
 
@@ -456,6 +460,8 @@ export const GlobalNuclearMapModule: React.FC = () => {
   const [epzStabilityClass, setEpzStabilityClass] = useState<'A' | 'B' | 'C' | 'D' | 'E' | 'F'>('D');
   const [epzCoreReleaseFraction, setEpzCoreReleaseFraction] = useState<number>(0.05);
   const [epzTargetReactorId, setEpzTargetReactorId] = useState<string>('zaporizhzhia');
+  const [epzLiveMeteo, setEpzLiveMeteo] = useState<LiveMeteorologySnapshot | null>(null);
+  const [isFetchingEpzMeteo, setIsFetchingEpzMeteo] = useState<boolean>(false);
 
   // CTBTO Seismic Yield Inversion State
   const [seismicObservedMb, setSeismicObservedMb] = useState<number>(6.30);
@@ -2786,6 +2792,39 @@ export const GlobalNuclearMapModule: React.FC = () => {
                 </div>
 
                 <button
+                  className="btn"
+                  onClick={async () => {
+                    if (!selectedReactorForEPZ) return;
+                    setIsFetchingEpzMeteo(true);
+                    try {
+                      const snap = await fetchLiveSiteMeteorology(
+                        selectedReactorForEPZ.coordinates.lat,
+                        selectedReactorForEPZ.coordinates.lon,
+                        selectedReactorForEPZ.name
+                      );
+                      setEpzLiveMeteo(snap);
+                      setEpzWindOriginDeg(Math.round(snap.windDirectionDeg) % 360);
+                      setEpzWindSpeedMps(Math.max(0.5, Math.min(20, Number(snap.windSpeed10mMs.toFixed(1)))));
+                      setEpzStabilityClass(snap.turner.stabilityClass);
+                      setIsEPZOverlayActive(true);
+                    } finally {
+                      setIsFetchingEpzMeteo(false);
+                    }
+                  }}
+                  disabled={!selectedReactorForEPZ || isFetchingEpzMeteo}
+                  style={{
+                    fontSize: '0.78rem',
+                    padding: '5px 12px',
+                    background: 'rgba(16, 185, 129, 0.2)',
+                    border: '1px solid #10b981',
+                    color: '#34d399',
+                    fontWeight: 700,
+                  }}
+                  title="Fetch real-time Open-Meteo 10m wind vector, solar insolation, and Turner Pasquill-Gifford stability class for this reactor site"
+                >
+                  {isFetchingEpzMeteo ? '⏳ Syncing Weather...' : '🌐 Sync Live Wind & Turner Stability'}
+                </button>
+                <button
                   className="btn btn-secondary"
                   onClick={handleOpenEPZDossier}
                   disabled={!selectedReactorForEPZ || !epzPlan}
@@ -2803,6 +2842,44 @@ export const GlobalNuclearMapModule: React.FC = () => {
                 </button>
               </div>
             </div>
+
+            {epzLiveMeteo && (
+              <div
+                style={{
+                  background: 'rgba(16, 185, 129, 0.08)',
+                  border: '1px solid rgba(16, 185, 129, 0.3)',
+                  borderRadius: '6px',
+                  padding: '8px 12px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: '8px',
+                  fontSize: '0.76rem',
+                }}
+              >
+                <span style={{ color: '#a7f3d0' }}>
+                  🌐 <strong>{epzLiveMeteo.siteName}</strong> ({epzLiveMeteo.sourceMode === 'LIVE_OPEN_METEO' ? 'Open-Meteo Live Telemetry' : 'Climatology Fallback'}) •
+                  Wind From <strong style={{ color: '#facc15' }}>{epzLiveMeteo.windDirectionDeg}°</strong> → Plume Toward{' '}
+                  <strong style={{ color: '#38bdf8' }}>{epzLiveMeteo.downwindBearingDeg}°</strong> @{' '}
+                  <strong>{epzLiveMeteo.windSpeed10mMs} m/s</strong> • Solar:{' '}
+                  <strong>{epzLiveMeteo.shortwaveSolarWm2} W/m²</strong> • Clouds:{' '}
+                  <strong>{epzLiveMeteo.cloudCoverPct}%</strong>
+                </span>
+                <span
+                  style={{
+                    background: 'rgba(250, 204, 21, 0.16)',
+                    border: '1px solid rgba(250, 204, 21, 0.4)',
+                    color: '#fde047',
+                    padding: '2px 8px',
+                    borderRadius: '4px',
+                    fontFamily: 'var(--font-mono)',
+                  }}
+                >
+                  Turner Class {epzLiveMeteo.turner.stabilityClass} ({epzLiveMeteo.turner.insolationCategory})
+                </span>
+              </div>
+            )}
 
             {/* Parameter Controls Grid */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px', background: 'rgba(0,0,0,0.3)', padding: '14px', borderRadius: '6px' }}>
