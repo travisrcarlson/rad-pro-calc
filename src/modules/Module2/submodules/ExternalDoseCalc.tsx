@@ -202,7 +202,7 @@ const ExternalDoseCalc: React.FC = () => {
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', flexWrap: 'wrap', gap: '8px' }}>
-          <h3 style={{ margin: 0 }}>2A. Point Source Calculator</h3>
+          <h3 style={{ margin: 0 }}>1A. Point Source External Dose Calculator</h3>
           <VerificationBadge testId="VTEST-01" label="Inverse Square Law" />
         </div>
         

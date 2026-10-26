@@ -3440,11 +3440,157 @@ export const GlobalNuclearMapModule: React.FC = () => {
               <strong>{GEOLOGICAL_MEDIA[seismicMedium].name}:</strong> {GEOLOGICAL_MEDIA[seismicMedium].description}
             </div>
 
+            {/* Underground Containment Cavity (R_c), Rubble Chimney & Noble-Gas Seepage Cross-Section */}
+            {(() => {
+              const W = Math.max(0.01, seismicResult.estimatedYieldKt);
+              const wCubeRoot = Math.pow(W, 1 / 3);
+              const mediumFactor =
+                seismicMedium === 'hard_rock'
+                  ? 11.5
+                  : seismicMedium === 'water_saturated'
+                  ? 13.8
+                  : seismicMedium === 'dry_alluvium'
+                  ? 15.2
+                  : 18.0;
+              const overburdenTerm = Math.pow(Math.max(50, seismicBurialDepthM) / 250, 0.25);
+              const cavityRadiusM = (mediumFactor * wCubeRoot) / overburdenTerm;
+              const fractureRadiusM = cavityRadiusM * 2.8;
+              const chimneyHeightM = cavityRadiusM * 4.3;
+              const chimneyTopDepthM = Math.max(0, seismicBurialDepthM - chimneyHeightM);
+              const chimneyBreachesSurface = chimneyHeightM >= seismicBurialDepthM * 0.88;
+              const maxScaleDepthM = Math.max(seismicBurialDepthM + fractureRadiusM * 1.3, 600);
+              const svgH = 220;
+              const surfaceY = 34;
+              const usableH = svgH - surfaceY - 16;
+              const mToPx = (m: number) => (m / maxScaleDepthM) * usableH;
+              const wpY = surfaceY + mToPx(seismicBurialDepthM);
+              const rcPx = Math.max(6, Math.min(48, mToPx(cavityRadiusM)));
+              const rfPx = Math.max(14, Math.min(95, mToPx(fractureRadiusM)));
+              const chimTopY = Math.max(surfaceY, surfaceY + mToPx(chimneyTopDepthM));
+
+              return (
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 1.15fr) minmax(280px, 1fr)', gap: '12px', background: 'rgba(15, 23, 42, 0.65)', border: '1px solid rgba(56, 189, 248, 0.25)', borderRadius: '8px', padding: '12px' }}>
+                  <div>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#38bdf8', marginBottom: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span>⛰️ Subsurface Containment Cavity, Fracture Cage &amp; Rubble Chimney</span>
+                      <span style={{ fontSize: '0.7rem', fontFamily: 'var(--font-mono)', color: chimneyBreachesSurface ? '#f87171' : '#34d399' }}>
+                        {chimneyBreachesSurface ? '⚠️ CHIMNEY REACHES SURFACE / CRATER' : '✓ DEEP CONTAINED CHIMNEY'}
+                      </span>
+                    </div>
+                    <svg viewBox={`0 0 460 ${svgH}`} style={{ width: '100%', height: '210px', background: '#0b0f19', borderRadius: '6px', border: '1px solid #1e293b' }}>
+                      {/* Sky */}
+                      <rect x={0} y={0} width={460} height={surfaceY} fill="rgba(56, 189, 248, 0.08)" />
+                      {/* Geological Strata */}
+                      <rect x={0} y={surfaceY} width={460} height={svgH - surfaceY} fill="rgba(30, 41, 59, 0.65)" />
+                      {/* Surface Horizon */}
+                      <line x1={0} y1={surfaceY} x2={460} y2={surfaceY} stroke="#10b981" strokeWidth={2} />
+                      <text x={10} y={surfaceY - 8} fill="#10b981" fontSize="10" fontWeight="bold">
+                        Surface Datum (z = 0 m) — {seismicSiteName.slice(0, 38)}
+                      </text>
+
+                      {/* Subsidence Crater if chimney breaches */}
+                      {chimneyBreachesSurface && (
+                        <path
+                          d={`M ${230 - rcPx * 1.4} ${surfaceY} Q 230 ${surfaceY + 16} ${230 + rcPx * 1.4} ${surfaceY}`}
+                          fill="#0b0f19"
+                          stroke="#f59e0b"
+                          strokeWidth={1.5}
+                        />
+                      )}
+
+                      {/* Emplacement Shaft */}
+                      <line x1={230} y1={surfaceY} x2={230} y2={wpY} stroke="#64748b" strokeWidth={1.5} strokeDasharray="3,3" />
+
+                      {/* Rubble Chimney Column */}
+                      <path
+                        d={`M ${230 - rcPx} ${wpY} L ${230 - rcPx * 0.85} ${chimTopY} L ${230 + rcPx * 0.85} ${chimTopY} L ${230 + rcPx} ${wpY} Z`}
+                        fill="rgba(245, 158, 11, 0.18)"
+                        stroke="#f59e0b"
+                        strokeWidth={1.2}
+                        strokeDasharray="4,2"
+                      />
+
+                      {/* Crushed / Fractured Containment Zone (R_f) */}
+                      <circle
+                        cx={230}
+                        cy={wpY}
+                        r={rfPx}
+                        fill="rgba(168, 85, 247, 0.14)"
+                        stroke="#a855f7"
+                        strokeWidth={1.3}
+                        strokeDasharray="4,3"
+                      />
+
+                      {/* Vitrified Melt Cavity (R_c) */}
+                      <circle
+                        cx={230}
+                        cy={wpY}
+                        r={rcPx}
+                        fill="rgba(239, 68, 68, 0.45)"
+                        stroke="#ef4444"
+                        strokeWidth={2}
+                      />
+
+                      {/* Labels */}
+                      <text x={230 + rfPx + 8} y={wpY - 4} fill="#f87171" fontSize="10" fontWeight="bold">
+                        Working Point (DOB = {seismicBurialDepthM} m)
+                      </text>
+                      <text x={230 + rfPx + 8} y={wpY + 10} fill="#cbd5e1" fontSize="9.5">
+                        Cavity R_c = {cavityRadiusM.toFixed(1)} m | Cage R_f = {fractureRadiusM.toFixed(0)} m
+                      </text>
+                      <text x={12} y={svgH - 10} fill="#94a3b8" fontSize="9.5">
+                        Max Scale Depth: {maxScaleDepthM.toFixed(0)} m
+                      </text>
+                    </svg>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '8px' }}>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#ecf0f1' }}>
+                      Boardman / Glasstone-Dolan Subsurface Cavity Telemetry
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.75rem' }}>
+                      <div style={{ background: '#0b0f19', padding: '8px 10px', borderRadius: '6px', border: '1px solid #1e293b' }}>
+                        <div style={{ color: '#64748b', fontSize: '0.66rem' }}>VITRIFIED CAVITY RADIUS (R_c)</div>
+                        <div style={{ color: '#f87171', fontWeight: 700, fontSize: '0.95rem', fontFamily: 'var(--font-mono)' }}>
+                          {cavityRadiusM.toFixed(1)} m
+                        </div>
+                        <div style={{ color: '#94a3b8', fontSize: '0.66rem' }}>Volume: {((4 / 3) * Math.PI * Math.pow(cavityRadiusM, 3) / 1e6).toFixed(3)}×10⁶ m³</div>
+                      </div>
+                      <div style={{ background: '#0b0f19', padding: '8px 10px', borderRadius: '6px', border: '1px solid #1e293b' }}>
+                        <div style={{ color: '#64748b', fontSize: '0.66rem' }}>FRACTURE CAGE RADIUS (R_f)</div>
+                        <div style={{ color: '#c084fc', fontWeight: 700, fontSize: '0.95rem', fontFamily: 'var(--font-mono)' }}>
+                          {fractureRadiusM.toFixed(1)} m
+                        </div>
+                        <div style={{ color: '#94a3b8', fontSize: '0.66rem' }}>Hydro-fracture envelope (2.8·R_c)</div>
+                      </div>
+                      <div style={{ background: '#0b0f19', padding: '8px 10px', borderRadius: '6px', border: '1px solid #1e293b' }}>
+                        <div style={{ color: '#64748b', fontSize: '0.66rem' }}>RUBBLE CHIMNEY HEIGHT</div>
+                        <div style={{ color: '#fbbf24', fontWeight: 700, fontSize: '0.95rem', fontFamily: 'var(--font-mono)' }}>
+                          {chimneyHeightM.toFixed(0)} m
+                        </div>
+                        <div style={{ color: '#94a3b8', fontSize: '0.66rem' }}>Top Depth: {chimneyTopDepthM.toFixed(0)} m below grade</div>
+                      </div>
+                      <div style={{ background: '#0b0f19', padding: '8px 10px', borderRadius: '6px', border: '1px solid #1e293b' }}>
+                        <div style={{ color: '#64748b', fontSize: '0.66rem' }}>RADIONUCLIDE NOBLE GAS SEEPAGE</div>
+                        <div style={{ color: chimneyBreachesSurface ? '#f87171' : '#38bdf8', fontWeight: 700, fontSize: '0.82rem' }}>
+                          {chimneyBreachesSurface ? 'Prompt Venting / Xe-133 Release' : 'Delayed Barometric Xe-133/131m'}
+                        </div>
+                        <div style={{ color: '#94a3b8', fontSize: '0.66rem' }}>CTBTO Noble Gas IMS Signature</div>
+                      </div>
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: '#94a3b8', background: 'rgba(0,0,0,0.3)', padding: '6px 10px', borderRadius: '5px' }}>
+                      <strong>Formula:</strong> R_c = C_m · W^(1/3) / (ρ·g·h)^(1/4) &nbsp;|&nbsp; Full containment requires SDOB ≥ 120 m/kt^(1/3) so the hydro-fracture cage remains below the surface spall zone.
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* Nearby CTBTO IMS Monitoring Stations */}
             <div style={{ background: 'rgba(0,0,0,0.25)', padding: '12px', borderRadius: '6px' }}>
-              <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#ecf0f1', marginBottom: '8px', display: 'flex', justifyContent: 'space-between' }}>
-                <span>Certified CTBTO IMS Stations Within Teleseismic Detection Range:</span>
-                <span style={{ fontSize: '0.72rem', color: '#38bdf8' }}>P-wave (8.1 km/s) // Acoustic (0.33 km/s)</span>
+              <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#ecf0f1', marginBottom: '8px', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px' }}>
+                <span>Certified CTBTO IMS Stations — P-Wave, S-Wave &amp; S–P Lag Travel-Time Table:</span>
+                <span style={{ fontSize: '0.72rem', color: '#38bdf8' }}>P-wave (8.1 km/s) // S-wave (4.6 km/s) // Infrasound (0.33 km/s)</span>
               </div>
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.74rem' }}>
@@ -3454,46 +3600,73 @@ export const GlobalNuclearMapModule: React.FC = () => {
                       <th style={{ padding: '6px' }}>Station Name</th>
                       <th style={{ padding: '6px' }}>Technology</th>
                       <th style={{ padding: '6px' }}>Country</th>
-                      <th style={{ padding: '6px' }}>Distance</th>
-                      <th style={{ padding: '6px' }}>P-Wave Transit</th>
-                      <th style={{ padding: '6px' }}>Infrasound Transit</th>
+                      <th style={{ padding: '6px' }}>Distance (Δ°)</th>
+                      <th style={{ padding: '6px' }}>P-Wave (t_P)</th>
+                      <th style={{ padding: '6px' }}>S–P Lag (Δt_S-P)</th>
+                      <th style={{ padding: '6px' }}>Infrasound</th>
+                      <th style={{ padding: '6px' }}>Action</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {seismicResult.nearbyIMSStations.map(ns => (
-                      <tr key={ns.station.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                        <td style={{ padding: '6px', fontFamily: 'var(--font-mono)', fontWeight: 600, color: '#38bdf8' }}>
-                          {ns.station.stationCode}
-                        </td>
-                        <td style={{ padding: '6px', color: '#ecf0f1' }}>
-                          {ns.station.name}
-                        </td>
-                        <td style={{ padding: '6px' }}>
-                          <span style={{
-                            padding: '2px 5px',
-                            borderRadius: '3px',
-                            fontSize: '0.66rem',
-                            fontWeight: 600,
-                            background: ns.station.technology === 'Radionuclide' ? 'rgba(56, 189, 248, 0.2)' : ns.station.technology === 'Primary Seismic' ? 'rgba(245, 158, 11, 0.2)' : 'rgba(168, 85, 247, 0.2)',
-                            color: ns.station.technology === 'Radionuclide' ? '#38bdf8' : ns.station.technology === 'Primary Seismic' ? '#fbbf24' : '#c084fc'
-                          }}>
-                            {ns.station.technology}
-                          </span>
-                        </td>
-                        <td style={{ padding: '6px', color: '#94a3b8' }}>
-                          {ns.station.country}
-                        </td>
-                        <td style={{ padding: '6px', fontFamily: 'var(--font-mono)', color: '#ecf0f1' }}>
-                          {ns.distanceKm.toLocaleString()} km
-                        </td>
-                        <td style={{ padding: '6px', fontFamily: 'var(--font-mono)', color: '#34d399' }}>
-                          {ns.pWaveTransitSec}s (~{(ns.pWaveTransitSec / 60).toFixed(1)}m)
-                        </td>
-                        <td style={{ padding: '6px', fontFamily: 'var(--font-mono)', color: '#fbbf24' }}>
-                          {ns.infrasoundTransitHours} hrs
-                        </td>
-                      </tr>
-                    ))}
+                    {seismicResult.nearbyIMSStations.map(ns => {
+                      const deltaDeg = ns.distanceKm / 111.195;
+                      const sWaveSec = Math.round(ns.distanceKm / 4.6);
+                      const spLagSec = Math.max(0, sWaveSec - ns.pWaveTransitSec);
+                      return (
+                        <tr key={ns.station.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                          <td style={{ padding: '6px', fontFamily: 'var(--font-mono)', fontWeight: 600, color: '#38bdf8' }}>
+                            {ns.station.stationCode}
+                          </td>
+                          <td style={{ padding: '6px', color: '#ecf0f1' }}>
+                            {ns.station.name}
+                          </td>
+                          <td style={{ padding: '6px' }}>
+                            <span style={{
+                              padding: '2px 5px',
+                              borderRadius: '3px',
+                              fontSize: '0.66rem',
+                              fontWeight: 600,
+                              background: ns.station.technology === 'Radionuclide' ? 'rgba(56, 189, 248, 0.2)' : ns.station.technology === 'Primary Seismic' ? 'rgba(245, 158, 11, 0.2)' : 'rgba(168, 85, 247, 0.2)',
+                              color: ns.station.technology === 'Radionuclide' ? '#38bdf8' : ns.station.technology === 'Primary Seismic' ? '#fbbf24' : '#c084fc'
+                            }}>
+                              {ns.station.technology}
+                            </span>
+                          </td>
+                          <td style={{ padding: '6px', color: '#94a3b8' }}>
+                            {ns.station.country}
+                          </td>
+                          <td style={{ padding: '6px', fontFamily: 'var(--font-mono)', color: '#ecf0f1' }}>
+                            {ns.distanceKm.toLocaleString()} km ({deltaDeg.toFixed(1)}°)
+                          </td>
+                          <td style={{ padding: '6px', fontFamily: 'var(--font-mono)', color: '#34d399' }}>
+                            {ns.pWaveTransitSec}s ({(ns.pWaveTransitSec / 60).toFixed(1)}m)
+                          </td>
+                          <td style={{ padding: '6px', fontFamily: 'var(--font-mono)', color: '#c084fc' }}>
+                            +{spLagSec}s ({(spLagSec / 60).toFixed(1)}m)
+                          </td>
+                          <td style={{ padding: '6px', fontFamily: 'var(--font-mono)', color: '#fbbf24' }}>
+                            {ns.infrasoundTransitHours} hrs
+                          </td>
+                          <td style={{ padding: '6px' }}>
+                            <button
+                              type="button"
+                              onClick={() => setCenterRotation({ lon: ns.station.coordinates.lon, lat: ns.station.coordinates.lat })}
+                              style={{
+                                background: 'rgba(56, 189, 248, 0.14)',
+                                border: '1px solid rgba(56, 189, 248, 0.35)',
+                                color: '#38bdf8',
+                                borderRadius: '4px',
+                                padding: '2px 7px',
+                                fontSize: '0.68rem',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              🎯 Focus
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

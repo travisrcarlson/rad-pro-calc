@@ -255,6 +255,8 @@ const DecayModule: React.FC = () => {
   // Simulated Detector State
   const [exposureTime, setExposureTime] = useState<number>(30);
   const [exposureUnit, setExposureUnit] = useState<number>(60); // 30 mins
+  const [spectrumScale, setSpectrumScale] = useState<'linear' | 'log'>('linear');
+  const [showSummedEnvelope, setShowSummedEnvelope] = useState<boolean>(true);
 
   useEffect(() => {
     if (!isAnimating) {
@@ -1047,6 +1049,64 @@ const DecayModule: React.FC = () => {
       }
     });
 
+    // Build Summed Total Detector Envelope + Compton Continuum Shelf across energy grid
+    if (showSummedEnvelope && chainNodes.length > 0) {
+      let maxE = 1.5;
+      rawChainNuclides.forEach((n, idx) => {
+        const qa = parseFloat(n['Q-Alpha'] || '0') / 1000;
+        const qb = parseFloat(n['Q-Beta'] || '0') / 1000;
+        const qec = parseFloat(n['Q-EC'] || '0') / 1000;
+        const gE = chainNodes[idx]?.principalGammaMeV || 0;
+        maxE = Math.max(maxE, qa, qb, qec, gE);
+      });
+      maxE = Math.min(Math.max(maxE * 1.12, 1.0), 9.0);
+      const gridBins = 240;
+      const envX: number[] = [];
+      const envY: number[] = [];
+      for (let b = 0; b <= gridBins; b++) {
+        const e = (maxE * b) / gridBins;
+        envX.push(e);
+        let sumC = 1.0; // baseline floor for log compatibility
+        rawChainNuclides.forEach((node, idx) => {
+          if (node['Half-Life'] === 'STABLE') return;
+          const cnt = counts[idx] || 0;
+          if (cnt <= 0) return;
+          const qa = parseFloat(node['Q-Alpha'] || '0') / 1000;
+          const qb = parseFloat(node['Q-Beta'] || '0') / 1000;
+          const qec = parseFloat(node['Q-EC'] || '0') / 1000;
+          const sigma = 0.022;
+          if (qa > 0) {
+            sumC += cnt * Math.exp(-Math.pow(e - qa, 2) / (2 * sigma * sigma));
+          }
+          if (qec > 0) {
+            sumC += cnt * 0.75 * Math.exp(-Math.pow(e - qec, 2) / (2 * sigma * sigma));
+            // Compton continuum shelf below Compton edge E_c
+            const alpha = qec / 0.511;
+            const eCompton = qec * (2 * alpha) / (1 + 2 * alpha);
+            if (e > 0.02 && e <= eCompton) {
+              sumC += cnt * 0.12 * (1 + 0.5 * Math.pow(e / eCompton, 2));
+            }
+          }
+          if (qb > 0 && e > 0 && e < qb) {
+            const normPeak = Math.sqrt(qb / 5) * Math.pow((4 * qb) / 5, 2) || 1;
+            sumC += cnt * 0.45 * ((Math.sqrt(e) * Math.pow(qb - e, 2)) / normPeak);
+          }
+        });
+        envY.push(sumC);
+      }
+      traces.unshift({
+        x: envX,
+        y: envY,
+        type: 'scatter',
+        mode: 'lines',
+        name: 'Σ Total Detector Envelope (w/ Compton)',
+        line: { color: '#f8fafc', width: 2, dash: 'dot' },
+        fill: 'tozeroy',
+        fillcolor: 'rgba(248, 250, 252, 0.06)',
+        hovertemplate: '<b>Σ Total Detector Envelope</b><br>E = %{x:.3f} MeV<br>Counts = %{y:.2e}<extra></extra>'
+      });
+    }
+
     traces.push({
       x: [0, 10], y: [0, 0],
       mode: 'lines', line: { color: '#444', width: 1 },
@@ -1054,7 +1114,7 @@ const DecayModule: React.FC = () => {
     });
 
     return { traces, annotations };
-  }, [selectedIsotope, rawChainNuclides, yields, exposureTime, exposureUnit]);
+  }, [selectedIsotope, rawChainNuclides, chainNodes, yields, exposureTime, exposureUnit, showSummedEnvelope]);
 
   const [isDossierOpen, setIsDossierOpen] = useState<boolean>(false);
 
@@ -1447,15 +1507,49 @@ const DecayModule: React.FC = () => {
             </div>
 
             {q2Tab === 'spectrum' ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '5px', backgroundColor: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: '4px' }}>
-                <span style={{ fontSize: '0.73rem', color: '#aaa' }}>Δt:</span>
-                <input type="number" className="form-control" style={{ width: '52px', padding: '1px 4px', fontSize: '0.73rem' }} value={exposureTime} onChange={e => setExposureTime(Number(e.target.value))} />
-                <select className="form-control" style={{ padding: '1px 4px', fontSize: '0.73rem' }} value={exposureUnit} onChange={e => setExposureUnit(Number(e.target.value))}>
-                  <option value={1}>Sec</option>
-                  <option value={60}>Min</option>
-                  <option value={3600}>Hr</option>
-                  <option value={86400}>Days</option>
-                </select>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowSummedEnvelope(v => !v)}
+                  style={{
+                    fontSize: '0.68rem',
+                    padding: '2px 7px',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontWeight: 700,
+                    background: showSummedEnvelope ? 'rgba(248, 250, 252, 0.16)' : 'rgba(255,255,255,0.04)',
+                    color: showSummedEnvelope ? '#f8fafc' : '#94a3b8',
+                    border: `1px solid ${showSummedEnvelope ? '#cbd5e1' : '#334155'}`
+                  }}
+                >
+                  Σ Envelope: {showSummedEnvelope ? 'ON' : 'OFF'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSpectrumScale(s => (s === 'linear' ? 'log' : 'linear'))}
+                  style={{
+                    fontSize: '0.68rem',
+                    padding: '2px 7px',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontWeight: 700,
+                    background: spectrumScale === 'log' ? 'rgba(56, 189, 248, 0.18)' : 'rgba(255,255,255,0.04)',
+                    color: spectrumScale === 'log' ? '#38bdf8' : '#94a3b8',
+                    border: `1px solid ${spectrumScale === 'log' ? '#38bdf8' : '#334155'}`
+                  }}
+                >
+                  Y: {spectrumScale.toUpperCase()}
+                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '5px', backgroundColor: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: '4px' }}>
+                  <span style={{ fontSize: '0.73rem', color: '#aaa' }}>Δt:</span>
+                  <input type="number" className="form-control" style={{ width: '52px', padding: '1px 4px', fontSize: '0.73rem' }} value={exposureTime} onChange={e => setExposureTime(Number(e.target.value))} />
+                  <select className="form-control" style={{ padding: '1px 4px', fontSize: '0.73rem' }} value={exposureUnit} onChange={e => setExposureUnit(Number(e.target.value))}>
+                    <option value={1}>Sec</option>
+                    <option value={60}>Min</option>
+                    <option value={3600}>Hr</option>
+                    <option value={86400}>Days</option>
+                  </select>
+                </div>
               </div>
             ) : (
               <span style={{ fontSize: '0.72rem', color: '#facc15', fontFamily: 'var(--font-mono)' }}>
@@ -1556,7 +1650,7 @@ const DecayModule: React.FC = () => {
                   margin: { t: 35, l: 55, r: 20, b: 38 },
                   paper_bgcolor: 'transparent',
                   plot_bgcolor: 'transparent',
-                  yaxis: { title: 'Relative Intensity', color: '#aaa', gridcolor: '#333', showticklabels: true, zeroline: false },
+                  yaxis: { title: spectrumScale === 'log' ? 'Counts (Log Scale)' : 'Relative Intensity', type: spectrumScale, color: '#aaa', gridcolor: '#333', showticklabels: true, zeroline: false },
                   xaxis: { title: 'Energy (MeV)', color: '#aaa', gridcolor: '#333', zeroline: false, rangemode: 'tozero' },
                   font: { color: '#E0E1DD' },
                   showlegend: false,

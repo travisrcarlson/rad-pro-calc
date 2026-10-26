@@ -189,20 +189,36 @@ export const ShieldingModule: React.FC = () => {
     };
   }, [layers, photonEnergyMev, incidentDoseRate, buildupModel]);
 
-  // Continuous penetration curve (Broad-Beam vs Narrow-Beam)
+  // Continuous penetration curve (Broad-Beam vs Narrow-Beam + Layer Boundary Regions)
   const depthProfile = useMemo(() => {
     const points: { depthCm: number; broadDoseRate: number; narrowDoseRate: number; layerName: string }[] = [];
     points.push({ depthCm: 0, broadDoseRate: incidentDoseRate, narrowDoseRate: incidentDoseRate, layerName: 'Incident Field' });
+
+    const layerZones: { x0: number; x1: number; label: string; color: string }[] = [];
+    const zonePalette = [
+      'rgba(56, 189, 248, 0.08)',
+      'rgba(168, 85, 247, 0.10)',
+      'rgba(16, 185, 129, 0.08)',
+      'rgba(245, 158, 11, 0.09)',
+      'rgba(239, 68, 68, 0.08)'
+    ];
 
     let curDepth = 0;
     const completedLayers: { materialKey: string; mfp: number }[] = [];
     let cumMfpBefore = 0;
 
-    layers.forEach(layer => {
+    layers.forEach((layer, lIdx) => {
       const { muLinear } = evaluateXCOMAttenuation(layer.materialKey, photonEnergyMev);
       const mat = XCOM_GP_MATERIALS[layer.materialKey];
       const steps = 16;
       const dStep = layer.thicknessCm / steps;
+
+      layerZones.push({
+        x0: curDepth,
+        x1: curDepth + layer.thicknessCm,
+        label: `#${lIdx + 1} ${mat?.symbol || layer.materialKey} (${layer.thicknessCm} cm)`,
+        color: zonePalette[lIdx % zonePalette.length]
+      });
 
       for (let s = 1; s <= steps; s++) {
         const xStep = s * dStep;
@@ -229,7 +245,7 @@ export const ShieldingModule: React.FC = () => {
       cumMfpBefore += fullLayerMfp;
     });
 
-    return points;
+    return { points, layerZones };
   }, [layers, photonEnergyMev, incidentDoseRate, buildupModel]);
 
   // NIST XCOM K/L-Edge Continuous Energy Curve for inspected material
@@ -706,8 +722,8 @@ export const ShieldingModule: React.FC = () => {
               <Plot
                 data={[
                   {
-                    x: depthProfile.map(p => p.depthCm),
-                    y: depthProfile.map(p => p.broadDoseRate),
+                    x: depthProfile.points.map(p => p.depthCm),
+                    y: depthProfile.points.map(p => p.broadDoseRate),
                     type: 'scatter',
                     mode: 'lines+markers',
                     name: `Broad-Beam (${buildupModel})`,
@@ -716,8 +732,8 @@ export const ShieldingModule: React.FC = () => {
                     hovertemplate: 'Depth: %{x:.2f} cm<br>Broad-Beam: %{y:.2f} µSv/h<extra></extra>'
                   },
                   {
-                    x: depthProfile.map(p => p.depthCm),
-                    y: depthProfile.map(p => p.narrowDoseRate),
+                    x: depthProfile.points.map(p => p.depthCm),
+                    y: depthProfile.points.map(p => p.narrowDoseRate),
                     type: 'scatter',
                     mode: 'lines',
                     name: 'Narrow-Beam Uncollided (e^-μx)',
@@ -735,12 +751,36 @@ export const ShieldingModule: React.FC = () => {
                 ]}
                 layout={{
                   autosize: true,
-                  margin: { l: 65, r: 25, t: 25, b: 50 },
+                  margin: { l: 65, r: 25, t: 32, b: 50 },
                   paper_bgcolor: 'transparent',
                   plot_bgcolor: 'transparent',
                   font: { color: '#E0E1DD' },
-                  xaxis: { title: 'Cumulative Shield Depth (cm)', gridcolor: '#1e293b' },
-                  yaxis: { title: 'Dose Rate (µSv/h)', type: 'log', gridcolor: '#1e293b' },
+                  xaxis: { title: 'Cumulative Shield Depth z (cm)', gridcolor: '#1e293b' },
+                  yaxis: { title: 'Dose Rate Ḋ(z) (µSv/h)', type: 'log', gridcolor: '#1e293b' },
+                  shapes: depthProfile.layerZones.map(z => ({
+                    type: 'rect' as const,
+                    xref: 'x' as const,
+                    yref: 'paper' as const,
+                    x0: z.x0,
+                    x1: z.x1,
+                    y0: 0,
+                    y1: 1,
+                    fillcolor: z.color,
+                    line: { color: 'rgba(148, 163, 184, 0.35)', width: 1, dash: 'dot' as const }
+                  })),
+                  annotations: depthProfile.layerZones.map(z => ({
+                    x: (z.x0 + z.x1) / 2,
+                    y: 0.96,
+                    xref: 'x' as const,
+                    yref: 'paper' as const,
+                    text: `<b>${z.label}</b>`,
+                    showarrow: false,
+                    font: { color: '#cbd5e1', size: 10 },
+                    bgcolor: 'rgba(15, 23, 42, 0.75)',
+                    bordercolor: '#334155',
+                    borderwidth: 1,
+                    borderpad: 3
+                  })),
                   legend: { orientation: 'h', y: -0.2 }
                 }}
                 useResizeHandler={true}
@@ -920,6 +960,56 @@ export const ShieldingModule: React.FC = () => {
               <button className="btn btn-sm btn-outline-primary" onClick={() => setTargetDoseLimit(0.5)}>Public Uncontrolled (0.5 µSv/h)</button>
               <button className="btn btn-sm btn-outline-primary" onClick={() => setTargetDoseLimit(2.5)}>Controlled Area (2.5 µSv/h)</button>
               <button className="btn btn-sm btn-outline-primary" onClick={() => setTargetDoseLimit(10.0)}>ALARA Target (10 µSv/h)</button>
+            </div>
+          </div>
+
+          {/* Iso-Transmission Material Thickness (cm) vs. Structural Floor Load (kg/m²) Tradeoff Chart */}
+          <div style={{ background: 'rgba(5, 10, 18, 0.6)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '14px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px', flexWrap: 'wrap', gap: '8px' }}>
+              <span style={{ fontSize: '0.88rem', fontWeight: 600, color: '#00e5ff' }}>
+                ⚖️ Iso-Transmission Material Tradeoff: Required Broad-Beam Thickness (cm) vs. Structural Floor Load (kg/m²)
+              </span>
+              <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                Evaluated @ E = {(photonEnergyMev * 1000).toFixed(1)} keV for {incidentDoseRate} → {targetDoseLimit} µSv/h
+              </span>
+            </div>
+            <div style={{ height: '245px' }}>
+              <Plot
+                data={[
+                  {
+                    x: solverResults.map(r => r.name.split(' (')[0]),
+                    y: solverResults.map(r => Number(r.requiredThicknessCm.toFixed(2))),
+                    name: 'Broad-Beam Thickness (cm)',
+                    type: 'bar',
+                    marker: { color: '#00e5ff' },
+                    yaxis: 'y'
+                  },
+                  {
+                    x: solverResults.map(r => r.name.split(' (')[0]),
+                    y: solverResults.map(r => Number(r.loadKgM2.toFixed(0))),
+                    name: 'Structural Floor Load (kg/m²)',
+                    type: 'scatter',
+                    mode: 'lines+markers',
+                    marker: { color: '#f59e0b', size: 8 },
+                    line: { color: '#f59e0b', width: 2.5 },
+                    yaxis: 'y2'
+                  }
+                ]}
+                layout={{
+                  autosize: true,
+                  margin: { l: 55, r: 65, t: 15, b: 45 },
+                  paper_bgcolor: 'transparent',
+                  plot_bgcolor: 'transparent',
+                  font: { color: '#E0E1DD', size: 11 },
+                  xaxis: { gridcolor: '#1e293b' },
+                  yaxis: { title: 'Required Thickness (cm)', titlefont: { color: '#00e5ff' }, tickfont: { color: '#00e5ff' }, gridcolor: '#1e293b' },
+                  yaxis2: { title: 'Floor Load (kg/m²)', titlefont: { color: '#f59e0b' }, tickfont: { color: '#f59e0b' }, overlaying: 'y', side: 'right', showgrid: false },
+                  legend: { orientation: 'h', y: 1.15, x: 0 }
+                }}
+                useResizeHandler={true}
+                style={{ width: '100%', height: '100%' }}
+                config={{ responsive: true, displayModeBar: false }}
+              />
             </div>
           </div>
 
