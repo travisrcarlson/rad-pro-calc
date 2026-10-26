@@ -1,7 +1,34 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import equipmentDataRaw from '../../data/equipment_database.json';
 import HistoricalIncidentsModule from '../Module30/HistoricalIncidentsModule';
+
+const IAEA_D_VALUES_TBQ: Record<string, number> = {
+  'Co-60': 0.03,
+  'Cs-137': 0.10,
+  'Ir-192': 0.08,
+  'Se-75': 0.20,
+  'Am-241': 0.06,
+  'Cf-252': 0.02,
+  'Sr-90': 1.00,
+  'Pu-238': 0.06,
+  'Pu-239': 0.06,
+  'Ra-226': 0.04,
+  'Yb-169': 0.30,
+  'Tm-170': 20.0,
+  'Kr-85': 30.0,
+  'Pm-147': 40.0,
+  'Ni-63': 60.0,
+  'H-3': 2000.0
+};
+
+function parseFirstNumericValue(str: string, defaultVal: number): number {
+  const cleaned = str.replace(/,/g, '');
+  const m = cleaned.match(/(\d+(?:\.\d+)?)/);
+  if (!m) return defaultVal;
+  const v = parseFloat(m[1]);
+  return isNaN(v) || v <= 0 ? defaultVal : v;
+}
 
 interface EquipmentRecord {
   deviceName: string;
@@ -92,12 +119,36 @@ const processedEquipment: EquipmentRecord[] = (equipmentDataRaw as any[]).map((r
 
 const EquipmentLibraryModule: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const initialTab = searchParams.get('tab') === 'incidents' ? 'incidents' : 'equipment';
   const [activeTab, setActiveTab] = useState<'equipment' | 'incidents'>(initialTab);
 
   const [filter, setFilter] = useState<string>('All');
   const [hazardFilter, setHazardFilter] = useState<string>('All');
   const [search, setSearch] = useState<string>('');
+  const [selectedDevice, setSelectedDevice] = useState<EquipmentRecord | null>(null);
+  const [inspectDistanceM, setInspectDistanceM] = useState<number>(2.0);
+  const [inspectActivityGBq, setInspectActivityGBq] = useState<number>(370.0);
+  const [inspectBareDoseUSvHr, setInspectBareDoseUSvHr] = useState<number>(48000.0);
+
+  const handleOpenInspector = (eq: EquipmentRecord) => {
+    setSelectedDevice(eq);
+    setInspectDistanceM(2.0);
+    // Parse activity in GBq (if Ci is first, convert Ci * 37)
+    const actLower = eq.activity.toLowerCase();
+    const rawNum = parseFirstNumericValue(eq.activity, 100);
+    const gbqIdx = actLower.indexOf('gbq');
+    const ciIdx = actLower.indexOf('ci');
+    const tbqIdx = actLower.indexOf('tbq');
+    let gbqVal = rawNum;
+    if (tbqIdx !== -1 && (gbqIdx === -1 || tbqIdx < gbqIdx)) {
+      gbqVal = rawNum * 1000;
+    } else if (ciIdx !== -1 && (gbqIdx === -1 || ciIdx < gbqIdx)) {
+      gbqVal = rawNum * 37.0;
+    }
+    setInspectActivityGBq(Number(gbqVal.toFixed(2)));
+    setInspectBareDoseUSvHr(parseFirstNumericValue(eq.doseAt1m, 1000));
+  };
 
   useEffect(() => {
     const tabParam = searchParams.get('tab');
@@ -387,9 +438,19 @@ const EquipmentLibraryModule: React.FC = () => {
                     {eq.doseAt1m}
                   </span>
                 </div>
-                <span className={`hud-badge ${hazardColors.badgeClass}`} style={{ fontSize: '0.7rem' }}>
-                  {eq.hazardLevel}
-                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => handleOpenInspector(eq)}
+                    style={{ fontSize: '0.72rem', padding: '4px 10px', borderColor: hazardColors.border }}
+                  >
+                    🔍 Standoff &amp; A/D Calc
+                  </button>
+                  <span className={`hud-badge ${hazardColors.badgeClass}`} style={{ fontSize: '0.7rem' }}>
+                    {eq.hazardLevel}
+                  </span>
+                </div>
               </div>
             </div>
           );
@@ -403,6 +464,200 @@ const EquipmentLibraryModule: React.FC = () => {
       </div>
         </>
       )}
+
+      {/* Commercial Device Hazard, Standoff & IAEA A/D Ratio Inspector Modal */}
+      {selectedDevice && (() => {
+        const primaryIsoClean = selectedDevice.primaryIsotope.split(/[;,/]/)[0].replace(':Be', '').trim();
+        const dValTBq = IAEA_D_VALUES_TBQ[primaryIsoClean] || 0.10;
+        const actTBq = inspectActivityGBq / 1000.0;
+        const adRatio = actTBq / dValTBq;
+        let iaeaCatComputed = 'Category 5 (Not Dangerous)';
+        let catColor = '#10b981';
+        if (adRatio >= 1000) {
+          iaeaCatComputed = 'Category 1 (Extremely Dangerous, A/D ≥ 1000)';
+          catColor = '#ef4444';
+        } else if (adRatio >= 10) {
+          iaeaCatComputed = 'Category 2 (Very Dangerous, 10 ≤ A/D < 1000)';
+          catColor = '#f97316';
+        } else if (adRatio >= 1) {
+          iaeaCatComputed = 'Category 3 (Dangerous, 1 ≤ A/D < 10)';
+          catColor = '#f59e0b';
+        } else if (adRatio >= 0.01) {
+          iaeaCatComputed = 'Category 4 (Unlikely Dangerous, 0.01 ≤ A/D < 1)';
+          catColor = '#3b82f6';
+        }
+
+        const doseAtR_uSvHr = inspectBareDoseUSvHr / Math.pow(Math.max(0.1, inspectDistanceM), 2);
+        const doseAtR_mSvHr = doseAtR_uSvHr / 1000.0;
+        const hrsTo20mSv = doseAtR_mSvHr > 0 ? 20.0 / doseAtR_mSvHr : Infinity;
+        const hrsTo100mSv = doseAtR_mSvHr > 0 ? 100.0 / doseAtR_mSvHr : Infinity;
+        const hrsTo1GyARS = doseAtR_mSvHr > 0 ? 1000.0 / doseAtR_mSvHr : Infinity;
+        const cordon20uSvM = Math.sqrt(inspectBareDoseUSvHr / 20.0);
+
+        return (
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              backgroundColor: 'rgba(2, 6, 23, 0.85)',
+              backdropFilter: 'blur(6px)',
+              zIndex: 9999,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '20px'
+            }}
+            onClick={() => setSelectedDevice(null)}
+          >
+            <div
+              style={{
+                background: '#0b1323',
+                border: '1px solid var(--color-primary)',
+                borderRadius: '10px',
+                maxWidth: '760px',
+                width: '100%',
+                padding: '20px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '14px',
+                boxShadow: '0 20px 50px rgba(0,0,0,0.75)'
+              }}
+              onClick={e => e.stopPropagation()}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid #1e293b', paddingBottom: '12px' }}>
+                <div>
+                  <span className="hud-badge hud-badge-primary" style={{ marginBottom: '4px', display: 'inline-block' }}>
+                    IAEA RS-G-1.9 SOURCE HAZARD &amp; STANDOFF INSPECTOR
+                  </span>
+                  <h3 style={{ margin: '4px 0 2px 0', color: '#fff', fontSize: '1.25rem' }}>{selectedDevice.deviceName}</h3>
+                  <span style={{ color: '#94a3b8', fontSize: '0.82rem' }}>
+                    {selectedDevice.manufacturer} — {selectedDevice.sectorApp} ({selectedDevice.primaryIsotope})
+                  </span>
+                </div>
+                <button className="btn btn-secondary" onClick={() => setSelectedDevice(null)} style={{ padding: '4px 10px' }}>✕ Close</button>
+              </div>
+
+              {/* Adjustable Source & Standoff Inputs */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', background: 'rgba(0,0,0,0.35)', padding: '12px', borderRadius: '8px', border: '1px solid #1e293b' }}>
+                <div>
+                  <label style={{ fontSize: '0.74rem', color: '#94a3b8' }}>Source Activity A (GBq):</label>
+                  <input
+                    type="number"
+                    step="10"
+                    min="0.001"
+                    className="form-control"
+                    value={inspectActivityGBq}
+                    onChange={e => setInspectActivityGBq(Math.max(0.001, parseFloat(e.target.value) || 1))}
+                    style={{ fontSize: '0.85rem' }}
+                  />
+                  <span style={{ fontSize: '0.7rem', color: '#64748b' }}>{(inspectActivityGBq / 37).toFixed(2)} Ci ({actTBq.toFixed(4)} TBq)</span>
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.74rem', color: '#94a3b8' }}>Unshielded Rate @ 1m (µSv/h):</label>
+                  <input
+                    type="number"
+                    step="100"
+                    min="0.1"
+                    className="form-control"
+                    value={inspectBareDoseUSvHr}
+                    onChange={e => setInspectBareDoseUSvHr(Math.max(0.1, parseFloat(e.target.value) || 10))}
+                    style={{ fontSize: '0.85rem' }}
+                  />
+                  <span style={{ fontSize: '0.7rem', color: '#64748b' }}>Catalog: {selectedDevice.doseAt1m}</span>
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.74rem', color: '#94a3b8' }}>Responder Standoff r (m):</label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    min="0.1"
+                    max="200"
+                    className="form-control"
+                    value={inspectDistanceM}
+                    onChange={e => setInspectDistanceM(Math.max(0.1, parseFloat(e.target.value) || 1))}
+                    style={{ fontSize: '0.85rem' }}
+                  />
+                  <span style={{ fontSize: '0.7rem', color: '#64748b' }}>20 µSv/h Cordon: {cordon20uSvM.toFixed(1)} m</span>
+                </div>
+              </div>
+
+              {/* Computed IAEA A/D & Standoff Dose Readouts */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '10px' }}>
+                <div style={{ background: 'rgba(0,0,0,0.4)', border: `1px solid ${catColor}`, padding: '10px', borderRadius: '6px' }}>
+                  <span style={{ fontSize: '0.7rem', color: '#94a3b8', display: 'block' }}>IAEA RS-G-1.9 A/D Ratio</span>
+                  <strong style={{ color: catColor, fontSize: '1.05rem', fontFamily: 'monospace' }}>
+                    A/D = {adRatio >= 100 ? adRatio.toFixed(1) : adRatio.toPrecision(3)}
+                  </strong>
+                  <span style={{ fontSize: '0.7rem', color: '#cbd5e1', display: 'block', marginTop: '2px' }}>
+                    D({primaryIsoClean}) = {dValTBq} TBq
+                  </span>
+                </div>
+
+                <div style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid #38bdf8', padding: '10px', borderRadius: '6px' }}>
+                  <span style={{ fontSize: '0.7rem', color: '#94a3b8', display: 'block' }}>Bare Rate @ r = {inspectDistanceM}m</span>
+                  <strong style={{ color: '#38bdf8', fontSize: '1.05rem', fontFamily: 'monospace' }}>
+                    {doseAtR_uSvHr >= 1000 ? `${doseAtR_mSvHr.toFixed(2)} mSv/h` : `${doseAtR_uSvHr.toFixed(1)} µSv/h`}
+                  </strong>
+                  <span style={{ fontSize: '0.7rem', color: '#cbd5e1', display: 'block', marginTop: '2px' }}>
+                    {(doseAtR_uSvHr / 10).toFixed(1)} mrem/h
+                  </span>
+                </div>
+
+                <div style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid #f59e0b', padding: '10px', borderRadius: '6px' }}>
+                  <span style={{ fontSize: '0.7rem', color: '#94a3b8', display: 'block' }}>Time to 20 mSv / 100 mSv</span>
+                  <strong style={{ color: '#f59e0b', fontSize: '0.95rem', fontFamily: 'monospace' }}>
+                    {hrsTo20mSv < 1 ? `${(hrsTo20mSv * 60).toFixed(1)} min` : `${hrsTo20mSv.toFixed(1)} h`} / {hrsTo100mSv < 1 ? `${(hrsTo100mSv * 60).toFixed(1)} min` : `${hrsTo100mSv.toFixed(1)} h`}
+                  </strong>
+                  <span style={{ fontSize: '0.7rem', color: '#cbd5e1', display: 'block', marginTop: '2px' }}>
+                    Annual / Emergency Turn-Back
+                  </span>
+                </div>
+
+                <div style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid #ef4444', padding: '10px', borderRadius: '6px' }}>
+                  <span style={{ fontSize: '0.7rem', color: '#94a3b8', display: 'block' }}>Time to 1 Gy ARS Threshold</span>
+                  <strong style={{ color: '#ef4444', fontSize: '0.95rem', fontFamily: 'monospace' }}>
+                    {hrsTo1GyARS < 1 ? `${(hrsTo1GyARS * 60).toFixed(1)} min` : hrsTo1GyARS > 9999 ? '> 1 yr' : `${hrsTo1GyARS.toFixed(1)} h`}
+                  </strong>
+                  <span style={{ fontSize: '0.7rem', color: '#cbd5e1', display: 'block', marginTop: '2px' }}>
+                    {iaeaCatComputed.split('(')[0]}
+                  </span>
+                </div>
+              </div>
+
+              {/* 1-Click Module Dispatch Bar */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', paddingTop: '8px', borderTop: '1px solid #1e293b' }}>
+                <span style={{ fontSize: '0.78rem', color: '#94a3b8' }}>1-Click Cross-Module Dispatch:</span>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    style={{ fontSize: '0.76rem', padding: '6px 12px' }}
+                    onClick={() => navigate(`/dose?nuclide=${encodeURIComponent(primaryIsoClean)}&activityMBq=${(inspectActivityGBq * 1000).toFixed(0)}`)}
+                  >
+                    ⚡ Point Dose (Mod 1A)
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    style={{ fontSize: '0.76rem', padding: '6px 12px' }}
+                    onClick={() => navigate(`/shielding?activityMBq=${(inspectActivityGBq * 1000).toFixed(0)}`)}
+                  >
+                    🛡️ Shielding (Mod 14)
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    style={{ fontSize: '0.76rem', padding: '6px 12px' }}
+                    onClick={() => navigate(`/first-responder?doseRate=${inspectBareDoseUSvHr}`)}
+                  >
+                    🚨 First Responder (Mod 17)
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
     </div>
   );

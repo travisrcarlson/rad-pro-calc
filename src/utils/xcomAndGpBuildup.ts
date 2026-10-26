@@ -45,6 +45,12 @@ export interface XCOMMaterialSpec {
   gpTable: GPParameterRow[];
   bergerA: number;
   bergerB: number;
+  /** Fast neutron macroscopic removal cross-section per unit mass Σ_R/ρ (cm²/g) [NCRP 38 / 144] */
+  sigmaRMass?: number;
+  /** Fast neutron macroscopic removal cross-section Σ_R (cm⁻¹) */
+  sigmaRLinear?: number;
+  /** Thermal neutron capture radiative note */
+  neutronCaptureNote?: string;
 }
 
 export type BuildupModelType = 'GP_ANS643' | 'BERGER' | 'TAYLOR' | 'NARROW_BEAM';
@@ -684,7 +690,339 @@ export const XCOM_GP_MATERIALS: Record<string, XCOMMaterialSpec> = {
       { energyMev: 10.00, b: 1.270, c: 1.220, a: -0.014, Xk: 13.1, d: -0.007 }
     ],
     bergerA: 0.58,
-    bergerB: 0.025
+    bergerB: 0.025,
+    sigmaRMass: 0.0185,
+    sigmaRLinear: 0.096,
+    neutronCaptureNote: 'Si/Pb-O silicate matrix; moderate inelastic scattering.'
+  },
+
+  BORATED_PE: {
+    key: 'BORATED_PE',
+    name: '5% Borated Polyethylene (B4C-HDPE, Z_eff ≈ 5.4)',
+    symbol: 'B-HDPE',
+    effectiveZ: 5.4,
+    density: 1.04,
+    edges: [],
+    segments: [
+      {
+        minEnergyMev: 0.010,
+        maxEnergyMev: 15.0,
+        points: [
+          [0.010, 2.020, 1.70],
+          [0.015, 0.728, 0.480],
+          [0.020, 0.424, 0.198],
+          [0.030, 0.268, 0.066],
+          [0.050, 0.206, 0.0265],
+          [0.080, 0.180, 0.0240],
+          [0.100, 0.170, 0.0252],
+          [0.200, 0.138, 0.0302],
+          [0.500, 0.0982, 0.0335],
+          [0.6617, 0.0869, 0.0332],
+          [1.000, 0.0717, 0.0315],
+          [1.250, 0.0641, 0.0300],
+          [2.000, 0.0500, 0.0262],
+          [4.000, 0.0342, 0.0206],
+          [6.000, 0.0275, 0.0178],
+          [10.00, 0.0216, 0.0153],
+          [15.00, 0.0185, 0.0137]
+        ]
+      }
+    ],
+    gpTable: [
+      { energyMev: 0.050, b: 3.750, c: 2.050, a: -0.105, Xk: 13.5, d: 0.050 },
+      { energyMev: 0.100, b: 4.020, c: 2.110, a: -0.111, Xk: 13.5, d: 0.053 },
+      { energyMev: 0.200, b: 3.380, c: 1.840, a: -0.086, Xk: 13.6, d: 0.038 },
+      { energyMev: 0.500, b: 2.570, c: 1.490, a: -0.050, Xk: 13.7, d: 0.019 },
+      { energyMev: 0.662, b: 2.350, c: 1.380, a: -0.039, Xk: 13.7, d: 0.013 },
+      { energyMev: 1.000, b: 2.160, c: 1.260, a: -0.024, Xk: 13.7, d: 0.007 },
+      { energyMev: 1.250, b: 2.050, c: 1.210, a: -0.017, Xk: 13.7, d: 0.004 },
+      { energyMev: 2.000, b: 1.860, c: 1.115, a: -0.004, Xk: 13.6, d: -0.001 },
+      { energyMev: 6.000, b: 1.530, c: 0.990, a: 0.014, Xk: 13.4, d: -0.008 },
+      { energyMev: 10.00, b: 1.400, c: 0.955, a: 0.017, Xk: 13.3, d: -0.010 }
+    ],
+    bergerA: 1.39,
+    bergerB: 0.058,
+    sigmaRMass: 0.1250,
+    sigmaRLinear: 0.130,
+    neutronCaptureNote: 'B-10(n,α)Li-7 (σ=3840 b) suppresses 2.22 MeV H(n,γ) capture photons to 0.478 MeV.'
+  },
+
+  MAGNETITE_CONCRETE: {
+    key: 'MAGNETITE_CONCRETE',
+    name: 'Magnetite Heavy Concrete (Fe3O4 Aggregate, 3.85 g/cm³)',
+    symbol: 'Mag-Conc',
+    effectiveZ: 17,
+    density: 3.85,
+    edges: [],
+    segments: [
+      {
+        minEnergyMev: 0.010,
+        maxEnergyMev: 15.0,
+        points: [
+          [0.010, 72.5, 69.8],
+          [0.015, 23.4, 22.1],
+          [0.020, 10.4, 9.60],
+          [0.030, 3.38, 2.92],
+          [0.050, 0.920, 0.650],
+          [0.080, 0.352, 0.185],
+          [0.100, 0.248, 0.105],
+          [0.200, 0.138, 0.037],
+          [0.500, 0.0865, 0.0298],
+          [0.6617, 0.0762, 0.0290],
+          [1.000, 0.0622, 0.0272],
+          [1.250, 0.0556, 0.0259],
+          [2.000, 0.0440, 0.0229],
+          [4.000, 0.0326, 0.0198],
+          [6.000, 0.0285, 0.0188],
+          [10.00, 0.0258, 0.0186],
+          [15.00, 0.0252, 0.0191]
+        ]
+      }
+    ],
+    gpTable: [
+      { energyMev: 0.050, b: 1.560, c: 0.780, a: 0.072, Xk: 14.0, d: -0.038 },
+      { energyMev: 0.100, b: 2.180, c: 1.220, a: -0.018, Xk: 13.8, d: 0.004 },
+      { energyMev: 0.200, b: 2.340, c: 1.380, a: -0.038, Xk: 13.7, d: 0.014 },
+      { energyMev: 0.500, b: 2.110, c: 1.310, a: -0.030, Xk: 13.7, d: 0.009 },
+      { energyMev: 0.662, b: 2.010, c: 1.260, a: -0.024, Xk: 13.7, d: 0.006 },
+      { energyMev: 1.000, b: 1.900, c: 1.200, a: -0.016, Xk: 13.6, d: 0.002 },
+      { energyMev: 1.250, b: 1.850, c: 1.165, a: -0.011, Xk: 13.6, d: 0.000 },
+      { energyMev: 2.000, b: 1.740, c: 1.105, a: -0.003, Xk: 13.5, d: -0.003 },
+      { energyMev: 6.000, b: 1.470, c: 1.025, a: 0.008, Xk: 13.3, d: -0.007 },
+      { energyMev: 10.00, b: 1.350, c: 1.015, a: 0.008, Xk: 13.2, d: -0.009 }
+    ],
+    bergerA: 0.98,
+    bergerB: 0.041,
+    sigmaRMass: 0.0296,
+    sigmaRLinear: 0.114,
+    neutronCaptureNote: 'High-density Fe3O4 + bound H2O provides simultaneous fast-n inelastic + thermal moderation.'
+  },
+
+  BISMUTH: {
+    key: 'BISMUTH',
+    name: 'Bismuth (Lead-Free High-Z Shield, Bi Z=83)',
+    symbol: 'Bi',
+    effectiveZ: 83,
+    density: 9.78,
+    edges: [
+      { shell: 'L3', energyMev: 0.013419, muMassBelow: 65.2, muMassAbove: 158.4, jumpRatio: 2.43 },
+      { shell: 'K',  energyMev: 0.090526, muMassBelow: 1.840, muMassAbove: 7.420, jumpRatio: 4.03 }
+    ],
+    segments: [
+      {
+        minEnergyMev: 0.010,
+        maxEnergyMev: 0.013419,
+        points: [
+          [0.010, 135.2, 128.8],
+          [0.013419, 65.2, 61.5]
+        ]
+      },
+      {
+        minEnergyMev: 0.013419,
+        maxEnergyMev: 0.090526,
+        points: [
+          [0.013419, 158.4, 130.5],
+          [0.020, 89.2, 74.8],
+          [0.030, 31.4, 26.8],
+          [0.050, 8.32, 6.96],
+          [0.080, 2.51, 1.99],
+          [0.090526, 1.840, 1.43]
+        ]
+      },
+      {
+        minEnergyMev: 0.090526,
+        maxEnergyMev: 15.0,
+        points: [
+          [0.090526, 7.420, 2.11],
+          [0.100, 5.740, 2.01],
+          [0.150, 2.080, 1.09],
+          [0.200, 1.030, 0.605],
+          [0.300, 0.414, 0.253],
+          [0.500, 0.165, 0.094],
+          [0.6617, 0.112, 0.0598],
+          [1.000, 0.0718, 0.0384],
+          [1.250, 0.0592, 0.0318],
+          [2.000, 0.0463, 0.0261],
+          [4.000, 0.0422, 0.0274],
+          [6.000, 0.0442, 0.0305],
+          [10.00, 0.0502, 0.0359],
+          [15.00, 0.0572, 0.0407]
+        ]
+      }
+    ],
+    gpTable: [
+      { energyMev: 0.050, b: 1.042, c: 0.408, a: 0.208, Xk: 14.0, d: -0.120 },
+      { energyMev: 0.090, b: 1.610, c: 1.280, a: -0.024, Xk: 12.8, d: 0.014 },
+      { energyMev: 0.100, b: 1.235, c: 0.510, a: 0.158, Xk: 13.5, d: -0.074 },
+      { energyMev: 0.200, b: 1.195, c: 0.480, a: 0.174, Xk: 13.8, d: -0.086 },
+      { energyMev: 0.500, b: 1.235, c: 0.620, a: 0.116, Xk: 14.2, d: -0.052 },
+      { energyMev: 0.662, b: 1.295, c: 0.715, a: 0.084, Xk: 14.1, d: -0.037 },
+      { energyMev: 1.000, b: 1.365, c: 0.870, a: 0.044, Xk: 13.9, d: -0.023 },
+      { energyMev: 1.250, b: 1.385, c: 0.940, a: 0.029, Xk: 13.8, d: -0.019 },
+      { energyMev: 2.000, b: 1.415, c: 1.055, a: 0.009, Xk: 13.6, d: -0.014 },
+      { energyMev: 6.000, b: 1.285, c: 1.255, a: -0.018, Xk: 13.2, d: -0.010 },
+      { energyMev: 10.00, b: 1.205, c: 1.375, a: -0.025, Xk: 13.0, d: -0.008 }
+    ],
+    bergerA: 0.36,
+    bergerB: 0.018,
+    sigmaRMass: 0.0101,
+    sigmaRLinear: 0.099,
+    neutronCaptureNote: 'Non-toxic high-Z gamma shield with ultra-low thermal neutron capture (0.034 b).'
+  },
+
+  COPPER: {
+    key: 'COPPER',
+    name: 'Copper (Electrolytic Graded-Z Liner, Cu Z=29)',
+    symbol: 'Cu',
+    effectiveZ: 29,
+    density: 8.96,
+    edges: [
+      { shell: 'K', energyMev: 0.008979, muMassBelow: 38.2, muMassAbove: 278.5, jumpRatio: 7.29 }
+    ],
+    segments: [
+      {
+        minEnergyMev: 0.010,
+        maxEnergyMev: 15.0,
+        points: [
+          [0.010, 215.9, 210.5],
+          [0.015, 74.05, 71.8],
+          [0.020, 33.79, 32.5],
+          [0.030, 10.92, 10.2],
+          [0.050, 2.613, 2.25],
+          [0.080, 0.763, 0.558],
+          [0.100, 0.458, 0.295],
+          [0.200, 0.156, 0.059],
+          [0.500, 0.0836, 0.0296],
+          [0.6617, 0.0730, 0.0281],
+          [1.000, 0.0590, 0.0258],
+          [1.250, 0.0526, 0.0245],
+          [2.000, 0.0420, 0.0217],
+          [4.000, 0.0332, 0.0201],
+          [6.000, 0.0311, 0.0205],
+          [10.00, 0.0310, 0.0220],
+          [15.00, 0.0325, 0.0238]
+        ]
+      }
+    ],
+    gpTable: [
+      { energyMev: 0.050, b: 1.180, c: 0.470, a: 0.172, Xk: 14.2, d: -0.088 },
+      { energyMev: 0.100, b: 1.560, c: 0.810, a: 0.065, Xk: 14.0, d: -0.036 },
+      { energyMev: 0.200, b: 1.940, c: 1.140, a: -0.004, Xk: 13.8, d: -0.006 },
+      { energyMev: 0.500, b: 1.940, c: 1.240, a: -0.020, Xk: 13.6, d: 0.002 },
+      { energyMev: 0.662, b: 1.890, c: 1.220, a: -0.018, Xk: 13.6, d: 0.001 },
+      { energyMev: 1.000, b: 1.820, c: 1.180, a: -0.012, Xk: 13.5, d: -0.001 },
+      { energyMev: 1.250, b: 1.780, c: 1.155, a: -0.009, Xk: 13.5, d: -0.002 },
+      { energyMev: 2.000, b: 1.690, c: 1.110, a: -0.003, Xk: 13.4, d: -0.004 },
+      { energyMev: 6.000, b: 1.440, c: 1.060, a: 0.002, Xk: 13.2, d: -0.007 },
+      { energyMev: 10.00, b: 1.320, c: 1.075, a: -0.001, Xk: 13.1, d: -0.008 }
+    ],
+    bergerA: 0.81,
+    bergerB: 0.034,
+    sigmaRMass: 0.0202,
+    sigmaRLinear: 0.181,
+    neutronCaptureNote: 'Absorbs 75 keV Pb X-rays in graded-Z (Pb/Sn/Cu) shields; high fast-n inelastic cross-section.'
+  },
+
+  ICRU_TISSUE: {
+    key: 'ICRU_TISSUE',
+    name: 'ICRU 4-Component Soft Tissue (Z_eff ≈ 7.3, 1.00 g/cm³)',
+    symbol: 'Tissue',
+    effectiveZ: 7.3,
+    density: 1.00,
+    edges: [],
+    segments: [
+      {
+        minEnergyMev: 0.010,
+        maxEnergyMev: 15.0,
+        points: [
+          [0.010, 4.990, 4.61],
+          [0.015, 1.580, 1.28],
+          [0.020, 0.774, 0.512],
+          [0.030, 0.366, 0.146],
+          [0.050, 0.224, 0.0405],
+          [0.080, 0.182, 0.0258],
+          [0.100, 0.169, 0.0253],
+          [0.200, 0.136, 0.0295],
+          [0.500, 0.0960, 0.0327],
+          [0.6617, 0.0849, 0.0324],
+          [1.000, 0.0701, 0.0307],
+          [1.250, 0.0626, 0.0293],
+          [2.000, 0.0489, 0.0257],
+          [4.000, 0.0337, 0.0204],
+          [6.000, 0.0274, 0.0178],
+          [10.00, 0.0219, 0.0155],
+          [15.00, 0.0191, 0.0142]
+        ]
+      }
+    ],
+    gpTable: [
+      { energyMev: 0.050, b: 3.480, c: 1.940, a: -0.094, Xk: 13.5, d: 0.043 },
+      { energyMev: 0.100, b: 3.810, c: 2.020, a: -0.104, Xk: 13.5, d: 0.049 },
+      { energyMev: 0.200, b: 3.280, c: 1.800, a: -0.083, Xk: 13.6, d: 0.037 },
+      { energyMev: 0.500, b: 2.530, c: 1.465, a: -0.049, Xk: 13.7, d: 0.018 },
+      { energyMev: 0.662, b: 2.320, c: 1.365, a: -0.037, Xk: 13.7, d: 0.012 },
+      { energyMev: 1.000, b: 2.140, c: 1.255, a: -0.023, Xk: 13.7, d: 0.006 },
+      { energyMev: 1.250, b: 2.040, c: 1.205, a: -0.016, Xk: 13.7, d: 0.003 },
+      { energyMev: 2.000, b: 1.850, c: 1.115, a: -0.002, Xk: 13.6, d: -0.002 },
+      { energyMev: 6.000, b: 1.525, c: 0.985, a: 0.015, Xk: 13.4, d: -0.009 },
+      { energyMev: 10.00, b: 1.395, c: 0.950, a: 0.018, Xk: 13.3, d: -0.011 }
+    ],
+    bergerA: 1.36,
+    bergerB: 0.057,
+    sigmaRMass: 0.0980,
+    sigmaRLinear: 0.098,
+    neutronCaptureNote: 'ICRU 30-cm sphere phantom composition (10.1% H, 11.1% C, 2.6% N, 76.2% O).'
+  },
+
+  SOIL_EARTH: {
+    key: 'SOIL_EARTH',
+    name: 'Packed Earth / Soil Overburden (SiO2/Al2O3, 1.80 g/cm³)',
+    symbol: 'Earth',
+    effectiveZ: 10.5,
+    density: 1.80,
+    edges: [],
+    segments: [
+      {
+        minEnergyMev: 0.010,
+        maxEnergyMev: 15.0,
+        points: [
+          [0.010, 24.5, 23.4],
+          [0.015, 7.50, 6.96],
+          [0.020, 3.28, 2.88],
+          [0.030, 1.10, 0.835],
+          [0.050, 0.372, 0.184],
+          [0.080, 0.206, 0.058],
+          [0.100, 0.175, 0.040],
+          [0.200, 0.126, 0.0286],
+          [0.500, 0.0872, 0.0297],
+          [0.6617, 0.0773, 0.0294],
+          [1.000, 0.0633, 0.0278],
+          [1.250, 0.0566, 0.0265],
+          [2.000, 0.0445, 0.0233],
+          [4.000, 0.0316, 0.0193],
+          [6.000, 0.0267, 0.0178],
+          [10.00, 0.0228, 0.0166],
+          [15.00, 0.0211, 0.0162]
+        ]
+      }
+    ],
+    gpTable: [
+      { energyMev: 0.050, b: 2.280, c: 1.260, a: -0.025, Xk: 13.8, d: 0.006 },
+      { energyMev: 0.100, b: 2.980, c: 1.700, a: -0.074, Xk: 13.6, d: 0.033 },
+      { energyMev: 0.200, b: 2.750, c: 1.600, a: -0.064, Xk: 13.7, d: 0.027 },
+      { energyMev: 0.500, b: 2.290, c: 1.380, a: -0.039, Xk: 13.8, d: 0.014 },
+      { energyMev: 0.662, b: 2.150, c: 1.310, a: -0.031, Xk: 13.8, d: 0.010 },
+      { energyMev: 1.000, b: 1.990, c: 1.220, a: -0.019, Xk: 13.7, d: 0.005 },
+      { energyMev: 1.250, b: 1.920, c: 1.175, a: -0.013, Xk: 13.7, d: 0.002 },
+      { energyMev: 2.000, b: 1.780, c: 1.105, a: -0.002, Xk: 13.6, d: -0.002 },
+      { energyMev: 6.000, b: 1.500, c: 1.000, a: 0.012, Xk: 13.4, d: -0.008 },
+      { energyMev: 10.00, b: 1.380, c: 0.970, a: 0.015, Xk: 13.3, d: -0.010 }
+    ],
+    bergerA: 1.17,
+    bergerB: 0.049,
+    sigmaRMass: 0.0361,
+    sigmaRLinear: 0.065,
+    neutronCaptureNote: 'Expedient trench/bunker earth overburden (HVL ≈ 9.2 cm for Co-60, Σ_R ≈ 0.065 cm⁻¹).'
   }
 };
 
@@ -979,10 +1317,120 @@ export function solveBroadBeamThicknessCm(
   }
 
   const opticalMfp = 0.5 * (low + high);
-  const buildupAtSolution = evaluateBuildupByModel(materialKey, energyMev, opticalMfp, model);
+  const buildupAtSolution = evaluateBuildupByModel(materialKey, energyMfpOrE(energyMev), opticalMfp, model);
   return {
     thicknessCm: opticalMfp / muLinear,
     opticalMfp,
     buildupAtSolution
+  };
+}
+
+function energyMfpOrE(e: number): number {
+  return e;
+}
+
+/**
+ * Consensus Fast Neutron Removal Cross-Sections (Σ_R/ρ cm²/g & Σ_R cm⁻¹)
+ * per Albert-Welton / Spinney Removal-Diffusion Theory (NCRP Report 38 / 144, Shultis & Faw).
+ */
+export const NEUTRON_REMOVAL_CATALOG: Record<string, {
+  sigmaRMass: number;   // cm²/g
+  sigmaRLinear: number; // cm⁻¹
+  captureNote: string;
+}> = {
+  LEAD: { sigmaRMass: 0.0104, sigmaRLinear: 0.118, captureNote: 'Inelastic scattering above 0.57 MeV; requires downstream H-rich moderator.' },
+  TUNGSTEN: { sigmaRMass: 0.0110, sigmaRLinear: 0.212, captureNote: 'Strong fast-n inelastic slowing; W(n,γ) emits high-energy capture gammas.' },
+  DU: { sigmaRMass: 0.0091, sigmaRLinear: 0.174, captureNote: 'Fast fission above 1.4 MeV + inelastic scattering; requires hydrogenous outer layer.' },
+  STEEL: { sigmaRMass: 0.0214, sigmaRLinear: 0.168, captureNote: 'Fe-56 inelastic threshold at 0.847 MeV; 24 keV anti-resonance window requires H2O/PE backing.' },
+  CONCRETE: { sigmaRMass: 0.0379, sigmaRLinear: 0.089, captureNote: 'Contains ~1% wt bound H; self-moderating bulk biological shield.' },
+  BARITE_CONCRETE: { sigmaRMass: 0.0283, sigmaRLinear: 0.099, captureNote: 'High-density BaSO4 + bound water for combined n/γ attenuation.' },
+  ALUMINUM: { sigmaRMass: 0.0293, sigmaRLinear: 0.079, captureNote: 'Low thermal capture; Al-27(n,γ)Al-28 (T½=2.24 min, 1.779 MeV γ).' },
+  WATER: { sigmaRMass: 0.1030, sigmaRLinear: 0.103, captureNote: 'High H elastic moderation; H-1(n,γ)H-2 emits 2.223 MeV capture photon.' },
+  HDPE: { sigmaRMass: 0.1326, sigmaRLinear: 0.126, captureNote: 'Highest H atom density (8.1×10²² H/cm³); emits 2.223 MeV H(n,γ) capture gamma.' },
+  LEAD_GLASS: { sigmaRMass: 0.0185, sigmaRLinear: 0.096, captureNote: 'Si/Pb-O silicate matrix; moderate inelastic scattering.' },
+  BORATED_PE: { sigmaRMass: 0.1250, sigmaRLinear: 0.130, captureNote: 'B-10(n,α)Li-7 (σ=3840 b) suppresses 2.22 MeV H(n,γ) capture photons to 0.478 MeV.' },
+  MAGNETITE_CONCRETE: { sigmaRMass: 0.0296, sigmaRLinear: 0.114, captureNote: 'High-density Fe3O4 + bound H2O provides simultaneous fast-n inelastic + thermal moderation.' },
+  BISMUTH: { sigmaRMass: 0.0101, sigmaRLinear: 0.099, captureNote: 'Non-toxic high-Z gamma shield with ultra-low thermal neutron capture (0.034 b).' },
+  COPPER: { sigmaRMass: 0.0202, sigmaRLinear: 0.181, captureNote: 'High fast-n inelastic cross-section; Cu-63/65(n,γ) activation.' },
+  ICRU_TISSUE: { sigmaRMass: 0.0980, sigmaRLinear: 0.098, captureNote: 'ICRU 30-cm sphere phantom composition (10.1% H, 11.1% C, 2.6% N, 76.2% O).' },
+  SOIL_EARTH: { sigmaRMass: 0.0361, sigmaRLinear: 0.065, captureNote: 'Expedient trench/bunker earth overburden (Σ_R ≈ 0.065 cm⁻¹).' }
+};
+
+export function getMaterialNeutronRemoval(materialKey: string): {
+  sigmaRMass: number;
+  sigmaRLinear: number;
+  hvlNeutronCm: number;
+  tvlNeutronCm: number;
+  captureNote: string;
+} {
+  const mat = XCOM_GP_MATERIALS[materialKey] || XCOM_GP_MATERIALS.CONCRETE;
+  const spec = NEUTRON_REMOVAL_CATALOG[materialKey] || {
+    sigmaRMass: mat.sigmaRMass || 0.035,
+    sigmaRLinear: mat.sigmaRLinear || 0.090,
+    captureNote: mat.neutronCaptureNote || 'Standard macroscopic removal cross-section.'
+  };
+  return {
+    sigmaRMass: spec.sigmaRMass,
+    sigmaRLinear: spec.sigmaRLinear,
+    hvlNeutronCm: Math.LN2 / spec.sigmaRLinear,
+    tvlNeutronCm: Math.LN10 / spec.sigmaRLinear,
+    captureNote: spec.captureNote
+  };
+}
+
+/**
+ * Evaluates multi-layer fast neutron attenuation via Albert-Welton / Spinney Removal Theory:
+ * D_n(x) = D_n,0 * B_n(Σ_R x) * exp(-∑ Σ_R,i * x_i)
+ */
+export function evaluateNeutronRemovalStack(
+  layers: { materialKey: string; thicknessCm: number }[],
+  incidentNeutronDoseRate: number
+): {
+  totalSigmaRx: number;
+  neutronBuildup: number;
+  transmittedNeutronDoseRate: number;
+  captureGammaSuppressionFactor: number;
+  hasHydrogenousModerator: boolean;
+  hasBoronAbsorber: boolean;
+  advisory: string;
+} {
+  let totalSigmaRx = 0;
+  let hydrogenousRelaxation = 0;
+  let hasBoronAbsorber = false;
+
+  for (const l of layers) {
+    const nSpec = getMaterialNeutronRemoval(l.materialKey);
+    const rx = nSpec.sigmaRLinear * l.thicknessCm;
+    totalSigmaRx += rx;
+    if (['WATER', 'HDPE', 'BORATED_PE', 'CONCRETE', 'BARITE_CONCRETE', 'MAGNETITE_CONCRETE', 'ICRU_TISSUE'].includes(l.materialKey)) {
+      hydrogenousRelaxation += rx;
+    }
+    if (l.materialKey === 'BORATED_PE') {
+      hasBoronAbsorber = true;
+    }
+  }
+
+  const hasHydrogenousModerator = hydrogenousRelaxation >= 0.5;
+  // Spinney Removal-Diffusion buildup factor: lower (~1.5-2.5) when sufficient hydrogenous backing is present, higher (~4-6) in pure metal shields due to 24 keV Fe / sub-MeV streaming
+  const bCoeff = hasHydrogenousModerator ? 0.35 : 0.95;
+  const neutronBuildup = 1.0 + bCoeff * totalSigmaRx * Math.exp(-0.08 * Math.min(20, totalSigmaRx));
+  const transmittedNeutronDoseRate = incidentNeutronDoseRate * neutronBuildup * Math.exp(-totalSigmaRx);
+  const captureGammaSuppressionFactor = hasBoronAbsorber ? 0.08 : 1.0;
+
+  let advisory = 'Balanced fast-neutron inelastic slowing + hydrogenous moderation.';
+  if (!hasHydrogenousModerator && totalSigmaRx > 0.2) {
+    advisory = '⚠️ Pure metal/high-Z stack lacks hydrogenous moderation: sub-MeV neutrons stream through inelastic windows (e.g., 24 keV Fe window). Add HDPE, Borated PE, or Water.';
+  } else if (hasBoronAbsorber) {
+    advisory = '✅ 5% Borated PE captures thermalized neutrons via ¹⁰B(n,α)⁷Li (0.478 MeV γ), suppressing 2.223 MeV ¹H(n,γ)²H capture gamma production by ~92%.';
+  }
+
+  return {
+    totalSigmaRx,
+    neutronBuildup,
+    transmittedNeutronDoseRate,
+    captureGammaSuppressionFactor,
+    hasHydrogenousModerator,
+    hasBoronAbsorber,
+    advisory
   };
 }

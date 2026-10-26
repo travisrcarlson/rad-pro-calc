@@ -147,6 +147,70 @@ export const REACTOR_ACTIVATION_PRESETS: ReactorActivationPreset[] = [
     defaultIrradiationHours: 48,
     defaultCoolingHours: 120,
     description: 'Gold-foil activation dosimetry standard (98.65 b) with intense Au-198(n,γ)Au-199 secondary burnup (25,100 b).'
+  },
+  {
+    id: 'se74_se75',
+    label: 'Se-74(n,γ)Se-75 → As-75',
+    targetIsotope: 'Se-74',
+    targetMassNumber: 74,
+    naturalAbundancePct: 0.89,
+    defaultEnrichmentPct: 95.0,
+    thermalCrossSectionBarns: 51.8,
+    burnupCrossSectionBarns: 0.0,
+    producedParentNuclide: 'Se-75',
+    defaultTargetMassGrams: 0.5,
+    defaultFluxNcm2s: 1.5e14,
+    defaultIrradiationHours: 1440, // 60 days
+    defaultCoolingHours: 2880,
+    description: 'Enriched Se-74 irradiation for compact, low-energy Se-75 (136/265 keV) industrial NDT gamma radiography cameras.'
+  },
+  {
+    id: 'sm152_sm153',
+    label: 'Sm-152(n,γ)Sm-153 → Eu-153',
+    targetIsotope: 'Sm-152',
+    targetMassNumber: 152,
+    naturalAbundancePct: 26.75,
+    defaultEnrichmentPct: 98.0,
+    thermalCrossSectionBarns: 206.0,
+    burnupCrossSectionBarns: 420.0,
+    producedParentNuclide: 'Sm-153',
+    defaultTargetMassGrams: 0.1,
+    defaultFluxNcm2s: 1.2e14,
+    defaultIrradiationHours: 96,
+    defaultCoolingHours: 144,
+    description: 'High-yield Sm-153 production (T½ = 46.28 h, Eβ = 808 keV, Eγ = 103 keV) for bone metastasis pain palliation.'
+  },
+  {
+    id: 'yb176_lu177_nca',
+    label: 'Yb-176(n,γ)Yb-177 → Lu-177 (n.c.a.)',
+    targetIsotope: 'Yb-176',
+    targetMassNumber: 176,
+    naturalAbundancePct: 12.76,
+    defaultEnrichmentPct: 99.5,
+    thermalCrossSectionBarns: 2.85,
+    burnupCrossSectionBarns: 0.0,
+    producedParentNuclide: 'Yb-177',
+    defaultTargetMassGrams: 2.0,
+    defaultFluxNcm2s: 2.5e14,
+    defaultIrradiationHours: 120,
+    defaultCoolingHours: 240,
+    description: 'Indirect no-carrier-added (n.c.a.) Lu-177 production via short-lived Yb-177 (1.91 h) β⁻ decay, avoiding Lu-177m impurity.'
+  },
+  {
+    id: 'ni62_ni63',
+    label: 'Ni-62(n,γ)Ni-63 → Cu-63',
+    targetIsotope: 'Ni-62',
+    targetMassNumber: 62,
+    naturalAbundancePct: 3.63,
+    defaultEnrichmentPct: 96.0,
+    thermalCrossSectionBarns: 14.5,
+    burnupCrossSectionBarns: 24.0,
+    producedParentNuclide: 'Ni-63',
+    defaultTargetMassGrams: 5.0,
+    defaultFluxNcm2s: 2.0e14,
+    defaultIrradiationHours: 8760,
+    defaultCoolingHours: 8760 * 10,
+    description: 'Long-irradiation enriched Ni-62 production of pure-beta Ni-63 (T½ = 101.2 y) for ECD detectors and betavoltaic batteries.'
   }
 ];
 
@@ -230,6 +294,46 @@ export const CURATED_BRANCHING_SPLITS: Record<string, CuratedBranchSpec> = {
   'Tl-209': {
     daughters: [
       { nuclide: 'Pb-209', branchFraction: 1.0, modeLabel: 'β⁻ (100%)', qMeV: 3.970, modality: 'beta', laneOffset: 0 }
+    ]
+  },
+  'Ge-68': {
+    daughters: [
+      { nuclide: 'Ga-68', branchFraction: 1.0, modeLabel: 'EC (100%)', qMeV: 0.106, modality: 'ec_positron', laneOffset: 0 }
+    ]
+  },
+  'Ga-68': {
+    daughters: [
+      { nuclide: 'Zn-68', branchFraction: 1.0, modeLabel: 'β⁺ (88.9%) / EC', qMeV: 2.921, modality: 'ec_positron', laneOffset: 0 }
+    ]
+  },
+  'W-188': {
+    daughters: [
+      { nuclide: 'Re-188', branchFraction: 1.0, modeLabel: 'β⁻ (0.349 MeV)', qMeV: 0.349, modality: 'beta', laneOffset: 0 }
+    ]
+  },
+  'Re-188': {
+    daughters: [
+      { nuclide: 'Os-188', branchFraction: 1.0, modeLabel: 'β⁻ (2.12 MeV + 155 keV γ)', qMeV: 2.120, modality: 'beta', laneOffset: 0 }
+    ]
+  },
+  'Ac-225': {
+    daughters: [
+      { nuclide: 'Fr-221', branchFraction: 1.0, modeLabel: 'α (5.83 MeV)', qMeV: 5.935, modality: 'alpha', laneOffset: 0 }
+    ]
+  },
+  'Fr-221': {
+    daughters: [
+      { nuclide: 'At-217', branchFraction: 1.0, modeLabel: 'α (6.34 MeV + 218 keV γ)', qMeV: 6.458, modality: 'alpha', laneOffset: 0 }
+    ]
+  },
+  'At-217': {
+    daughters: [
+      { nuclide: 'Bi-213', branchFraction: 1.0, modeLabel: 'α (7.07 MeV)', qMeV: 7.201, modality: 'alpha', laneOffset: 0 }
+    ]
+  },
+  'Yb-177': {
+    daughters: [
+      { nuclide: 'Lu-177', branchFraction: 1.0, modeLabel: 'β⁻ (1.40 MeV)', qMeV: 1.399, modality: 'beta', laneOffset: 0 }
     ]
   }
 };

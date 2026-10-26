@@ -96,7 +96,14 @@ const NUCLIDE_GAMMA_METADATA: Record<string, { energyMeV: number; yieldPct: numb
   'Ra-226': { energyMeV: 0.1862, yieldPct: 3.6, gammaConst: 3.2 },
   'Ac-225': { energyMeV: 0.100, yieldPct: 1.0, gammaConst: 2.4 },
   'Fr-221': { energyMeV: 0.218, yieldPct: 11.4, gammaConst: 4.5 },
-  'Bi-213': { energyMeV: 0.4405, yieldPct: 25.9, gammaConst: 19.0 }
+  'Bi-213': { energyMeV: 0.4405, yieldPct: 25.9, gammaConst: 19.0 },
+  'Ge-68': { energyMeV: 0.511, yieldPct: 0.0, gammaConst: 0.1 },
+  'Ga-68': { energyMeV: 0.511, yieldPct: 178.0, gammaConst: 135.0 },
+  'W-188': { energyMeV: 0.290, yieldPct: 0.4, gammaConst: 0.3 },
+  'Re-188': { energyMeV: 0.155, yieldPct: 15.6, gammaConst: 8.5 },
+  'Se-75': { energyMeV: 0.2647, yieldPct: 58.9, gammaConst: 54.0 },
+  'Sm-153': { energyMeV: 0.1032, yieldPct: 29.8, gammaConst: 11.4 },
+  'Ra-223': { energyMeV: 0.2695, yieldPct: 13.9, gammaConst: 45.0 }
 };
 
 interface BenchmarkChainPreset {
@@ -123,6 +130,28 @@ const BENCHMARK_CHAIN_PRESETS: BenchmarkChainPreset[] = [
     sliderPct: 14.0, // ~23.5 hours
     badge: 'Transient Eq.',
     description: 'Medical Technetium-99m Generator (87.9% → Tc-99m [6.01 h] + 12.1% direct → Tc-99)'
+  },
+  {
+    id: 'ge68_ga68',
+    label: '🔬 Ge-68 → Ga-68 (PET)',
+    nuclide: 'Ge-68',
+    symbol: 'Ge',
+    timeValue: 24,
+    timeUnit: 3600, // 24 Hours
+    sliderPct: 30.0,
+    badge: 'PET Generator',
+    description: 'Positron Emission Tomography (PET) Secular Generator: Ge-68 (270.95 d) → Ga-68 (67.71 min β⁺ 511 keV)'
+  },
+  {
+    id: 'w188_re188',
+    label: '🧪 W-188 → Re-188',
+    nuclide: 'W-188',
+    symbol: 'W',
+    timeValue: 14,
+    timeUnit: 86400, // 14 Days
+    sliderPct: 28.0,
+    badge: 'β⁻ Generator',
+    description: 'High-Energy Therapeutic Beta Generator: W-188 (69.78 d) → Re-188 (17.0 h, Eβ = 2.12 MeV + 155 keV γ)'
   },
   {
     id: 'bi212_split',

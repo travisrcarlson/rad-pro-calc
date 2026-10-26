@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState } from 'react';
 
 export type RegulatoryFrameworkId = 
-  | 'US_NRC'       // 10 CFR 20, 10 CFR 835, EPA PAG 2017
+  | 'US_NRC'       // 10 CFR 20, EPA PAG 2017
+  | 'DOE_835'      // US DOE 10 CFR Part 835 (20 mSv ACL / 50 mSv Statutory)
   | 'IAEA_GSR3'    // IAEA Safety Standards GSR Part 3 / ICRP 103
   | 'EURATOM_IRR'  // EU Council Directive 2013/59 / UK IRR17
   | 'NATO_STANAG'  // NATO STANAG 2083 / AEP-66 Military OEG
@@ -56,6 +57,29 @@ export const REGULATORY_FRAMEWORKS: Record<RegulatoryFrameworkId, RegulatoryFram
     },
     turnBackGuidanceNotes: 'EPA-400 PAG: 10 mR/h initial cordoning; 100 mSv (10 rem) for critical infrastructure; 250 mSv (25 rem) voluntary life saving. Individual dose exceeding 500 mSv requires medical clearance.',
     citation: 'U.S. Code of Federal Regulations, Title 10, Part 20, Standards for Protection Against Radiation; EPA PAG Manual (2017).'
+  },
+  DOE_835: {
+    id: 'DOE_835',
+    name: 'US Dept. of Energy (10 CFR 835 / STD-1098)',
+    shortCode: 'US-DOE / 10 CFR 835',
+    governingBody: 'US Department of Energy / NNSA',
+    keyStatutes: ['10 CFR § 835.202', 'DOE-STD-1098-2017 Radiological Control (20 mSv ACL)'],
+    region: 'United States (DOE Complex)',
+    flagEmoji: '⚛️',
+    accentColor: '#10b981',
+    limits: {
+      occupationalAnnualEffective_mSv: 20.0, // DOE Administrative Control Level (ACL = 2 rem/yr); Statutory = 50 mSv
+      occupationalMaxSingleYear_mSv: 50.0,
+      lensOfEyeAnnual_mSv: 150.0,            // 15 rem
+      skinAndExtremitiesAnnual_mSv: 500.0,   // 50 rem
+      publicAnnualEffective_mSv: 1.0,        // 100 mrem
+      embryoFetusDeclared_mSv: 5.0,          // 500 mrem gestation
+      emergencyGeneralWorker_mSv: 50.0,
+      emergencyProperty_mSv: 100.0,
+      emergencyLifeSaving_mSv: 250.0
+    },
+    turnBackGuidanceNotes: 'DOE-STD-1098-2017 Art. 211: DOE Administrative Control Level (ACL) is 20 mSv/yr (2,000 mrem/yr) without Secretarial/Contractor approval; statutory 10 CFR 835.202 ceiling is 50 mSv/yr.',
+    citation: 'U.S. Code of Federal Regulations, Title 10, Part 835, Occupational Radiation Protection; DOE-STD-1098-2017.'
   },
   IAEA_GSR3: {
     id: 'IAEA_GSR3',

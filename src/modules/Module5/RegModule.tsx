@@ -32,6 +32,13 @@ const RegModule: React.FC = () => {
   const [doseAmount, setDoseAmount] = useState('1.0');
   const [doseType, setDoseType] = useState<'TEDE' | 'LDE' | 'SDE'>('TEDE');
 
+  // Emergency Turn-Back, PSE & Declared Pregnant Worker Calculator State
+  const [calcFieldRateMSvHr, setCalcFieldRateMSvHr] = useState<number>(25.0); // 25 mSv/h (2.5 rem/h)
+  const [calcPriorAnnualMSv, setCalcPriorAnnualMSv] = useState<number>(4.5);
+  const [calcPriorLifetimePSE_mSv, setCalcPriorLifetimePSE_mSv] = useState<number>(30.0); // 10 CFR 20.1206 max 250 mSv lifetime PSE
+  const [calcFetalPriorMSv, setCalcFetalPriorMSv] = useState<number>(0.4);
+  const [calcFetalMonthsLeft, setCalcFetalMonthsLeft] = useState<number>(6);
+
   // Dynamic Framework Limits
   const activeLimits = {
     TEDE: currentFramework.limits.occupationalAnnualEffective_mSv,
@@ -126,7 +133,7 @@ const RegModule: React.FC = () => {
             <VerificationBadge testId="VTEST-01" label="ICRP 103 / 10 CFR 20" />
           </div>
           <h2 style={{ margin: '6px 0 0 0', fontSize: '1.4rem', letterSpacing: '0.03em' }}>
-            Module 33 — Regulatory Dose Compliance &amp; ALARA Administration Dashboard
+            Module 32 — Regulatory Dose Compliance &amp; ALARA Administration Dashboard
           </h2>
           <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
             Track occupational exposure records against Federal annual limits and internal ALARA investigation levels across Whole Body (TEDE), Lens of Eye (LDE), and Shallow Extremities (SDE).
@@ -393,55 +400,252 @@ const RegModule: React.FC = () => {
           </div>
         )}
 
-        {/* TAB 3: Regulatory Standards Matrix */}
+        {/* TAB 3: Regulatory Standards Matrix & Emergency/PSE/Fetal Calculators */}
         {activeTab === 'standards' && (
-          <div style={{ background: 'rgba(5, 10, 18, 0.7)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <h3 style={{ margin: 0, color: 'var(--color-primary)', fontSize: '1.15rem' }}>
-              Comparison of Occupational Radiation Protection Limits
-            </h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+            <div style={{ background: 'rgba(5, 10, 18, 0.7)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                <div>
+                  <h3 style={{ margin: 0, color: 'var(--color-primary)', fontSize: '1.15rem' }}>
+                    🌐 6-Regime International &amp; Federal Radiation Protection Concordance Matrix
+                  </h3>
+                  <p style={{ margin: '4px 0 0 0', fontSize: '0.82rem', color: '#94a3b8' }}>
+                    Click any regime header or use the top selector to switch the active enforcement framework across the application.
+                  </p>
+                </div>
+                <span className="hud-badge hud-badge-accent">{currentFramework.flagEmoji} Active: {currentFramework.shortCode}</span>
+              </div>
 
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid #334155', background: 'rgba(0,0,0,0.3)', color: '#94a3b8', textAlign: 'left' }}>
-                  <th style={{ padding: '10px 12px' }}>Dose Category</th>
-                  <th style={{ padding: '10px 12px' }}>US NRC (10 CFR 20.1201)</th>
-                  <th style={{ padding: '10px 12px' }}>ICRP Publication 103 / 118</th>
-                  <th style={{ padding: '10px 12px' }}>IAEA GSR Part 3</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                  <td style={{ padding: '10px 12px', fontWeight: 'bold', color: '#fff' }}>Whole Body Effective Dose (TEDE)</td>
-                  <td style={{ padding: '10px 12px', color: '#f59e0b' }}>50 mSv / year</td>
-                  <td style={{ padding: '10px 12px', color: 'var(--color-primary)' }}>20 mSv / year (avg over 5 yrs, max 50 in single yr)</td>
-                  <td style={{ padding: '10px 12px', color: 'var(--color-primary)' }}>20 mSv / year (avg over 5 yrs)</td>
-                </tr>
-                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                  <td style={{ padding: '10px 12px', fontWeight: 'bold', color: '#fff' }}>Lens of Eye (LDE)</td>
-                  <td style={{ padding: '10px 12px', color: '#f59e0b' }}>150 mSv / year</td>
-                  <td style={{ padding: '10px 12px', color: 'var(--color-primary)' }}>20 mSv / year (ICRP 118 reduction)</td>
-                  <td style={{ padding: '10px 12px', color: 'var(--color-primary)' }}>20 mSv / year</td>
-                </tr>
-                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                  <td style={{ padding: '10px 12px', fontWeight: 'bold', color: '#fff' }}>Skin &amp; Extremities (SDE)</td>
-                  <td style={{ padding: '10px 12px' }}>500 mSv / year</td>
-                  <td style={{ padding: '10px 12px' }}>500 mSv / year</td>
-                  <td style={{ padding: '10px 12px' }}>500 mSv / year</td>
-                </tr>
-                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                  <td style={{ padding: '10px 12px', fontWeight: 'bold', color: '#fff' }}>Embryo / Fetus (Declared Pregnant Worker)</td>
-                  <td style={{ padding: '10px 12px' }}>5 mSv total gestation (0.5 mSv/mo)</td>
-                  <td style={{ padding: '10px 12px' }}>1 mSv remainder of pregnancy</td>
-                  <td style={{ padding: '10px 12px' }}>1 mSv remainder of pregnancy</td>
-                </tr>
-                <tr>
-                  <td style={{ padding: '10px 12px', fontWeight: 'bold', color: '#fff' }}>General Public Individual</td>
-                  <td style={{ padding: '10px 12px' }}>1 mSv / year (100 mrem)</td>
-                  <td style={{ padding: '10px 12px' }}>1 mSv / year</td>
-                  <td style={{ padding: '10px 12px' }}>1 mSv / year</td>
-                </tr>
-              </tbody>
-            </table>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid #334155', background: 'rgba(0,0,0,0.4)', color: '#94a3b8', textAlign: 'left' }}>
+                      <th style={{ padding: '10px 12px' }}>Statutory Dose Limit / Action Level</th>
+                      {allFrameworks.map(f => (
+                        <th
+                          key={f.id}
+                          onClick={() => setFrameworkId(f.id)}
+                          style={{
+                            padding: '10px 12px',
+                            cursor: 'pointer',
+                            color: f.id === frameworkId ? '#00e5ff' : '#e2e8f0',
+                            background: f.id === frameworkId ? 'rgba(0, 229, 255, 0.1)' : 'transparent',
+                            borderBottom: f.id === frameworkId ? '2px solid #00e5ff' : 'none'
+                          }}
+                        >
+                          {f.flagEmoji} {f.shortCode}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                      <td style={{ padding: '9px 12px', fontWeight: 'bold', color: '#fff' }}>Occupational Whole Body (TEDE / yr)</td>
+                      {allFrameworks.map(f => (
+                        <td key={f.id} style={{ padding: '9px 12px', fontFamily: 'monospace', fontWeight: 600, color: f.id === frameworkId ? '#00e5ff' : '#f59e0b' }}>
+                          {f.limits.occupationalAnnualEffective_mSv} mSv ({f.limits.occupationalAnnualEffective_mSv / 10} rem)
+                        </td>
+                      ))}
+                    </tr>
+                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                      <td style={{ padding: '9px 12px', fontWeight: 'bold', color: '#fff' }}>Lens of the Eye (LDE / yr)</td>
+                      {allFrameworks.map(f => (
+                        <td key={f.id} style={{ padding: '9px 12px', fontFamily: 'monospace', color: f.limits.lensOfEyeAnnual_mSv <= 20 ? '#10b981' : '#cbd5e1' }}>
+                          {f.limits.lensOfEyeAnnual_mSv} mSv
+                        </td>
+                      ))}
+                    </tr>
+                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                      <td style={{ padding: '9px 12px', fontWeight: 'bold', color: '#fff' }}>Skin &amp; Extremities (SDE / yr)</td>
+                      {allFrameworks.map(f => (
+                        <td key={f.id} style={{ padding: '9px 12px', fontFamily: 'monospace' }}>
+                          {f.limits.skinAndExtremitiesAnnual_mSv} mSv
+                        </td>
+                      ))}
+                    </tr>
+                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                      <td style={{ padding: '9px 12px', fontWeight: 'bold', color: '#fff' }}>Embryo / Fetus (Declared Pregnant Worker)</td>
+                      {allFrameworks.map(f => (
+                        <td key={f.id} style={{ padding: '9px 12px', fontFamily: 'monospace', color: '#38bdf8' }}>
+                          {f.limits.embryoFetusDeclared_mSv} mSv
+                        </td>
+                      ))}
+                    </tr>
+                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                      <td style={{ padding: '9px 12px', fontWeight: 'bold', color: '#fff' }}>Public Individual (Annual Limit)</td>
+                      {allFrameworks.map(f => (
+                        <td key={f.id} style={{ padding: '9px 12px', fontFamily: 'monospace' }}>
+                          {f.limits.publicAnnualEffective_mSv} mSv
+                        </td>
+                      ))}
+                    </tr>
+                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                      <td style={{ padding: '9px 12px', fontWeight: 'bold', color: '#fff' }}>Emergency — Critical Property / Infrastructure</td>
+                      {allFrameworks.map(f => (
+                        <td key={f.id} style={{ padding: '9px 12px', fontFamily: 'monospace', color: '#f97316' }}>
+                          {f.limits.emergencyProperty_mSv} mSv
+                        </td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <td style={{ padding: '9px 12px', fontWeight: 'bold', color: '#fff' }}>Emergency — Life-Saving / Large Population</td>
+                      {allFrameworks.map(f => (
+                        <td key={f.id} style={{ padding: '9px 12px', fontFamily: 'monospace', color: '#ef4444', fontWeight: 700 }}>
+                          {f.limits.emergencyLifeSaving_mSv} mSv
+                        </td>
+                      ))}
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div style={{ background: 'rgba(0, 229, 255, 0.06)', border: '1px solid rgba(0, 229, 255, 0.25)', padding: '10px 14px', borderRadius: '6px', fontSize: '0.8rem', color: '#cbd5e1' }}>
+                <strong style={{ color: '#00e5ff' }}>{currentFramework.shortCode} Operational Guidance: </strong>
+                {currentFramework.turnBackGuidanceNotes}
+              </div>
+            </div>
+
+            {/* Interactive Emergency Turn-Back, Planned Special Exposure (PSE) & Fetal Budget Calculators */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: '16px' }}>
+              {/* Card 1: Emergency Turn-Back Stay-Time & 10 CFR 20.1206 Planned Special Exposure */}
+              <div style={{ background: 'rgba(5, 10, 18, 0.7)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '18px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <h4 style={{ margin: 0, color: '#00e5ff', fontSize: '1rem' }}>
+                  ⏱️ Emergency Turn-Back Stay-Time &amp; Planned Special Exposure (10 CFR § 20.1206)
+                </h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+                  <div>
+                    <label style={{ fontSize: '0.73rem', color: '#94a3b8' }}>Field Rate (mSv/h):</label>
+                    <input
+                      type="number"
+                      step="5"
+                      min="0.1"
+                      className="form-control"
+                      value={calcFieldRateMSvHr}
+                      onChange={e => setCalcFieldRateMSvHr(Math.max(0.01, parseFloat(e.target.value) || 1))}
+                      style={{ fontSize: '0.84rem' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.73rem', color: '#94a3b8' }}>Prior YTD Dose (mSv):</label>
+                    <input
+                      type="number"
+                      step="1"
+                      min="0"
+                      className="form-control"
+                      value={calcPriorAnnualMSv}
+                      onChange={e => setCalcPriorAnnualMSv(Math.max(0, parseFloat(e.target.value) || 0))}
+                      style={{ fontSize: '0.84rem' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.73rem', color: '#94a3b8' }}>Prior Lifetime PSE (mSv):</label>
+                    <input
+                      type="number"
+                      step="10"
+                      min="0"
+                      className="form-control"
+                      value={calcPriorLifetimePSE_mSv}
+                      onChange={e => setCalcPriorLifetimePSE_mSv(Math.max(0, parseFloat(e.target.value) || 0))}
+                      style={{ fontSize: '0.84rem' }}
+                    />
+                  </div>
+                </div>
+
+                {(() => {
+                  const remAnnual = Math.max(0, activeLimits.TEDE - calcPriorAnnualMSv);
+                  const stayRoutineMin = (remAnnual / calcFieldRateMSvHr) * 60.0;
+                  const stayPropertyMin = (currentFramework.limits.emergencyProperty_mSv / calcFieldRateMSvHr) * 60.0;
+                  const stayLifeMin = (currentFramework.limits.emergencyLifeSaving_mSv / calcFieldRateMSvHr) * 60.0;
+                  // 10 CFR 20.1206: Annual PSE <= 50 mSv AND Lifetime PSE <= 250 mSv (5x annual limit)
+                  const pseRemLifetime = Math.max(0, 250.0 - calcPriorLifetimePSE_mSv);
+                  const pseAllowedYear = Math.min(50.0, pseRemLifetime);
+
+                  return (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                      <div style={{ background: 'rgba(0,0,0,0.35)', padding: '8px 10px', borderRadius: '6px', borderLeft: '3px solid #10b981' }}>
+                        <span style={{ fontSize: '0.7rem', color: '#94a3b8', display: 'block' }}>Routine Stay-Time ({remAnnual.toFixed(1)} mSv left)</span>
+                        <strong style={{ color: '#10b981', fontSize: '0.95rem', fontFamily: 'monospace' }}>{stayRoutineMin.toFixed(1)} min ({(stayRoutineMin / 60).toFixed(2)} h)</strong>
+                      </div>
+                      <div style={{ background: 'rgba(0,0,0,0.35)', padding: '8px 10px', borderRadius: '6px', borderLeft: '3px solid #f97316' }}>
+                        <span style={{ fontSize: '0.7rem', color: '#94a3b8', display: 'block' }}>Property Protection ({currentFramework.limits.emergencyProperty_mSv} mSv)</span>
+                        <strong style={{ color: '#f97316', fontSize: '0.95rem', fontFamily: 'monospace' }}>{stayPropertyMin.toFixed(1)} min ({(stayPropertyMin / 60).toFixed(2)} h)</strong>
+                      </div>
+                      <div style={{ background: 'rgba(0,0,0,0.35)', padding: '8px 10px', borderRadius: '6px', borderLeft: '3px solid #ef4444' }}>
+                        <span style={{ fontSize: '0.7rem', color: '#94a3b8', display: 'block' }}>Life-Saving Ceiling ({currentFramework.limits.emergencyLifeSaving_mSv} mSv)</span>
+                        <strong style={{ color: '#ef4444', fontSize: '0.95rem', fontFamily: 'monospace' }}>{stayLifeMin.toFixed(1)} min ({(stayLifeMin / 60).toFixed(2)} h)</strong>
+                      </div>
+                      <div style={{ background: 'rgba(0,0,0,0.35)', padding: '8px 10px', borderRadius: '6px', borderLeft: '3px solid #38bdf8' }}>
+                        <span style={{ fontSize: '0.7rem', color: '#94a3b8', display: 'block' }}>10 CFR 20.1206 PSE Remaining</span>
+                        <strong style={{ color: '#38bdf8', fontSize: '0.95rem', fontFamily: 'monospace' }}>{pseAllowedYear.toFixed(1)} mSv/yr ({pseRemLifetime.toFixed(0)} mSv life)</strong>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Card 2: Declared Pregnant Worker / Embryo-Fetus Monthly Dose Budget (10 CFR 20.1208 / Reg Guide 8.13) */}
+              <div style={{ background: 'rgba(5, 10, 18, 0.7)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '18px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <h4 style={{ margin: 0, color: '#00e5ff', fontSize: '1rem' }}>
+                  🤰 Declared Pregnant Worker / Embryo-Fetus Dose Budget ({currentFramework.shortCode})
+                </h4>
+                <p style={{ margin: 0, fontSize: '0.78rem', color: '#94a3b8' }}>
+                  Evaluates uniform monthly exposure rate limits under {currentFramework.shortCode} (Cap: {currentFramework.limits.embryoFetusDeclared_mSv} mSv; NRC Reg Guide 8.13 uniform monthly constraint ≤ 0.5 mSv/mo).
+                </p>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <div>
+                    <label style={{ fontSize: '0.73rem', color: '#94a3b8' }}>Dose Since Conception (mSv):</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      className="form-control"
+                      value={calcFetalPriorMSv}
+                      onChange={e => setCalcFetalPriorMSv(Math.max(0, parseFloat(e.target.value) || 0))}
+                      style={{ fontSize: '0.84rem' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.73rem', color: '#94a3b8' }}>Gestation Months Remaining (1–9):</label>
+                    <input
+                      type="number"
+                      step="1"
+                      min="1"
+                      max="9"
+                      className="form-control"
+                      value={calcFetalMonthsLeft}
+                      onChange={e => setCalcFetalMonthsLeft(Math.max(1, Math.min(9, parseInt(e.target.value, 10) || 1)))}
+                      style={{ fontSize: '0.84rem' }}
+                    />
+                  </div>
+                </div>
+
+                {(() => {
+                  const capMSv = currentFramework.limits.embryoFetusDeclared_mSv;
+                  const remFetalMSv = Math.max(0, capMSv - calcFetalPriorMSv);
+                  const uniformMonthlyMSv = remFetalMSv / calcFetalMonthsLeft;
+                  // 10 CFR 20.1208(d): if embryo/fetus has already exceeded cap or is within 0.5 mSv of cap at declaration, additional dose <= 0.5 mSv
+                  const isNearOrOverCap = calcFetalPriorMSv >= capMSv - 0.5;
+
+                  return (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                      <div style={{ background: 'rgba(0,0,0,0.35)', padding: '8px 10px', borderRadius: '6px', borderLeft: `3px solid ${isNearOrOverCap ? '#ef4444' : '#10b981'}` }}>
+                        <span style={{ fontSize: '0.7rem', color: '#94a3b8', display: 'block' }}>Remaining Gestation Budget</span>
+                        <strong style={{ color: isNearOrOverCap ? '#ef4444' : '#10b981', fontSize: '0.95rem', fontFamily: 'monospace' }}>
+                          {remFetalMSv.toFixed(2)} mSv ({(remFetalMSv * 100).toFixed(0)} mrem)
+                        </strong>
+                      </div>
+                      <div style={{ background: 'rgba(0,0,0,0.35)', padding: '8px 10px', borderRadius: '6px', borderLeft: '3px solid #38bdf8' }}>
+                        <span style={{ fontSize: '0.7rem', color: '#94a3b8', display: 'block' }}>Uniform Monthly Allowance</span>
+                        <strong style={{ color: '#38bdf8', fontSize: '0.95rem', fontFamily: 'monospace' }}>
+                          {uniformMonthlyMSv.toFixed(3)} mSv / month
+                        </strong>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
           </div>
         )}
       </div>

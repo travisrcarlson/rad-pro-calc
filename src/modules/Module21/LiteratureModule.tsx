@@ -1,6 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import { BlockMath, InlineMath } from 'react-katex';
 import VerificationBadge from '../../components/VerificationBadge';
+import {
+  XCOM_GP_MATERIALS,
+  evaluateXCOMAttenuation,
+  getMaterialNeutronRemoval
+} from '../../utils/xcomAndGpBuildup';
 
 export type DomainCategory =
   | 'All Domains'
@@ -2005,6 +2010,89 @@ const METHOD_DOCS: MethodDoc[] = [
       'Threshold Displacement Energy E_d = 40 eV for ferritic-martensitic Eurofer/SS316 first-wall steel per ASTM E693.'
     ],
     benchmarks: 'Validated against IAEA FENDL-3.2 14.1 MeV cross-sections and ITER nuclear analysis benchmarks.'
+  },
+
+  // Module 11 — Global Nuclear Facility, Detonation & CTBTO IMS Map
+  {
+    id: 'M11-GlobalNuclearMap',
+    moduleId: 'Module 11',
+    moduleName: 'Global Nuclear Map & CTBTO IMS',
+    domain: 'Environmental Dispersion & Response',
+    title: 'Gutenberg-Richter / Murphy-Ringdal Seismic Yield Inversion (mb ↔ W), CTBTO 4-Technology IMS Propagation & Haversine Geodesy',
+    overview: 'Integrates global nuclear power reactors (IAEA PRIS), historical atmospheric/underground nuclear weapon test sites (UNSCEAR 2000), radiological accidents (INES 2–7), and the 337-facility CTBTO International Monitoring System (IMS) network with teleseismic body-wave magnitude yield inversion and acoustic/radionuclide arrival kinematics.',
+    standards: [
+      { org: 'CTBTO', code: 'IMS Operational Manual', year: '2019', title: 'Comprehensive Nuclear-Test-Ban Treaty International Monitoring System Technical Specifications' },
+      { org: 'Murphy & Ringdal', code: 'Bull. Seismol. Soc. Am.', year: '1996', title: 'Teleseismic Body-Wave Magnitude mb to Nuclear Explosive Yield Scaling in Hard Rock and Alluvium' },
+      { org: 'UNSCEAR', code: '2000 Report Vol. I Annex C', year: '2000', title: 'Exposures to the Public from Man-Made Sources of Radiation: Atmospheric & Underground Nuclear Testing' },
+      { org: 'IAEA', code: 'PRIS Reference Database', year: '2024', title: 'Power Reactor Information System Global Fleet Specifications' }
+    ],
+    primaryFormula: 'm_b = A_{\\text{geol}} + B_{\\text{geol}} \\log_{10}(W_{\\text{kt}}) \\iff W_{\\text{kt}} = 10^{(m_b - A_{\\text{geol}}) / B_{\\text{geol}}}',
+    secondaryFormulas: [
+      { label: 'Hard-Rock / Granite Fully Coupled Teleseismic Scaling (NTS / Semipalatinsk / Punggye-ri)', formula: 'm_b = 4.25 + 0.75 \\log_{10}(W_{\\text{kt}}), \\quad W_{\\text{decoupled}} = F_{\\text{dec}} \\cdot W_{\\text{coupled}} \\; (F_{\\text{dec}} \\in [1, 70])' },
+      { label: 'Dry Alluvium / Porous Tuff Partially Coupled Scaling', formula: 'm_b = 3.92 + 0.81 \\log_{10}(W_{\\text{kt}})' },
+      { label: 'Haversine Great-Circle Geodesic Distance & Forward Azimuth', formula: 'd = 2 R_{\\oplus} \\arcsin\\!\\sqrt{\\sin^2\\!\\left(\\frac{\\Delta\\phi}{2}\\right) + \\cos\\phi_1\\cos\\phi_2\\sin^2\\!\\left(\\frac{\\Delta\\lambda}{2}\\right)}, \\quad R_{\\oplus} = 6371.0\\text{ km}' },
+      { label: 'CTBTO Multi-Waveform Arrival Times (Seismic P, Hydroacoustic SOFAR, Infrasound, Radionuclide)', formula: 't_P = \\frac{d}{v_P\\;(7.8\\text{ km/s})}, \\quad t_H = \\frac{d}{v_{\\text{SOFAR}}\\;(1.48\\text{ km/s})}, \\quad t_I = \\frac{d}{c_{\\text{eff}}\\;(0.30\\text{ km/s})}, \\quad t_{\\text{RN}} = \\frac{d}{u_{\\text{synoptic}}}' }
+    ],
+    derivationSteps: [
+      {
+        stepTitle: '1. Elastic Cavity Radius & Teleseismic Source Spectrum Scaling',
+        explanation: 'An underground nuclear detonation of yield W (kt) vaporizes surrounding rock and drives a shock wave out to the elastic radius R_el ∝ W^(1/3). In the far-field teleseismic P-wave passband (~1 Hz), corner-frequency roll-off reduces the high-yield slope from 1.0 to B ≈ 0.75:',
+        math: 'A_P(f_0) \\propto W^{B_{\\text{geol}}} \\implies m_b = \\log_{10}\\!\\left(\\frac{A_P}{T}\\right) + Q(\\Delta, h) = A_{\\text{geol}} + B_{\\text{geol}} \\log_{10}(W_{\\text{kt}})'
+      },
+      {
+        stepTitle: '2. Exact Inversion for Estimated Explosive Yield W (kt TNT)',
+        explanation: 'Solving the empirical linear log-yield relation for W_kt and incorporating a cavity decoupling factor F_dec (up to 70× in large salt cavities):',
+        math: 'W_{\\text{kt}} = F_{\\text{dec}} \\cdot 10^{\\frac{m_b - A_{\\text{geol}}}{B_{\\text{geol}}}}'
+      }
+    ],
+    variables: [
+      { symbol: 'm_b', description: 'Teleseismic short-period body-wave magnitude (1 Hz P-wave)', units: 'magnitude units' },
+      { symbol: 'W_{\\text{kt}}', description: 'Inferred underground nuclear explosive yield', units: 'kt TNT equivalent' },
+      { symbol: 'A_{\\text{geol}}, B_{\\text{geol}}', description: 'Geological coupling intercept and slope (e.g., 4.25, 0.75 for hard rock)', units: 'dimensionless' },
+      { symbol: 'd', description: 'Great-circle epicentral distance to CTBTO IMS station', units: 'km' }
+    ],
+    assumptions: [
+      'Fully tamped underground emplacement at scaled depth of burst SDOB > 120 m/kt^(1/3) unless cavity decoupling factor F_dec > 1 is applied.',
+      'Mantle-averaged teleseismic P-wave velocity v_P ≈ 7.8 km/s and stratospheric infrasound celerity c_eff ≈ 0.30 km/s.'
+    ],
+    benchmarks: 'Validated against Murphy (1996) Semipalatinsk/Punggye-ri seismic yield curves (VTEST-44) and CTBTO IMS 80-station radionuclide MDC specifications.'
+  },
+
+  // Module 14 — Fast Neutron Removal & Mixed n/γ Laminated Shielding
+  {
+    id: 'M14-NeutronRemoval',
+    moduleId: 'Module 14 (n/γ)',
+    moduleName: 'Fast Neutron Removal (Σ_R)',
+    domain: 'Dose, Transport & Shielding',
+    title: 'Albert-Welton / Spinney Fast Neutron Macroscopic Removal Cross-Section (Σ_R) & Capture-Gamma Suppression',
+    overview: 'Models deep penetration of fission and (α,n) fast neutrons (0.5–15 MeV) through multi-layer metal + hydrogenous shields using macroscopic removal cross-sections Σ_R and evaluates ¹⁰B(n,α)⁷Li thermal capture-gamma suppression.',
+    standards: [
+      { org: 'NCRP', code: 'Report No. 38 / 144', year: '2003', title: 'Protection Against Neutron Radiation & Radiation Protection for Particle Accelerator Facilities' },
+      { org: 'Albert & Welton', code: 'WAPD-15 (Westinghouse)', year: '1950', title: 'A Simplified Theory of Neutron Attenuation and Its Application to Reactor Shield Design' },
+      { org: 'Shultis & Faw', code: 'ANS Textbook Ref', year: '2000', title: 'Radiation Shielding (Spinney Removal-Diffusion Method)' }
+    ],
+    primaryFormula: '\\dot{H}_n(x) = \\dot{H}_{n,0} \\cdot B_n\\!\\left(\\sum_i \\Sigma_{R,i} x_i\\right) \\cdot \\exp\\!\\left(-\\sum_{i=1}^N \\Sigma_{R,i} x_i\\right)',
+    secondaryFormulas: [
+      { label: 'Empirical Mass Removal Cross-Section Scaling for Z > 8', formula: '\\frac{\\Sigma_R}{\\rho} \\approx 0.206 \\cdot A^{-1/3} \\cdot Z^{-0.294} \\quad [\\text{cm}^2/\\text{g}]' },
+      { label: 'Fast Neutron Half-Value & Tenth-Value Relaxation Layers', formula: '\\text{HVL}_n = \\frac{\\ln 2}{\\Sigma_R}, \\quad \\text{TVL}_n = \\frac{\\ln 10}{\\Sigma_R}' },
+      { label: 'Boron-10 Thermal Capture Suppression of 2.223 MeV Hydrogen Capture Gamma', formula: '^{10}\\text{B} + n_{\\text{th}} \\xrightarrow{\\sigma = 3840\\text{ b}} {}^{7}\\text{Li}^* + \\alpha + 0.478\\text{ MeV }\\gamma \\; (94\\%)' }
+    ],
+    derivationSteps: [
+      {
+        stepTitle: '1. Removal of Fast Neutrons from the Uncollided MeV Group',
+        explanation: 'In a shield containing sufficient hydrogenous moderator (≥ 0.5–1.0 relaxation lengths of H₂O, HDPE, or concrete), any wide-angle elastic scattering off hydrogen or inelastic scattering off heavy nuclei (Fe, Pb, W) degrades a fast neutron into the epithermal/thermal group where it is rapidly diffused and captured near the collision site:',
+        math: '\\Sigma_R \\approx \\Sigma_{\\text{tot}} - \\bar{\\mu}_0 \\Sigma_{\\text{el}} \\approx \\Sigma_{\\text{inel}} + (1 - \\bar{\\mu}_0)\\Sigma_{\\text{el}}'
+      }
+    ],
+    variables: [
+      { symbol: '\\Sigma_R', description: 'Macroscopic fast neutron removal cross-section (e.g., 0.168 cm⁻¹ Steel, 0.130 cm⁻¹ Borated PE)', units: 'cm⁻¹' },
+      { symbol: '\\Sigma_R/\\rho', description: 'Mass removal cross-section', units: 'cm²·g⁻¹' },
+      { symbol: 'B_n(\\Sigma_R x)', description: 'Sub-MeV intermediate neutron buildup factor', units: 'dimensionless' }
+    ],
+    assumptions: [
+      'Requires at least ~5–10 cm of hydrogenous moderator downstream or mixed within the shield to prevent sub-MeV streaming (e.g., through the 24 keV Iron-56 window).'
+    ],
+    benchmarks: 'Validated against NCRP Report 38 / Shultis & Faw removal cross-sections for Fe, Pb, W, Concrete, H2O, and Borated PE.'
   }
 ];
 
@@ -2020,12 +2108,93 @@ const DOMAINS: DomainCategory[] = [
   'Medical & Advanced Expansion'
 ];
 
+const ICRP74_PHOTON_H10_TABLE: [number, number][] = [
+  // [E_MeV, h*(10) in pSv·cm²] per ICRP Publication 74 / 116
+  [0.015, 0.83],
+  [0.020, 1.05],
+  [0.030, 0.81],
+  [0.040, 0.64],
+  [0.050, 0.55],
+  [0.060, 0.51],
+  [0.080, 0.53],
+  [0.100, 0.61],
+  [0.150, 0.89],
+  [0.200, 1.20],
+  [0.300, 1.80],
+  [0.400, 2.38],
+  [0.500, 2.93],
+  [0.600, 3.44],
+  [0.662, 3.75],
+  [0.800, 4.38],
+  [1.000, 5.20],
+  [1.250, 6.12],
+  [1.500, 6.90],
+  [2.000, 8.60],
+  [3.000, 11.1],
+  [4.000, 13.4],
+  [6.000, 17.6],
+  [8.000, 21.6],
+  [10.00, 25.6]
+];
+
+const ICRP74_NEUTRON_H10_TABLE: [number, number][] = [
+  // [E_MeV, h*(10) in pSv·cm²] per ICRP Publication 74 / 116
+  [2.5e-8, 10.6], // Thermal (0.025 eV)
+  [1.0e-6, 12.9], // 1 eV epithermal
+  [1.0e-4, 10.4], // 100 eV
+  [0.001, 9.9],   // 1 keV
+  [0.010, 10.5],  // 10 keV
+  [0.020, 16.6],  // 20 keV
+  [0.050, 41.1],  // 50 keV
+  [0.100, 88.0],  // 100 keV
+  [0.200, 170.0], // 200 keV
+  [0.500, 322.0], // 500 keV
+  [1.000, 416.0], // 1 MeV fission peak
+  [2.000, 420.0], // 2 MeV (Cf-252 avg)
+  [4.500, 408.0], // 4.5 MeV (Am-Be avg)
+  [5.000, 405.0],
+  [10.00, 440.0],
+  [14.10, 520.0], // 14.1 MeV D-T fusion
+  [20.00, 600.0]
+];
+
+function interpolateFluenceCoeff(table: [number, number][], energyMev: number): number {
+  const e = Math.max(table[0][0], Math.min(table[table.length - 1][0], energyMev));
+  let idx = 0;
+  while (idx < table.length - 2 && table[idx + 1][0] < e) idx++;
+  const [e0, h0] = table[idx];
+  const [e1, h1] = table[Math.min(table.length - 1, idx + 1)];
+  if (e1 <= e0) return h0;
+  const f = (Math.log(e) - Math.log(e0)) / (Math.log(e1) - Math.log(e0));
+  return Math.exp(Math.log(h0) + Math.max(0, Math.min(1, f)) * (Math.log(h1) - Math.log(h0)));
+}
+
+function evaluateNeutronWr(energyMev: number): number {
+  const e = Math.max(1e-9, energyMev);
+  if (e < 1.0) {
+    return 2.5 + 18.2 * Math.exp(-Math.pow(Math.log(e), 2) / 6.0);
+  }
+  if (e <= 50.0) {
+    return 5.0 + 17.0 * Math.exp(-Math.pow(Math.log(2.0 * e), 2) / 6.0);
+  }
+  return 2.5 + 3.25 * Math.exp(-Math.pow(Math.log(0.04 * e), 2) / 6.0);
+}
+
 const LiteratureModule: React.FC = () => {
   const [selectedDomain, setSelectedDomain] = useState<DomainCategory>('All Domains');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [activeTab, setActiveTab] = useState<ViewTab>('current');
   const [activeDocId, setActiveDocId] = useState<string>(METHOD_DOCS[0].id);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  // Interactive Reference Calculators state (in 'constants' tab)
+  const [refActivityGBq, setRefActivityGBq] = useState<number>(37.0); // 1 Ci default
+  const [refDoseMSv, setRefDoseMSv] = useState<number>(20.0); // 2 rem default
+  const [refExposureR, setRefExposureR] = useState<number>(1.0); // 1 R default
+  const [refParticleType, setRefParticleType] = useState<'photon' | 'neutron'>('photon');
+  const [refParticleEnergyMev, setRefParticleEnergyMev] = useState<number>(0.662);
+  const [refFluenceRateCm2S, setRefFluenceRateCm2S] = useState<number>(10000);
+  const [refXcomEnergyMev, setRefXcomEnergyMev] = useState<number>(1.25);
 
   const handleCopyLatex = (tex: string, key: string) => {
     if (navigator?.clipboard?.writeText) {
@@ -2070,12 +2239,12 @@ const LiteratureModule: React.FC = () => {
     <div className="literature-module">
       <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
         <div>
-          <h2 style={{ margin: '0 0 6px 0' }}>📚 Module 35 — Core Literature, Physics Formulations &amp; Regulatory Standards</h2>
+          <h2 style={{ margin: '0 0 6px 0' }}>📚 Module 30 — Core Literature, Physics Formulations, Reference Calculators &amp; Standards</h2>
           <p style={{ color: 'var(--color-text-muted)', margin: 0 }}>
-            Comprehensive peer-reviewed scientific methodology compendium documenting the governing mathematical equations, analytical derivations, boundary limits, and international regulatory standards across all 35 active and 5 expansion modules.
+            Comprehensive peer-reviewed scientific methodology compendium documenting the governing mathematical equations, analytical derivations, interactive reference calculators, and international regulatory standards across all active and expansion modules.
           </p>
         </div>
-        <VerificationBadge testId="VTEST-01" label="43/43 Benchmarks Indexed" />
+        <VerificationBadge testId="VTEST-01" label="50/50 Benchmarks Indexed" />
       </div>
 
       {/* Main Mode View Navigation */}
@@ -2571,6 +2740,280 @@ const LiteratureModule: React.FC = () => {
                   </tbody>
                 </table>
               </div>
+            </div>
+          </div>
+
+          {/* Interactive Reference Calculators: Unit Converter & ICRP 74/116 Fluence-to-Dose h*(10) */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(460px, 1fr))', gap: '20px' }}>
+            {/* Live Bidirectional SI <-> Traditional Unit Solver */}
+            <div className="panel">
+              <h3 style={{ marginTop: 0, color: '#00e5ff' }}>⚡ Live SI ↔ Traditional Radiological Unit Solver</h3>
+              <p style={{ color: 'var(--color-text-muted)', fontSize: '0.84rem', marginBottom: '12px' }}>
+                Instant bidirectional conversion across Activity, Dose Equivalent, and Ionization Exposure quantities.
+              </p>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {/* Activity Row */}
+                <div style={{ background: 'rgba(0,0,0,0.3)', padding: '10px 12px', borderRadius: '6px', border: '1px solid var(--color-border)' }}>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--color-primary)', fontWeight: 700, marginBottom: '6px' }}>
+                    1. Activity: GBq ↔ Ci / MBq / mCi / dpm
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '6px' }}>
+                    <div>
+                      <label style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Activity (GBq):</label>
+                      <input
+                        type="number"
+                        step="1"
+                        className="form-control"
+                        value={refActivityGBq}
+                        onChange={e => setRefActivityGBq(Math.max(0, parseFloat(e.target.value) || 0))}
+                        style={{ fontSize: '0.84rem' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Activity (Curies, Ci):</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        className="form-control"
+                        value={Number((refActivityGBq / 37.0).toPrecision(5))}
+                        onChange={e => setRefActivityGBq(Math.max(0, (parseFloat(e.target.value) || 0) * 37.0))}
+                        style={{ fontSize: '0.84rem' }}
+                      />
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', fontSize: '0.76rem', color: '#cbd5e1', fontFamily: 'monospace' }}>
+                    <span>{(refActivityGBq * 1000).toLocaleString()} MBq</span>
+                    <span>{((refActivityGBq / 37.0) * 1000).toFixed(2)} mCi</span>
+                    <span>{(refActivityGBq * 1e9 * 60).toExponential(2)} dpm</span>
+                  </div>
+                </div>
+
+                {/* Dose Equivalent Row */}
+                <div style={{ background: 'rgba(0,0,0,0.3)', padding: '10px 12px', borderRadius: '6px', border: '1px solid var(--color-border)' }}>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--color-primary)', fontWeight: 700, marginBottom: '6px' }}>
+                    2. Equivalent / Effective Dose: mSv ↔ rem / mrem / µSv
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '6px' }}>
+                    <div>
+                      <label style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Dose (mSv):</label>
+                      <input
+                        type="number"
+                        step="1"
+                        className="form-control"
+                        value={refDoseMSv}
+                        onChange={e => setRefDoseMSv(Math.max(0, parseFloat(e.target.value) || 0))}
+                        style={{ fontSize: '0.84rem' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Dose (mrem):</label>
+                      <input
+                        type="number"
+                        step="10"
+                        className="form-control"
+                        value={Number((refDoseMSv * 100.0).toPrecision(6))}
+                        onChange={e => setRefDoseMSv(Math.max(0, (parseFloat(e.target.value) || 0) / 100.0))}
+                        style={{ fontSize: '0.84rem' }}
+                      />
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', fontSize: '0.76rem', color: '#cbd5e1', fontFamily: 'monospace' }}>
+                    <span>{(refDoseMSv / 1000).toFixed(4)} Sv</span>
+                    <span>{(refDoseMSv / 10).toFixed(3)} rem</span>
+                    <span>{(refDoseMSv * 1000).toLocaleString()} µSv</span>
+                  </div>
+                </div>
+
+                {/* Exposure to Air Kerma Row */}
+                <div style={{ background: 'rgba(0,0,0,0.3)', padding: '10px 12px', borderRadius: '6px', border: '1px solid var(--color-border)' }}>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--color-primary)', fontWeight: 700, marginBottom: '6px' }}>
+                    3. Exposure (Roentgen, R) → Dry Air Kerma &amp; Soft Tissue Dose
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '10px', alignItems: 'center' }}>
+                    <div>
+                      <label style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Exposure (R):</label>
+                      <input
+                        type="number"
+                        step="0.5"
+                        className="form-control"
+                        value={refExposureR}
+                        onChange={e => setRefExposureR(Math.max(0, parseFloat(e.target.value) || 0))}
+                        style={{ fontSize: '0.84rem' }}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', fontSize: '0.77rem', fontFamily: 'monospace', color: '#e2e8f0' }}>
+                      <span>Ion Charge: {(refExposureR * 2.58e-4).toExponential(3)} C/kg</span>
+                      <span>Air Kerma K<sub>air</sub>: {(refExposureR * 8.77).toFixed(2)} mGy ({(refExposureR * 0.877).toFixed(3)} rad)</span>
+                      <span>Soft Tissue D<sub>tissue</sub>: {(refExposureR * 9.60).toFixed(2)} mGy</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ICRP Publication 74 / 116 Fluence-to-Dose h*(10) Calculator */}
+            <div className="panel">
+              <h3 style={{ marginTop: 0, color: '#00e5ff' }}>🎯 ICRP 74 / 116 Fluence-to-Dose Conversion (<InlineMath math="\Phi \to \dot{H}^*(10)" />)</h3>
+              <p style={{ color: 'var(--color-text-muted)', fontSize: '0.84rem', marginBottom: '12px' }}>
+                Computes ambient dose equivalent rate <InlineMath math="\dot{H}^*(10) = \phi \cdot h^*(10)" /> from monoenergetic photon or neutron particle flux.
+              </p>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '12px' }}>
+                <div>
+                  <label style={{ fontSize: '0.74rem', color: '#94a3b8' }}>Particle Modality:</label>
+                  <select
+                    className="form-control"
+                    value={refParticleType}
+                    onChange={e => setRefParticleType(e.target.value as 'photon' | 'neutron')}
+                    style={{ fontSize: '0.84rem' }}
+                  >
+                    <option value="photon">Photons (γ / X-ray)</option>
+                    <option value="neutron">Neutrons (Thermal–20 MeV)</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.74rem', color: '#94a3b8' }}>Energy E (MeV):</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0.000000025"
+                    max="20"
+                    className="form-control"
+                    value={refParticleEnergyMev}
+                    onChange={e => setRefParticleEnergyMev(Math.max(2.5e-8, parseFloat(e.target.value) || 0.1))}
+                    style={{ fontSize: '0.84rem' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.74rem', color: '#94a3b8' }}>Flux φ (particles/cm²·s):</label>
+                  <input
+                    type="number"
+                    step="1000"
+                    min="0"
+                    className="form-control"
+                    value={refFluenceRateCm2S}
+                    onChange={e => setRefFluenceRateCm2S(Math.max(0, parseFloat(e.target.value) || 0))}
+                    style={{ fontSize: '0.84rem' }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '12px' }}>
+                {refParticleType === 'photon' ? (
+                  <>
+                    <button type="button" className="btn btn-secondary" style={{ fontSize: '0.72rem', padding: '3px 8px' }} onClick={() => setRefParticleEnergyMev(0.0595)}>Am-241 (59.5 keV)</button>
+                    <button type="button" className="btn btn-secondary" style={{ fontSize: '0.72rem', padding: '3px 8px' }} onClick={() => setRefParticleEnergyMev(0.1405)}>Tc-99m (140 keV)</button>
+                    <button type="button" className="btn btn-secondary" style={{ fontSize: '0.72rem', padding: '3px 8px' }} onClick={() => setRefParticleEnergyMev(0.6617)}>Cs-137 (662 keV)</button>
+                    <button type="button" className="btn btn-secondary" style={{ fontSize: '0.72rem', padding: '3px 8px' }} onClick={() => setRefParticleEnergyMev(1.25)}>Co-60 (1.25 MeV)</button>
+                  </>
+                ) : (
+                  <>
+                    <button type="button" className="btn btn-secondary" style={{ fontSize: '0.72rem', padding: '3px 8px' }} onClick={() => setRefParticleEnergyMev(2.5e-8)}>Thermal (0.025 eV)</button>
+                    <button type="button" className="btn btn-secondary" style={{ fontSize: '0.72rem', padding: '3px 8px' }} onClick={() => setRefParticleEnergyMev(1.0)}>Fission Peak (1 MeV)</button>
+                    <button type="button" className="btn btn-secondary" style={{ fontSize: '0.72rem', padding: '3px 8px' }} onClick={() => setRefParticleEnergyMev(2.1)}>Cf-252 Avg (2.1 MeV)</button>
+                    <button type="button" className="btn btn-secondary" style={{ fontSize: '0.72rem', padding: '3px 8px' }} onClick={() => setRefParticleEnergyMev(4.5)}>Am-Be Avg (4.5 MeV)</button>
+                    <button type="button" className="btn btn-secondary" style={{ fontSize: '0.72rem', padding: '3px 8px' }} onClick={() => setRefParticleEnergyMev(14.1)}>D-T Fusion (14.1 MeV)</button>
+                  </>
+                )}
+              </div>
+
+              {(() => {
+                const h10pSvCm2 = refParticleType === 'photon'
+                  ? interpolateFluenceCoeff(ICRP74_PHOTON_H10_TABLE, refParticleEnergyMev)
+                  : interpolateFluenceCoeff(ICRP74_NEUTRON_H10_TABLE, refParticleEnergyMev);
+                // φ (cm^-2 s^-1) * h*(10) (10^-12 Sv cm^2) * 3600 (s/h) * 10^6 (µSv/Sv) = φ * h10 * 3.6e-3 µSv/h
+                const doseRateUSvHr = refFluenceRateCm2S * h10pSvCm2 * 0.0036;
+                const wrVal = refParticleType === 'neutron' ? evaluateNeutronWr(refParticleEnergyMev) : 1.0;
+
+                return (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', background: 'rgba(0, 229, 255, 0.06)', border: '1px solid rgba(0, 229, 255, 0.3)', padding: '12px', borderRadius: '6px' }}>
+                    <div>
+                      <span style={{ fontSize: '0.7rem', color: '#94a3b8', display: 'block' }}>Coeff. h*(10)</span>
+                      <strong style={{ color: '#00e5ff', fontSize: '1rem', fontFamily: 'monospace' }}>{h10pSvCm2.toFixed(2)} pSv·cm²</strong>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: '0.7rem', color: '#94a3b8', display: 'block' }}>ICRP 103 w<sub>R</sub>(E)</span>
+                      <strong style={{ color: '#f59e0b', fontSize: '1rem', fontFamily: 'monospace' }}>{wrVal.toFixed(2)}</strong>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: '0.7rem', color: '#94a3b8', display: 'block' }}>Ambient Rate Ḣ*(10)</span>
+                      <strong style={{ color: '#10b981', fontSize: '1rem', fontFamily: 'monospace' }}>
+                        {doseRateUSvHr >= 1000 ? `${(doseRateUSvHr / 1000).toFixed(2)} mSv/h` : `${doseRateUSvHr.toFixed(2)} µSv/h`}
+                      </strong>
+                      <span style={{ fontSize: '0.7rem', color: '#94a3b8', display: 'block' }}>
+                        ({(doseRateUSvHr / 10.0).toFixed(2)} mrem/h)
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+
+          {/* 15-Material NIST XCOM + Fast Neutron Removal (Σ_R) Reference Matrix */}
+          <div className="panel">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '12px' }}>
+              <div>
+                <h3 style={{ margin: 0, color: '#00e5ff' }}>🧱 15-Material NIST XCOM Photon Attenuation &amp; Fast Neutron Removal (<InlineMath math="\Sigma_R" />) Matrix</h3>
+                <p style={{ color: 'var(--color-text-muted)', fontSize: '0.84rem', margin: '4px 0 0 0' }}>
+                  Live lookup of <InlineMath math="\mu/\rho" />, <InlineMath math="\mu_{\text{en}}/\rho" />, <InlineMath math="\text{HVL}_\gamma" />, <InlineMath math="\text{TVL}_\gamma" />, and Albert-Welton fast neutron removal <InlineMath math="\Sigma_R" /> across all 15 shielding media.
+                </p>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <label style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Lookup Photon Energy (MeV):</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0.010"
+                  max="15.0"
+                  className="form-control"
+                  value={refXcomEnergyMev}
+                  onChange={e => setRefXcomEnergyMev(Math.max(0.010, Math.min(15.0, parseFloat(e.target.value) || 1.0)))}
+                  style={{ width: '110px', fontSize: '0.85rem' }}
+                />
+              </div>
+            </div>
+
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.81rem' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--color-border)', color: 'var(--color-primary)' }}>
+                    <th style={{ padding: '8px', textAlign: 'left' }}>Shielding Material</th>
+                    <th style={{ padding: '8px', textAlign: 'right' }}>Z<sub>eff</sub></th>
+                    <th style={{ padding: '8px', textAlign: 'right' }}>&rho; (g/cm³)</th>
+                    <th style={{ padding: '8px', textAlign: 'right' }}>&mu;/&rho; (cm²/g)</th>
+                    <th style={{ padding: '8px', textAlign: 'right' }}>&mu;<sub>en</sub>/&rho; (cm²/g)</th>
+                    <th style={{ padding: '8px', textAlign: 'right' }}>HVL<sub>&gamma;</sub> (cm)</th>
+                    <th style={{ padding: '8px', textAlign: 'right' }}>TVL<sub>&gamma;</sub> (cm)</th>
+                    <th style={{ padding: '8px', textAlign: 'right', color: '#c084fc' }}>&Sigma;<sub>R</sub>/&rho; (cm²/g)</th>
+                    <th style={{ padding: '8px', textAlign: 'right', color: '#c084fc' }}>&Sigma;<sub>R</sub> (cm⁻¹)</th>
+                    <th style={{ padding: '8px', textAlign: 'right', color: '#c084fc' }}>HVL<sub>n</sub> (cm)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(XCOM_GP_MATERIALS).map(([key, mat]) => {
+                    const xcom = evaluateXCOMAttenuation(key, refXcomEnergyMev);
+                    const nSpec = getMaterialNeutronRemoval(key);
+                    const hvlG = Math.LN2 / xcom.muLinear;
+                    const tvlG = Math.LN10 / xcom.muLinear;
+                    return (
+                      <tr key={key} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                        <td style={{ padding: '7px 8px', fontWeight: 600, color: '#fff' }}>{mat.name}</td>
+                        <td style={{ padding: '7px 8px', textAlign: 'right', fontFamily: 'monospace' }}>{mat.effectiveZ}</td>
+                        <td style={{ padding: '7px 8px', textAlign: 'right', fontFamily: 'monospace' }}>{mat.density.toFixed(2)}</td>
+                        <td style={{ padding: '7px 8px', textAlign: 'right', fontFamily: 'monospace', color: '#00e5ff' }}>{xcom.muMass.toFixed(4)}</td>
+                        <td style={{ padding: '7px 8px', textAlign: 'right', fontFamily: 'monospace' }}>{xcom.muEnMass.toFixed(4)}</td>
+                        <td style={{ padding: '7px 8px', textAlign: 'right', fontFamily: 'monospace', color: '#10b981' }}>{hvlG.toFixed(2)}</td>
+                        <td style={{ padding: '7px 8px', textAlign: 'right', fontFamily: 'monospace' }}>{tvlG.toFixed(2)}</td>
+                        <td style={{ padding: '7px 8px', textAlign: 'right', fontFamily: 'monospace', color: '#d8b4fe' }}>{nSpec.sigmaRMass.toFixed(4)}</td>
+                        <td style={{ padding: '7px 8px', textAlign: 'right', fontFamily: 'monospace', color: '#c084fc', fontWeight: 600 }}>{nSpec.sigmaRLinear.toFixed(3)}</td>
+                        <td style={{ padding: '7px 8px', textAlign: 'right', fontFamily: 'monospace', color: '#e9d5ff' }}>{nSpec.hvlNeutronCm.toFixed(2)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>

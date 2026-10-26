@@ -11,6 +11,8 @@ import {
   evaluateGPBuildup,
   evaluateMultiLayerBuildup,
   solveBroadBeamThicknessCm,
+  getMaterialNeutronRemoval,
+  evaluateNeutronRemovalStack,
   type BuildupModelType
 } from '../../utils/xcomAndGpBuildup';
 
@@ -50,6 +52,8 @@ export const ShieldingModule: React.FC = () => {
   const [selectedPresetId, setSelectedPresetId] = useState<string>('cs137');
   const [photonEnergyMev, setPhotonEnergyMev] = useState<number>(0.6617);
   const [incidentDoseRate, setIncidentDoseRate] = useState<number>(1000.0); // µSv/h
+  const [enableNeutronField, setEnableNeutronField] = useState<boolean>(true);
+  const [incidentNeutronRate, setIncidentNeutronRate] = useState<number>(250.0); // µSv/h fast neutron
   const [buildupModel, setBuildupModel] = useState<BuildupModelType>('GP_ANS643');
   const [inspectMaterialKey, setInspectMaterialKey] = useState<string>('LEAD');
   const [isDossierOpen, setIsDossierOpen] = useState<boolean>(false);
@@ -137,6 +141,7 @@ export const ShieldingModule: React.FC = () => {
 
       const gpEval = evaluateGPBuildup(r.materialKey, photonEnergyMev, r.mfp);
       const mat = XCOM_GP_MATERIALS[r.materialKey];
+      const nSpec = getMaterialNeutronRemoval(r.materialKey);
 
       return {
         id: r.id,
@@ -158,7 +163,12 @@ export const ShieldingModule: React.FC = () => {
         cumulativeBuildupAtExit: cumB,
         gpSingleLayer: gpEval,
         arealDensityGcm2: layerArealDensity,
-        exitDose
+        exitDose,
+        sigmaRMass: nSpec.sigmaRMass,
+        sigmaRLinear: nSpec.sigmaRLinear,
+        hvlNeutronCm: nSpec.hvlNeutronCm,
+        sigmaRx: nSpec.sigmaRLinear * r.thicknessCm,
+        captureNote: nSpec.captureNote
       };
     });
 
@@ -166,6 +176,11 @@ export const ShieldingModule: React.FC = () => {
     const narrowBeamDoseRate = incidentDoseRate * Math.exp(-accumulatedOpticalThickness);
     const finalDoseRate = narrowBeamDoseRate * cumulativeBuildup;
     const reversedDoseRate = narrowBeamDoseRate * reversedBuildup.totalBuildup;
+
+    const neutronEval = evaluateNeutronRemovalStack(
+      layers.map(l => ({ materialKey: l.materialKey, thicknessCm: l.thicknessCm })),
+      enableNeutronField ? incidentNeutronRate : 0
+    );
 
     const totalAttenuationRatio = incidentDoseRate > 0 ? incidentDoseRate / Math.max(1e-15, finalDoseRate) : 1.0;
     const totalDecades = Math.log10(Math.max(1.0, totalAttenuationRatio));
@@ -185,14 +200,22 @@ export const ShieldingModule: React.FC = () => {
       totalAttenuationRatio,
       totalDecades,
       accumulatedOpticalThickness,
-      cumulativeBuildup
+      cumulativeBuildup,
+      neutronEval,
+      combinedGammaNeutronExitRate: finalDoseRate + (enableNeutronField ? neutronEval.transmittedNeutronDoseRate : 0)
     };
-  }, [layers, photonEnergyMev, incidentDoseRate, buildupModel]);
+  }, [layers, photonEnergyMev, incidentDoseRate, buildupModel, enableNeutronField, incidentNeutronRate]);
 
-  // Continuous penetration curve (Broad-Beam vs Narrow-Beam + Layer Boundary Regions)
+  // Continuous penetration curve (Broad-Beam vs Narrow-Beam + Fast Neutron Removal + Layer Boundary Regions)
   const depthProfile = useMemo(() => {
-    const points: { depthCm: number; broadDoseRate: number; narrowDoseRate: number; layerName: string }[] = [];
-    points.push({ depthCm: 0, broadDoseRate: incidentDoseRate, narrowDoseRate: incidentDoseRate, layerName: 'Incident Field' });
+    const points: { depthCm: number; broadDoseRate: number; narrowDoseRate: number; neutronDoseRate: number; layerName: string }[] = [];
+    points.push({
+      depthCm: 0,
+      broadDoseRate: incidentDoseRate,
+      narrowDoseRate: incidentDoseRate,
+      neutronDoseRate: enableNeutronField ? incidentNeutronRate : 1e-6,
+      layerName: 'Incident Field'
+    });
 
     const layerZones: { x0: number; x1: number; label: string; color: string }[] = [];
     const zonePalette = [
@@ -205,6 +228,7 @@ export const ShieldingModule: React.FC = () => {
 
     let curDepth = 0;
     const completedLayers: { materialKey: string; mfp: number }[] = [];
+    const completedNeutronLayers: { materialKey: string; thicknessCm: number }[] = [];
     let cumMfpBefore = 0;
 
     layers.forEach((layer, lIdx) => {
@@ -231,10 +255,16 @@ export const ShieldingModule: React.FC = () => {
         const narrowStep = incidentDoseRate * Math.exp(-totalMfpAtStep);
         const broadStep = narrowStep * bStep;
 
+        const partialNeutronStack = [...completedNeutronLayers, { materialKey: layer.materialKey, thicknessCm: xStep }];
+        const nStep = enableNeutronField
+          ? evaluateNeutronRemovalStack(partialNeutronStack, incidentNeutronRate).transmittedNeutronDoseRate
+          : 1e-6;
+
         points.push({
           depthCm: curDepth + xStep,
           broadDoseRate: Math.max(1e-6, broadStep),
           narrowDoseRate: Math.max(1e-6, narrowStep),
+          neutronDoseRate: Math.max(1e-6, nStep),
           layerName: mat?.name || layer.materialKey
         });
       }
@@ -242,11 +272,12 @@ export const ShieldingModule: React.FC = () => {
       curDepth += layer.thicknessCm;
       const fullLayerMfp = muLinear * layer.thicknessCm;
       completedLayers.push({ materialKey: layer.materialKey, mfp: fullLayerMfp });
+      completedNeutronLayers.push({ materialKey: layer.materialKey, thicknessCm: layer.thicknessCm });
       cumMfpBefore += fullLayerMfp;
     });
 
     return { points, layerZones };
-  }, [layers, photonEnergyMev, incidentDoseRate, buildupModel]);
+  }, [layers, photonEnergyMev, incidentDoseRate, buildupModel, enableNeutronField, incidentNeutronRate]);
 
   // NIST XCOM K/L-Edge Continuous Energy Curve for inspected material
   const xcomSpectrumCurve = useMemo(() => {
@@ -578,6 +609,30 @@ export const ShieldingModule: React.FC = () => {
               style={{ width: '100%', fontSize: '0.85rem' }}
             />
           </div>
+
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <label className="form-label" style={{ fontSize: '0.78rem', marginBottom: 0 }}>Fast Neutron Field (µSv/h):</label>
+              <label style={{ fontSize: '0.72rem', color: '#a855f7', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <input
+                  type="checkbox"
+                  checked={enableNeutronField}
+                  onChange={e => setEnableNeutronField(e.target.checked)}
+                />
+                Enable Σ<sub>R</sub>
+              </label>
+            </div>
+            <input
+              type="number"
+              step="25"
+              min="0"
+              disabled={!enableNeutronField}
+              className="form-control"
+              value={incidentNeutronRate}
+              onChange={e => setIncidentNeutronRate(Math.max(0, parseFloat(e.target.value) || 0))}
+              style={{ width: '100%', fontSize: '0.85rem', marginTop: '4px', opacity: enableNeutronField ? 1 : 0.45 }}
+            />
+          </div>
         </div>
       </div>
 
@@ -702,21 +757,70 @@ export const ShieldingModule: React.FC = () => {
                   </div>
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px', fontSize: '0.74rem', color: 'var(--color-text-muted)', paddingTop: '4px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                    <span>HVL: {l.hvlCm.toFixed(2)} cm</span>
-                    <span>TVL: {l.tvlCm.toFixed(2)} cm</span>
+                    <span>HVL<sub>&gamma;</sub>: {l.hvlCm.toFixed(2)} cm</span>
+                    <span>TVL<sub>&gamma;</sub>: {l.tvlCm.toFixed(2)} cm</span>
                     <span>&mu;/&rho;: {l.muMass.toFixed(4)} cm²/g</span>
                     <span>&mu;x: {l.opticalX.toFixed(2)} mfp</span>
-                    <span>GP K: {l.gpSingleLayer.K.toFixed(3)}</span>
+                    <span style={{ color: '#c084fc' }}>&Sigma;<sub>R</sub>: {l.sigmaRLinear.toFixed(3)} cm⁻¹ ({l.sigmaRx.toFixed(2)} mfp<sub>n</sub>)</span>
                   </div>
                 </div>
               ))}
             </div>
+
+            {/* Fast Neutron Removal (Σ_R) & Capture-Gamma Telemetry Card */}
+            {enableNeutronField && (
+              <div style={{ background: 'rgba(168, 85, 247, 0.08)', border: '1px solid rgba(168, 85, 247, 0.35)', borderRadius: '8px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                  <span style={{ fontSize: '0.84rem', fontWeight: 700, color: '#d8b4fe' }}>
+                    ⚛️ Albert-Welton / Spinney Fast Neutron Removal (&Sigma;<sub>R</sub>) &amp; Mixed n/&gamma; Cask
+                  </span>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    style={{ fontSize: '0.72rem', padding: '3px 9px' }}
+                    onClick={() => {
+                      setLayers([
+                        { id: 'n1', materialKey: 'STEEL', thicknessCm: 10.0 },
+                        { id: 'n2', materialKey: 'BORATED_PE', thicknessCm: 15.0 },
+                        { id: 'n3', materialKey: 'LEAD', thicknessCm: 2.5 }
+                      ]);
+                      setPhotonEnergyMev(1.25);
+                    }}
+                  >
+                    Load Cf-252 Cask (Fe + B-HDPE + Pb)
+                  </button>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(135px, 1fr))', gap: '8px' }}>
+                  <div style={{ background: 'rgba(0,0,0,0.35)', padding: '6px 8px', borderRadius: '4px' }}>
+                    <span style={{ fontSize: '0.68rem', color: '#94a3b8', display: 'block' }}>Neutron Relaxation (&Sigma;<sub>R</sub>x)</span>
+                    <strong style={{ color: '#e9d5ff', fontSize: '0.88rem' }}>{stackAnalytics.neutronEval.totalSigmaRx.toFixed(2)} mfp<sub>n</sub></strong>
+                  </div>
+                  <div style={{ background: 'rgba(0,0,0,0.35)', padding: '6px 8px', borderRadius: '4px' }}>
+                    <span style={{ fontSize: '0.68rem', color: '#94a3b8', display: 'block' }}>Neutron Buildup (B<sub>n</sub>)</span>
+                    <strong style={{ color: '#e9d5ff', fontSize: '0.88rem' }}>{stackAnalytics.neutronEval.neutronBuildup.toFixed(2)}×</strong>
+                  </div>
+                  <div style={{ background: 'rgba(0,0,0,0.35)', padding: '6px 8px', borderRadius: '4px' }}>
+                    <span style={{ fontSize: '0.68rem', color: '#94a3b8', display: 'block' }}>Transmitted Fast-n Rate</span>
+                    <strong style={{ color: '#c084fc', fontSize: '0.88rem' }}>{stackAnalytics.neutronEval.transmittedNeutronDoseRate.toFixed(2)} µSv/h</strong>
+                  </div>
+                  <div style={{ background: 'rgba(0,0,0,0.35)', padding: '6px 8px', borderRadius: '4px' }}>
+                    <span style={{ fontSize: '0.68rem', color: '#94a3b8', display: 'block' }}>Combined (&gamma; + n) Exit</span>
+                    <strong style={{ color: '#38bdf8', fontSize: '0.88rem' }}>{stackAnalytics.combinedGammaNeutronExitRate.toFixed(2)} µSv/h</strong>
+                  </div>
+                </div>
+
+                <div style={{ fontSize: '0.76rem', color: '#cbd5e1', lineHeight: 1.35 }}>
+                  {stackAnalytics.neutronEval.advisory}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Right Column: Interactive Plot */}
           <div style={{ background: 'rgba(5, 10, 18, 0.6)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '14px', minHeight: '440px', display: 'flex', flexDirection: 'column' }}>
             <span style={{ fontSize: '0.9rem', fontWeight: 600, color: '#00e5ff', marginBottom: '8px' }}>
-              Broad-Beam (GP Stratified) vs. Narrow-Beam Attenuation Profile
+              Broad-Beam (GP Stratified) vs. Narrow-Beam &amp; Fast Neutron (&Sigma;<sub>R</sub>) Attenuation Profile
             </span>
             <div style={{ flex: 1, minHeight: '380px' }}>
               <Plot
@@ -726,20 +830,34 @@ export const ShieldingModule: React.FC = () => {
                     y: depthProfile.points.map(p => p.broadDoseRate),
                     type: 'scatter',
                     mode: 'lines+markers',
-                    name: `Broad-Beam (${buildupModel})`,
+                    name: `Gamma Broad-Beam (${buildupModel})`,
                     line: { color: '#00e5ff', width: 2.8 },
                     marker: { size: 4 },
-                    hovertemplate: 'Depth: %{x:.2f} cm<br>Broad-Beam: %{y:.2f} µSv/h<extra></extra>'
+                    hovertemplate: 'Depth: %{x:.2f} cm<br>Broad-Beam γ: %{y:.2f} µSv/h<extra></extra>'
                   },
                   {
                     x: depthProfile.points.map(p => p.depthCm),
                     y: depthProfile.points.map(p => p.narrowDoseRate),
                     type: 'scatter',
                     mode: 'lines',
-                    name: 'Narrow-Beam Uncollided (e^-μx)',
+                    name: 'Gamma Uncollided (e^-μx)',
                     line: { color: '#f59e0b', dash: 'dot', width: 2 },
-                    hovertemplate: 'Depth: %{x:.2f} cm<br>Uncollided: %{y:.2f} µSv/h<extra></extra>'
+                    hovertemplate: 'Depth: %{x:.2f} cm<br>Uncollided γ: %{y:.2f} µSv/h<extra></extra>'
                   },
+                  ...(enableNeutronField
+                    ? [
+                        {
+                          x: depthProfile.points.map(p => p.depthCm),
+                          y: depthProfile.points.map(p => p.neutronDoseRate),
+                          type: 'scatter',
+                          mode: 'lines+markers',
+                          name: 'Fast Neutron Removal (B_n·e^-Σ_Rx)',
+                          line: { color: '#c084fc', dash: 'dashdot', width: 2.3 },
+                          marker: { size: 3 },
+                          hovertemplate: 'Depth: %{x:.2f} cm<br>Fast Neutron: %{y:.2f} µSv/h<extra></extra>'
+                        }
+                      ]
+                    : []),
                   {
                     x: [0, stackAnalytics.totalThicknessCm * 1.05],
                     y: [targetDoseLimit, targetDoseLimit],
