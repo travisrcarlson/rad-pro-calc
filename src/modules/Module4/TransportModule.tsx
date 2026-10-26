@@ -42,15 +42,26 @@ const MATERIALS = [
   { name: 'Air/Void', density: 0.001, tvl: 100000.0 } // Transparent
 ];
 
-// IAEA SSR-6 (2018) Table 2 Generic Bounds (TBq)
+// IAEA SSR-6 (2018 Rev. 1) Table 2 Activity Limits for Type A Packages (TBq)
 const A_BOUNDS: Record<string, { A1: number, A2: number }> = {
   'Am-241': { A1: 10.0, A2: 0.001 },
+  'Ba-133': { A1: 3.0, A2: 3.0 },
+  'Cf-252': { A1: 0.1, A2: 0.003 },
   'Co-60': { A1: 0.4, A2: 0.4 },
   'Cs-137': { A1: 2.0, A2: 0.6 },
+  'Eu-152': { A1: 1.0, A2: 1.0 },
+  'F-18': { A1: 1.0, A2: 0.6 },
+  'I-131': { A1: 3.0, A2: 0.7 },
   'Ir-192': { A1: 1.0, A2: 0.6 },
+  'Mo-99': { A1: 1.0, A2: 0.6 },
+  'Na-22': { A1: 0.5, A2: 0.5 },
+  'Pu-238': { A1: 10.0, A2: 0.001 },
+  'Pu-239': { A1: 10.0, A2: 0.001 },
+  'Ra-226': { A1: 0.2, A2: 0.003 },
   'Sr-90': { A1: 0.3, A2: 0.3 },
   'Tc-99m': { A1: 10.0, A2: 4.0 },
-  'U-238': { A1: 10.0, A2: 10.0 }, // Unlimited for natural, 10 for placeholder
+  'U-235': { A1: 40.0, A2: 40.0 },
+  'U-238': { A1: 10.0, A2: 10.0 }
 };
 
 const TransportModule: React.FC = () => {
@@ -69,6 +80,15 @@ const TransportModule: React.FC = () => {
   const [layers, setLayers] = useState<{ id: number, matIdx: number, thickness: number }[]>([
     { id: 1, matIdx: 0, thickness: 1 } // 1 cm of Lead
   ]);
+
+  // IAEA SSR-6 Para. 405 Multi-Radionuclide Mixture Sum-of-Fractions State
+  const [mixtureItems, setMixtureItems] = useState<{ id: number; nuclide: string; activityTBq: number; form: 'special' | 'normal' }[]>([
+    { id: 101, nuclide: 'Cs-137', activityTBq: 0.25, form: 'special' },
+    { id: 102, nuclide: 'Co-60', activityTBq: 0.12, form: 'special' }
+  ]);
+  const [newMixNuclide, setNewMixNuclide] = useState<string>('Ir-192');
+  const [newMixActTBq, setNewMixActTBq] = useState<number>(0.15);
+  const [newMixForm, setNewMixForm] = useState<'special' | 'normal'>('special');
 
   // Ingest URL params from Nuclide Table or external links
   useEffect(() => {
@@ -182,8 +202,38 @@ const TransportModule: React.FC = () => {
   // Shielded
   const doseSurf = unshieldedSurf / attenuationFactor;
   const dose1m = unshielded1m / attenuationFactor;
+  const distCab2m_cm = distSurf_cm + 200;
+  const doseCab2m = ((gamma_uSv * actMBq) / Math.max(1, distCab2m_cm * distCab2m_cm)) / attenuationFactor;
 
   const TI = dose1m / 10;
+
+  // Radial Distance Dose Rate Profile from Package Surface (0 m offset) -> 1m (TI) -> 2m (Vehicle Cab) -> 3m
+  const radialProfile = useMemo(() => {
+    const offsetsM: number[] = [];
+    const shieldedRates: number[] = [];
+    const unshieldedRates: number[] = [];
+    for (let i = 0; i <= 60; i++) {
+      const offsetCm = i * 5; // 0 to 300 cm from surface
+      const rCm = Math.max(1, distSurf_cm + offsetCm);
+      const unsh = (gamma_uSv * actMBq) / (rCm * rCm);
+      offsetsM.push(offsetCm / 100);
+      unshieldedRates.push(Math.max(1e-4, unsh));
+      shieldedRates.push(Math.max(1e-4, unsh / attenuationFactor));
+    }
+    return { offsetsM, shieldedRates, unshieldedRates };
+  }, [distSurf_cm, gamma_uSv, actMBq, attenuationFactor]);
+
+  // IAEA SSR-6 Para. 405 Multi-Radionuclide Sum-of-Fractions Unity Rule
+  const mixtureSumOfFractions = useMemo(() => {
+    const rows = mixtureItems.map(item => {
+      const b = A_BOUNDS[item.nuclide] || { A1: 1.0, A2: 0.5 };
+      const limit = item.form === 'special' ? b.A1 : b.A2;
+      const frac = limit > 0 ? item.activityTBq / limit : 0;
+      return { ...item, limit, frac };
+    });
+    const totalFraction = rows.reduce((s, r) => s + r.frac, 0);
+    return { rows, totalFraction, qualifiesTypeA: totalFraction <= 1.0 };
+  }, [mixtureItems]);
 
   // Determine Package Classification
   const defaultBounds = { A1: 1.0, A2: 1.0 };
@@ -653,6 +703,155 @@ const TransportModule: React.FC = () => {
           </div>
         </div>
 
+      </div>
+
+      {/* Package Surface -> 1m (TI) -> 2m Driver Cab Radial Dose Profile + IAEA SSR-6 Multi-Isotope Unity Rule */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: '20px', marginTop: '24px' }}>
+        {/* Left: Radial Distance Dose Profile Curve */}
+        <div style={{ padding: '18px', border: '1px solid var(--color-border)', borderRadius: '8px', backgroundColor: 'rgba(5, 10, 18, 0.65)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
+            <h3 style={{ margin: 0, fontSize: '1rem', color: 'var(--color-primary)' }}>
+              📏 Package Surface → 1m (TI) → 2m Driver Cab Dose Profile
+            </h3>
+            <span style={{ fontSize: '0.76rem', color: doseCab2m <= 20 ? '#10b981' : '#f59e0b', fontFamily: 'monospace' }}>
+              2m Cab Rate: {doseCab2m.toFixed(2)} µSv/h (49 CFR Limit: 20 µSv/h)
+            </span>
+          </div>
+          <div style={{ height: '270px' }}>
+            <Plot
+              data={[
+                {
+                  x: radialProfile.offsetsM,
+                  y: radialProfile.shieldedRates,
+                  type: 'scatter',
+                  mode: 'lines',
+                  name: 'Shielded Package Dose Rate (µSv/h)',
+                  line: { color: '#00e5ff', width: 3 },
+                  fill: 'tozeroy',
+                  fillcolor: 'rgba(0, 229, 255, 0.1)'
+                },
+                {
+                  x: radialProfile.offsetsM,
+                  y: radialProfile.unshieldedRates,
+                  type: 'scatter',
+                  mode: 'lines',
+                  name: 'Unshielded Bare Source (µSv/h)',
+                  line: { color: '#ef4444', width: 1.8, dash: 'dot' }
+                },
+                {
+                  x: [0, 1.0, 2.0],
+                  y: [Math.max(1e-4, doseSurf), Math.max(1e-4, dose1m), Math.max(1e-4, doseCab2m)],
+                  type: 'scatter',
+                  mode: 'markers+text',
+                  name: 'SSR-6 Checkpoints (Surface, 1m TI, 2m Cab)',
+                  marker: { color: '#facc15', size: 9 },
+                  text: ['Surface', `1m (TI=${TI.toFixed(1)})`, '2m Cab'],
+                  textposition: 'top center'
+                }
+              ]}
+              layout={{
+                autosize: true,
+                margin: { l: 60, r: 20, t: 20, b: 45 },
+                paper_bgcolor: 'transparent',
+                plot_bgcolor: 'transparent',
+                font: { color: '#E0E1DD', size: 11 },
+                xaxis: { title: 'Distance from Package Exterior Surface (meters)', gridcolor: '#1e293b' },
+                yaxis: { title: 'Dose Rate (µSv/h, Log Scale)', type: 'log', gridcolor: '#1e293b' },
+                legend: { orientation: 'h', y: 1.15, x: 0 }
+              }}
+              useResizeHandler
+              style={{ width: '100%', height: '100%' }}
+              config={{ displayModeBar: false, responsive: true }}
+            />
+          </div>
+        </div>
+
+        {/* Right: IAEA SSR-6 Para. 405 Multi-Radionuclide Mixture Sum-of-Fractions Calculator */}
+        <div style={{ padding: '18px', border: '1px solid var(--color-border)', borderRadius: '8px', backgroundColor: 'rgba(5, 10, 18, 0.65)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '1rem', color: 'var(--color-primary)' }}>
+                ⚖️ IAEA SSR-6 Para. 405 Multi-Isotope Sum-of-Fractions (∑ Bᵢ/Aᵢ ≤ 1.0)
+              </h3>
+              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                Evaluate mixed radionuclide consignments against the Type A vs. Type B(U) unity rule.
+              </span>
+            </div>
+            <span
+              className={`hud-badge ${mixtureSumOfFractions.qualifiesTypeA ? 'hud-badge-success' : 'hud-badge-danger'}`}
+              style={{ fontSize: '0.78rem', padding: '4px 10px' }}
+            >
+              ∑ fᵢ = {mixtureSumOfFractions.totalFraction.toFixed(3)} → {mixtureSumOfFractions.qualifiesTypeA ? 'TYPE A COMPLIANT' : 'REQUIRES TYPE B(U)'}
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            <div>
+              <label style={{ fontSize: '0.7rem', color: '#94a3b8', display: 'block' }}>Isotope</label>
+              <select className="form-control" style={{ fontSize: '0.78rem', padding: '4px 8px' }} value={newMixNuclide} onChange={e => setNewMixNuclide(e.target.value)}>
+                {Object.keys(A_BOUNDS).map(k => (
+                  <option key={k} value={k}>{k} (A₁={A_BOUNDS[k].A1}, A₂={A_BOUNDS[k].A2} TBq)</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label style={{ fontSize: '0.7rem', color: '#94a3b8', display: 'block' }}>Activity (TBq)</label>
+              <input type="number" step="0.05" min="0.0001" className="form-control" style={{ width: '95px', fontSize: '0.78rem', padding: '4px 8px' }} value={newMixActTBq} onChange={e => setNewMixActTBq(Math.max(0.0001, Number(e.target.value)))} />
+            </div>
+            <div>
+              <label style={{ fontSize: '0.7rem', color: '#94a3b8', display: 'block' }}>Form</label>
+              <select className="form-control" style={{ fontSize: '0.78rem', padding: '4px 8px' }} value={newMixForm} onChange={e => setNewMixForm(e.target.value as 'special' | 'normal')}>
+                <option value="special">Special (A₁)</option>
+                <option value="normal">Normal (A₂)</option>
+              </select>
+            </div>
+            <button
+              type="button"
+              className="btn btn-primary"
+              style={{ fontSize: '0.76rem', padding: '5px 10px' }}
+              onClick={() => setMixtureItems(prev => [...prev, { id: Date.now(), nuclide: newMixNuclide, activityTBq: newMixActTBq, form: newMixForm }])}
+            >
+              + Add to Manifest
+            </button>
+          </div>
+
+          <div style={{ overflowX: 'auto', maxHeight: '175px' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--color-border)', color: 'var(--color-primary)', textAlign: 'left' }}>
+                  <th style={{ padding: '6px' }}>Nuclide</th>
+                  <th style={{ padding: '6px' }}>Form</th>
+                  <th style={{ padding: '6px' }}>Activity Bᵢ</th>
+                  <th style={{ padding: '6px' }}>SSR-6 Limit</th>
+                  <th style={{ padding: '6px' }}>Fraction (Bᵢ/Aᵢ)</th>
+                  <th style={{ padding: '6px' }}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {mixtureSumOfFractions.rows.map(r => (
+                  <tr key={r.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                    <td style={{ padding: '6px', fontWeight: 'bold' }}>{r.nuclide}</td>
+                    <td style={{ padding: '6px', color: '#94a3b8' }}>{r.form === 'special' ? 'Special (A₁)' : 'Normal (A₂)'}</td>
+                    <td style={{ padding: '6px', fontFamily: 'monospace' }}>{r.activityTBq.toFixed(4)} TBq</td>
+                    <td style={{ padding: '6px', fontFamily: 'monospace' }}>{r.limit} TBq</td>
+                    <td style={{ padding: '6px', fontFamily: 'monospace', fontWeight: 'bold', color: r.frac > 1 ? '#ef4444' : '#00e5ff' }}>
+                      {r.frac.toFixed(3)} ({(r.frac * 100).toFixed(1)}%)
+                    </td>
+                    <td style={{ padding: '6px', textAlign: 'right' }}>
+                      <button
+                        type="button"
+                        onClick={() => setMixtureItems(prev => prev.filter(x => x.id !== r.id))}
+                        style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.75rem' }}
+                      >
+                        ✕
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', marginTop: '30px', alignItems: 'stretch' }}>

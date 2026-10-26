@@ -176,6 +176,9 @@ const SpectroscopyModule: React.FC = () => {
   const [ingestError, setIngestError] = useState<string | null>(null);
   const [mariscottiZThreshold, setMariscottiZThreshold] = useState<number>(3.5);
   const [showMariscottiTrace, setShowMariscottiTrace] = useState<boolean>(false);
+  const [compareAllDetectors, setCompareAllDetectors] = useState<boolean>(false);
+  const [showSpectralFeatures, setShowSpectralFeatures] = useState<boolean>(true);
+  const [selectedPeakIndex, setSelectedPeakIndex] = useState<number>(1);
 
   const [idToleranceKeV, setIdToleranceKeV] = useState<number>(5.0);
   const [isDossierOpen, setIsDossierOpen] = useState<boolean>(false);
@@ -402,6 +405,118 @@ const SpectroscopyModule: React.FC = () => {
 
   const identifiedPeaks = mariscottiAnalysis.peaks;
 
+  // Multi-Detector Comparison Curves (HPGe vs CZT vs LaBr3 vs NaI)
+  const multiDetectorTraces = useMemo(() => {
+    if (!compareAllDetectors || ingestedSpectrum) return [];
+    const numChannels = 2048;
+    const keVPerChannel = 3000 / numChannels;
+    const palette: Record<string, string> = {
+      'HPGe Coaxial (High-Purity Germanium)': '#00e5ff',
+      'CZT Coplanar Grid (Cadmium Zinc Telluride)': '#a855f7',
+      'LaBr3(Ce) Cerium-doped Lanthanum Bromide': '#10b981',
+      'NaI(Tl) 3" x 3" Scintillator': '#f59e0b'
+    };
+
+    return DETECTORS.filter(d => d.name !== detector.name).map(det => {
+      const y = new Array(numChannels).fill(Math.max(1, 0.05 * liveTimeSec));
+      isotope.gammas.forEach(gamma => {
+        const E_g = gamma.energyKeV;
+        const intensity = gamma.intensityPct / 100;
+        const fwhm = Math.max(0.5, det.fwhmAt662keV * Math.sqrt(E_g / 662.0));
+        const sigma = fwhm / 2.355;
+        const peakYield = activityKBq * 1000 * intensity * (det.relativeEffPct / 100) * liveTimeSec * 0.005;
+        const comptonEdge = E_g / (1 + 511 / (2 * E_g));
+        for (let ch = 0; ch < numChannels; ch++) {
+          const E = ch * keVPerChannel;
+          const dE = E - E_g;
+          if (Math.abs(dE) < 4 * sigma) {
+            y[ch] += (peakYield / (sigma * Math.sqrt(2 * Math.PI))) * Math.exp(-(dE * dE) / (2 * sigma * sigma)) * keVPerChannel;
+          }
+          if (E > 10 && E <= comptonEdge) {
+            y[ch] += ((peakYield * 0.45) / comptonEdge) * (0.8 + 0.4 * (E / comptonEdge)) * keVPerChannel;
+          }
+        }
+      });
+      return {
+        x: spectrumData.energies,
+        y: y.map(v => Math.max(1, Math.round(v))),
+        type: 'scatter',
+        mode: 'lines',
+        name: `${det.name.split(' (')[0]} (${det.fwhmAt662keV} keV FWHM)`,
+        line: { color: palette[det.name] || '#cbd5e1', width: 1.6, dash: 'dot' }
+      };
+    });
+  }, [compareAllDetectors, ingestedSpectrum, detector.name, isotope, activityKBq, liveTimeSec, spectrumData.energies]);
+
+  // Physical Spectral Feature Markers (Compton Edge, Backscatter, Escape Peaks)
+  const spectralFeatureMarkers = useMemo(() => {
+    if (!showSpectralFeatures || ingestedSpectrum) return [];
+    const primaryGamma = [...isotope.gammas].sort((a, b) => b.intensityPct - a.intensityPct)[0];
+    if (!primaryGamma) return [];
+    const Eg = primaryGamma.energyKeV;
+    const comptonEdge = Eg / (1 + 511 / (2 * Eg));
+    const backscatter = Eg / (1 + (2 * Eg) / 511);
+    const features: { energyKeV: number; label: string; color: string }[] = [
+      { energyKeV: comptonEdge, label: `Compton Edge E_c (${comptonEdge.toFixed(1)} keV)`, color: '#f59e0b' },
+      { energyKeV: backscatter, label: `Backscatter (${backscatter.toFixed(1)} keV)`, color: '#a855f7' }
+    ];
+    if (Eg > 1022) {
+      features.push({ energyKeV: Eg - 511, label: `Single Escape (${(Eg - 511).toFixed(1)} keV)`, color: '#38bdf8' });
+      features.push({ energyKeV: Eg - 1022, label: `Double Escape (${(Eg - 1022).toFixed(1)} keV)`, color: '#10b981' });
+    }
+    if (hasShielding) {
+      features.push({ energyKeV: 75.0, label: 'Pb X-Ray (75 keV)', color: '#94a3b8' });
+    }
+    return features;
+  }, [showSpectralFeatures, ingestedSpectrum, isotope, hasShielding]);
+
+  // Selected Peak ROI & Currie MDA / LLD Details
+  const activeRoiDetails = useMemo(() => {
+    if (identifiedPeaks.length === 0) return null;
+    const pk = identifiedPeaks.find(p => p.peakIndex === selectedPeakIndex) || identifiedPeaks[0];
+    const B = Math.max(1, pk.continuumCounts);
+    const Lc = 2.326 * Math.sqrt(B);
+    const Ld = 2.706 + 4.653 * Math.sqrt(B);
+    const tLive = ingestedSpectrum ? ingestedSpectrum.liveTimeSec : liveTimeSec;
+    const branchFrac = Math.max(0.01, (pk.branchingIntensityPct || 85) / 100);
+    const geomEff = Math.max(0.0005, (detector.relativeEffPct / 100) * 0.005);
+    const mdaBq = Ld / (geomEff * branchFrac * Math.max(1, tLive));
+
+    // Extract local channel slice around centroid for ROI mini-plot
+    const halfWidthKeV = Math.max(25, pk.fwhmKeV * 3.5);
+    const roiX: number[] = [];
+    const roiY: number[] = [];
+    const baseX: number[] = [];
+    const baseY: number[] = [];
+
+    const leftE = Math.max(0, pk.energyKeV - pk.fwhmKeV * 1.6);
+    const rightE = pk.energyKeV + pk.fwhmKeV * 1.6;
+    let leftCnt = 1;
+    let rightCnt = 1;
+
+    spectrumData.energies.forEach((e, idx) => {
+      if (Math.abs(e - pk.energyKeV) <= halfWidthKeV) {
+        roiX.push(e);
+        roiY.push(spectrumData.finalCounts[idx]);
+      }
+      if (Math.abs(e - leftE) < spectrumData.keVPerChannel) leftCnt = spectrumData.finalCounts[idx];
+      if (Math.abs(e - rightE) < spectrumData.keVPerChannel) rightCnt = spectrumData.finalCounts[idx];
+    });
+    baseX.push(leftE, rightE);
+    baseY.push(leftCnt, rightCnt);
+
+    return {
+      peak: pk,
+      Lc,
+      Ld,
+      mdaBq,
+      roiX,
+      roiY,
+      baseX,
+      baseY
+    };
+  }, [identifiedPeaks, selectedPeakIndex, ingestedSpectrum, liveTimeSec, detector.relativeEffPct, spectrumData]);
+
   const dossierPayload: CalculationDossierPayload = useMemo(() => ({
     reportTitle: 'Gamma-Ray Spectrometry, ANSI N42.42 Ingestion & Mariscotti Peak Analysis Dossier',
     moduleName: 'Module 28: Gamma Spectroscopy & MCA Spectrum Analyzer',
@@ -433,7 +548,7 @@ const SpectroscopyModule: React.FC = () => {
     <div className="spectroscopy-module">
       <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
         <div>
-          <h2 style={{ margin: 0 }}>🔬 Module 28 — Gamma Spectroscopy, ANSI N42.42 Ingestion &amp; Mariscotti Peak Solver</h2>
+          <h2 style={{ margin: 0 }}>🔬 Module 25 — Gamma Spectroscopy, ANSI N42.42 Ingestion &amp; Mariscotti Peak Solver</h2>
           <p style={{ color: 'var(--color-text-muted)', margin: '4px 0 0 0', fontSize: '0.85rem' }}>
             Ingest real-world ANSI N42.42 XML, ORTEC Maestro (.SPE), or MCA CSV spectra—or simulate HPGe/NaI(Tl)/LaBr₃/CZT detectors with Mariscotti generalized second-difference peak search and trapezoidal Compton continuum subtraction.
           </p>
@@ -661,8 +776,20 @@ const SpectroscopyModule: React.FC = () => {
             )}
             <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '0.82rem', color: '#f59e0b' }}>
               <input type="checkbox" checked={showMariscottiTrace} onChange={(e) => setShowMariscottiTrace(e.target.checked)} />
-              Overlay Mariscotti -Sᵢ/Fᵢ Second-Difference Trace
+              Overlay Mariscotti -Sᵢ/Fᵢ Trace
             </label>
+            {!ingestedSpectrum && (
+              <>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '0.82rem', color: '#38bdf8' }}>
+                  <input type="checkbox" checked={compareAllDetectors} onChange={(e) => setCompareAllDetectors(e.target.checked)} />
+                  Compare All 4 Detectors (HPGe/CZT/LaBr₃/NaI)
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '0.82rem', color: '#a855f7' }}>
+                  <input type="checkbox" checked={showSpectralFeatures} onChange={(e) => setShowSpectralFeatures(e.target.checked)} />
+                  Show Compton Edge &amp; Escape Markers
+                </label>
+              </>
+            )}
             <button
               className="btn btn-primary"
               style={{ marginLeft: 'auto', fontSize: '0.8rem', padding: '6px 12px' }}
@@ -732,11 +859,12 @@ const SpectroscopyModule: React.FC = () => {
                 y: spectrumData.finalCounts,
                 type: 'scatter',
                 mode: 'lines',
-                name: ingestedSpectrum ? ingestedSpectrum.fileName : `${isotope.symbol} Spectrum`,
+                name: ingestedSpectrum ? ingestedSpectrum.fileName : `${isotope.symbol} (${detector.name.split(' (')[0]})`,
                 line: { color: 'var(--color-primary)', width: 2 },
                 fill: 'tozeroy',
                 fillcolor: 'rgba(0, 229, 255, 0.08)'
               },
+              ...multiDetectorTraces,
               ...(showMariscottiTrace
                 ? [
                     {
@@ -749,6 +877,17 @@ const SpectroscopyModule: React.FC = () => {
                     }
                   ]
                 : []),
+              ...spectralFeatureMarkers.map(feat => ({
+                x: [feat.energyKeV, feat.energyKeV],
+                y: [1, Math.max(50, Math.max(...spectrumData.finalCounts) * 0.28)],
+                type: 'scatter',
+                mode: 'lines+text',
+                name: feat.label,
+                text: [feat.label],
+                textposition: 'top center',
+                line: { color: feat.color, width: 1.3, dash: 'dot' },
+                showlegend: false
+              })),
               ...identifiedPeaks.map((p) => ({
                 x: [p.energyKeV, p.energyKeV],
                 y: [1, p.peakHeightCounts * 1.18],
@@ -788,12 +927,98 @@ const SpectroscopyModule: React.FC = () => {
         </div>
       </div>
 
-      {/* Auto-ID & Mariscotti Peak Search Analysis Table */}
+      {/* Auto-ID & Mariscotti Peak Search Analysis Table + Interactive ROI / Currie MDA Inspector */}
       <div className="panel">
-        <h3>Mariscotti Second-Difference ROI Analysis &amp; Nuclide Library Identification</h3>
-        <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', marginBottom: '15px' }}>
-          Sub-channel parabolic centroid fit, trapezoidal Compton continuum subtraction, net photopeak area uncertainty, and ICRP-107 / ANSI N42.14 library matching.
-        </p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '12px' }}>
+          <div>
+            <h3 style={{ margin: 0 }}>Mariscotti Second-Difference ROI Analysis, Trapezoidal Subtraction &amp; Currie MDA/LLD</h3>
+            <p style={{ color: 'var(--color-text-muted)', fontSize: '0.84rem', margin: '4px 0 0 0' }}>
+              Click any photopeak row below to inspect its zoomed Region-of-Interest (ROI), trapezoidal Compton continuum baseline, and Currie Critical Level (L_C) / Detection Limit (L_D) / Minimum Detectable Activity (MDA).
+            </p>
+          </div>
+        </div>
+
+        {activeRoiDetails && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(290px, 1fr) minmax(320px, 1.15fr)', gap: '14px', marginBottom: '16px', padding: '12px', background: 'rgba(15, 23, 42, 0.65)', border: '1px solid rgba(0, 229, 255, 0.28)', borderRadius: '8px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '8px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#00e5ff' }}>
+                  🎯 Selected ROI Inspector — Peak #{activeRoiDetails.peak.peakIndex} ({activeRoiDetails.peak.energyKeV.toFixed(2)} keV)
+                </span>
+                <span className="hud-badge hud-badge-primary">{activeRoiDetails.peak.matchedIsotope}</span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', fontSize: '0.75rem' }}>
+                <div style={{ background: '#0b0f19', padding: '7px 9px', borderRadius: '6px', border: '1px solid #1e293b' }}>
+                  <div style={{ color: '#64748b', fontSize: '0.65rem' }}>GROSS ROI (G)</div>
+                  <div style={{ color: '#f8fafc', fontWeight: 700, fontFamily: 'monospace' }}>{activeRoiDetails.peak.grossCounts.toLocaleString()} cts</div>
+                </div>
+                <div style={{ background: '#0b0f19', padding: '7px 9px', borderRadius: '6px', border: '1px solid #1e293b' }}>
+                  <div style={{ color: '#64748b', fontSize: '0.65rem' }}>COMPTON BASE (B)</div>
+                  <div style={{ color: '#f59e0b', fontWeight: 700, fontFamily: 'monospace' }}>{activeRoiDetails.peak.continuumCounts.toLocaleString()} cts</div>
+                </div>
+                <div style={{ background: '#0b0f19', padding: '7px 9px', borderRadius: '6px', border: '1px solid #1e293b' }}>
+                  <div style={{ color: '#64748b', fontSize: '0.65rem' }}>NET PEAK AREA (N)</div>
+                  <div style={{ color: '#00e5ff', fontWeight: 700, fontFamily: 'monospace' }}>{activeRoiDetails.peak.netAreaCounts.toLocaleString()} ± {activeRoiDetails.peak.netAreaUncertainty}</div>
+                </div>
+                <div style={{ background: '#0b0f19', padding: '7px 9px', borderRadius: '6px', border: '1px solid #1e293b' }}>
+                  <div style={{ color: '#64748b', fontSize: '0.65rem' }}>CURRIE L_C (95%)</div>
+                  <div style={{ color: '#cbd5e1', fontWeight: 700, fontFamily: 'monospace' }}>{activeRoiDetails.Lc.toFixed(1)} cts</div>
+                </div>
+                <div style={{ background: '#0b0f19', padding: '7px 9px', borderRadius: '6px', border: '1px solid #1e293b' }}>
+                  <div style={{ color: '#64748b', fontSize: '0.65rem' }}>CURRIE L_D (LLD)</div>
+                  <div style={{ color: '#a855f7', fontWeight: 700, fontFamily: 'monospace' }}>{activeRoiDetails.Ld.toFixed(1)} cts</div>
+                </div>
+                <div style={{ background: '#0b0f19', padding: '7px 9px', borderRadius: '6px', border: '1px solid #1e293b' }}>
+                  <div style={{ color: '#64748b', fontSize: '0.65rem' }}>PEAK MDA</div>
+                  <div style={{ color: '#10b981', fontWeight: 700, fontFamily: 'monospace' }}>{activeRoiDetails.mdaBq.toFixed(2)} Bq</div>
+                </div>
+              </div>
+              <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                <strong>Currie (1968) Formulation:</strong> L_C = 2.33·√B &nbsp;|&nbsp; L_D = 2.71 + 4.65·√B &nbsp;|&nbsp; MDA = L_D / (ε·I_γ·t_live)
+              </div>
+            </div>
+
+            <div style={{ height: '190px' }}>
+              <Plot
+                data={[
+                  {
+                    x: activeRoiDetails.roiX,
+                    y: activeRoiDetails.roiY,
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'ROI Gross Spectrum',
+                    line: { color: '#00e5ff', width: 2.5 },
+                    fill: 'tozeroy',
+                    fillcolor: 'rgba(0, 229, 255, 0.14)'
+                  },
+                  {
+                    x: activeRoiDetails.baseX,
+                    y: activeRoiDetails.baseY,
+                    type: 'scatter',
+                    mode: 'lines+markers',
+                    name: 'Trapezoidal Compton Baseline (B)',
+                    line: { color: '#f59e0b', width: 2, dash: 'dash' },
+                    fill: 'tozeroy',
+                    fillcolor: 'rgba(245, 158, 11, 0.18)'
+                  }
+                ]}
+                layout={{
+                  autosize: true,
+                  margin: { l: 48, r: 15, t: 12, b: 32 },
+                  paper_bgcolor: 'transparent',
+                  plot_bgcolor: 'rgba(0,0,0,0.25)',
+                  font: { color: '#cbd5e1', size: 10 },
+                  xaxis: { title: 'Energy (keV)', gridcolor: '#1e293b' },
+                  yaxis: { title: 'Counts', gridcolor: '#1e293b' },
+                  legend: { orientation: 'h', y: 1.18, x: 0 }
+                }}
+                useResizeHandler={true}
+                style={{ width: '100%', height: '100%' }}
+                config={{ responsive: true, displayModeBar: false }}
+              />
+            </div>
+          </div>
+        )}
 
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.83rem' }}>
@@ -813,8 +1038,17 @@ const SpectroscopyModule: React.FC = () => {
             <tbody>
               {identifiedPeaks.map((peak) => {
                 const isMatched = peak.matchedIsotope !== 'Unidentified';
+                const isSelectedRow = activeRoiDetails?.peak.peakIndex === peak.peakIndex;
                 return (
-                  <tr key={peak.peakIndex} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                  <tr
+                    key={peak.peakIndex}
+                    onClick={() => setSelectedPeakIndex(peak.peakIndex)}
+                    style={{
+                      borderBottom: '1px solid rgba(255,255,255,0.05)',
+                      cursor: 'pointer',
+                      background: isSelectedRow ? 'rgba(0, 229, 255, 0.10)' : 'transparent'
+                    }}
+                  >
                     <td style={{ padding: '8px', fontWeight: 'bold' }}>#{peak.peakIndex}</td>
                     <td style={{ padding: '8px', color: '#00E5FF', fontWeight: 'bold' }}>
                       {peak.energyKeV.toFixed(2)} keV <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>(ch {peak.channelCentroid.toFixed(1)})</span>

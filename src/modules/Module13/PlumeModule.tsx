@@ -82,6 +82,12 @@ const PlumeModule: React.FC = () => {
   const [isFetchingMet, setIsFetchingMet] = useState<boolean>(false);
   const [isDossierOpen, setIsDossierOpen] = useState<boolean>(false);
 
+  // Wet/Dry Deposition, Inversion Lid Trapping & Crosswind/Vertical Slice State
+  const [depositionVelocityCmS, setDepositionVelocityCmS] = useState<number>(0.0); // 0 = Noble Gas (no dry depletion)
+  const [rainRateMmHr, setRainRateMmHr] = useState<number>(0.0); // 0 = Dry conditions
+  const [mixingHeightM, setMixingHeightM] = useState<number>(1000); // PBL Inversion Lid (m)
+  const [sliceDistanceM, setSliceDistanceM] = useState<number>(300);
+
   const handleFetchLiveWeather = async (lat = metLat, lon = metLon, label = 'Custom Site') => {
     setIsFetchingMet(true);
     try {
@@ -89,6 +95,7 @@ const PlumeModule: React.FC = () => {
       setLiveMet(snap);
       setWindSpeed(Number(Math.max(0.5, Math.min(15, snap.windSpeed10mMs)).toFixed(1)));
       setStability(snap.turner.stabilityClass);
+      setMixingHeightM(snap.turner.mixingHeightMeters);
     } finally {
       setIsFetchingMet(false);
     }
@@ -131,6 +138,34 @@ const PlumeModule: React.FC = () => {
     }
   }, [searchParams]);
 
+  // Helper to evaluate Gaussian concentration C(x, y, z) with Wet/Dry Depletion & Inversion Lid Reflection
+  const evalGaussianConcentration = (x: number, y: number, z: number, applyDepletion: boolean = true) => {
+    const { sy, sz } = getDispersionCoefficients(x, stability);
+    if (sy <= 0 || sz <= 0 || windSpeed <= 0) return 0;
+
+    const vdMs = depositionVelocityCmS * 0.01;
+    const lambdaWet = rainRateMmHr > 0 ? 1.0e-4 * Math.pow(rainRateMmHr, 0.8) : 0;
+    const wetDepletion = applyDepletion ? Math.exp(-(lambdaWet * x) / windSpeed) : 1.0;
+    const dryDepletion = applyDepletion && vdMs > 0
+      ? Math.exp(-Math.sqrt(2 / Math.PI) * (vdMs / windSpeed) * (x / Math.max(sz, 2)) * Math.exp(-(releaseHeight * releaseHeight) / (2 * sz * sz)))
+      : 1.0;
+
+    const Q_eff = releaseRate * wetDepletion * dryDepletion;
+    const prefactor = Q_eff / (2 * Math.PI * windSpeed * sy * sz);
+    const expY = Math.exp(-(y * y) / (2 * sy * sy));
+
+    // Ground reflection + 1st-order PBL Inversion Lid (H_mix) reflection
+    const H = releaseHeight;
+    const L = Math.max(H + 20, mixingHeightM);
+    const verticalTerm =
+      Math.exp(-Math.pow(z - H, 2) / (2 * sz * sz)) +
+      Math.exp(-Math.pow(z + H, 2) / (2 * sz * sz)) +
+      Math.exp(-Math.pow(z - (2 * L - H), 2) / (2 * sz * sz)) +
+      Math.exp(-Math.pow(z + (2 * L - H), 2) / (2 * sz * sz));
+
+    return prefactor * expY * verticalTerm;
+  };
+
   // 2D Contour Grid
   const { xVals, yVals, zVals } = useMemo(() => {
     const xSteps = 50;
@@ -152,49 +187,59 @@ const PlumeModule: React.FC = () => {
       const y = yArr[i];
       for (let j = 0; j <= xSteps; j++) {
         const x = xArr[j];
-        const { sy, sz } = getDispersionCoefficients(x, stability);
-        let concentration = 0;
-        if (sy > 0 && sz > 0 && windSpeed > 0) {
-          const factor = releaseRate / (Math.PI * windSpeed * sy * sz);
-          const expY = Math.exp(-(y * y) / (2 * sy * sy));
-          const expZ = Math.exp(-(releaseHeight * releaseHeight) / (2 * sz * sz));
-          concentration = factor * expY * expZ;
-        }
-        row.push(concentration);
+        row.push(evalGaussianConcentration(x, y, 0, true));
       }
       zArr.push(row);
     }
 
     return { xVals: xArr, yVals: yArr, zVals: zArr };
-  }, [releaseRate, windSpeed, releaseHeight, stability, maxDistance]);
+  }, [releaseRate, windSpeed, releaseHeight, stability, maxDistance, depositionVelocityCmS, rainRateMmHr, mixingHeightM]);
 
-  // Centerline Profile
+  // Centerline Profile + Crosswind C(y) & Vertical C(z) Slice Profiles
   const centerlineData = useMemo(() => {
     const steps = 100;
     const xLine: number[] = [];
     const cLine: number[] = [];
+    const cUndepletedLine: number[] = [];
     let peakC = 0;
     let peakX = 0;
 
     for (let i = 0; i <= steps; i++) {
       const x = Math.max(1, (maxDistance * i) / steps);
       xLine.push(x);
-      const { sy, sz } = getDispersionCoefficients(x, stability);
-      let concentration = 0;
-      if (sy > 0 && sz > 0 && windSpeed > 0) {
-        const factor = releaseRate / (Math.PI * windSpeed * sy * sz);
-        const expZ = Math.exp(-(releaseHeight * releaseHeight) / (2 * sz * sz));
-        concentration = factor * expZ;
-      }
+      const concentration = evalGaussianConcentration(x, 0, 0, true);
+      const undepleted = evalGaussianConcentration(x, 0, 0, false);
       cLine.push(concentration);
+      cUndepletedLine.push(undepleted);
       if (concentration > peakC) {
         peakC = concentration;
         peakX = x;
       }
     }
 
-    return { xLine, cLine, peakC, peakX };
-  }, [releaseRate, windSpeed, releaseHeight, stability, maxDistance]);
+    // Crosswind slice C(x_0, y, 0) & Vertical slice C(x_0, 0, z) at x_0 = sliceDistanceM
+    const x0 = Math.min(Math.max(10, sliceDistanceM), maxDistance);
+    const { sy, sz } = getDispersionCoefficients(x0, stability);
+    const ySpan = Math.max(50, sy * 3.5);
+    const crossY: number[] = [];
+    const crossC: number[] = [];
+    for (let i = -40; i <= 40; i++) {
+      const y = (i / 40) * ySpan;
+      crossY.push(y);
+      crossC.push(evalGaussianConcentration(x0, y, 0, true));
+    }
+
+    const zMax = Math.min(mixingHeightM * 1.15, Math.max(releaseHeight * 2.5, sz * 3.5, 60));
+    const vertZ: number[] = [];
+    const vertC: number[] = [];
+    for (let i = 0; i <= 50; i++) {
+      const z = (i / 50) * zMax;
+      vertZ.push(z);
+      vertC.push(evalGaussianConcentration(x0, 0, z, true));
+    }
+
+    return { xLine, cLine, cUndepletedLine, peakC, peakX, x0, sy, sz, crossY, crossC, vertZ, vertC };
+  }, [releaseRate, windSpeed, releaseHeight, stability, maxDistance, depositionVelocityCmS, rainRateMmHr, mixingHeightM, sliceDistanceM]);
 
   const dossierPayload: CalculationDossierPayload = useMemo(() => ({
     reportTitle: 'EPA-400 Atmospheric Radioactive Plume Dispersion Dossier',
@@ -621,11 +666,64 @@ const PlumeModule: React.FC = () => {
           </div>
         )}
 
-        {/* TAB 2: Centerline Profile */}
+        {/* TAB 2: Centerline Profile + Crosswind C(y) & Vertical C(z) Gaussian Slices */}
         {activeTab === 'centerline' && (
-          <div style={{ height: '100%', minHeight: '480px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ height: '100%', minHeight: '480px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
             {renderQuickControls()}
-            <div style={{ height: '360px', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '10px', backgroundColor: 'rgba(5, 10, 18, 0.6)' }}>
+
+            {/* Wet/Dry Deposition & Slice Distance Bar */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', background: 'rgba(15, 23, 42, 0.7)', border: '1px solid rgba(56, 189, 248, 0.25)', borderRadius: '8px', padding: '10px 14px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '0.76rem', color: '#38bdf8', fontWeight: 700 }}>🌧️ Wet/Dry Plume Depletion:</span>
+                {[
+                  { label: 'Noble Gas (v_d=0, Dry)', vd: 0.0, rain: 0.0 },
+                  { label: 'Cs-137 Aerosol (v_d=0.3 cm/s)', vd: 0.3, rain: 0.0 },
+                  { label: 'I-131 Vapor (v_d=1.0 cm/s)', vd: 1.0, rain: 0.0 },
+                  { label: 'Rainout Washout (5 mm/h + v_d=0.5)', vd: 0.5, rain: 5.0 }
+                ].map(p => {
+                  const active = depositionVelocityCmS === p.vd && rainRateMmHr === p.rain;
+                  return (
+                    <button
+                      key={p.label}
+                      type="button"
+                      onClick={() => {
+                        setDepositionVelocityCmS(p.vd);
+                        setRainRateMmHr(p.rain);
+                      }}
+                      style={{
+                        fontSize: '0.72rem',
+                        padding: '4px 8px',
+                        borderRadius: '5px',
+                        cursor: 'pointer',
+                        fontWeight: active ? 700 : 500,
+                        background: active ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255,255,255,0.04)',
+                        color: active ? '#38bdf8' : '#94a3b8',
+                        border: `1px solid ${active ? '#38bdf8' : '#334155'}`
+                      }}
+                    >
+                      {p.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: '260px' }}>
+                <span style={{ fontSize: '0.75rem', color: '#cbd5e1', whiteSpace: 'nowrap' }}>
+                  Slice x₀ = <strong style={{ color: '#facc15' }}>{centerlineData.x0} m</strong> (σ_y={centerlineData.sy.toFixed(1)}m, σ_z={centerlineData.sz.toFixed(1)}m)
+                </span>
+                <input
+                  type="range"
+                  min={20}
+                  max={maxDistance}
+                  step={10}
+                  value={sliceDistanceM}
+                  onChange={e => setSliceDistanceM(Number(e.target.value))}
+                  style={{ accentColor: '#facc15', width: '120px' }}
+                />
+              </div>
+            </div>
+
+            <div style={{ height: '290px', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '10px', backgroundColor: 'rgba(5, 10, 18, 0.6)' }}>
               <Plot
                 data={[
                   {
@@ -633,11 +731,23 @@ const PlumeModule: React.FC = () => {
                     y: centerlineData.cLine,
                     type: 'scatter',
                     mode: 'lines',
-                    name: 'Ground Centerline C(x, 0, 0)',
+                    name: 'Ground Centerline C(x, 0, 0) [With Depletion & Lid]',
                     line: { color: 'var(--color-primary)', width: 3 },
                     fill: 'tozeroy',
                     fillcolor: 'rgba(0, 229, 255, 0.1)'
                   },
+                  ...(depositionVelocityCmS > 0 || rainRateMmHr > 0
+                    ? [
+                        {
+                          x: centerlineData.xLine,
+                          y: centerlineData.cUndepletedLine,
+                          type: 'scatter' as const,
+                          mode: 'lines' as const,
+                          name: 'Un-depleted Reference (v_d=0, Λ=0)',
+                          line: { color: '#94a3b8', width: 1.8, dash: 'dot' as const }
+                        }
+                      ]
+                    : []),
                   {
                     x: [centerlineData.peakX],
                     y: [centerlineData.peakC],
@@ -652,13 +762,23 @@ const PlumeModule: React.FC = () => {
                 ]}
                 layout={{
                   autosize: true,
-                  title: { text: 'Ground-Level Centerline Concentration C(x, y=0, z=0) vs. Downwind Distance', font: { color: '#E0E1DD', size: 14 } },
+                  title: { text: 'Ground-Level Centerline Concentration C(x, y=0, z=0) vs. Downwind Distance', font: { color: '#E0E1DD', size: 13 } },
                   xaxis: { title: 'Downwind Distance x (meters)', gridcolor: '#1e293b' },
                   yaxis: { title: 'Ground Concentration (Ci/m³)', gridcolor: '#1e293b' },
+                  shapes: [
+                    {
+                      type: 'line',
+                      x0: centerlineData.x0,
+                      x1: centerlineData.x0,
+                      y0: 0,
+                      y1: Math.max(centerlineData.peakC * 1.1, 1e-8),
+                      line: { color: '#facc15', width: 1.8, dash: 'dash' }
+                    }
+                  ],
                   paper_bgcolor: 'transparent',
                   plot_bgcolor: 'transparent',
-                  font: { color: '#E0E1DD' },
-                  margin: { l: 70, r: 30, t: 40, b: 50 },
+                  font: { color: '#E0E1DD', size: 11 },
+                  margin: { l: 65, r: 25, t: 35, b: 45 },
                   showlegend: true
                 }}
                 useResizeHandler={true}
@@ -666,19 +786,76 @@ const PlumeModule: React.FC = () => {
               />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '14px' }}>
-              <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '16px' }}>
-                <h4 style={{ margin: '0 0 8px 0', color: 'var(--color-accent)' }}>Plume Ground Touchdown Dynamics</h4>
-                <p style={{ fontSize: '0.85rem', color: '#94a3b8', margin: 0, lineHeight: '1.5' }}>
-                  For an elevated release (<InlineMath math={`H = ${releaseHeight}\\text{ m}`} />), ground-level concentration is zero immediately at the stack base. The plume expands downward at rate <InlineMath math="\sigma_z(x)" /> until touching down at <strong style={{ color: '#fff' }}>{centerlineData.peakX.toFixed(0)} meters</strong>, after which atmospheric dilution causes continuous concentration decay.
-                </p>
+            {/* Interactive Crosswind C(x_0, y, 0) & Vertical C(x_0, 0, z) Gaussian Slice Plots */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '14px' }}>
+              <div style={{ height: '240px', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '10px', backgroundColor: 'rgba(5, 10, 18, 0.6)' }}>
+                <Plot
+                  data={[
+                    {
+                      x: centerlineData.crossY,
+                      y: centerlineData.crossC,
+                      type: 'scatter',
+                      mode: 'lines',
+                      name: `Crosswind C(x=${centerlineData.x0}m, y, 0)`,
+                      line: { color: '#10b981', width: 2.5 },
+                      fill: 'tozeroy',
+                      fillcolor: 'rgba(16, 185, 129, 0.14)'
+                    }
+                  ]}
+                  layout={{
+                    autosize: true,
+                    title: { text: `Lateral Crosswind Bell Curve C(y) @ x₀ = ${centerlineData.x0}m (σ_y = ${centerlineData.sy.toFixed(1)}m)`, font: { color: '#E0E1DD', size: 12 } },
+                    xaxis: { title: 'Crosswind Offset y (meters)', gridcolor: '#1e293b' },
+                    yaxis: { title: 'Concentration (Ci/m³)', gridcolor: '#1e293b' },
+                    paper_bgcolor: 'transparent',
+                    plot_bgcolor: 'transparent',
+                    font: { color: '#E0E1DD', size: 10 },
+                    margin: { l: 60, r: 20, t: 32, b: 40 }
+                  }}
+                  useResizeHandler={true}
+                  style={{ width: '100%', height: '100%' }}
+                  config={{ displayModeBar: false, responsive: true }}
+                />
               </div>
 
-              <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '16px' }}>
-                <h4 style={{ margin: '0 0 8px 0', color: 'var(--color-primary)' }}>Atmospheric Dilution Capacity</h4>
-                <p style={{ fontSize: '0.85rem', color: '#94a3b8', margin: 0, lineHeight: '1.5' }}>
-                  Dilution is inversely proportional to wind speed <InlineMath math="u" /> and the product of dispersion coefficients <InlineMath math="\sigma_y \cdot \sigma_z" />. Higher wind speeds stretch the plume along the wind axis, reducing localized air concentration.
-                </p>
+              <div style={{ height: '240px', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '10px', backgroundColor: 'rgba(5, 10, 18, 0.6)' }}>
+                <Plot
+                  data={[
+                    {
+                      x: centerlineData.vertC,
+                      y: centerlineData.vertZ,
+                      type: 'scatter',
+                      mode: 'lines',
+                      name: `Vertical Profile C(x=${centerlineData.x0}m, 0, z)`,
+                      line: { color: '#a855f7', width: 2.5 },
+                      fill: 'tozerox',
+                      fillcolor: 'rgba(168, 85, 247, 0.14)'
+                    }
+                  ]}
+                  layout={{
+                    autosize: true,
+                    title: { text: `Vertical Elevation Profile C(z) @ x₀ = ${centerlineData.x0}m (H = ${releaseHeight}m, Lid = ${mixingHeightM}m)`, font: { color: '#E0E1DD', size: 12 } },
+                    xaxis: { title: 'Concentration (Ci/m³)', gridcolor: '#1e293b' },
+                    yaxis: { title: 'Altitude z (meters)', gridcolor: '#1e293b' },
+                    shapes: [
+                      {
+                        type: 'line',
+                        x0: 0,
+                        x1: Math.max(...centerlineData.vertC, 1e-8),
+                        y0: releaseHeight,
+                        y1: releaseHeight,
+                        line: { color: '#facc15', width: 1.5, dash: 'dot' }
+                      }
+                    ],
+                    paper_bgcolor: 'transparent',
+                    plot_bgcolor: 'transparent',
+                    font: { color: '#E0E1DD', size: 10 },
+                    margin: { l: 55, r: 20, t: 32, b: 40 }
+                  }}
+                  useResizeHandler={true}
+                  style={{ width: '100%', height: '100%' }}
+                  config={{ displayModeBar: false, responsive: true }}
+                />
               </div>
             </div>
           </div>
@@ -768,6 +945,45 @@ const PlumeModule: React.FC = () => {
                 <span style={{ fontSize: '0.82rem', color: '#cbd5e1', lineHeight: '1.4' }}>
                   {STABILITY_INFO[stability].desc}
                 </span>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
+                <div className="form-group">
+                  <label className="form-label" style={{ fontSize: '0.75rem' }}>Dry Deposition v_d (cm/s)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="10"
+                    className="form-control"
+                    value={depositionVelocityCmS}
+                    onChange={e => setDepositionVelocityCmS(Math.max(0, Number(e.target.value)))}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label" style={{ fontSize: '0.75rem' }}>Rain Rate R (mm/h)</label>
+                  <input
+                    type="number"
+                    step="1"
+                    min="0"
+                    max="100"
+                    className="form-control"
+                    value={rainRateMmHr}
+                    onChange={e => setRainRateMmHr(Math.max(0, Number(e.target.value)))}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label" style={{ fontSize: '0.75rem' }}>Inversion Lid H_mix (m)</label>
+                  <input
+                    type="number"
+                    step="50"
+                    min="50"
+                    max="5000"
+                    className="form-control"
+                    value={mixingHeightM}
+                    onChange={e => setMixingHeightM(Math.max(50, Number(e.target.value)))}
+                  />
+                </div>
               </div>
             </div>
           </div>
