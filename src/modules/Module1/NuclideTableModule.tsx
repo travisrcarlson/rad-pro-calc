@@ -702,7 +702,7 @@ export const NuclideTableModule: React.FC = () => {
                   🎯 Point Dose (1A)
                 </button>
                 <button className="btn btn-primary" onClick={() => { launchInternalDose(inspectNuclide); setInspectNuclide(null); }} style={{ fontSize: '0.78rem' }}>
-                  🫁 Internal Dose (1C)
+                  🫁 Internal Dose (3)
                 </button>
                 <button className="btn btn-primary" onClick={() => { launchShielding(inspectNuclide); setInspectNuclide(null); }} style={{ fontSize: '0.78rem' }}>
                   🧱 Shielding (14)

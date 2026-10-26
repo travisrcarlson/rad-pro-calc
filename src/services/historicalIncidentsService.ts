@@ -278,7 +278,7 @@ export function buildIncidentDossierPayload(
 ): CalculationDossierPayload {
   return {
     reportTitle: `Historical Radiation Incident Forensic Dossier: ${incident.name}`,
-    moduleName: 'Historical Radiation Incidents Database',
+    moduleName: 'Module 30: Historical Radiation Incidents Database',
     statuteCitation: `${incident.iaeaReportReference} / IAEA INES Level ${incident.inesLevel}`,
     verificationTestId: 'VTEST-28 / IAEA-INES',
     operatorName,
@@ -320,7 +320,7 @@ export function buildGlobalIncidentDossierPayload(
   const inesLabel = record.ines !== null ? `INES Level ${record.ines}` : 'INES Unrated / National Occurrence';
   return {
     reportTitle: `Global Incident Register Record: [${record.id}] ${record.title}`,
-    moduleName: 'Global Radiological Incident & Near-Miss Register',
+    moduleName: 'Module 30: Global Radiological Incident & Near-Miss Register',
     statuteCitation: `${record.source} / ${inesLabel}`,
     verificationTestId: 'VTEST-28 / IAEA-NEWS',
     operatorName,

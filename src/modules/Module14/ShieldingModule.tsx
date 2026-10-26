@@ -373,7 +373,7 @@ export const ShieldingModule: React.FC = () => {
   const dossierPayload: CalculationDossierPayload = useMemo(
     () => ({
       reportTitle: 'ICS-208 Radiation Shielding & ANSI/ANS-6.4.3 GP Buildup Engineering Dossier',
-      moduleName: 'Module 14 (Shielding & ALARA Design)',
+      moduleName: 'Module 14: Multi-Layer Shielding, GP Buildup & NIST XCOM Engine',
       statuteCitation: 'ANSI/ANS-6.4.3-1991 / NCRP Report No. 151 / NIST XCOM SRD 8',
       verificationTestId: 'VTEST-03',
       operatorName: 'Radiation Shielding Physicist',

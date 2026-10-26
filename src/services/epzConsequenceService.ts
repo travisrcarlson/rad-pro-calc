@@ -225,7 +225,7 @@ export function buildEPZDossierPayload(
 ): CalculationDossierPayload {
   return {
     reportTitle: `Emergency Planning Zone (EPZ) Consequence Assessment: ${input.plantName}`,
-    moduleName: 'Emergency Planning & Population Consequence Engine',
+    moduleName: 'Module 31: Emergency Planning & Population Consequence Engine',
     statuteCitation: 'EPA-400-R-92-001 (EPA PAG Manual 2017) / NUREG-0654 / IAEA GSR Part 7',
     verificationTestId: 'VTEST-33 / EPA-PAG-EPZ',
     operatorName,

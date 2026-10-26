@@ -1711,7 +1711,7 @@ const METHOD_DOCS: MethodDoc[] = [
     moduleName: 'Verification Tests',
     domain: 'Regulatory Standards & Transport Security',
     title: 'IEEE 730-2014 & ASME NQA-1 Automated Scientific Verification, Error Bounds & IEEE 754 Precision',
-    overview: 'Executes 35 analytical benchmark vectors and 8 extreme boundary stress tests across all platform modules, certifying deterministic accuracy (<0.5% relative error), singularity clamping, and 64-bit IEEE 754 floating-point machine epsilon integrity.',
+    overview: 'Executes 42 analytical benchmark vectors and 8 extreme boundary stress tests across all platform modules, certifying deterministic accuracy (<0.5% relative error), singularity clamping, and 64-bit IEEE 754 floating-point machine epsilon integrity.',
     standards: [
       { org: 'IEEE', code: 'Std 730-2014', year: '2014', title: 'IEEE Standard for Software Quality Assurance Processes' },
       { org: 'ASME', code: 'NQA-1-2022', year: '2022', title: 'Quality Assurance Requirements for Nuclear Facility Applications (Part II Subpart 2.7 Computer Software)' },
@@ -1727,7 +1727,7 @@ const METHOD_DOCS: MethodDoc[] = [
       {
         stepTitle: '1. ASME NQA-1 Analytical Verification Protocol',
         explanation: 'Every computational kernel is tested against closed-form analytical solutions from ICRP, NCRP, IAEA, and ANSI standards. Relative percentage drift δ_rel must remain strictly below benchmark tolerance τ_tol:',
-        math: '\\max_{k \\in [1, 35]} \\delta_{\\text{rel}, k} \\le 0.50\\%'
+        math: '\\max_{k \\in [1, 42]} \\delta_{\\text{rel}, k} \\le 0.50\\%'
       },
       {
         stepTitle: '2. IEEE 754 Binary64 Machine Epsilon Verification',
@@ -1744,7 +1744,7 @@ const METHOD_DOCS: MethodDoc[] = [
       'Deterministic IEEE 754 double-precision execution without non-standard flush-to-zero optimizations.',
       'Boundary guards intercept zero/negative distances, voltages, and superluminal velocities prior to division.'
     ],
-    benchmarks: 'Certifies all 43 verification vectors (VTEST-01 through VTEST-35 and STRESS-01 through STRESS-08).'
+    benchmarks: 'Certifies all 50 verification vectors (VTEST-01 through VTEST-42 and STRESS-01 through STRESS-08).'
   },
 
   // 35. Module 35
@@ -2012,10 +2012,10 @@ const METHOD_DOCS: MethodDoc[] = [
     benchmarks: 'Validated against IAEA FENDL-3.2 14.1 MeV cross-sections and ITER nuclear analysis benchmarks.'
   },
 
-  // Module 11 — Global Nuclear Facility, Detonation & CTBTO IMS Map
+  // Module 31 (CTBTO IMS) — Global Nuclear Facility, Detonation & CTBTO IMS Map
   {
-    id: 'M11-GlobalNuclearMap',
-    moduleId: 'Module 11',
+    id: 'M31-CTBTO-IMS',
+    moduleId: 'Module 31 (CTBTO IMS)',
     moduleName: 'Global Nuclear Map & CTBTO IMS',
     domain: 'Environmental Dispersion & Response',
     title: 'Gutenberg-Richter / Murphy-Ringdal Seismic Yield Inversion (mb ↔ W), CTBTO 4-Technology IMS Propagation & Haversine Geodesy',
@@ -2239,7 +2239,7 @@ const LiteratureModule: React.FC = () => {
     <div className="literature-module">
       <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
         <div>
-          <h2 style={{ margin: '0 0 6px 0' }}>📚 Module 30 — Core Literature, Physics Formulations, Reference Calculators &amp; Standards</h2>
+          <h2 style={{ margin: '0 0 6px 0' }}>📚 Module 35 — Core Literature, Physics Formulations, Reference Calculators &amp; Standards</h2>
           <p style={{ color: 'var(--color-text-muted)', margin: 0 }}>
             Comprehensive peer-reviewed scientific methodology compendium documenting the governing mathematical equations, analytical derivations, interactive reference calculators, and international regulatory standards across all active and expansion modules.
           </p>

@@ -243,7 +243,7 @@ const PlumeModule: React.FC = () => {
 
   const dossierPayload: CalculationDossierPayload = useMemo(() => ({
     reportTitle: 'EPA-400 Atmospheric Radioactive Plume Dispersion Dossier',
-    moduleName: 'Module 13 (Atmospheric Plume Modeling)',
+    moduleName: 'Module 13: Atmospheric Dispersion & Gaussian Plume Modeling',
     statuteCitation: 'EPA-400-R-92-001 (EPA PAG Manual) / NRC Regulatory Guide 1.145',
     verificationTestId: 'VTEST-09',
     operatorName: 'Atmospheric Consequence Analyst',

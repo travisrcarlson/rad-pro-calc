@@ -650,7 +650,7 @@ const EquipmentLibraryModule: React.FC = () => {
                     style={{ fontSize: '0.76rem', padding: '6px 12px' }}
                     onClick={() => navigate(`/first-responder?doseRate=${inspectBareDoseUSvHr}`)}
                   >
-                    🚨 First Responder (Mod 17)
+                    🚨 First Responder (Mod 6)
                   </button>
                 </div>
               </div>

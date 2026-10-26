@@ -737,7 +737,7 @@ export function buildGeospatialDossierPayload(
 
   return {
     reportTitle: `Global Nuclear Facility & Detonation Dossier: ${pin.name}`,
-    moduleName: 'Global Nuclear Geospatial & 3D Earth Hub',
+    moduleName: 'Module 31: Global Nuclear Geospatial & 3D Earth Hub',
     statuteCitation,
     verificationTestId: isCTBTO ? 'VTEST-34 / CTBTO-IMS-STATION' : isDetonation ? 'VTEST-35 / DETONATION-YIELD-SCALING' : 'VTEST-33 / IAEA-GEOSPATIAL',
     operatorName,

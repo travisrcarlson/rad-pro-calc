@@ -133,7 +133,7 @@ const RegModule: React.FC = () => {
             <VerificationBadge testId="VTEST-01" label="ICRP 103 / 10 CFR 20" />
           </div>
           <h2 style={{ margin: '6px 0 0 0', fontSize: '1.4rem', letterSpacing: '0.03em' }}>
-            Module 32 — Regulatory Dose Compliance &amp; ALARA Administration Dashboard
+            Module 33 — Regulatory Dose Compliance &amp; ALARA Administration Dashboard
           </h2>
           <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
             Track occupational exposure records against Federal annual limits and internal ALARA investigation levels across Whole Body (TEDE), Lens of Eye (LDE), and Shallow Extremities (SDE).

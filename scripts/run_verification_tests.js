@@ -7,7 +7,7 @@ const tests = [
   {
     id: 'VTEST-01',
     name: 'Co-60 Specific Gamma Ray Constant (Γ)',
-    module: 'Module 1 / 2A (External Dose)',
+    module: 'Module 1A / 28 (External Dose & Nuclide DB)',
     standard: 'ICRP Publication 107 & NCRP Report 151',
     expected: 308.5,
     compute: () => 308.5,
@@ -17,7 +17,7 @@ const tests = [
   {
     id: 'VTEST-02',
     name: 'Cs-137 / Ba-137m Specific Gamma Constant (Γ)',
-    module: 'Module 1 / 2A (External Dose)',
+    module: 'Module 1A / 28 (External Dose & Nuclide DB)',
     standard: 'ICRP Publication 107',
     expected: 77.20,
     compute: () => 77.20,
@@ -27,7 +27,7 @@ const tests = [
   {
     id: 'VTEST-03',
     name: 'Tenth-Value Layer (TVL) Decade Attenuation',
-    module: 'Module 2B / 4 / 8 (Shielding)',
+    module: 'Module 1B / 4 / 14 (Shielding)',
     standard: 'NCRP Report 147 / 151',
     expected: 0.0010,
     compute: () => Math.pow(10, -3.0),
@@ -37,7 +37,7 @@ const tests = [
   {
     id: 'VTEST-04',
     name: 'Committed Effective Dose E(50) — I-131 Ingestion',
-    module: 'Module 2C / 17 (Internal Dosimetry)',
+    module: 'Module 1C / 3 (Internal Dosimetry)',
     standard: 'ICRP Publication 119',
     expected: 2.200,
     compute: () => (100000 * 2.2e-8) * 1000,
@@ -47,7 +47,7 @@ const tests = [
   {
     id: 'VTEST-05',
     name: 'IAEA SSR-6 Transport Index (TI) Formulation',
-    module: 'Module 4 (Transport Packaging)',
+    module: 'Module 15 (Transport Packaging)',
     standard: 'IAEA Safety Standards Series No. SSR-6',
     expected: 3.50,
     compute: () => 35.0 / 10.0,
@@ -57,7 +57,7 @@ const tests = [
   {
     id: 'VTEST-06',
     name: 'Transient Equilibrium Peak Time (Mo-99 → Tc-99m)',
-    module: 'Module 6 (Decay Kinematics)',
+    module: 'Module 24 (Radiolysis & Decay Chains)',
     standard: 'Knoll 4th Ed. / Bateman Equations (1910)',
     expected: 22.84,
     compute: () => {
@@ -73,7 +73,7 @@ const tests = [
   {
     id: 'VTEST-07',
     name: 'Ray-AABB 3D Geometric Obstacle Penetration Length',
-    module: 'Module 8 / 9 (3D Spatial Engine)',
+    module: 'Module 2 / 4 (3D Spatial Engine)',
     standard: 'Kay & Kajiya Slab Algorithm (1986)',
     expected: 2.000,
     compute: () => {
@@ -92,7 +92,7 @@ const tests = [
   {
     id: 'VTEST-08',
     name: 'Flash X-Ray Nanosecond Pulse Instantaneous Flux',
-    module: 'Module 10 (Pulsed X-Ray)',
+    module: 'Module 16 (Pulsed & Flash X-Ray)',
     standard: 'Golden Engineering XR200 Spec / ANSI N43.3',
     expected: 194.40,
     compute: () => (((2.70 * 1e-6) / (50.0 * 1e-9)) * 3600) / 1000,
@@ -102,7 +102,7 @@ const tests = [
   {
     id: 'VTEST-09',
     name: 'Gaussian Plume Briggs Dispersion Coefficients (Class D)',
-    module: 'Module 13 (Atmospheric Plume)',
+    module: 'Module 13 (Plume Atmospheric Model)',
     standard: 'Briggs (1973) / EPA AERMOD Model',
     expected: 76.28,
     compute: () => 0.08 * 1000 * Math.pow(1 + 0.0001 * 1000, -0.5),
@@ -112,7 +112,7 @@ const tests = [
   {
     id: 'VTEST-10',
     name: 'ANSI Z136.1 Laser Nominal Ocular Hazard Distance (NOHD)',
-    module: 'Module 15 (Laser Safety)',
+    module: 'Module 19 (Laser Safety & NOHD)',
     standard: 'ANSI Z136.1-2014 Table B1',
     expected: 157.65,
     compute: () => (Math.sqrt((4 * 1.0) / (Math.PI * 50.0)) - 0.002) / 0.001,
@@ -122,7 +122,7 @@ const tests = [
   {
     id: 'VTEST-11',
     name: 'Duane-Hunt Law — X-Ray Minimum Wavelength (λmin)',
-    module: 'Module 16 (X-Ray Tube Physics)',
+    module: 'Module 17 (X-Ray Tube Simulator)',
     standard: 'Duane & Hunt (1915) Physical Review',
     expected: 0.010332,
     compute: () => 1239.8419 / (120.0 * 1000),
@@ -132,7 +132,7 @@ const tests = [
   {
     id: 'VTEST-12',
     name: 'FCC OET-65 Radar Antenna Fraunhofer Far-Field Boundary',
-    module: 'Module 18 (Electronic Warfare EMR)',
+    module: 'Module 20 (EW EMR & Microwave)',
     standard: 'FCC OET Bulletin 65 & IEEE C95.1-2019',
     expected: 91.26,
     compute: () => (2 * 1.2 * 1.2 * 9.5e9) / 299792458,
@@ -142,7 +142,7 @@ const tests = [
   {
     id: 'VTEST-13',
     name: 'Heterogeneous Reactor Lattice Infinite Multiplication (k∞)',
-    module: 'Module 19 (Criticality & Reactor Core)',
+    module: 'Module 21 (Criticality & Reactor Core)',
     standard: 'Lamarsh & Baratta 3rd Ed. / IAEA-TECDOC-808',
     expected: 1.3420,
     compute: () => 1.3420,
@@ -152,7 +152,7 @@ const tests = [
   {
     id: 'VTEST-14',
     name: 'HPGe Gamma Spectrometry FWHM Energy Resolution (R)',
-    module: 'Module 20 (MCA Spectroscopy)',
+    module: 'Module 25 (Gamma Spectroscopy)',
     standard: 'IEEE Std 325-1996 (R2002)',
     expected: 0.1388,
     compute: () => (1.85 / 1332.50) * 100,
@@ -162,7 +162,7 @@ const tests = [
   {
     id: 'VTEST-15',
     name: 'MARSSIM Sign Test Nonparametric Sample Size (N)',
-    module: 'Module 22 (MARSSIM Site Release)',
+    module: 'Module 27 (MARSSIM Decommissioning)',
     standard: 'NUREG-1575 (Rev. 1) Eq. 5-2',
     expected: 12,
     compute: () => {
@@ -178,7 +178,7 @@ const tests = [
   {
     id: 'VTEST-16',
     name: 'AAPM TG-43U1 Brachytherapy Reference Point Dose Rate',
-    module: 'Module 23 (AAPM TG-43 Brachytherapy)',
+    module: 'Module 26 (Brachytherapy Planner)',
     standard: 'AAPM TG-43U1 (Rivard et al. 2004)',
     expected: 9.650,
     compute: () => (1.0 * 0.965) * 10,
@@ -188,7 +188,7 @@ const tests = [
   {
     id: 'VTEST-17',
     name: 'Industrial Radiography Controlled Area Boundary Distance',
-    module: 'Module 3 (NDT Industrial Radiography)',
+    module: 'Module 5 (Radiation Map & NDT)',
     standard: '10 CFR § 34.41 & IAEA SSG-11',
     expected: 109.66,
     compute: () => Math.sqrt((130.0 * 1850.0) / 20.0),
@@ -198,7 +198,7 @@ const tests = [
   {
     id: 'VTEST-18',
     name: 'Semi-Infinite Cloud Air Submersion Dose Rate (Xe-133)',
-    module: 'Module 5 (Cloud & Ground Plane Shine)',
+    module: 'Module 13 / 33 (Cloud & Ground Shine)',
     standard: 'EPA Federal Guidance Report No. 12 (Table III.1)',
     expected: 0.05616,
     compute: () => 10000.0 * 5.616e-6,
@@ -208,7 +208,7 @@ const tests = [
   {
     id: 'VTEST-19',
     name: 'Synchrotron Bending Magnet Critical Photon Energy (Ec)',
-    module: 'Module 11 (Synchrotron & FEL Physics)',
+    module: 'Module 16 / 29 (Synchrotron & Equipment)',
     standard: 'Wiedemann Particle Accelerator Physics / Jackson',
     expected: 7.182,
     compute: () => 0.665 * Math.pow(3.0, 2) * 1.20,
@@ -218,7 +218,7 @@ const tests = [
   {
     id: 'VTEST-20',
     name: 'Thermal Neutron Activation Saturation Yield (Au-198)',
-    module: 'Module 12 (Neutron Activation Analysis)',
+    module: 'Module 1D / 12 (Neutron Activation)',
     standard: 'IAEA-NDS-2016 / Glasstone Reactor Theory',
     expected: 301.62,
     compute: () => (1e9 * 98.65e-24 * ((0.001 / 196.96657) * 6.02214076e23)) / 1000,
@@ -228,7 +228,7 @@ const tests = [
   {
     id: 'VTEST-21',
     name: 'EPA Protective Action Guide Early Phase Evacuation Threshold',
-    module: 'Module 14 (Emergency Management & PAGs)',
+    module: 'Module 14 (Shielding & ALARA PAGs)',
     standard: 'EPA-400-R-92-001 (EPA PAG Manual 2017)',
     expected: 1.450,
     compute: () => 14.50 / 10.0,
@@ -238,7 +238,7 @@ const tests = [
   {
     id: 'VTEST-22',
     name: 'Cs-137 Systemic Biokinetic Effective Half-Life (Te)',
-    module: 'Module 17 (Organ Biokinetics & Retention)',
+    module: 'Module 3 (Internal Dosimetry & Biokinetics)',
     standard: 'ICRP Publication 68 & ICRP Publication 30',
     expected: 108.91,
     compute: () => (10986.72 * 110.0) / (10986.72 + 110.0),
@@ -248,7 +248,7 @@ const tests = [
   {
     id: 'VTEST-23',
     name: 'Galactic Cosmic Radiation Dose Rate at FL390 (Solar Min)',
-    module: 'Module 21 (Cosmic Radiation & Aviation)',
+    module: 'Module 35 (Core Literature & Cosmic Physics)',
     standard: 'FAA CARI-7 & ICRP Publication 132',
     expected: 5.50,
     compute: () => 5.50,
@@ -258,7 +258,7 @@ const tests = [
   {
     id: 'VTEST-24',
     name: 'Katz-Penfold Beta Particle CSDA Maximum Range (P-32)',
-    module: 'Module 24 (Alpha/Beta Stopping Power)',
+    module: 'Module 6 (Tactical CBRN & Stopping Power)',
     standard: 'Katz & Penfold (1952) / ICRU Report 37',
     expected: 7.90,
     compute: () => 0.412 * Math.pow(1.710, 1.265 - 0.0954 * Math.log(1.710)) * 10,
@@ -268,7 +268,7 @@ const tests = [
   {
     id: 'VTEST-25',
     name: 'Klein-Nishina Total Incoherent Compton Cross-Section (α = 1.0)',
-    module: 'Monte Carlo Micro-Kernel (Photon Transport)',
+    module: 'Module 23 (Monte Carlo Micro-Kernel)',
     standard: 'Klein & Nishina (1929) / Evans Atomic Nucleus',
     expected: 0.2865,
     compute: () => {
@@ -286,7 +286,7 @@ const tests = [
   {
     id: 'VTEST-26',
     name: 'Currie Critical Decision Level (Lc) Detection Limit (B = 100)',
-    module: 'Live Hardware & Detector Metrology Engine',
+    module: 'Module 32 (Hardware Pulse Counter)',
     standard: 'L.A. Currie (1968) Anal. Chem. 40, 586-593 Eq. 15',
     expected: 23.30,
     compute: () => 2.33 * Math.sqrt(100.0),
@@ -296,7 +296,7 @@ const tests = [
   {
     id: 'VTEST-27',
     name: 'Radiographic Geometric Magnification (M) & Penumbra Unsharpness (Ug)',
-    module: 'X-Ray Distortion & Geometry (Module 16B)',
+    module: 'Module 18 (X-Ray Distortion & Geometry)',
     standard: 'Bushong Radiologic Science 12th Ed. / ASME BPVC Sec V Art. 2',
     expected: 0.3000,
     compute: () => {
@@ -313,7 +313,7 @@ const tests = [
   {
     id: 'VTEST-28',
     name: 'Way-Wigner Fission Product Decay & In-Shelter Dose Integration (t=1h to 24h, PF=10)',
-    module: 'CBRN Consequence & Fallout (Module 25)',
+    module: 'Module 7 (CBRN Fallout & Shelter)',
     standard: 'NCRP Report No. 165 / Glasstone & Dolan (1977)',
     expected: 23.5194,
     compute: () => {
@@ -331,7 +331,7 @@ const tests = [
   {
     id: 'VTEST-29',
     name: 'Nuclear Weapon Prompt Thermal Radiation Fluence (10 kT at 2.0 km, tau=0.85)',
-    module: 'Nuclear Weapon Effects (Module 26)',
+    module: 'Module 8 (Prompt Blast & HEMP)',
     standard: 'Glasstone & Dolan (1977) / Kingery-Bulmash',
     expected: 5.9186,
     compute: () => {
@@ -350,7 +350,7 @@ const tests = [
   {
     id: 'VTEST-30',
     name: 'Prussian Blue Accelerated Cs-137 Biokinetic Decorporation at Day 60',
-    module: 'Medical Countermeasures (Module 27)',
+    module: 'Module 9 (Medical Countermeasures)',
     standard: 'ICRP Publication 78 / NCRP Report No. 166',
     expected: 225.0000,
     compute: () => {
@@ -371,7 +371,7 @@ const tests = [
   {
     id: 'VTEST-31',
     name: 'Godiva Prompt-Critical Burst FWHM Pulse Duration (+$0.10 Prompt Step)',
-    module: 'CAAS Criticality Excursions (Module 28)',
+    module: 'Module 22 (CAAS Criticality Alarms)',
     standard: 'ANSI/ANS-8.3 / Hansen & Maier (LA-UR-77-2400)',
     expected: 64.9846,
     compute: () => {
@@ -390,7 +390,7 @@ const tests = [
   {
     id: 'VTEST-32',
     name: 'Sensor Mesh Inverse Multilateration Localization Convergence',
-    module: 'Tactical GIS & ATAK Hub (Module 29)',
+    module: 'Module 10 (Tactical GIS & ATAK Hub)',
     standard: 'Cursor-on-Target / Inverse Multilateration (DoD-CoT)',
     expected: 495.0141,
     compute: () => {
@@ -407,7 +407,7 @@ const tests = [
   {
     id: 'VTEST-33',
     name: 'IAEA GSR Part 7 & EPA PAG 16-Sector Keyhole Evacuation Arc Sweep',
-    module: 'EPZ Consequence & Population Engine (Module 31)',
+    module: 'Module 11 / 30 / 31 (EPZ & Incident Consequence)',
     standard: 'EPA-400-R-92-001 / IAEA GSR Part 7 / NUREG-0654',
     expected: 67.5000,
     compute: () => {
@@ -423,7 +423,7 @@ const tests = [
   {
     id: 'VTEST-34',
     name: 'CTBTO Murphy-Ringdal Empirical Teleseismic Yield Inversion (mb 5.55)',
-    module: 'CTBTO Seismic Inversion Engine (Module 31)',
+    module: 'Module 31 (Global 3D Earth Hub - CTBTO)',
     standard: 'CTBT Protocol Part I / Murphy (1981) / Ringdal (1992)',
     expected: 100.0000,
     compute: () => {
@@ -442,7 +442,7 @@ const tests = [
   {
     id: 'VTEST-35',
     name: 'Historical Detonation Blast Yield Proportional Marker Sizing (Castle Bravo 15 MT)',
-    module: 'Global Nuclear Map & Proving Grounds (Module 31)',
+    module: 'Module 31 (Global 3D Earth Hub)',
     standard: 'Glasstone & Dolan (1977) / Dynamic Logarithmic Blast Yield Scaling',
     expected: 18.1,
     compute: () => {
@@ -458,7 +458,7 @@ const tests = [
   {
     id: 'VTEST-36',
     name: 'ANSI/ANS-6.4.3-1991 Geometric Progression (GP) 5-Parameter Buildup Factor (Water 1.0 MeV, 10 mfp)',
-    module: 'Module 1B / 14 (Shielding & Buildup)',
+    module: 'Module 1B / 14 (Shielding & GP Buildup)',
     standard: 'ANSI/ANS-6.4.3-1991 Table 6.4.3-1 (Harima GP Formulation)',
     expected: 42.7485,
     compute: () => {
@@ -488,7 +488,7 @@ const tests = [
   {
     id: 'VTEST-38',
     name: 'Turner (1964) / EPA-454/R-99-005 Solar Insolation & Wind Speed Pasquill Stability Classification',
-    module: 'Module 6 / 11 (Live Meteorology & Plume Dispersion)',
+    module: 'Module 6 / 13 / 31 (Live Meteorology & Plume Dispersion)',
     standard: 'EPA-454/R-99-005 Table 6-1 / Turner (1964) Journal of Applied Meteorology',
     expected: 200.0000,
     compute: () => {
@@ -504,7 +504,7 @@ const tests = [
   {
     id: 'VTEST-39',
     name: 'Mariscotti (1967) Generalized Second-Difference Photopeak Significance (Z_Mariscotti)',
-    module: 'Module 28 (Gamma Spectroscopy MCA & ANSI N42.42)',
+    module: 'Module 25 (Gamma Spectroscopy MCA & ANSI N42.42)',
     standard: 'Mariscotti M.A. (1967) NIM 50(2):309-320 / IEEE Std 325',
     expected: 16.8496,
     compute: () => {
@@ -576,7 +576,7 @@ const stressTests = [
   {
     id: 'STRESS-01',
     name: 'Point Source Near-Field Singularity Clamp (r → 0)',
-    module: 'Module 1 / 2A / 8 (Numerical Safeguards)',
+    module: 'Module 1A / 4 / 28 (Numerical Safeguards)',
     standard: 'Singularity Guard: max(r, r_min) Clamp',
     check: () => {
       const rMin = 0.01; // 1 cm safe clamp
@@ -590,7 +590,7 @@ const stressTests = [
   {
     id: 'STRESS-02',
     name: 'Infinite Shielding Attenuation Asymptotic Convergence (x → ∞)',
-    module: 'Module 2B / 4 / 8 (Shielding)',
+    module: 'Module 1B / 4 / 14 (Shielding)',
     standard: 'NCRP-151 / Asymptotic Zero Convergence',
     check: () => {
       const tvl = 3.8;
@@ -603,7 +603,7 @@ const stressTests = [
   {
     id: 'STRESS-03',
     name: 'Asymptotic Long-Term Decay Convergence (t → ∞)',
-    module: 'Module 6 (Decay Kinematics)',
+    module: 'Module 24 (Decay Kinematics)',
     standard: 'Bateman Asymptotic Bound t = 1000 × T1/2',
     check: () => {
       const hl = 3600;
@@ -616,7 +616,7 @@ const stressTests = [
   {
     id: 'STRESS-04',
     name: 'Multi-Step Bateman Kinematic Activity Non-Negativity',
-    module: 'Module 6 (Bateman Kinetics)',
+    module: 'Module 24 (Bateman Kinetics)',
     standard: 'Positive Invariance of Bateman Differential System',
     check: () => {
       const l1 = Math.LN2 / (65.94 * 3600);
@@ -634,7 +634,7 @@ const stressTests = [
   {
     id: 'STRESS-05',
     name: 'Relativistic Lorentz Singularity Protection (β → 1)',
-    module: 'Module 11 (Synchrotron & FEL)',
+    module: 'Module 16 / 29 (Synchrotron & Equipment)',
     standard: 'Special Relativity Limiting Velocity c',
     check: () => {
       const beta = 0.999999999;
@@ -647,7 +647,7 @@ const stressTests = [
   {
     id: 'STRESS-06',
     name: 'Duane-Hunt Accelerated Voltage Boundary Handling (V ≤ 0)',
-    module: 'Module 16 (X-Ray Tube Physics)',
+    module: 'Module 17 (X-Ray Tube Simulator)',
     standard: 'Physical Boundary: kV > 0 Required',
     check: () => {
       const checkV = (kV) => kV > 0 ? (1239.8419 / (kV * 1000)) : null;
@@ -658,7 +658,7 @@ const stressTests = [
   {
     id: 'STRESS-07',
     name: 'Atmospheric Plume Upwind & Lateral Spatial Boundary (x ≤ 0)',
-    module: 'Module 13 (Atmospheric Plume)',
+    module: 'Module 13 (Plume Atmospheric Model)',
     standard: 'Advection Causal Boundary: Upwind Concentration = 0',
     check: () => {
       const calcConc = (x) => x <= 0 ? 0.0 : 100 / x;

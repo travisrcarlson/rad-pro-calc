@@ -1041,7 +1041,7 @@ const runAllVerificationTests = (): VerificationTest[] => {
     tests.push({
       id: 'VTEST-35',
       name: 'Historical Detonation Blast Yield Proportional Marker Sizing (Castle Bravo 15 MT)',
-      module: 'Module 11 (Global 3D Earth Hub)',
+      module: 'Module 31 (Global 3D Earth Hub)',
       category: 'Radiometry',
       standard: 'Glasstone & Dolan (1977) / Dynamic Logarithmic Blast Yield Scaling',
       standardDoc: 'Glasstone & Dolan (1977) Effects of Nuclear Weapons / SIPRI-UNODA 2,056-Event Geodatabase',
@@ -1129,7 +1129,7 @@ const runAllVerificationTests = (): VerificationTest[] => {
     tests.push({
       id: 'VTEST-38',
       name: 'Turner (1964) / EPA-454/R-99-005 Solar Insolation Pasquill Stability Classification',
-      module: 'Module 6 / 11 (Live Meteorology & Plume Dispersion)',
+      module: 'Module 6 / 13 / 31 (Live Meteorology & Plume Dispersion)',
       category: 'Atmospheric',
       standard: 'EPA-454/R-99-005 Table 6-1 / Turner (1964) J. Appl. Meteorol.',
       standardDoc: 'EPA-454/R-99-005 Meteorological Monitoring Guidance for Regulatory Modeling Applications',
@@ -1161,7 +1161,7 @@ const runAllVerificationTests = (): VerificationTest[] => {
     tests.push({
       id: 'VTEST-39',
       name: 'Mariscotti (1967) Generalized Second-Difference Photopeak Significance (Z_Mariscotti)',
-      module: 'Module 28 (Gamma Spectroscopy MCA & ANSI N42.42)',
+      module: 'Module 25 (Gamma Spectroscopy MCA & ANSI N42.42)',
       category: 'Criticality & MCA',
       standard: 'Mariscotti M.A. (1967) NIM 50(2):309-320 / IEEE Std 325',
       standardDoc: 'Mariscotti (1967): A method for automatic identification of peaks in the presence of background and its application to spectrum analysis',

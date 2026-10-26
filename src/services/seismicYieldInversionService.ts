@@ -186,7 +186,7 @@ export function buildSeismicYieldDossierPayload(
 
   return {
     reportTitle: `CTBT Seismic Yield Inversion Dossier: ${siteName}`,
-    moduleName: 'CTBTO Seismic Inversion & IMS Network Engine',
+    moduleName: 'Module 31: CTBTO Seismic Inversion & IMS Network Engine',
     statuteCitation: 'Comprehensive Nuclear-Test-Ban Treaty (CTBT) Protocol Part I / Murphy-Ringdal Seismic Models',
     verificationTestId: 'VTEST-34 / CTBTO-SEISMIC-YIELD',
     operatorName,

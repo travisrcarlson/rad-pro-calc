@@ -519,7 +519,7 @@ const SpectroscopyModule: React.FC = () => {
 
   const dossierPayload: CalculationDossierPayload = useMemo(() => ({
     reportTitle: 'Gamma-Ray Spectrometry, ANSI N42.42 Ingestion & Mariscotti Peak Analysis Dossier',
-    moduleName: 'Module 28: Gamma Spectroscopy & MCA Spectrum Analyzer',
+    moduleName: 'Module 25: Gamma Spectroscopy & MCA Spectrum Analyzer',
     statuteCitation: 'ANSI N42.42-2020 / IEEE Std 325-2014 / ANSI N42.14 / Mariscotti (1967)',
     verificationTestId: 'VTEST-14',
     operatorName: 'Gamma Radiometric Metrologist',

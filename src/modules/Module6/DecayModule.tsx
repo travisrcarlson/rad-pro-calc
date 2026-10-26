@@ -736,7 +736,7 @@ const DecayModule: React.FC = () => {
   const handleDispatchToDose = () => {
     if (!agedMixtureSummary) return;
     navigate(
-      `/calculator?nuclide=${encodeURIComponent(agedMixtureSummary.parentNuclide)}` +
+      `/dose?nuclide=${encodeURIComponent(agedMixtureSummary.parentNuclide)}` +
       `&activity=${agedMixtureSummary.totalActiveMBq.toFixed(2)}&unit=MBq` +
       `&agedMix=${encodeURIComponent(`${agedMixtureSummary.parentNuclide} chain @ t=${agedMixtureSummary.elapsedDisplay}: ${agedMixtureSummary.mixLabel}`)}`
     );
@@ -1257,9 +1257,9 @@ const DecayModule: React.FC = () => {
                 type="button"
                 onClick={handleDispatchToSpectroscopy}
                 style={{ fontSize: '0.71rem', padding: '2px 7px', borderRadius: '4px', background: 'rgba(168, 85, 247, 0.15)', color: '#c084fc', border: '1px solid rgba(168, 85, 247, 0.35)', cursor: 'pointer', fontWeight: 600 }}
-                title="Synthesize and open aged multi-isotope gamma spectrum in Module 28 MCA Spectroscopy"
+                title="Synthesize and open aged multi-isotope gamma spectrum in Module 25 MCA Spectroscopy"
               >
-                📊 MCA Spectrum (28)
+                📊 MCA Spectrum (25)
               </button>
             </div>
 

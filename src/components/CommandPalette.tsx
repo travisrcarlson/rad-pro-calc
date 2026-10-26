@@ -395,9 +395,9 @@ const COMMAND_ITEMS: CommandItem[] = [
     title: 'Module 34: Institutional Verification & Validation Engine',
     category: 'Verification & QA',
     categoryColor: '#c084fc',
-    badge: '43/43 Pass',
+    badge: '50/50 Pass',
     path: '/verify',
-    description: '43 gold-standard analytical & numerical stress benchmarks (35 analytical + 8 stress tests) verifying IEEE 730 / NQA-1 software quality.',
+    description: '50 gold-standard analytical & numerical stress benchmarks (42 analytical + 8 stress tests) verifying IEEE 730 / NQA-1 software quality.',
     keywords: ['module 34', 'm34', 'verify', 'test', 'sqa', 'validation', 'benchmark', 'qa', 'audit', 'nqa-1', 'iso 17025'],
     icon: '✅'
   },
