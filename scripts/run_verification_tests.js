@@ -518,6 +518,22 @@ const tests = [
     },
     tolerance: 0.01,
     units: 'σ (Peak Significance)'
+  },
+  {
+    id: 'VTEST-40',
+    name: 'Bateman Parent-to-Daughter Atomic & Activity Pie Ratio at Transient Peak (Mo-99 → Tc-99m)',
+    module: 'Module 24 (Decay Kinematics & Ratio Pie Visualizer)',
+    standard: 'Bateman (1910) Proc. Camb. Phil. Soc. / Knoll 4th Ed.',
+    expected: 78.6540,
+    compute: () => {
+      const l1 = Math.LN2 / (65.94 * 3600);
+      const l2 = Math.LN2 / (6.007 * 3600);
+      const tMax = Math.log(l2 / l1) / (l2 - l1);
+      const f1 = Math.exp(-l1 * tMax);
+      return f1 * 100.0;
+    },
+    tolerance: 0.01,
+    units: '% Parent Atomic Share at t_max'
   }
 ];
 

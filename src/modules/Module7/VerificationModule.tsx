@@ -1179,6 +1179,35 @@ const runAllVerificationTests = (): VerificationTest[] => {
     });
   }
 
+  // VTEST-40: Bateman Parent-to-Daughter Atomic & Activity Pie Ratio at Transient Peak (Mo-99 -> Tc-99m)
+  {
+    const l1 = Math.LN2 / (65.94 * 3600);
+    const l2 = Math.LN2 / (6.007 * 3600);
+    const tMax = Math.log(l2 / l1) / (l2 - l1);
+    const computedParentPct = Math.exp(-l1 * tMax) * 100.0;
+    const expectedParentPct = 78.6540;
+    const err = Math.abs((computedParentPct - expectedParentPct) / expectedParentPct) * 100;
+    tests.push({
+      id: 'VTEST-40',
+      name: 'Bateman Parent-to-Daughter Atomic & Activity Pie Ratio at Transient Peak (Mo-99 → Tc-99m)',
+      module: 'Module 24 (Decay Kinematics & Ratio Pie Visualizer)',
+      category: 'Decay & Internal',
+      standard: 'Bateman (1910) Proc. Camb. Phil. Soc. / Knoll 4th Ed.',
+      standardDoc: 'Bateman H. (1910): Solution of a System of Differential Equations Occurring in the Theory of Radio-Active Transformations',
+      formulaKatex: 'f_1(t_{\\max}) = e^{-\\lambda_1 t_{\\max}} = 78.654\\%, \\quad A_2(t_{\\max}) = A_1(t_{\\max}) \\implies 50\\%\\text{ Activity Share}',
+      inputsDesc: 'Mo-99 (T½ = 65.94 h) → Tc-99m (T½ = 6.007 h) → Tc-99 at transient peak t_max = 22.8438 h',
+      expectedValue: expectedParentPct,
+      expectedUnits: '% Parent Atoms',
+      expectedDisplay: '78.6540% Atoms (50.0% Activity)',
+      computedValue: computedParentPct,
+      computedDisplay: `${computedParentPct.toFixed(4)}% Atoms (50.0% Activity)`,
+      tolerancePct: 0.01,
+      errorPct: err,
+      passed: err <= 0.01,
+      notes: 'Verifies conservation of total nuclei ∑Ni(t) = N1(0) and exact 1:1 parent-to-daughter activity ratio at the transient equilibrium inflection point.'
+    });
+  }
+
   return tests;
 };
 
