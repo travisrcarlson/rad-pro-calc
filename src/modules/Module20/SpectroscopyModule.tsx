@@ -221,16 +221,16 @@ const SpectroscopyModule: React.FC = () => {
       }
 
       setIngestedSpectrum({
-        format: 'ANSI_N42_42',
+        sourceFormat: 'SYNTHETIC',
         fileName: `Aged_${agedChain}_Chain_${elapsed.replace(/\s+/g, '')}.n42`,
         instrumentModel: `Module 24 Bateman Aged Mix (${agedChain} @ t=${elapsed})`,
+        sampleDescription: `Synthesized from Module 24 Decay Chain at t = ${elapsed}`,
         liveTimeSec: 300,
         realTimeSec: 305,
         calibrationCoeffs: [a0, a1, 0],
         channels,
         energiesKeV,
-        counts,
-        totalCounts: counts.reduce((a, b) => a + b, 0)
+        counts
       });
     }
   }, [searchParams]);

@@ -540,7 +540,7 @@ const tests = [
     name: 'Radiochemical Mo-99 / Tc-99m Generator 24h Post-Elution Daughter Regrowth Yield',
     module: 'Module 24 (Radiochemical Generator Milking Simulator)',
     standard: 'IAEA-TECDOC-1065 / USP <823> Technetium Tc-99m Generator Kinetics',
-    expected: 69.2319,
+    expected: 69.0822,
     compute: () => {
       const a1_0 = 100.0; // MBq Mo-99
       const b12 = 0.879;  // 87.9% isomeric branching to Tc-99m

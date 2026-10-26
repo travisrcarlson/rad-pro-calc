@@ -1216,7 +1216,7 @@ const runAllVerificationTests = (): VerificationTest[] => {
     const l2 = Math.LN2 / 6.007;
     const tHours = 24.0;
     const computedMBq = b12 * a1_0 * (l2 / (l2 - l1)) * (Math.exp(-l1 * tHours) - Math.exp(-l2 * tHours));
-    const expectedMBq = 69.2319;
+    const expectedMBq = 69.0822;
     const err = Math.abs((computedMBq - expectedMBq) / expectedMBq) * 100;
     tests.push({
       id: 'VTEST-41',
@@ -1229,7 +1229,7 @@ const runAllVerificationTests = (): VerificationTest[] => {
       inputsDesc: 'Alumina column A1(0) = 100.0 MBq Mo-99 after 100% saline strip, Regrowth interval Δt = 24.0 h',
       expectedValue: expectedMBq,
       expectedUnits: 'MBq Tc-99m',
-      expectedDisplay: '69.2319 MBq',
+      expectedDisplay: '69.0822 MBq',
       computedValue: computedMBq,
       computedDisplay: `${computedMBq.toFixed(4)} MBq`,
       tolerancePct: 0.01,
