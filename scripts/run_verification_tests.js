@@ -534,6 +534,41 @@ const tests = [
     },
     tolerance: 0.01,
     units: '% Parent Atomic Share at t_max'
+  },
+  {
+    id: 'VTEST-41',
+    name: 'Radiochemical Mo-99 / Tc-99m Generator 24h Post-Elution Daughter Regrowth Yield',
+    module: 'Module 24 (Radiochemical Generator Milking Simulator)',
+    standard: 'IAEA-TECDOC-1065 / USP <823> Technetium Tc-99m Generator Kinetics',
+    expected: 69.2319,
+    compute: () => {
+      const a1_0 = 100.0; // MBq Mo-99
+      const b12 = 0.879;  // 87.9% isomeric branching to Tc-99m
+      const l1 = Math.LN2 / 65.94;
+      const l2 = Math.LN2 / 6.007;
+      const tHours = 24.0;
+      return b12 * a1_0 * (l2 / (l2 - l1)) * (Math.exp(-l1 * tHours) - Math.exp(-l2 * tHours));
+    },
+    tolerance: 0.01,
+    units: 'MBq Tc-99m at 24h'
+  },
+  {
+    id: 'VTEST-42',
+    name: 'In-Core Thermal Neutron Activation Saturation Activity (Co-59(n,γ)Co-60)',
+    module: 'Module 1D / 24 (Reactor Isotope Production & Activation)',
+    standard: 'Knoll 4th Ed. / Lamarsh Nuclear Reactor Theory (σ_γ = 37.18 b)',
+    expected: 37.9927,
+    compute: () => {
+      const massG = 1.0;
+      const atomicMass = 58.9332;
+      const nTarget = (massG / atomicMass) * 6.02214076e23;
+      const sigmaCm2 = 37.18 * 1e-24;
+      const flux = 1.0e14;
+      const rSatBq = nTarget * sigmaCm2 * flux;
+      return rSatBq / 1e12; // TBq
+    },
+    tolerance: 0.01,
+    units: 'TBq (Saturation Activity)'
   }
 ];
 

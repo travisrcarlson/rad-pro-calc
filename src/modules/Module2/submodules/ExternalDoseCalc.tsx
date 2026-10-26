@@ -36,6 +36,7 @@ const ExternalDoseCalc: React.FC = () => {
   const [activity, setActivity] = useState<number>(100);
   const [activityUnit, setActivityUnit] = useState<number>(1); // Multiplier to get MBq
   const [distance, setDistance] = useState<number>(1); // meters
+  const agedMixBanner = searchParams.get('agedMix');
 
   // Ingest URL params from Scenario Builder or external links
   useEffect(() => {
@@ -160,6 +161,30 @@ const ExternalDoseCalc: React.FC = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      {agedMixBanner && (
+        <div
+          style={{
+            background: 'rgba(56, 189, 248, 0.1)',
+            border: '1px solid rgba(56, 189, 248, 0.4)',
+            borderRadius: '8px',
+            padding: '10px 14px',
+            fontSize: '0.82rem',
+            color: '#e0f2fe',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '8px'
+          }}
+        >
+          <span>
+            ⏱️ <strong>Aged Decay Mixture Imported from Module 24:</strong> {agedMixBanner}
+          </span>
+          <span style={{ fontSize: '0.72rem', color: '#38bdf8', fontFamily: 'var(--font-mono)' }}>
+            Combined Active Yield: {activity} MBq
+          </span>
+        </div>
+      )}
       <div className="panel" style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
         <div style={{ flex: '1 1 350px' }}>
         <div style={{ backgroundColor: 'rgba(52, 152, 219, 0.1)', padding: '15px', borderRadius: '8px', border: '1px solid #3498db', marginBottom: '20px' }}>

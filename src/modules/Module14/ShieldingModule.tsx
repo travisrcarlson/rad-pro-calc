@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import VerificationBadge from '../../components/VerificationBadge';
 import PlotComponent from 'react-plotly.js';
 import { BlockMath } from 'react-katex';
@@ -44,6 +45,7 @@ interface ShieldLayer {
 }
 
 export const ShieldingModule: React.FC = () => {
+  const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<ShieldTab>('layers');
   const [selectedPresetId, setSelectedPresetId] = useState<string>('cs137');
   const [photonEnergyMev, setPhotonEnergyMev] = useState<number>(0.6617);
@@ -51,6 +53,26 @@ export const ShieldingModule: React.FC = () => {
   const [buildupModel, setBuildupModel] = useState<BuildupModelType>('GP_ANS643');
   const [inspectMaterialKey, setInspectMaterialKey] = useState<string>('LEAD');
   const [isDossierOpen, setIsDossierOpen] = useState<boolean>(false);
+  const agedMixBanner = searchParams.get('agedMix');
+
+  useEffect(() => {
+    const eParam = searchParams.get('energyMeV');
+    const actParam = searchParams.get('activityMBq');
+    if (eParam) {
+      const val = parseFloat(eParam);
+      if (!isNaN(val) && val > 0.005) {
+        setPhotonEnergyMev(val);
+        setSelectedPresetId('custom');
+      }
+    }
+    if (actParam) {
+      const actMBq = parseFloat(actParam);
+      if (!isNaN(actMBq) && actMBq > 0) {
+        // Approximate unshielded dose rate at 1m in uSv/h
+        setIncidentDoseRate(Math.max(1, Number((actMBq * 0.12).toFixed(1))));
+      }
+    }
+  }, [searchParams]);
 
   // Initial multi-layer stack
   const [layers, setLayers] = useState<ShieldLayer[]>([
@@ -383,6 +405,31 @@ export const ShieldingModule: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {agedMixBanner && (
+        <div
+          style={{
+            background: 'rgba(16, 185, 129, 0.1)',
+            border: '1px solid rgba(16, 185, 129, 0.4)',
+            borderRadius: '8px',
+            padding: '10px 14px',
+            fontSize: '0.82rem',
+            color: '#d1fae5',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '8px'
+          }}
+        >
+          <span>
+            ⏱️ <strong>Aged Decay Mixture Imported from Module 24:</strong> {agedMixBanner}
+          </span>
+          <span style={{ fontSize: '0.74rem', color: '#34d399', fontFamily: 'var(--font-mono)' }}>
+            Weighted E_eff = {(photonEnergyMev * 1000).toFixed(1)} keV
+          </span>
+        </div>
+      )}
 
       {/* Top Tactical HUD Bar */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '12px' }}>

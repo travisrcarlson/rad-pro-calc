@@ -1208,6 +1208,68 @@ const runAllVerificationTests = (): VerificationTest[] => {
     });
   }
 
+  // VTEST-41: Radiochemical Mo-99 / Tc-99m Generator 24h Post-Elution Daughter Regrowth Yield
+  {
+    const a1_0 = 100.0;
+    const b12 = 0.879;
+    const l1 = Math.LN2 / 65.94;
+    const l2 = Math.LN2 / 6.007;
+    const tHours = 24.0;
+    const computedMBq = b12 * a1_0 * (l2 / (l2 - l1)) * (Math.exp(-l1 * tHours) - Math.exp(-l2 * tHours));
+    const expectedMBq = 69.2319;
+    const err = Math.abs((computedMBq - expectedMBq) / expectedMBq) * 100;
+    tests.push({
+      id: 'VTEST-41',
+      name: 'Radiochemical Mo-99 / Tc-99m Generator 24h Post-Elution Daughter Regrowth Yield',
+      module: 'Module 24 (Radiochemical Generator Milking Simulator)',
+      category: 'Decay & Internal',
+      standard: 'IAEA-TECDOC-1065 / USP <823> Technetium Tc-99m Generator Kinetics',
+      standardDoc: 'IAEA-TECDOC-1065: Production Technologies for Molybdenum-99 and Technetium-99m',
+      formulaKatex: 'A_2(\\Delta t) = b_{12} A_1(0) \\frac{\\lambda_2}{\\lambda_2 - \\lambda_1} \\left(e^{-\\lambda_1 \\Delta t} - e^{-\\lambda_2 \\Delta t}\\right), \\quad b_{12} = 0.879',
+      inputsDesc: 'Alumina column A1(0) = 100.0 MBq Mo-99 after 100% saline strip, Regrowth interval Δt = 24.0 h',
+      expectedValue: expectedMBq,
+      expectedUnits: 'MBq Tc-99m',
+      expectedDisplay: '69.2319 MBq',
+      computedValue: computedMBq,
+      computedDisplay: `${computedMBq.toFixed(4)} MBq`,
+      tolerancePct: 0.01,
+      errorPct: err,
+      passed: err <= 0.01,
+      notes: 'Validates sawtooth generator elution ("milking") regrowth kinetics and isomeric branching fraction b12 = 87.9%.'
+    });
+  }
+
+  // VTEST-42: In-Core Thermal Neutron Activation Saturation Activity (Co-59(n,γ)Co-60)
+  {
+    const massG = 1.0;
+    const atomicMass = 58.9332;
+    const nTarget = (massG / atomicMass) * 6.02214076e23;
+    const sigmaCm2 = 37.18 * 1e-24;
+    const flux = 1.0e14;
+    const computedSatTBq = (nTarget * sigmaCm2 * flux) / 1e12;
+    const expectedSatTBq = 37.9927;
+    const err = Math.abs((computedSatTBq - expectedSatTBq) / expectedSatTBq) * 100;
+    tests.push({
+      id: 'VTEST-42',
+      name: 'In-Core Thermal Neutron Activation Saturation Activity (Co-59(n,γ)Co-60)',
+      module: 'Module 1D / 24 (Reactor Isotope Production & Activation)',
+      category: 'Criticality & MCA',
+      standard: 'Knoll 4th Ed. / Lamarsh Nuclear Reactor Theory (σ_γ = 37.18 b)',
+      standardDoc: 'Lamarsh & Baratta Introduction to Nuclear Engineering 3rd Ed. Ch. 3',
+      formulaKatex: 'R_{\\text{sat}} = \\sigma_{\\gamma} \\Phi N_{\\text{target}} = \\sigma_{\\gamma} \\Phi \\frac{m N_A}{M_A}',
+      inputsDesc: 'Monoisotopic Co-59 target mass m = 1.0 g, σ_γ = 37.18 barns, Thermal neutron flux Φ = 1.0×10¹⁴ n/(cm²·s)',
+      expectedValue: expectedSatTBq,
+      expectedUnits: 'TBq',
+      expectedDisplay: '37.9927 TBq (1,026.8 Ci)',
+      computedValue: computedSatTBq,
+      computedDisplay: `${computedSatTBq.toFixed(4)} TBq`,
+      tolerancePct: 0.01,
+      errorPct: err,
+      passed: err <= 0.01,
+      notes: 'Verifies in-core reactor radioisotope production saturation ceiling prior to EOB discharge.'
+    });
+  }
+
   return tests;
 };
 

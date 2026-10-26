@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import VerificationBadge from '../../components/VerificationBadge';
 import PlotComponent from 'react-plotly.js';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
@@ -161,6 +162,7 @@ const ISOTOPES: IsotopeSpec[] = [
 ];
 
 const SpectroscopyModule: React.FC = () => {
+  const [searchParams] = useSearchParams();
   const [detector, setDetector] = useState<DetectorSpec>(DETECTORS[0]);
   const [isotope, setIsotope] = useState<IsotopeSpec>(ISOTOPES[0]);
   const [activityKBq, setActivityKBq] = useState<number>(50);
@@ -178,6 +180,60 @@ const SpectroscopyModule: React.FC = () => {
   const [idToleranceKeV, setIdToleranceKeV] = useState<number>(5.0);
   const [isDossierOpen, setIsDossierOpen] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    const agedChain = searchParams.get('agedChain');
+    const elapsed = searchParams.get('elapsed') || '';
+    const agedPeaks = searchParams.get('agedPeaks');
+    if (agedChain && agedPeaks) {
+      const nCh = 2048;
+      const a0 = 0.0;
+      const a1 = 1.4648;
+      const counts = new Array(nCh).fill(0);
+      const channels: number[] = [];
+      const energiesKeV: number[] = [];
+      for (let i = 0; i < nCh; i++) {
+        const e = a0 + a1 * i;
+        channels.push(i);
+        energiesKeV.push(e);
+        counts[i] = Math.round(25 * Math.exp(-e / 550) + 4);
+      }
+
+      const items = agedPeaks.split(';').filter(Boolean);
+      for (const item of items) {
+        const [nucName, eStr, actStr] = item.split(':');
+        const eKeV = parseFloat(eStr);
+        const actMBq = parseFloat(actStr);
+        if (!isNaN(eKeV) && eKeV > 15 && !isNaN(actMBq) && actMBq > 0 && nucName) {
+          const amp = Math.min(25000, Math.max(80, actMBq * 35));
+          const sigma = Math.max(1.2, 0.8 + 0.0012 * eKeV);
+          for (let i = 0; i < nCh; i++) {
+            const e = energiesKeV[i];
+            const dist = Math.abs(e - eKeV);
+            if (dist < 6 * sigma) {
+              counts[i] += Math.round(amp * Math.exp(-0.5 * Math.pow(dist / sigma, 2)));
+            }
+            if (e < eKeV * 0.78) {
+              counts[i] += Math.round(amp * 0.025);
+            }
+          }
+        }
+      }
+
+      setIngestedSpectrum({
+        format: 'ANSI_N42_42',
+        fileName: `Aged_${agedChain}_Chain_${elapsed.replace(/\s+/g, '')}.n42`,
+        instrumentModel: `Module 24 Bateman Aged Mix (${agedChain} @ t=${elapsed})`,
+        liveTimeSec: 300,
+        realTimeSec: 305,
+        calibrationCoeffs: [a0, a1, 0],
+        channels,
+        energiesKeV,
+        counts,
+        totalCounts: counts.reduce((a, b) => a + b, 0)
+      });
+    }
+  }, [searchParams]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
