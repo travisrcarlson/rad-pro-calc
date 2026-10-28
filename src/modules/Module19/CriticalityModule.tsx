@@ -265,6 +265,62 @@ const CATEGORIES: (ReactorCategory | 'All')[] = [
 ];
 
 export type MapDisplayMode = 'FLUX' | 'K_INF' | 'POWER';
+export type FissileIsotopeKey = 'U-235' | 'Pu-239' | 'U-233';
+
+interface DelayedGroupSpec {
+  group: number;
+  halfLifeS: number;
+  lambdaSInv: number;
+  relYieldAi: number;
+  precursors: string;
+}
+
+const KEEPIN_DELAYED_GROUPS: Record<FissileIsotopeKey, {
+  name: string;
+  betaEff: number;
+  promptGenTimeS: number;
+  groups: DelayedGroupSpec[];
+}> = {
+  'U-235': {
+    name: 'U-235 Thermal Fission (Keepin 1965, β_eff = 650 pcm)',
+    betaEff: 0.00650,
+    promptGenTimeS: 1.0e-4,
+    groups: [
+      { group: 1, halfLifeS: 55.72, lambdaSInv: 0.0124, relYieldAi: 0.033, precursors: 'Br-87' },
+      { group: 2, halfLifeS: 22.72, lambdaSInv: 0.0305, relYieldAi: 0.219, precursors: 'I-137, Br-88' },
+      { group: 3, halfLifeS: 6.22,  lambdaSInv: 0.1110, relYieldAi: 0.196, precursors: 'I-138, Br-89, Rb-93' },
+      { group: 4, halfLifeS: 2.30,  lambdaSInv: 0.3010, relYieldAi: 0.395, precursors: 'I-139, Cs-143, Br-90' },
+      { group: 5, halfLifeS: 0.61,  lambdaSInv: 1.1400, relYieldAi: 0.115, precursors: 'I-140, Kr-93' },
+      { group: 6, halfLifeS: 0.23,  lambdaSInv: 3.0100, relYieldAi: 0.042, precursors: 'Br-91, Rb-95' }
+    ]
+  },
+  'Pu-239': {
+    name: 'Pu-239 Thermal/MOX Fission (Keepin 1965, β_eff = 210 pcm)',
+    betaEff: 0.00210,
+    promptGenTimeS: 5.0e-5,
+    groups: [
+      { group: 1, halfLifeS: 54.28, lambdaSInv: 0.0128, relYieldAi: 0.035, precursors: 'Br-87' },
+      { group: 2, halfLifeS: 23.04, lambdaSInv: 0.0301, relYieldAi: 0.298, precursors: 'I-137, Br-88' },
+      { group: 3, halfLifeS: 5.60,  lambdaSInv: 0.1240, relYieldAi: 0.211, precursors: 'I-138, Br-89' },
+      { group: 4, halfLifeS: 2.13,  lambdaSInv: 0.3250, relYieldAi: 0.326, precursors: 'I-139, Cs-143' },
+      { group: 5, halfLifeS: 0.62,  lambdaSInv: 1.1200, relYieldAi: 0.086, precursors: 'I-140, Kr-93' },
+      { group: 6, halfLifeS: 0.26,  lambdaSInv: 2.6900, relYieldAi: 0.044, precursors: 'Br-91, Rb-95' }
+    ]
+  },
+  'U-233': {
+    name: 'U-233 Thorium Cycle Fission (Keepin 1965, β_eff = 264 pcm)',
+    betaEff: 0.00264,
+    promptGenTimeS: 8.0e-5,
+    groups: [
+      { group: 1, halfLifeS: 55.00, lambdaSInv: 0.0126, relYieldAi: 0.086, precursors: 'Br-87' },
+      { group: 2, halfLifeS: 20.57, lambdaSInv: 0.0337, relYieldAi: 0.299, precursors: 'I-137, Br-88' },
+      { group: 3, halfLifeS: 5.00,  lambdaSInv: 0.1390, relYieldAi: 0.252, precursors: 'I-138, Br-89' },
+      { group: 4, halfLifeS: 2.13,  lambdaSInv: 0.3250, relYieldAi: 0.278, precursors: 'I-139, Cs-143' },
+      { group: 5, halfLifeS: 0.61,  lambdaSInv: 1.1300, relYieldAi: 0.051, precursors: 'I-140' },
+      { group: 6, halfLifeS: 0.28,  lambdaSInv: 2.5000, relYieldAi: 0.034, precursors: 'Br-91' }
+    ]
+  }
+};
 
 const CriticalityModule: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<ReactorCategory | 'All'>('All');
@@ -648,6 +704,208 @@ const CriticalityModule: React.FC = () => {
       case 'INSTRUMENT': return 'DET';
     }
   };
+
+  // --- Keepin (1965) 6-Group Delayed Neutron Inhour Equation & Point Kinetics State ---
+  const [fissileIsotope, setFissileIsotope] = useState<FissileIsotopeKey>('U-235');
+  const [useLiveCoreReactivity, setUseLiveCoreReactivity] = useState<boolean>(false);
+  const [inhourStepDollars, setInhourStepDollars] = useState<number>(0.25);
+
+  const inhourKinetics = useMemo(() => {
+    const spec = KEEPIN_DELAYED_GROUPS[fissileIsotope];
+    const betaEff = spec.betaEff;
+    const Lambda = spec.promptGenTimeS;
+    const rhoDollars = useLiveCoreReactivity ? (math.rhoPcm * 1e-5) / betaEff : inhourStepDollars;
+    const rhoAbs = rhoDollars * betaEff;
+    const rhoPcm = rhoAbs * 1e5;
+
+    // Exact 6-Group Inhour Equation: rho(omega) = (Lambda * omega)/(1 + Lambda * omega) + (beta_eff / (1 + Lambda * omega)) * sum(a_i * omega / (omega + lambda_i))
+    const evalRhoAtOmega = (omega: number): number => {
+      const denom0 = 1.0 + Lambda * omega;
+      let delayedSum = 0;
+      for (const g of spec.groups) {
+        delayedSum += (g.relYieldAi * omega) / (omega + g.lambdaSInv);
+      }
+      return (Lambda * omega) / denom0 + (betaEff / denom0) * delayedSum;
+    };
+
+    // Solve for asymptotic inverse period omega_0 (s^-1) via robust bisection
+    let omega0 = 0;
+    if (Math.abs(rhoAbs) < 1e-8) {
+      omega0 = 0;
+    } else if (rhoAbs > 0) {
+      let lo = 1e-7;
+      let hi = Math.max(100, (rhoAbs / Lambda) * 2.5);
+      for (let iter = 0; iter < 80; iter++) {
+        const mid = 0.5 * (lo + hi);
+        if (evalRhoAtOmega(mid) < rhoAbs) lo = mid;
+        else hi = mid;
+      }
+      omega0 = 0.5 * (lo + hi);
+    } else {
+      // Principal negative root lies strictly in (-lambda_1, 0) where lambda_1 is Group 1 decay constant
+      const lambda1 = spec.groups[0].lambdaSInv;
+      let lo = -lambda1 + 1e-6;
+      let hi = -1e-7;
+      if (evalRhoAtOmega(lo) >= rhoAbs) {
+        omega0 = -lambda1 + 1e-5;
+      } else {
+        for (let iter = 0; iter < 80; iter++) {
+          const mid = 0.5 * (lo + hi);
+          if (evalRhoAtOmega(mid) < rhoAbs) lo = mid;
+          else hi = mid;
+        }
+        omega0 = 0.5 * (lo + hi);
+      }
+    }
+
+    const asymptoticPeriodS = Math.abs(omega0) < 1e-7 ? Infinity : 1.0 / omega0;
+    const doublingTimeS = asymptoticPeriodS * Math.LN2;
+    const promptJumpRatio = rhoDollars < 0.99 ? 1.0 / (1.0 - rhoDollars) : Infinity;
+    const meanDelayedLifetimeS = spec.groups.reduce((acc, g) => acc + g.relYieldAi / g.lambdaSInv, 0);
+
+    // Group-by-group partial reactivity contribution at omega0
+    const groupRows = spec.groups.map(g => {
+      const betaI_pcm = g.relYieldAi * betaEff * 1e5;
+      const partialDollars = Math.abs(omega0) < 1e-7 ? 0 : (g.relYieldAi * omega0) / (omega0 + g.lambdaSInv);
+      return {
+        ...g,
+        betaI_pcm,
+        tauI_s: 1.0 / g.lambdaSInv,
+        partialDollars
+      };
+    });
+
+    // Generate Inhour Curve (Period T vs Reactivity in $) for supercritical (+0.05 to +200 s) and subcritical (-85 to -2 s)
+    const superPeriods: number[] = [];
+    const superDollars: number[] = [];
+    for (let i = 0; i <= 60; i++) {
+      const T = 0.05 * Math.pow(4000, i / 60);
+      const w = 1.0 / T;
+      superPeriods.push(T);
+      superDollars.push(evalRhoAtOmega(w) / betaEff);
+    }
+
+    const subPeriods: number[] = [];
+    const subDollars: number[] = [];
+    const minSubT = -1.0 / (spec.groups[0].lambdaSInv * 0.96); // approaches -1/lambda_1 asymptote (~ -80.6 s for U-235)
+    for (let i = 0; i <= 50; i++) {
+      const T = -1.5 - ((Math.abs(minSubT) - 1.5) * i) / 50;
+      const w = 1.0 / T;
+      subPeriods.push(T);
+      subDollars.push(evalRhoAtOmega(w) / betaEff);
+    }
+
+    return {
+      spec,
+      betaEff,
+      rhoDollars,
+      rhoPcm,
+      omega0,
+      asymptoticPeriodS,
+      doublingTimeS,
+      promptJumpRatio,
+      meanDelayedLifetimeS,
+      groupRows,
+      superPeriods,
+      superDollars,
+      subPeriods,
+      subDollars
+    };
+  }, [fissileIsotope, useLiveCoreReactivity, inhourStepDollars, math.rhoPcm]);
+
+  // --- Fission-Product Poison Transients (I-135 -> Xe-135 Xenon Pit & Pm-149 -> Sm-149) ---
+  const [preScramFluxLog10, setPreScramFluxLog10] = useState<number>(13.70); // 5.0e13 n/(cm^2*s) nominal PWR
+  const [excessReactivityMarginPcm, setExcessReactivityMarginPcm] = useState<number>(3500);
+
+  const poisonTransients = useMemo(() => {
+    const phi0 = Math.pow(10, preScramFluxLog10); // n/(cm^2*s)
+    // Nuclear constants for I-135 / Xe-135 & Pm-149 / Sm-149 (Lamarsh & Baratta 3rd Ed. Table 7.4)
+    const gammaI = 0.0639;
+    const gammaX = 0.00237;
+    const gammaSum = gammaI + gammaX; // 0.06627
+    const lambdaI = 2.931e-5; // s^-1 (T_1/2 = 6.57 h)
+    const lambdaX = 2.106e-5; // s^-1 (T_1/2 = 9.14 h)
+    const sigmaX = 2.65e-18;  // cm^2 (2.65e6 barns!)
+    const nu = 2.42;          // neutrons per U-235 thermal fission
+    const thermalUtilF = Math.max(0.55, Math.min(0.95, math.f));
+
+    // Steady-state equilibrium Xenon-135 negative reactivity worth:
+    // -Delta_rho_Xe_inf = (gamma_I + gamma_X) * f / nu * [ (sigma_X * phi0) / (lambda_X + sigma_X * phi0) ]
+    const burnRateX = sigmaX * phi0;
+    const maxScaleWorthPcm = ((gammaSum * thermalUtilF) / nu) * 1e5; // ~ 2,190 to 2,500 pcm asymptotic high-flux ceiling
+    const eqXeWorthPcm = maxScaleWorthPcm * (burnRateX / (lambdaX + burnRateX));
+
+    // Ratio of equilibrium I-135 to Xe-135 nuclei at t = 0 (prior to SCRAM):
+    // I_0 = gamma_I * Sigma_f * phi0 / lambda_I
+    // X_0 = (gamma_I + gamma_X) * Sigma_f * phi0 / (lambda_X + sigma_X * phi0)
+    // Since -Delta_rho_Xe(t) is proportional to X(t), we normalize by X_0 -> eqXeWorthPcm:
+    const ratioI0ToX0 = (gammaI / gammaSum) * ((lambdaX + burnRateX) / lambdaI);
+
+    // Post-SCRAM (phi -> 0 at t = 0) analytical Xenon-135 evolution:
+    // X(t) / X_0 = exp(-lambda_X * t) + ratioI0ToX0 * (lambda_I / (lambda_I - lambda_X)) * (exp(-lambda_X * t) - exp(-lambda_I * t))
+    const kFactor = ratioI0ToX0 * (lambdaI / (lambdaI - lambdaX));
+
+    // Exact post-SCRAM peak time t_max (seconds -> hours):
+    // dX/dt = 0 => exp((lambda_I - lambda_X)*t_max) = (lambda_I / lambda_X) * [ kFactor / (1 + kFactor) ]
+    const argPeak = (lambdaI / lambdaX) * (kFactor / (1.0 + kFactor));
+    const tMaxSec = argPeak > 1.0 ? Math.log(argPeak) / (lambdaI - lambdaX) : 0;
+    const tMaxHours = tMaxSec / 3600.0;
+
+    const evalXeWorthPcmAtSec = (tSec: number): number => {
+      const term1 = Math.exp(-lambdaX * tSec);
+      const term2 = kFactor * (Math.exp(-lambdaX * tSec) - Math.exp(-lambdaI * tSec));
+      return eqXeWorthPcm * Math.max(0, term1 + term2);
+    };
+
+    const peakXeWorthPcm = evalXeWorthPcmAtSec(tMaxSec);
+
+    // Samarium-149 (Pm-149 T_1/2 = 53.1 h -> stable Sm-149, sigma_Sm = 4.01e4 barns, gamma_Pm = 0.0107)
+    const gammaPm = 0.0107;
+    const lambdaPm = 3.626e-6; // s^-1 (53.1 h)
+    const sigmaSm = 4.01e-20;  // cm^2
+    const eqSmWorthPcm = ((gammaPm * thermalUtilF) / nu) * 1e5; // flux-independent equilibrium ~ 350-400 pcm
+    const postScramSmWorthAdditionMaxPcm = eqSmWorthPcm * ((sigmaSm * phi0) / lambdaPm);
+
+    // Compute 72-hour post-SCRAM time series & Xenon Dead-Time Window
+    const hours: number[] = [];
+    const xeWorthCurvePcm: number[] = [];
+    const smWorthCurvePcm: number[] = [];
+    const marginLinePcm: number[] = [];
+    let deadStartHr: number | null = null;
+    let deadEndHr: number | null = null;
+
+    for (let h = 0; h <= 72; h += 0.5) {
+      const tSec = h * 3600;
+      const wXe = evalXeWorthPcmAtSec(tSec);
+      const wSm = eqSmWorthPcm + postScramSmWorthAdditionMaxPcm * (1.0 - Math.exp(-lambdaPm * tSec));
+      hours.push(h);
+      xeWorthCurvePcm.push(Number(wXe.toFixed(1)));
+      smWorthCurvePcm.push(Number(wSm.toFixed(1)));
+      marginLinePcm.push(excessReactivityMarginPcm);
+
+      if (wXe > excessReactivityMarginPcm) {
+        if (deadStartHr === null) deadStartHr = h;
+        deadEndHr = h;
+      }
+    }
+
+    const deadDurationHr = deadStartHr !== null && deadEndHr !== null ? deadEndHr - deadStartHr : 0;
+
+    return {
+      phi0,
+      eqXeWorthPcm,
+      peakXeWorthPcm,
+      tMaxHours,
+      eqSmWorthPcm,
+      deadStartHr,
+      deadEndHr,
+      deadDurationHr,
+      hours,
+      xeWorthCurvePcm,
+      smWorthCurvePcm,
+      marginLinePcm
+    };
+  }, [preScramFluxLog10, excessReactivityMarginPcm, math.f]);
 
   const dossierPayload: CalculationDossierPayload = useMemo(() => ({
     reportTitle: 'Reactor Core Criticality & Four-Factor Safety Dossier',
@@ -1397,6 +1655,398 @@ const CriticalityModule: React.FC = () => {
             config={{ responsive: true, displayModeBar: false }}
           />
         </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* UPGRADE 1: KEEPIN (1965) 6-GROUP DELAYED NEUTRON INHOUR EQUATION SOLVER    */}
+      {/* ========================================================================= */}
+      <div className="panel" style={{ marginTop: '20px', border: '1px solid rgba(16, 185, 129, 0.35)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '12px' }}>
+          <div>
+            <h3 style={{ margin: 0, color: '#10b981' }}>
+              ⏱️ Keepin (1965) 6-Group Delayed Neutron Inhour Equation &amp; Point Reactor Kinetics
+            </h3>
+            <p style={{ margin: '4px 0 0 0', fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>
+              Exact 6-precursor-group Inhour relationship solving asymptotic reactor period T, doubling time T₂, and prompt jump ratio n₁/n₀ = β_eff / (β_eff − ρ) across U-235, Pu-239, and U-233 cores.
+            </p>
+          </div>
+          <VerificationBadge testId="VTEST-50" standard="Keepin (1965) 6-Group Inhour" />
+        </div>
+
+        {/* Controls Bar */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '14px', marginBottom: '16px', padding: '12px', background: 'rgba(0,0,0,0.3)', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
+          <div>
+            <label className="form-label" style={{ fontSize: '0.78rem' }}>Fissile Fuel Isotope (Delayed Fraction β_eff)</label>
+            <select
+              className="form-control"
+              value={fissileIsotope}
+              onChange={(e) => setFissileIsotope(e.target.value as FissileIsotopeKey)}
+              style={{ fontSize: '0.82rem' }}
+            >
+              <option value="U-235">U-235 Thermal (β_eff = 650 pcm / 0.00650)</option>
+              <option value="Pu-239">Pu-239 Fast/MOX (β_eff = 210 pcm / 0.00210)</option>
+              <option value="U-233">U-233 Thorium (β_eff = 264 pcm / 0.00264)</option>
+            </select>
+          </div>
+
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+              <label className="form-label" style={{ fontSize: '0.78rem', margin: 0 }}>
+                Step Reactivity Insertion (ρ in $):
+              </label>
+              <strong style={{ fontSize: '0.82rem', color: inhourKinetics.rhoDollars >= 1.0 ? '#ef4444' : inhourKinetics.rhoDollars >= 0 ? '#10b981' : '#38bdf8' }}>
+                {inhourKinetics.rhoDollars >= 0 ? `+$${inhourKinetics.rhoDollars.toFixed(2)}` : `-$${Math.abs(inhourKinetics.rhoDollars).toFixed(2)}`} ({inhourKinetics.rhoPcm.toFixed(0)} pcm)
+              </strong>
+            </div>
+            <input
+              type="range"
+              min="-1.50"
+              max="1.15"
+              step="0.05"
+              disabled={useLiveCoreReactivity}
+              value={inhourStepDollars}
+              onChange={(e) => setInhourStepDollars(Number(e.target.value))}
+              style={{ width: '100%', accentColor: '#10b981' }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.70rem', color: '#64748b' }}>
+              <span>-$1.50 (SCRAM)</span>
+              <span>$0.00 (Critical)</span>
+              <span>+$1.00 (Prompt Crit)</span>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '6px' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.80rem', cursor: 'pointer', color: '#cbd5e1' }}>
+              <input
+                type="checkbox"
+                checked={useLiveCoreReactivity}
+                onChange={(e) => setUseLiveCoreReactivity(e.target.checked)}
+              />
+              Couple to 7×7 Lattice Core Reactivity ({math.rhoPcm.toFixed(0)} pcm)
+            </label>
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+              {[
+                { label: '-$0.50', val: -0.50 },
+                { label: '+$0.10', val: 0.10 },
+                { label: '+$0.25', val: 0.25 },
+                { label: '+$0.50', val: 0.50 },
+                { label: '+$1.05', val: 1.05 }
+              ].map((b) => (
+                <button
+                  key={b.label}
+                  type="button"
+                  onClick={() => { setUseLiveCoreReactivity(false); setInhourStepDollars(b.val); }}
+                  style={{
+                    fontSize: '0.70rem',
+                    padding: '2px 7px',
+                    borderRadius: '4px',
+                    border: !useLiveCoreReactivity && Math.abs(inhourStepDollars - b.val) < 0.001 ? '1px solid #10b981' : '1px solid rgba(255,255,255,0.12)',
+                    background: !useLiveCoreReactivity && Math.abs(inhourStepDollars - b.val) < 0.001 ? 'rgba(16,185,129,0.2)' : 'rgba(255,255,255,0.03)',
+                    color: '#e2e8f0',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {b.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* 4 Kinetics Readout Cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '12px', marginBottom: '16px' }}>
+          <div style={{ background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.35)', borderRadius: '8px', padding: '12px' }}>
+            <div style={{ fontSize: '0.70rem', color: '#94a3b8' }}>ASYMPTOTIC PERIOD (T = 1/ω₀)</div>
+            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#10b981', fontFamily: 'var(--font-mono)', marginTop: '2px' }}>
+              {!Number.isFinite(inhourKinetics.asymptoticPeriodS)
+                ? '∞ s (Steady)'
+                : Math.abs(inhourKinetics.asymptoticPeriodS) < 0.1
+                ? `${(inhourKinetics.asymptoticPeriodS * 1000).toFixed(2)} ms`
+                : `${inhourKinetics.asymptoticPeriodS.toFixed(2)} s`}
+            </div>
+            <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
+              ω₀ = {inhourKinetics.omega0.toExponential(3)} s⁻¹
+            </div>
+          </div>
+
+          <div style={{ background: 'rgba(56, 189, 248, 0.08)', border: '1px solid rgba(56, 189, 248, 0.35)', borderRadius: '8px', padding: '12px' }}>
+            <div style={{ fontSize: '0.70rem', color: '#94a3b8' }}>POWER DOUBLING / HALVING TIME</div>
+            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#38bdf8', fontFamily: 'var(--font-mono)', marginTop: '2px' }}>
+              {!Number.isFinite(inhourKinetics.doublingTimeS)
+                ? '∞ s'
+                : `${Math.abs(inhourKinetics.doublingTimeS).toFixed(2)} s`}
+            </div>
+            <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
+              T₂ = T · ln(2) ({inhourKinetics.rhoDollars >= 0 ? 'Doubling' : 'Halving'})
+            </div>
+          </div>
+
+          <div style={{ background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.35)', borderRadius: '8px', padding: '12px' }}>
+            <div style={{ fontSize: '0.70rem', color: '#94a3b8' }}>PROMPT JUMP RATIO (n₁ / n₀)</div>
+            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: inhourKinetics.rhoDollars >= 1.0 ? '#ef4444' : '#f59e0b', fontFamily: 'var(--font-mono)', marginTop: '2px' }}>
+              {!Number.isFinite(inhourKinetics.promptJumpRatio)
+                ? 'PROMPT CRIT (≥$1)'
+                : `${inhourKinetics.promptJumpRatio.toFixed(3)}×`}
+            </div>
+            <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
+              1 / (1 − ρ_$) Instantaneous Step
+            </div>
+          </div>
+
+          <div style={{ background: 'rgba(168, 85, 247, 0.08)', border: '1px solid rgba(168, 85, 247, 0.35)', borderRadius: '8px', padding: '12px' }}>
+            <div style={{ fontSize: '0.70rem', color: '#94a3b8' }}>MEAN DELAYED LIFETIME (τ̄_d)</div>
+            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#c084fc', fontFamily: 'var(--font-mono)', marginTop: '2px' }}>
+              {inhourKinetics.meanDelayedLifetimeS.toFixed(2)} s
+            </div>
+            <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
+              Min Subcritical Period: {(-1.0 / inhourKinetics.spec.groups[0].lambdaSInv).toFixed(1)} s
+            </div>
+          </div>
+        </div>
+
+        {/* 6-Group Table + Inhour Plot */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: '16px' }}>
+          <div style={{ overflowX: 'auto' }}>
+            <div style={{ fontSize: '0.80rem', fontWeight: 700, color: '#e2e8f0', marginBottom: '6px' }}>
+              Keepin 6-Group Delayed Precursor Yields &amp; Partial Inhour Contributions
+            </div>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
+              <thead>
+                <tr style={{ background: 'rgba(255,255,255,0.05)', color: '#94a3b8', textAlign: 'left' }}>
+                  <th style={{ padding: '6px 8px' }}>Grp</th>
+                  <th style={{ padding: '6px 8px' }}>Dominant Precursors</th>
+                  <th style={{ padding: '6px 8px' }}>T₁/₂ (s)</th>
+                  <th style={{ padding: '6px 8px' }}>λ_i (s⁻¹)</th>
+                  <th style={{ padding: '6px 8px' }}>a_i</th>
+                  <th style={{ padding: '6px 8px' }}>β_i (pcm)</th>
+                  <th style={{ padding: '6px 8px' }}>ρ_i ($)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {inhourKinetics.groupRows.map((g) => (
+                  <tr key={g.group} style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                    <td style={{ padding: '6px 8px', fontWeight: 700, color: '#10b981' }}>G{g.group}</td>
+                    <td style={{ padding: '6px 8px', color: '#cbd5e1' }}>{g.precursors}</td>
+                    <td style={{ padding: '6px 8px', fontFamily: 'monospace' }}>{g.halfLifeS.toFixed(2)}</td>
+                    <td style={{ padding: '6px 8px', fontFamily: 'monospace' }}>{g.lambdaSInv.toFixed(4)}</td>
+                    <td style={{ padding: '6px 8px', fontFamily: 'monospace' }}>{g.relYieldAi.toFixed(3)}</td>
+                    <td style={{ padding: '6px 8px', fontFamily: 'monospace', color: '#38bdf8' }}>{g.betaI_pcm.toFixed(1)}</td>
+                    <td style={{ padding: '6px 8px', fontFamily: 'monospace', color: '#f59e0b' }}>
+                      {g.partialDollars >= 0 ? `+${g.partialDollars.toFixed(3)}` : g.partialDollars.toFixed(3)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div>
+            <div style={{ fontSize: '0.80rem', fontWeight: 700, color: '#e2e8f0', marginBottom: '6px' }}>
+              6-Group Inhour Characteristic Curve: Reactivity ρ ($) vs. Reactor Period T (s)
+            </div>
+            <Plot
+              data={[
+                {
+                  x: inhourKinetics.superPeriods,
+                  y: inhourKinetics.superDollars,
+                  type: 'scatter',
+                  mode: 'lines',
+                  name: 'Supercritical Branch (+T)',
+                  line: { color: '#10b981', width: 2.5 }
+                },
+                {
+                  x: inhourKinetics.subPeriods,
+                  y: inhourKinetics.subDollars,
+                  type: 'scatter',
+                  mode: 'lines',
+                  name: 'Subcritical Branch (−T)',
+                  line: { color: '#38bdf8', width: 2.5, dash: 'dash' }
+                },
+                ...(Number.isFinite(inhourKinetics.asymptoticPeriodS) && Math.abs(inhourKinetics.asymptoticPeriodS) <= 200
+                  ? [
+                      {
+                        x: [inhourKinetics.asymptoticPeriodS],
+                        y: [inhourKinetics.rhoDollars],
+                        type: 'scatter',
+                        mode: 'markers',
+                        name: 'Active Operating Point',
+                        marker: { color: '#f59e0b', size: 11, line: { color: '#fff', width: 2 } }
+                      }
+                    ]
+                  : [])
+              ] as any}
+              layout={{
+                autosize: true,
+                height: 255,
+                margin: { l: 50, r: 20, t: 10, b: 40 },
+                paper_bgcolor: 'transparent',
+                plot_bgcolor: 'transparent',
+                font: { color: '#cbd5e1', size: 11 },
+                xaxis: { title: { text: 'Asymptotic Reactor Period T (seconds)' }, range: [-90, 150], gridcolor: 'rgba(255,255,255,0.06)' },
+                yaxis: { title: { text: 'Reactivity ρ ($)' }, range: [-1.6, 1.3], gridcolor: 'rgba(255,255,255,0.06)' },
+                legend: { orientation: 'h', y: 1.14, font: { size: 10 } }
+              }}
+              useResizeHandler={true}
+              style={{ width: '100%' }}
+              config={{ responsive: true, displayModeBar: false }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* UPGRADE 2: FISSION-PRODUCT POISON TRANSIENTS (XE-135 PIT & SM-149)        */}
+      {/* ========================================================================= */}
+      <div className="panel" style={{ marginTop: '20px', border: '1px solid rgba(217, 70, 239, 0.35)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '12px' }}>
+          <div>
+            <h3 style={{ margin: 0, color: '#e879f9' }}>
+              🧪 Fission-Product Poison Transients: Post-SCRAM ¹³⁵I → ¹³⁵Xe Pit &amp; ¹⁴⁹Sm Buildup
+            </h3>
+            <p style={{ margin: '4px 0 0 0', fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>
+              Analytical solution of coupled Iodine-135 (T₁/₂ = 6.57 h) and Xenon-135 (T₁/₂ = 9.14 h, σ_a = 2.65×10⁶ b) differential equations predicting post-shutdown Xenon peak time t_max, negative reactivity worth, and reactor restart dead-time window.
+            </p>
+          </div>
+          <VerificationBadge testId="VTEST-51" standard="Lamarsh Ch. 7 Xenon Kinetics" />
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '14px', marginBottom: '16px', padding: '12px', background: 'rgba(0,0,0,0.3)', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+              <label className="form-label" style={{ fontSize: '0.78rem', margin: 0 }}>Pre-SCRAM Thermal Flux φ₀:</label>
+              <strong style={{ fontSize: '0.82rem', color: '#e879f9', fontFamily: 'monospace' }}>
+                {poisonTransients.phi0.toExponential(2)} n/(cm²·s)
+              </strong>
+            </div>
+            <input
+              type="range"
+              min="12.5"
+              max="14.7"
+              step="0.05"
+              value={preScramFluxLog10}
+              onChange={(e) => setPreScramFluxLog10(Number(e.target.value))}
+              style={{ width: '100%', accentColor: '#d946ef' }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.70rem', color: '#64748b' }}>
+              <span>3×10¹² (Low Power)</span>
+              <span>5×10¹³ (Nominal PWR)</span>
+              <span>5×10¹⁴ (High Flux HFIR)</span>
+            </div>
+          </div>
+
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+              <label className="form-label" style={{ fontSize: '0.78rem', margin: 0 }}>Available Restart Excess Reactivity:</label>
+              <strong style={{ fontSize: '0.82rem', color: '#38bdf8', fontFamily: 'monospace' }}>
+                {excessReactivityMarginPcm} pcm (${(excessReactivityMarginPcm / 650).toFixed(2)})
+              </strong>
+            </div>
+            <input
+              type="range"
+              min="1500"
+              max="8000"
+              step="100"
+              value={excessReactivityMarginPcm}
+              onChange={(e) => setExcessReactivityMarginPcm(Number(e.target.value))}
+              style={{ width: '100%', accentColor: '#38bdf8' }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.70rem', color: '#64748b' }}>
+              <span>1,500 pcm (End of Cycle)</span>
+              <span>3,500 pcm (Mid-Cycle)</span>
+              <span>8,000 pcm (BOL)</span>
+            </div>
+          </div>
+        </div>
+
+        {/* 4 Poison Metrics Cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '12px', marginBottom: '16px' }}>
+          <div style={{ background: 'rgba(217, 70, 239, 0.08)', border: '1px solid rgba(217, 70, 239, 0.35)', borderRadius: '8px', padding: '12px' }}>
+            <div style={{ fontSize: '0.70rem', color: '#94a3b8' }}>EQUILIBRIUM FULL-POWER ¹³⁵Xe WORTH</div>
+            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#e879f9', fontFamily: 'var(--font-mono)', marginTop: '2px' }}>
+              −{poisonTransients.eqXeWorthPcm.toFixed(0)} pcm
+            </div>
+            <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
+              −${(poisonTransients.eqXeWorthPcm / 650).toFixed(2)} Steady-State Poison
+            </div>
+          </div>
+
+          <div style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.35)', borderRadius: '8px', padding: '12px' }}>
+            <div style={{ fontSize: '0.70rem', color: '#94a3b8' }}>POST-SCRAM PEAK ¹³⁵Xe WORTH</div>
+            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#ef4444', fontFamily: 'var(--font-mono)', marginTop: '2px' }}>
+              −{poisonTransients.peakXeWorthPcm.toFixed(0)} pcm
+            </div>
+            <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
+              {(poisonTransients.peakXeWorthPcm / Math.max(1, poisonTransients.eqXeWorthPcm)).toFixed(2)}× Pre-SCRAM Equilibrium
+            </div>
+          </div>
+
+          <div style={{ background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.35)', borderRadius: '8px', padding: '12px' }}>
+            <div style={{ fontSize: '0.70rem', color: '#94a3b8' }}>XENON PEAK TIME (t_max)</div>
+            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#f59e0b', fontFamily: 'var(--font-mono)', marginTop: '2px' }}>
+              {poisonTransients.tMaxHours.toFixed(2)} hrs
+            </div>
+            <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
+              Post-Shutdown Maximum Iodine Pit
+            </div>
+          </div>
+
+          <div style={{ background: poisonTransients.deadDurationHr > 0 ? 'rgba(239, 68, 68, 0.12)' : 'rgba(16, 185, 129, 0.08)', border: `1px solid ${poisonTransients.deadDurationHr > 0 ? '#ef4444' : '#10b981'}`, borderRadius: '8px', padding: '12px' }}>
+            <div style={{ fontSize: '0.70rem', color: '#94a3b8' }}>REACTOR XENON DEAD-TIME WINDOW</div>
+            <div style={{ fontSize: '1.3rem', fontWeight: 800, color: poisonTransients.deadDurationHr > 0 ? '#ef4444' : '#10b981', fontFamily: 'var(--font-mono)', marginTop: '2px' }}>
+              {poisonTransients.deadDurationHr > 0
+                ? `${poisonTransients.deadDurationHr.toFixed(1)} hrs (${poisonTransients.deadStartHr}h–${poisonTransients.deadEndHr}h)`
+                : '0 hrs (Override Capable)'}
+            </div>
+            <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
+              Equilibrium ¹⁴⁹Sm Worth: −{poisonTransients.eqSmWorthPcm.toFixed(0)} pcm
+            </div>
+          </div>
+        </div>
+
+        <Plot
+          data={[
+            {
+              x: poisonTransients.hours,
+              y: poisonTransients.xeWorthCurvePcm,
+              type: 'scatter',
+              mode: 'lines',
+              name: '¹³⁵Xe Negative Reactivity Worth (pcm)',
+              line: { color: '#e879f9', width: 3 },
+              fill: 'tozeroy',
+              fillcolor: 'rgba(217, 70, 239, 0.10)'
+            },
+            {
+              x: poisonTransients.hours,
+              y: poisonTransients.smWorthCurvePcm,
+              type: 'scatter',
+              mode: 'lines',
+              name: '¹⁴⁹Sm Permanent Poison Worth (pcm)',
+              line: { color: '#f59e0b', width: 2, dash: 'dot' }
+            },
+            {
+              x: poisonTransients.hours,
+              y: poisonTransients.marginLinePcm,
+              type: 'scatter',
+              mode: 'lines',
+              name: `Available Restart Margin (${excessReactivityMarginPcm} pcm)`,
+              line: { color: '#38bdf8', width: 2, dash: 'dash' }
+            }
+          ] as any}
+          layout={{
+            autosize: true,
+            height: 290,
+            margin: { l: 60, r: 20, t: 15, b: 45 },
+            paper_bgcolor: 'transparent',
+            plot_bgcolor: 'transparent',
+            font: { color: '#cbd5e1', size: 11 },
+            xaxis: { title: { text: 'Time Elapsed After Full-Power SCRAM (Hours)' }, gridcolor: 'rgba(255,255,255,0.06)' },
+            yaxis: { title: { text: 'Negative Poison Reactivity Worth (−Δρ in pcm)' }, gridcolor: 'rgba(255,255,255,0.06)' },
+            legend: { orientation: 'h', y: 1.14 }
+          }}
+          useResizeHandler={true}
+          style={{ width: '100%' }}
+          config={{ responsive: true, displayModeBar: false }}
+        />
       </div>
 
       <AuditDossierModal

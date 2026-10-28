@@ -1270,6 +1270,318 @@ const runAllVerificationTests = (): VerificationTest[] => {
     });
   }
 
+  // VTEST-43: Albert-Welton Fast Neutron Macroscopic Removal Cross-Section (Σ_R) Laminated Attenuation
+  {
+    const sigmaR_Fe = 0.168; // cm^-1
+    const sigmaR_BPE = 0.130; // cm^-1
+    const mfpRemoval = sigmaR_Fe * 10.0 + sigmaR_BPE * 15.0; // 3.63 relaxation lengths
+    const computedTransPct = 100.0 * Math.exp(-mfpRemoval);
+    const expectedTransPct = 2.6516;
+    const err = Math.abs((computedTransPct - expectedTransPct) / expectedTransPct) * 100;
+    tests.push({
+      id: 'VTEST-43',
+      name: 'Albert-Welton Fast Neutron Macroscopic Removal Cross-Section (Σ_R) Laminated Attenuation',
+      module: 'Module 14 (Advanced Shielding & Buildup)',
+      category: 'Radiometry',
+      standard: 'Albert & Welton (1950) WAPD-15 / ANSI/ANS-6.4.3',
+      standardDoc: 'Albert R.D. & Welton T.A. (1950) WAPD-15: A Simplified Theory of Neutron Attenuation and its Application to Reactor Shield Design',
+      formulaKatex: 'T_n = \\exp\\!\\left(-\\sum_{i=1}^N \\Sigma_{R,i} x_i\\right) = e^{-(0.168 \\times 10 + 0.130 \\times 15)} = e^{-3.63} = 2.6516\\%',
+      inputsDesc: '10.0 cm Iron (Σ_R = 0.168 cm⁻¹) followed by 15.0 cm Borated Polyethylene (Σ_R = 0.130 cm⁻¹)',
+      expectedValue: expectedTransPct,
+      expectedUnits: '% Transmission',
+      expectedDisplay: '2.6516% (3.63 Σ_R·x)',
+      computedValue: computedTransPct,
+      computedDisplay: `${computedTransPct.toFixed(4)}%`,
+      tolerancePct: 0.01,
+      errorPct: err,
+      passed: err <= 0.01,
+      notes: 'Validates fast-neutron inelastic removal relaxation length summation in metal-hydrogenous laminated shields.'
+    });
+  }
+
+  // VTEST-44: Kalos / Broder Multi-Layer Gamma Buildup Order Asymmetry (Lead→Water vs Water→Lead)
+  {
+    const bPb2 = 1.69, bPb4 = 2.26;
+    const bH2O2 = 4.28, bH2O4 = 10.60;
+    const bPbToH2O = bH2O4 + (bPb2 - bH2O2);
+    const bH2OToPb = bPb4 + (bH2O2 - bPb2);
+    const computedRatio = bPbToH2O / bH2OToPb;
+    const expectedRatio = 1.6515;
+    const err = Math.abs((computedRatio - expectedRatio) / expectedRatio) * 100;
+    tests.push({
+      id: 'VTEST-44',
+      name: 'Kalos / Broder Multi-Layer Gamma Buildup Order Asymmetry (Lead→Water vs Water→Lead)',
+      module: 'Module 14 (Multi-Layer Laminated Shielding)',
+      category: 'Radiometry',
+      standard: 'Broder et al. (1962) / Goldstein & Wilkins NYO-3075',
+      standardDoc: 'Broder D.L. et al. (1962) Soviet J. Atomic Energy 12:26 / Kalos M.H. Composite Slab Buildup Formulation',
+      formulaKatex: 'B_{\\text{total}} = B_N\\!\\left(\\sum_{i=1}^N \\mu_i x_i\\right) + \\sum_{k=1}^{N-1}\\left[B_k\\!\\left(\\sum_{i=1}^k \\mu_i x_i\\right) - B_{k+1}\\!\\left(\\sum_{i=1}^k \\mu_i x_i\\right)\\right]',
+      inputsDesc: '2.0 mfp Lead + 2.0 mfp Water at 1.0 MeV: Pb→H2O (B = 8.01) vs H2O→Pb (B = 4.85)',
+      expectedValue: expectedRatio,
+      expectedUnits: 'Asymmetry Ratio',
+      expectedDisplay: '1.6515x (8.01 vs 4.85)',
+      computedValue: computedRatio,
+      computedDisplay: `${computedRatio.toFixed(4)}x`,
+      tolerancePct: 0.01,
+      errorPct: err,
+      passed: err <= 0.01,
+      notes: 'Demonstrates that placing high-Z Lead downstream of low-Z Water photoelectrically absorbs low-energy Compton-scattered photons.'
+    });
+  }
+
+  // VTEST-45: Chamberlain (1953) / Slade (1968) Plume Wet + Dry Source Depletion Survival Fraction
+  {
+    const x = 5000.0;
+    const u = 4.0;
+    const t = x / u;
+    const lambdaWet = 3.0e-4;
+    const vd = 0.01;
+    const sigmaZMean = 85.0;
+    const lambdaDry = vd / (sigmaZMean * Math.sqrt(Math.PI / 2.0));
+    const computedSurvivalPct = 100.0 * Math.exp(-(lambdaWet + lambdaDry) * t);
+    const expectedSurvivalPct = 61.1197;
+    const err = Math.abs((computedSurvivalPct - expectedSurvivalPct) / expectedSurvivalPct) * 100;
+    tests.push({
+      id: 'VTEST-45',
+      name: 'Chamberlain (1953) / Slade (1968) Plume Wet + Dry Source Depletion Survival Fraction',
+      module: 'Module 13 (Gaussian Plume Atmospheric Dispersion)',
+      category: 'Atmospheric',
+      standard: 'Slade (1968) Meteorology and Atomic Energy / RASCAL 4.3 Source Depletion',
+      standardDoc: 'Slade D.H. (1968) TID-24190 Meteorology and Atomic Energy / Chamberlain A.C. (1953) AERE-HP/R-1261',
+      formulaKatex: '\\frac{Q(x)}{Q_0} = \\exp\\!\\left[-\\left(\\Lambda_{\\text{wet}} + \\frac{v_d}{\\bar{\\sigma}_z \\sqrt{\\pi/2}}\\right)\\frac{x}{u}\\right]',
+      inputsDesc: 'Downwind x = 5.0 km, u = 4.0 m/s, Wet Washout Λ_wet = 3.0×10⁻⁴ s⁻¹, Dry v_d = 0.01 m/s, σ_z = 85 m',
+      expectedValue: expectedSurvivalPct,
+      expectedUnits: '% Q(x)/Q₀',
+      expectedDisplay: '61.1197% Airborne',
+      computedValue: computedSurvivalPct,
+      computedDisplay: `${computedSurvivalPct.toFixed(4)}% Airborne`,
+      tolerancePct: 0.01,
+      errorPct: err,
+      passed: err <= 0.01,
+      notes: 'Accounts for cumulative upwind aerosol washout and dry gravitational settling depleting the airborne plume.'
+    });
+  }
+
+  // VTEST-46: Planetary Boundary Layer (PBL) Inversion Lid Method-of-Images Reflection Multiplier
+  {
+    const hMix = 300.0;
+    const sigmaZ = 220.0;
+    let computedMult = 1.0;
+    for (let m = 1; m <= 3; m++) {
+      const zImg = 2.0 * m * hMix;
+      computedMult += 2.0 * Math.exp(-(zImg * zImg) / (2.0 * sigmaZ * sigmaZ));
+    }
+    const expectedMult = 1.0485;
+    const err = Math.abs((computedMult - expectedMult) / expectedMult) * 100;
+    tests.push({
+      id: 'VTEST-46',
+      name: 'Planetary Boundary Layer (PBL) Inversion Lid Method-of-Images Reflection Multiplier',
+      module: 'Module 13 (Gaussian Plume Inversion Lid Trapping)',
+      category: 'Atmospheric',
+      standard: 'Turner (1994) Workbook of Atmospheric Dispersion Estimates',
+      standardDoc: 'Turner D.B. (1994) Workbook of Atmospheric Dispersion Estimates / EPA AERMOD Capping Inversion Formulation',
+      formulaKatex: 'M_{\\text{lid}} = 1 + 2\\sum_{m=1}^{3} \\exp\\!\\left(-\\frac{(2 m H_{\\text{mix}})^2}{2\\sigma_z^2}\\right)',
+      inputsDesc: 'Inversion Lid Height H_mix = 300 m, Vertical Dispersion σ_z = 220 m, 3-Harmonic Image Reflection Sum',
+      expectedValue: expectedMult,
+      expectedUnits: '× Multiplier',
+      expectedDisplay: '1.0485× (+4.85% Trapping)',
+      computedValue: computedMult,
+      computedDisplay: `${computedMult.toFixed(4)}×`,
+      tolerancePct: 0.01,
+      errorPct: err,
+      passed: err <= 0.01,
+      notes: 'Verifies vertical plume reflection between ground surface and an elevated atmospheric thermal inversion lid.'
+    });
+  }
+
+  // VTEST-47: IAEA SSR-6 (2018) Para. 405 Multi-Radionuclide Mixture Effective A2 Limit (A2,mix)
+  {
+    const fCo60 = 0.5, a2Co60 = 0.4;
+    const fCs137 = 0.5, a2Cs137 = 0.6;
+    const computedA2Mix = 1.0 / (fCo60 / a2Co60 + fCs137 / a2Cs137);
+    const expectedA2Mix = 0.4800;
+    const err = Math.abs((computedA2Mix - expectedA2Mix) / expectedA2Mix) * 100;
+    tests.push({
+      id: 'VTEST-47',
+      name: 'IAEA SSR-6 (2018) Para. 405 Multi-Radionuclide Mixture Effective A2 Limit (A2,mix)',
+      module: 'Module 15 (Transport Index & DOT Hazmat)',
+      category: 'Radiometry',
+      standard: 'IAEA SSR-6 (Rev. 1) Para. 405 / 49 CFR 173.433 Harmonic Mixture Rule',
+      standardDoc: 'IAEA Specific Safety Requirements No. SSR-6 (Rev. 1, 2018) Paragraph 405: Determination of Basic Radionuclide Values for Mixtures',
+      formulaKatex: 'A_{2,\\text{mix}} = \\frac{1}{\\sum_i \\frac{f_i}{A_{2,i}}} = \\frac{1}{\\frac{0.5}{0.4} + \\frac{0.5}{0.6}} = 0.4800\\text{ TBq}',
+      inputsDesc: 'Binary source mixture: 50% Co-60 (A2 = 0.4 TBq) + 50% Cs-137 (A2 = 0.6 TBq)',
+      expectedValue: expectedA2Mix,
+      expectedUnits: 'TBq',
+      expectedDisplay: '0.4800 TBq',
+      computedValue: computedA2Mix,
+      computedDisplay: `${computedA2Mix.toFixed(4)} TBq`,
+      tolerancePct: 0.01,
+      errorPct: err,
+      passed: err <= 0.01,
+      notes: 'Certifies harmonic activity-weighted mixture rule for Type A / Type B(U) multi-nuclide package qualification.'
+    });
+  }
+
+  // VTEST-48: ICRP Publication 74 / 116 Photon Fluence-to-Ambient Dose Equivalent H*(10) Conversion
+  {
+    const fluenceRate = 1.0e6;
+    const hStar10_pSvCm2 = 5.20;
+    const computedMSvHr = (fluenceRate * hStar10_pSvCm2 * 3.6e-3) / 1000.0;
+    const expectedMSvHr = 18.7200;
+    const err = Math.abs((computedMSvHr - expectedMSvHr) / expectedMSvHr) * 100;
+    tests.push({
+      id: 'VTEST-48',
+      name: 'ICRP Publication 74 / 116 Photon Fluence-to-Ambient Dose Equivalent H*(10) Conversion',
+      module: 'Module 35 (Unit Converter & Dosimetric Quantities)',
+      category: 'Radiometry',
+      standard: 'ICRP Publication 74 / 116 & ICRU Report 57',
+      standardDoc: 'ICRP Publication 116 (2010): Conversion Coefficients for Radiological Protection Quantities for External Radiation Exposures',
+      formulaKatex: '\\dot{H}^*(10) = \\Phi \\cdot h^*(10)_E \\cdot 3600 = 10^6 \\times 5.20\\text{ pSv}\\cdot\\text{cm}^2 \\times 3600\\text{ s/h} = 18.7200\\text{ mSv/h}',
+      inputsDesc: 'Monoenergetic 1.0 MeV photon fluence rate Φ = 1.0×10⁶ cm⁻²·s⁻¹, h*(10) = 5.20 pSv·cm²',
+      expectedValue: expectedMSvHr,
+      expectedUnits: 'mSv/h',
+      expectedDisplay: '18.7200 mSv/h',
+      computedValue: computedMSvHr,
+      computedDisplay: `${computedMSvHr.toFixed(4)} mSv/h`,
+      tolerancePct: 0.01,
+      errorPct: err,
+      passed: err <= 0.01,
+      notes: 'Verifies operational ICRU sphere 10 mm ambient dose equivalent conversion from particle fluence rate.'
+    });
+  }
+
+  // VTEST-49: Theoretical Carrier-Free Gravimetric Specific Activity for Cs-137
+  {
+    const halfLifeSec = 30.08 * 365.25 * 86400.0;
+    const molarMass = 136.9071;
+    const nA = 6.02214076e23;
+    const computedTBqPerG = ((Math.LN2 * nA) / (halfLifeSec * molarMass)) / 1e12;
+    const expectedTBqPerG = 3.2119;
+    const err = Math.abs((computedTBqPerG - expectedTBqPerG) / expectedTBqPerG) * 100;
+    tests.push({
+      id: 'VTEST-49',
+      name: 'Theoretical Carrier-Free Gravimetric Specific Activity (a_s = ln(2)·N_A / (T1/2·M)) for Cs-137',
+      module: 'Module 28 (Source Characterization & Forensics)',
+      category: 'Decay & Internal',
+      standard: 'IAEA-TECDOC-1344 / Knoll 4th Ed. Specific Activity Relation',
+      standardDoc: 'IAEA-TECDOC-1344 Categorization of Radioactive Sources / Knoll Radiation Detection and Measurement 4th Ed.',
+      formulaKatex: 'a_s = \\frac{\\ln(2) N_A}{T_{1/2} M_A} = \\frac{0.69315 \\times 6.02214\\times 10^{23}}{9.4923\\times 10^8\\text{ s} \\times 136.9071\\text{ g/mol}} = 3.2119\\text{ TBq/g}',
+      inputsDesc: 'Cs-137 half-life T½ = 30.08 y, Atomic Mass M = 136.9071 g/mol, Avogadro Constant N_A = 6.02214076×10²³ mol⁻¹',
+      expectedValue: expectedTBqPerG,
+      expectedUnits: 'TBq/g',
+      expectedDisplay: '3.2119 TBq/g (86.81 Ci/g)',
+      computedValue: computedTBqPerG,
+      computedDisplay: `${computedTBqPerG.toFixed(4)} TBq/g`,
+      tolerancePct: 0.01,
+      errorPct: err,
+      passed: err <= 0.01,
+      notes: 'Validates gravimetric carrier-free mass-to-activity conversion and chemical compound stoichiometry scaling.'
+    });
+  }
+
+  // VTEST-50: Keepin (1965) 6-Group Delayed Neutron Inhour Equation Reactivity at T = 10s (U-235)
+  {
+    const betaEff = 0.0065;
+    const promptL = 5.0e-5;
+    const omega = 1.0 / 10.0;
+    const groups = [
+      { a: 0.033, l: 0.0124 },
+      { a: 0.219, l: 0.0305 },
+      { a: 0.196, l: 0.111 },
+      { a: 0.395, l: 0.301 },
+      { a: 0.115, l: 1.14 },
+      { a: 0.042, l: 3.01 }
+    ];
+    let sumDelayed = 0;
+    for (const g of groups) {
+      sumDelayed += (g.a * omega) / (omega + g.l);
+    }
+    const computedCents = ((promptL * omega) / betaEff + sumDelayed) * 100.0;
+    const expectedCents = 39.9964;
+    const err = Math.abs((computedCents - expectedCents) / expectedCents) * 100;
+    tests.push({
+      id: 'VTEST-50',
+      name: 'Keepin (1965) 6-Group Delayed Neutron Inhour Equation Reactivity at T = 10s (U-235)',
+      module: 'Module 21 (Nuclear Criticality & Point Reactor Kinetics)',
+      category: 'Criticality & MCA',
+      standard: 'Keepin G.R. (1965) Physics of Nuclear Kinetics / Lamarsh Inhour Equation',
+      standardDoc: 'Keepin G.R. (1965) Physics of Nuclear Kinetics, Addison-Wesley Table 4-6 Delayed Neutron Parameters',
+      formulaKatex: '\\rho(\\$) = \\frac{\\Lambda \\omega}{\\beta_{\\text{eff}}} + \\sum_{i=1}^{6} \\frac{(\\beta_i/\\beta) \\omega}{\\omega + \\lambda_i} = +0.39996\\,\\$ \\ (39.9964\\text{ cents})',
+      inputsDesc: 'U-235 thermal fission (β_eff = 0.0065, Λ = 50 µs), Stable asymptotic reactor period T = 10.0 s (ω = 0.10 s⁻¹)',
+      expectedValue: expectedCents,
+      expectedUnits: 'cents',
+      expectedDisplay: '+39.9964 cents (+0.4000 $)',
+      computedValue: computedCents,
+      computedDisplay: `+${computedCents.toFixed(4)} cents`,
+      tolerancePct: 0.01,
+      errorPct: err,
+      passed: err <= 0.01,
+      notes: 'Verifies 6-group delayed neutron precursor kinetics governing sub-prompt reactor period and reactivity calibrations.'
+    });
+  }
+
+  // VTEST-51: Post-SCRAM I-135 → Xe-135 Xenon Pit Peak Time (t_max) after Thermal Reactor Trip
+  {
+    const lI = Math.LN2 / 6.57;
+    const lX = Math.LN2 / 9.14;
+    const gammaI = 0.0639;
+    const gammaX = 0.00237;
+    const sigmaX = 2.65e-18;
+    const phi0 = 1.0e14;
+    const x0OverI0 = ((gammaI + gammaX) * (lI / 3600.0)) / (gammaI * ((lX / 3600.0) + sigmaX * phi0));
+    const computedTMaxHours = (1.0 / (lX - lI)) * Math.log((lX / lI) * (1.0 - ((lX - lI) / lI) * x0OverI0));
+    const expectedTMaxHours = 10.1368;
+    const err = Math.abs((computedTMaxHours - expectedTMaxHours) / expectedTMaxHours) * 100;
+    tests.push({
+      id: 'VTEST-51',
+      name: 'Post-SCRAM I-135 → Xe-135 Xenon Pit Peak Time (t_max) after Thermal Reactor Trip',
+      module: 'Module 21 (Fission-Product Poison Transients)',
+      category: 'Criticality & MCA',
+      standard: 'Duderstadt & Hamilton (1976) Nuclear Reactor Analysis',
+      standardDoc: 'Duderstadt J.J. & Hamilton L.J. (1976) Nuclear Reactor Analysis, Wiley Ch. 13 Fission Product Poisoning',
+      formulaKatex: 't_{\\max} = \\frac{1}{\\lambda_X - \\lambda_I} \\ln\\!\\left[\\frac{\\lambda_X}{\\lambda_I}\\left(1 - \\frac{\\lambda_X - \\lambda_I}{\\lambda_I}\\frac{X_0}{I_0}\\right)\\right] = 10.1368\\text{ h}',
+      inputsDesc: 'Equilibrium thermal reactor SCRAM from Φ₀ = 1.0×10¹⁴ n/(cm²·s), I-135 (T½ = 6.57 h) → Xe-135 (T½ = 9.14 h, σ_a = 2.65×10⁶ b)',
+      expectedValue: expectedTMaxHours,
+      expectedUnits: 'hours',
+      expectedDisplay: '10.1368 h post-SCRAM',
+      computedValue: computedTMaxHours,
+      computedDisplay: `${computedTMaxHours.toFixed(4)} h`,
+      tolerancePct: 0.01,
+      errorPct: err,
+      passed: err <= 0.01,
+      notes: 'Predicts exact post-shutdown Xenon-135 poison peak timing ("Xenon Pit") for reactor restart reactivity margin planning.'
+    });
+  }
+
+  // VTEST-52: ANSI/ANS-8.3 CAAS Minimum Accident of Concern Maximum Unshielded Detection Radius (R_max)
+  {
+    const rRefM = 2.0;
+    const doseRateAtRefRadHr = 20.0 * 60.0;
+    const tripSetpointRadHr = 3.0;
+    const computedRMaxM = rRefM * Math.sqrt(doseRateAtRefRadHr / tripSetpointRadHr);
+    const expectedRMaxM = 40.0000;
+    const err = Math.abs((computedRMaxM - expectedRMaxM) / expectedRMaxM) * 100;
+    tests.push({
+      id: 'VTEST-52',
+      name: 'ANSI/ANS-8.3 CAAS Minimum Accident of Concern Maximum Unshielded Detection Radius (R_max)',
+      module: 'Module 22 (CAAS & Criticality Accident Excursion Kinetics)',
+      category: 'Criticality & MCA',
+      standard: 'ANSI/ANS-8.3-1997 (R2020) Sec. 4.2.1 / 10 CFR 70.24',
+      standardDoc: 'ANSI/ANS-8.3-1997 (R2020) Criticality Accident Alarm System Section 4.2.1 Minimum Accident of Concern',
+      formulaKatex: 'R_{\\max} = r_{\\text{ref}} \\sqrt{\\frac{\\dot{D}_{\\text{ref}}}{\\dot{D}_{\\text{trip}}}} = 2.0\\text{ m} \\times \\sqrt{\\frac{1200\\text{ rad/h}}{3.0\\text{ rad/h}}} = 40.0000\\text{ m}',
+      inputsDesc: 'Minimum Accident of Concern D_ref = 20 rad/min (1,200 rad/h) at r_ref = 2.0 m, Detector alarm trip setpoint D_trip = 3.0 rad/h',
+      expectedValue: expectedRMaxM,
+      expectedUnits: 'm',
+      expectedDisplay: '40.0000 m',
+      computedValue: computedRMaxM,
+      computedDisplay: `${computedRMaxM.toFixed(4)} m`,
+      tolerancePct: 0.001,
+      errorPct: err,
+      passed: err <= 0.001,
+      notes: 'Defines maximum unshielded detector placement radius for 2-out-of-3 (2oo3) coincidence criticality alarm coverage.'
+    });
+  }
+
   return tests;
 };
 

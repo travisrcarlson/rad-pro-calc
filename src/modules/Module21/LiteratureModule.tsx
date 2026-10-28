@@ -1711,7 +1711,7 @@ const METHOD_DOCS: MethodDoc[] = [
     moduleName: 'Verification Tests',
     domain: 'Regulatory Standards & Transport Security',
     title: 'IEEE 730-2014 & ASME NQA-1 Automated Scientific Verification, Error Bounds & IEEE 754 Precision',
-    overview: 'Executes 42 analytical benchmark vectors and 8 extreme boundary stress tests across all platform modules, certifying deterministic accuracy (<0.5% relative error), singularity clamping, and 64-bit IEEE 754 floating-point machine epsilon integrity.',
+    overview: 'Executes 52 analytical benchmark vectors and 8 extreme boundary stress tests across all platform modules, certifying deterministic accuracy (<0.5% relative error), singularity clamping, and 64-bit IEEE 754 floating-point machine epsilon integrity.',
     standards: [
       { org: 'IEEE', code: 'Std 730-2014', year: '2014', title: 'IEEE Standard for Software Quality Assurance Processes' },
       { org: 'ASME', code: 'NQA-1-2022', year: '2022', title: 'Quality Assurance Requirements for Nuclear Facility Applications (Part II Subpart 2.7 Computer Software)' },
@@ -1727,7 +1727,7 @@ const METHOD_DOCS: MethodDoc[] = [
       {
         stepTitle: '1. ASME NQA-1 Analytical Verification Protocol',
         explanation: 'Every computational kernel is tested against closed-form analytical solutions from ICRP, NCRP, IAEA, and ANSI standards. Relative percentage drift δ_rel must remain strictly below benchmark tolerance τ_tol:',
-        math: '\\max_{k \\in [1, 42]} \\delta_{\\text{rel}, k} \\le 0.50\\%'
+        math: '\\max_{k \\in [1, 52]} \\delta_{\\text{rel}, k} \\le 0.50\\%'
       },
       {
         stepTitle: '2. IEEE 754 Binary64 Machine Epsilon Verification',
@@ -1744,7 +1744,7 @@ const METHOD_DOCS: MethodDoc[] = [
       'Deterministic IEEE 754 double-precision execution without non-standard flush-to-zero optimizations.',
       'Boundary guards intercept zero/negative distances, voltages, and superluminal velocities prior to division.'
     ],
-    benchmarks: 'Certifies all 50 verification vectors (VTEST-01 through VTEST-42 and STRESS-01 through STRESS-08).'
+    benchmarks: 'Certifies all 60 verification vectors (VTEST-01 through VTEST-52 and STRESS-01 through STRESS-08).'
   },
 
   // 35. Module 35

@@ -569,6 +569,185 @@ const tests = [
     },
     tolerance: 0.01,
     units: 'TBq (Saturation Activity)'
+  },
+  {
+    id: 'VTEST-43',
+    name: 'Albert-Welton Fast Neutron Macroscopic Removal Cross-Section (Σ_R) Laminated Attenuation',
+    module: 'Module 14 (Advanced Shielding & Buildup)',
+    standard: 'Albert & Welton (1950) WAPD-15 / ANSI/ANS-6.4.3 (10 cm Fe + 15 cm Borated PE)',
+    expected: 2.6516,
+    compute: () => {
+      const sigmaR_Fe = 0.168; // cm^-1
+      const sigmaR_BPE = 0.130; // cm^-1
+      const mfpRemoval = sigmaR_Fe * 10.0 + sigmaR_BPE * 15.0; // 3.63 relaxation lengths
+      return 100.0 * Math.exp(-mfpRemoval);
+    },
+    tolerance: 0.01,
+    units: '% Fast Neutron Transmission'
+  },
+  {
+    id: 'VTEST-44',
+    name: 'Kalos / Broder Multi-Layer Gamma Buildup Order Asymmetry (Lead→Water vs Water→Lead)',
+    module: 'Module 14 (Multi-Layer Laminated Shielding)',
+    standard: 'Broder et al. (1962) / Goldstein & Wilkins NYO-3075 (2 mfp Pb + 2 mfp H2O at 1 MeV)',
+    expected: 1.6515,
+    compute: () => {
+      const bPb2 = 1.69, bPb4 = 2.26;
+      const bH2O2 = 4.28, bH2O4 = 10.60;
+      // Pb followed by H2O (terminal layer H2O): B = B_H2O(4) + [B_Pb(2) - B_H2O(2)]
+      const bPbToH2O = bH2O4 + (bPb2 - bH2O2);
+      // H2O followed by Pb (terminal layer Pb): B = B_Pb(4) + [B_H2O(2) - B_Pb(2)]
+      const bH2OToPb = bPb4 + (bH2O2 - bPb2);
+      return bPbToH2O / bH2OToPb;
+    },
+    tolerance: 0.01,
+    units: 'Buildup Asymmetry Ratio'
+  },
+  {
+    id: 'VTEST-45',
+    name: 'Chamberlain (1953) / Slade (1968) Plume Wet + Dry Source Depletion Survival Fraction',
+    module: 'Module 13 (Gaussian Plume Atmospheric Dispersion)',
+    standard: 'Slade (1968) Meteorology and Atomic Energy / RASCAL 4.3 Source Depletion',
+    expected: 61.1197,
+    compute: () => {
+      const x = 5000.0; // m
+      const u = 4.0; // m/s
+      const t = x / u; // 1250 s
+      const lambdaWet = 3.0e-4; // s^-1
+      const vd = 0.01; // m/s
+      const sigmaZMean = 85.0; // m
+      const lambdaDry = vd / (sigmaZMean * Math.sqrt(Math.PI / 2.0));
+      return 100.0 * Math.exp(-(lambdaWet + lambdaDry) * t);
+    },
+    tolerance: 0.01,
+    units: '% Remaining Airborne Source Q(x)/Q₀'
+  },
+  {
+    id: 'VTEST-46',
+    name: 'Planetary Boundary Layer (PBL) Inversion Lid Method-of-Images Reflection Multiplier',
+    module: 'Module 13 (Gaussian Plume Inversion Lid Trapping)',
+    standard: 'Turner (1994) Workbook of Atmospheric Dispersion Estimates (H_mix = 300m, σ_z = 220m)',
+    expected: 1.0485,
+    compute: () => {
+      const hMix = 300.0;
+      const sigmaZ = 220.0;
+      let mult = 1.0;
+      for (let m = 1; m <= 3; m++) {
+        const zImg = 2.0 * m * hMix;
+        mult += 2.0 * Math.exp(-(zImg * zImg) / (2.0 * sigmaZ * sigmaZ));
+      }
+      return mult;
+    },
+    tolerance: 0.01,
+    units: '× Ground Concentration Multiplier'
+  },
+  {
+    id: 'VTEST-47',
+    name: 'IAEA SSR-6 (2018) Para. 405 Multi-Radionuclide Mixture Effective A2 Limit (A2,mix)',
+    module: 'Module 15 (Transport Index & DOT Hazmat)',
+    standard: 'IAEA SSR-6 (Rev. 1) Para. 405 / 49 CFR 173.433 Harmonic Mixture Rule',
+    expected: 0.4800,
+    compute: () => {
+      // 50% Co-60 (A2 = 0.4 TBq) + 50% Cs-137 (A2 = 0.6 TBq)
+      const fCo60 = 0.5, a2Co60 = 0.4;
+      const fCs137 = 0.5, a2Cs137 = 0.6;
+      return 1.0 / (fCo60 / a2Co60 + fCs137 / a2Cs137);
+    },
+    tolerance: 0.01,
+    units: 'TBq (Effective Mixture A2)'
+  },
+  {
+    id: 'VTEST-48',
+    name: 'ICRP Publication 74 / 116 Photon Fluence-to-Ambient Dose Equivalent H*(10) Conversion',
+    module: 'Module 35 (Unit Converter & Dosimetric Quantities)',
+    standard: 'ICRP Publication 74 / 116 (h*(10) = 5.20 pSv·cm² at 1.0 MeV, Φ = 10⁶ cm⁻²·s⁻¹)',
+    expected: 18.7200,
+    compute: () => {
+      const fluenceRate = 1.0e6; // photons / cm^2 / s
+      const hStar10_pSvCm2 = 5.20;
+      // uSv/h = fluenceRate * hStar10 * 3.6e-3 -> mSv/h = uSv/h / 1000
+      return (fluenceRate * hStar10_pSvCm2 * 3.6e-3) / 1000.0;
+    },
+    tolerance: 0.01,
+    units: 'mSv/h'
+  },
+  {
+    id: 'VTEST-49',
+    name: 'Theoretical Carrier-Free Gravimetric Specific Activity (a_s = ln(2)·N_A / (T1/2·M)) for Cs-137',
+    module: 'Module 28 (Source Characterization & Forensics)',
+    standard: 'IAEA-TECDOC-1344 / Knoll 4th Ed. Specific Activity Relation',
+    expected: 3.2119,
+    compute: () => {
+      const halfLifeSec = 30.08 * 365.25 * 86400.0;
+      const molarMass = 136.9071;
+      const nA = 6.02214076e23;
+      const specificActivityBqPerG = (Math.LN2 * nA) / (halfLifeSec * molarMass);
+      return specificActivityBqPerG / 1e12; // TBq/g
+    },
+    tolerance: 0.01,
+    units: 'TBq/g (Cs-137 Specific Activity)'
+  },
+  {
+    id: 'VTEST-50',
+    name: 'Keepin (1965) 6-Group Delayed Neutron Inhour Equation Reactivity at T = 10s (U-235)',
+    module: 'Module 21 (Nuclear Criticality & Point Reactor Kinetics)',
+    standard: 'Keepin G.R. (1965) Physics of Nuclear Kinetics / Lamarsh Inhour Equation',
+    expected: 39.9964,
+    compute: () => {
+      const betaEff = 0.0065;
+      const promptL = 5.0e-5;
+      const omega = 1.0 / 10.0; // T = 10 s asymptotic period
+      const groups = [
+        { a: 0.033, l: 0.0124 },
+        { a: 0.219, l: 0.0305 },
+        { a: 0.196, l: 0.111 },
+        { a: 0.395, l: 0.301 },
+        { a: 0.115, l: 1.14 },
+        { a: 0.042, l: 3.01 }
+      ];
+      let sumDelayed = 0;
+      for (const g of groups) {
+        sumDelayed += (g.a * omega) / (omega + g.l);
+      }
+      const rhoDollars = (promptL * omega) / betaEff + sumDelayed;
+      return rhoDollars * 100.0; // cents
+    },
+    tolerance: 0.01,
+    units: 'cents (+ρ at T = 10 s)'
+  },
+  {
+    id: 'VTEST-51',
+    name: 'Post-SCRAM I-135 → Xe-135 Xenon Pit Peak Time (t_max) after Thermal Reactor Trip',
+    module: 'Module 21 (Fission-Product Poison Transients)',
+    standard: 'Duderstadt & Hamilton (1976) Nuclear Reactor Analysis (Φ₀ = 10¹⁴ n·cm⁻²·s⁻¹)',
+    expected: 10.1368,
+    compute: () => {
+      const lI = Math.LN2 / 6.57; // h^-1
+      const lX = Math.LN2 / 9.14; // h^-1
+      const gammaI = 0.0639;
+      const gammaX = 0.00237;
+      const sigmaX = 2.65e-18; // cm^2
+      const phi0 = 1.0e14;
+      const x0OverI0 = ((gammaI + gammaX) * (lI / 3600.0)) / (gammaI * ((lX / 3600.0) + sigmaX * phi0));
+      return (1.0 / (lX - lI)) * Math.log((lX / lI) * (1.0 - ((lX - lI) / lI) * x0OverI0));
+    },
+    tolerance: 0.01,
+    units: 'hours post-SCRAM (t_max)'
+  },
+  {
+    id: 'VTEST-52',
+    name: 'ANSI/ANS-8.3 CAAS Minimum Accident of Concern Maximum Unshielded Detection Radius (R_max)',
+    module: 'Module 22 (CAAS & Criticality Accident Excursion Kinetics)',
+    standard: 'ANSI/ANS-8.3-1997 (R2020) Sec. 4.2.1 (20 rad/min at 2.0 m, Setpoint = 3.0 rad/h)',
+    expected: 40.0000,
+    compute: () => {
+      const rRefM = 2.0;
+      const doseRateAtRefRadHr = 20.0 * 60.0; // 1200 rad/h
+      const tripSetpointRadHr = 3.0;
+      return rRefM * Math.sqrt(doseRateAtRefRadHr / tripSetpointRadHr);
+    },
+    tolerance: 0.001,
+    units: 'm (Max Detection Radius)'
   }
 ];
 

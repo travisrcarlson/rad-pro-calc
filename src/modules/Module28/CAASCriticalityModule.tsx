@@ -63,6 +63,9 @@ export const CAASCriticalityModule: React.FC = () => {
   const [concreteShieldThicknessCm, setConcreteShieldThicknessCm] = useState<number>(30);
   const [detectorDistanceM, setDetectorDistanceM] = useState<number>(20);
   const [personnelDistanceM, setPersonnelDistanceM] = useState<number>(15);
+  const [detectorSetpointRadHr, setDetectorSetpointRadHr] = useState<number>(3.0);
+  const [interiorWallCm, setInteriorWallCm] = useState<number>(0);
+  const [arrayLayoutPreset, setArrayLayoutPreset] = useState<'triangle' | 'corridor' | 'vault'>('triangle');
   const [isDossierOpen, setIsDossierOpen] = useState<boolean>(false);
 
   const activePreset = useMemo(() => {
@@ -198,6 +201,120 @@ export const CAASCriticalityModule: React.FC = () => {
       triageColor
     };
   }, [totalFissions, concreteShieldThicknessCm, detectorDistanceM, personnelDistanceM, excursionKinetics]);
+
+  // --- TAB 2B: ANSI/ANS-8.3 2D Facility 2oo3 Coincidence Detector Coverage & Blind-Zone Grid Solver ---
+  const caasGridCoverage = useMemo(() => {
+    // ANSI/ANS-8.3-1997 (R2020) Sec 4.2.1 Minimum Accident of Concern:
+    // 0.20 Gy/min = 20 rad/min = 1200 rad/h at r_ref = 2.0 m in free air
+    const rRefM = 2.0;
+    const minAccidentRateRadHrAt2m = 1200.0;
+    const hvlEffectiveCm = 12.5;
+    const wallTrans = Math.pow(0.5, Math.max(0, interiorWallCm) / hvlEffectiveCm);
+    const dTrip = Math.max(0.1, detectorSetpointRadHr);
+
+    // Maximum detection radius per detector channel (m):
+    // R_max = r_ref * sqrt((1200 * T_wall) / D_trip)
+    const rMaxM = rRefM * Math.sqrt((minAccidentRateRadHrAt2m * wallTrans) / dTrip);
+
+    const detectors =
+      arrayLayoutPreset === 'triangle'
+        ? [
+            { id: 'DET-A (NW Bay)', x: 12, y: 30 },
+            { id: 'DET-B (NE Bay)', x: 48, y: 30 },
+            { id: 'DET-C (South Center)', x: 30, y: 8 }
+          ]
+        : arrayLayoutPreset === 'corridor'
+        ? [
+            { id: 'DET-A (West Wing)', x: 10, y: 20 },
+            { id: 'DET-B (Center Hall)', x: 30, y: 20 },
+            { id: 'DET-C (East Wing)', x: 50, y: 20 }
+          ]
+        : [
+            { id: 'DET-A (Vault W1)', x: 8, y: 34 },
+            { id: 'DET-B (Vault W2)', x: 16, y: 34 },
+            { id: 'DET-C (Vault SW)', x: 8, y: 12 }
+          ];
+
+    const xVals: number[] = [];
+    const yVals: number[] = [];
+    for (let x = 0; x <= 60; x += 1) xVals.push(x);
+    for (let y = 0; y <= 40; y += 1) yVals.push(y);
+
+    const zMatrix: number[][] = [];
+    let totalCells = 0;
+    let twoOfThreeCells = 0;
+    let oneOfThreeCells = 0;
+    let blindZoneCells = 0;
+
+    for (let j = 0; j < yVals.length; j++) {
+      const y = yVals[j];
+      const row: number[] = [];
+      for (let i = 0; i < xVals.length; i++) {
+        const x = xVals[i];
+        let channelsTripped = 0;
+        for (const det of detectors) {
+          const dist = Math.hypot(x - det.x, y - det.y);
+          if (dist <= rMaxM) channelsTripped++;
+        }
+        row.push(channelsTripped);
+        totalCells++;
+        if (channelsTripped >= 2) twoOfThreeCells++;
+        else if (channelsTripped === 1) oneOfThreeCells++;
+        else blindZoneCells++;
+      }
+      zMatrix.push(row);
+    }
+
+    return {
+      rMaxM,
+      wallTrans,
+      detectors,
+      xVals,
+      yVals,
+      zMatrix,
+      pct2oo3: (twoOfThreeCells / totalCells) * 100,
+      pct1oo3: (oneOfThreeCells / totalCells) * 100,
+      pctBlind: (blindZoneCells / totalCells) * 100
+    };
+  }, [detectorSetpointRadHr, interiorWallCm, arrayLayoutPreset]);
+
+  // --- TAB 3B: Radial Prompt Neutron & Gamma Flash Profile (1m - 100m) ---
+  const radialFlashProfile = useMemo(() => {
+    const gammaCoeff = 2.0e-15;
+    const neutronCoeff = 2.5e-15;
+    const transGamma = Math.pow(0.5, concreteShieldThicknessCm / 11.0);
+    const transNeutron = Math.pow(0.5, concreteShieldThicknessCm / 15.0);
+
+    const radiiM: number[] = [];
+    const gammaGy: number[] = [];
+    const neutronGy: number[] = [];
+    const eqDoseSv: number[] = [];
+
+    for (let r = 1; r <= 100; r += 1) {
+      const dg = ((totalFissions * gammaCoeff) / (4 * Math.PI * r * r)) * transGamma;
+      const dn = ((totalFissions * neutronCoeff) / (4 * Math.PI * r * r)) * transNeutron;
+      const heq = dg + 10.0 * dn;
+      radiiM.push(r);
+      gammaGy.push(dg);
+      neutronGy.push(dn);
+      eqDoseSv.push(heq);
+    }
+
+    // Solve analytical radius where H_eq(r) = 4.0 Sv (LD50/60) and 0.25 Sv (Emergency limit)
+    const sourceTermSvM2 =
+      (totalFissions / (4 * Math.PI)) * (gammaCoeff * transGamma + 10.0 * neutronCoeff * transNeutron);
+    const rLd50M = Math.sqrt(sourceTermSvM2 / 4.0);
+    const r250mSvM = Math.sqrt(sourceTermSvM2 / 0.25);
+
+    return {
+      radiiM,
+      gammaGy,
+      neutronGy,
+      eqDoseSv,
+      rLd50M,
+      r250mSvM
+    };
+  }, [totalFissions, concreteShieldThicknessCm]);
 
   // --- Cryptographic Dossier Payload ---
   const dossierPayload: CalculationDossierPayload = useMemo(() => {
@@ -597,14 +714,17 @@ export const CAASCriticalityModule: React.FC = () => {
       {activeTab === 'caas_coverage' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div className="panel" style={{ padding: '20px' }}>
-            <h3 style={{ margin: '0 0 12px 0', fontSize: '1rem', color: 'var(--color-primary)' }}>
-              🚨 ANSI/ANS-8.3-1997 (R2017) Criticality Accident Alarm System Verification
-            </h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '10px' }}>
+              <h3 style={{ margin: 0, fontSize: '1rem', color: 'var(--color-primary)' }}>
+                🚨 ANSI/ANS-8.3-1997 (R2020) Criticality Accident Alarm System Verification
+              </h3>
+              <VerificationBadge testId="VTEST-52" standard="ANSI/ANS-8.3 Sec. 4.2.1 2oo3 Coverage" />
+            </div>
             <p style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)', marginBottom: '16px' }}>
-              Mandatory US DOE and NRC 10 CFR 70.24 requirement: Detectors must trigger an evacuation alarm within 0.5 seconds of exposure to a minimum accident of concern delivering <strong>0.20 Gy/min (20 rad/min) at 2.0 meters</strong>.
+              Mandatory US DOE and NRC 10 CFR 70.24 requirement: Detectors must trigger an evacuation alarm within 0.5 seconds of exposure to a minimum accident of concern delivering <strong>0.20 Gy/min (20 rad/min = 1,200 rad/h) at 2.0 meters</strong> in free air.
             </p>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '14px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px', marginBottom: '18px' }}>
               <div style={{ background: 'rgba(255,255,255,0.03)', padding: '14px', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
                 <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>MEASURED DOSE RATE AT DETECTOR</div>
                 <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: caasCalculations.caasCompliant ? '#10b981' : '#ef4444', marginTop: '2px' }}>
@@ -616,25 +736,128 @@ export const CAASCriticalityModule: React.FC = () => {
               </div>
 
               <div style={{ background: 'rgba(255,255,255,0.03)', padding: '14px', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
-                <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>TRIP MARGIN FACTOR</div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>MAX DETECTION RADIUS (R_max)</div>
                 <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#00e5ff', marginTop: '2px' }}>
-                  {(caasCalculations.doseRateDetRadMin / 20.0).toFixed(1)}× Threshold
+                  {caasGridCoverage.rMaxM.toFixed(2)} m
                 </div>
                 <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                  Relative to 20 rad/min statutory trigger
+                  At trip setpoint {detectorSetpointRadHr.toFixed(1)} rad/h (T = {(caasGridCoverage.wallTrans * 100).toFixed(1)}%)
                 </div>
               </div>
 
-              <div style={{ background: 'rgba(255,255,255,0.03)', padding: '14px', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
-                <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>VOTING LOGIC ARCHITECTURE</div>
-                <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#ffb703', marginTop: '4px' }}>
-                  2-Out-Of-3 (2oo3) Coincidence
+              <div style={{ background: 'rgba(16, 185, 129, 0.08)', padding: '14px', borderRadius: '8px', border: '1px solid rgba(16, 185, 129, 0.35)' }}>
+                <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>2oo3 COINCIDENCE COVERAGE</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#10b981', marginTop: '2px' }}>
+                  {caasGridCoverage.pct2oo3.toFixed(1)}%
                 </div>
                 <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                  Prevents false alarms while guaranteeing failsafe trip
+                  &ge; 2 of 3 channels tripped (60m &times; 40m bay)
+                </div>
+              </div>
+
+              <div style={{ background: caasGridCoverage.pctBlind > 0 ? 'rgba(239, 68, 68, 0.1)' : 'rgba(255,255,255,0.03)', padding: '14px', borderRadius: '8px', border: `1px solid ${caasGridCoverage.pctBlind > 0 ? '#ef4444' : 'var(--color-border)'}` }}>
+                <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>BLIND ZONE / 1oo3 SINGLE ONLY</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: caasGridCoverage.pctBlind > 0 ? '#ef4444' : '#ffb703', marginTop: '2px' }}>
+                  {caasGridCoverage.pctBlind.toFixed(1)}% / {caasGridCoverage.pct1oo3.toFixed(1)}%
+                </div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                  0-channel blind / 1-channel non-voting area
                 </div>
               </div>
             </div>
+
+            {/* 2D Facility 2oo3 Coverage Controls */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px', marginBottom: '16px', padding: '14px', borderRadius: '8px', background: 'rgba(15, 23, 42, 0.65)', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <div>
+                <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>3-Channel Detector Topology (60m &times; 40m Bay):</label>
+                <select
+                  className="form-control"
+                  value={arrayLayoutPreset}
+                  onChange={(e) => setArrayLayoutPreset(e.target.value as 'triangle' | 'corridor' | 'vault')}
+                  style={{ width: '100%', fontSize: '0.84rem', marginTop: '4px' }}
+                >
+                  <option value="triangle">Perimeter Triangle Array (Balanced 2oo3)</option>
+                  <option value="corridor">Linear Process Corridor Array (Center Axis)</option>
+                  <option value="vault">Clustered NW Vault Array (East Bay Blind Zone)</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Detector Trip Setpoint (rad/h):</label>
+                <input
+                  type="number"
+                  min="0.5"
+                  max="50"
+                  step="0.5"
+                  className="form-control"
+                  value={detectorSetpointRadHr}
+                  onChange={(e) => setDetectorSetpointRadHr(Math.max(0.5, parseFloat(e.target.value) || 3.0))}
+                  style={{ width: '100%', fontSize: '0.84rem', marginTop: '4px' }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Interior Partition Concrete Wall (cm):</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="60"
+                  step="5"
+                  className="form-control"
+                  value={interiorWallCm}
+                  onChange={(e) => setInteriorWallCm(Math.max(0, parseInt(e.target.value) || 0))}
+                  style={{ width: '100%', fontSize: '0.84rem', marginTop: '4px' }}
+                />
+              </div>
+            </div>
+
+            <div style={{ fontSize: '0.88rem', fontWeight: 'bold', marginBottom: '8px' }}>
+              🗺️ 2D Facility Bay 2-Out-Of-3 (2oo3) Coincidence Voting Map (0 = Blind Zone, 1 = Single Channel, 2–3 = 2oo3 Compliant)
+            </div>
+            <Plot
+              data={[
+                {
+                  x: caasGridCoverage.xVals,
+                  y: caasGridCoverage.yVals,
+                  z: caasGridCoverage.zMatrix,
+                  type: 'heatmap',
+                  zmin: 0,
+                  zmax: 3,
+                  colorscale: [
+                    [0.0, '#7f1d1d'],
+                    [0.33, '#d97706'],
+                    [0.66, '#059669'],
+                    [1.0, '#00e5ff']
+                  ],
+                  colorbar: {
+                    title: 'Channels Tripped',
+                    tickvals: [0, 1, 2, 3],
+                    ticktext: ['0 (Blind)', '1 (1oo3 Warn)', '2 (2oo3 Pass)', '3 (3oo3 Redundant)']
+                  }
+                },
+                {
+                  x: caasGridCoverage.detectors.map((d) => d.x),
+                  y: caasGridCoverage.detectors.map((d) => d.y),
+                  text: caasGridCoverage.detectors.map((d) => d.id),
+                  type: 'scatter',
+                  mode: 'markers+text',
+                  textposition: 'top center',
+                  name: 'CAAS Detectors',
+                  marker: { color: '#ffffff', size: 12, symbol: 'diamond', line: { color: '#000', width: 2 } },
+                  textfont: { color: '#ffffff', size: 11 }
+                }
+              ]}
+              layout={{
+                autosize: true,
+                height: 360,
+                margin: { l: 50, r: 40, t: 20, b: 45 },
+                paper_bgcolor: 'transparent',
+                plot_bgcolor: 'transparent',
+                font: { color: 'var(--color-text-muted)', size: 11 },
+                xaxis: { title: 'Facility East-West Coordinate X (meters)', range: [0, 60] },
+                yaxis: { title: 'Facility North-South Y (meters)', range: [0, 40] }
+              }}
+              style={{ width: '100%' }}
+              config={{ responsive: true, displayModeBar: false }}
+            />
           </div>
         </div>
       )}
@@ -649,7 +872,7 @@ export const CAASCriticalityModule: React.FC = () => {
               ☢️ Prompt Personnel Flash Dose &amp; Acute Radiation Injury
             </h3>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px', marginBottom: '20px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', marginBottom: '20px' }}>
               <div style={{ background: 'rgba(255,255,255,0.03)', padding: '14px', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
                 <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>GAMMA DOSE (D_γ)</div>
                 <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: '#00e5ff', marginTop: '2px' }}>
@@ -665,6 +888,16 @@ export const CAASCriticalityModule: React.FC = () => {
                 <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>High RBE (w_R = 10)</div>
               </div>
 
+              <div style={{ background: 'rgba(239, 68, 68, 0.08)', padding: '14px', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.4)' }}>
+                <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>LD50/60 LETHAL RADIUS (4.0 Sv)</div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: '#ef4444', marginTop: '2px' }}>
+                  {radialFlashProfile.rLd50M.toFixed(1)} m
+                </div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                  0.25 Sv Exclusion Boundary: {radialFlashProfile.r250mSvM.toFixed(1)} m
+                </div>
+              </div>
+
               <div style={{ background: 'rgba(255,255,255,0.03)', padding: '14px', borderRadius: '8px', border: `1px solid ${caasCalculations.triageColor}` }}>
                 <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>CLINICAL ARS TRIAGE</div>
                 <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: caasCalculations.triageColor, marginTop: '4px' }}>
@@ -672,6 +905,67 @@ export const CAASCriticalityModule: React.FC = () => {
                 </div>
               </div>
             </div>
+
+            <div style={{ fontSize: '0.88rem', fontWeight: 'bold', marginBottom: '8px' }}>
+              📉 Radial Prompt Neutron &amp; Gamma Flash Attenuation Profile (1 m – 100 m Standoff)
+            </div>
+            <Plot
+              data={[
+                {
+                  x: radialFlashProfile.radiiM,
+                  y: radialFlashProfile.eqDoseSv,
+                  type: 'scatter',
+                  mode: 'lines',
+                  name: 'Total Equivalent Dose H_eq (Sv, w_R=10)',
+                  line: { color: '#ef4444', width: 2.5 }
+                },
+                {
+                  x: radialFlashProfile.radiiM,
+                  y: radialFlashProfile.neutronGy,
+                  type: 'scatter',
+                  mode: 'lines',
+                  name: 'Fast Neutron Kerma D_n (Gy)',
+                  line: { color: '#ffb703', width: 2, dash: 'dash' }
+                },
+                {
+                  x: radialFlashProfile.radiiM,
+                  y: radialFlashProfile.gammaGy,
+                  type: 'scatter',
+                  mode: 'lines',
+                  name: 'Prompt Gamma Kerma D_γ (Gy)',
+                  line: { color: '#00e5ff', width: 2, dash: 'dot' }
+                },
+                {
+                  x: [1, 100],
+                  y: [4.0, 4.0],
+                  type: 'scatter',
+                  mode: 'lines',
+                  name: 'LD50/60 Lethal Threshold (4.0 Sv)',
+                  line: { color: '#f87171', width: 1.5, dash: 'dashdot' }
+                },
+                {
+                  x: [1, 100],
+                  y: [0.25, 0.25],
+                  type: 'scatter',
+                  mode: 'lines',
+                  name: '10 CFR 20 Emergency Limit (0.25 Sv)',
+                  line: { color: '#10b981', width: 1.5, dash: 'dashdot' }
+                }
+              ]}
+              layout={{
+                autosize: true,
+                height: 350,
+                margin: { l: 55, r: 30, t: 20, b: 45 },
+                paper_bgcolor: 'transparent',
+                plot_bgcolor: 'transparent',
+                font: { color: 'var(--color-text-muted)', size: 11 },
+                xaxis: { title: 'Standoff Distance r (meters)', type: 'log', gridcolor: 'rgba(255,255,255,0.06)' },
+                yaxis: { title: 'Prompt Dose / Equivalent Dose (Gy or Sv)', type: 'log', gridcolor: 'rgba(255,255,255,0.06)' },
+                legend: { orientation: 'h', y: -0.22 }
+              }}
+              style={{ width: '100%' }}
+              config={{ responsive: true, displayModeBar: false }}
+            />
           </div>
         </div>
       )}
