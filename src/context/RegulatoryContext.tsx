@@ -177,11 +177,17 @@ export const REGULATORY_FRAMEWORKS: Record<RegulatoryFrameworkId, RegulatoryFram
   }
 };
 
+export type UnitSystemMode = 'SI' | 'TRADITIONAL' | 'DUAL';
+
 interface RegulatoryContextType {
   currentFramework: RegulatoryFramework;
   frameworkId: RegulatoryFrameworkId;
   setFrameworkId: (id: RegulatoryFrameworkId) => void;
   allFrameworks: RegulatoryFramework[];
+  unitSystem: UnitSystemMode;
+  setUnitSystem: (mode: UnitSystemMode) => void;
+  formatDoseMSv: (mSv: number, suffix?: string) => string;
+  formatActivityGBq: (gBq: number) => string;
 }
 
 const RegulatoryContext = createContext<RegulatoryContextType | undefined>(undefined);
@@ -195,16 +201,61 @@ export const RegulatoryProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return 'US_NRC';
   });
 
+  const [unitSystem, setUnitSystemState] = useState<UnitSystemMode>(() => {
+    const saved = localStorage.getItem('radpro_unit_system');
+    if (saved === 'SI' || saved === 'TRADITIONAL' || saved === 'DUAL') {
+      return saved;
+    }
+    return 'SI';
+  });
+
   const setFrameworkId = (id: RegulatoryFrameworkId) => {
     setFrameworkIdState(id);
     localStorage.setItem('radpro_regulatory_framework', id);
+  };
+
+  const setUnitSystem = (mode: UnitSystemMode) => {
+    setUnitSystemState(mode);
+    localStorage.setItem('radpro_unit_system', mode);
+  };
+
+  const formatDoseMSv = (mSv: number, suffix = ''): string => {
+    const rem = mSv / 10.0;
+    const mrem = mSv * 100.0;
+    const tradStr = mSv >= 10 ? `${+rem.toFixed(2)} rem${suffix}` : `${+mrem.toFixed(0)} mrem${suffix}`;
+    const siStr = `${mSv} mSv${suffix}`;
+    if (unitSystem === 'SI') return siStr;
+    if (unitSystem === 'TRADITIONAL') return tradStr;
+    const tradShort = mSv >= 10 ? `${+rem.toFixed(1)} rem` : `${+mrem.toFixed(0)} mrem`;
+    return `${siStr} (${tradShort})`;
+  };
+
+  const formatActivityGBq = (gBq: number): string => {
+    const ci = gBq / 37.0;
+    const mCi = ci * 1000.0;
+    const tradStr = ci >= 0.1 ? `${+ci.toFixed(2)} Ci` : `${+mCi.toFixed(1)} mCi`;
+    const siStr = `${+gBq.toFixed(2)} GBq`;
+    if (unitSystem === 'SI') return siStr;
+    if (unitSystem === 'TRADITIONAL') return tradStr;
+    return `${siStr} (${tradStr})`;
   };
 
   const currentFramework = REGULATORY_FRAMEWORKS[frameworkId];
   const allFrameworks = Object.values(REGULATORY_FRAMEWORKS);
 
   return (
-    <RegulatoryContext.Provider value={{ currentFramework, frameworkId, setFrameworkId, allFrameworks }}>
+    <RegulatoryContext.Provider
+      value={{
+        currentFramework,
+        frameworkId,
+        setFrameworkId,
+        allFrameworks,
+        unitSystem,
+        setUnitSystem,
+        formatDoseMSv,
+        formatActivityGBq
+      }}
+    >
       {children}
     </RegulatoryContext.Provider>
   );
