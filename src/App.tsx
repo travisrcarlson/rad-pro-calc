@@ -585,19 +585,19 @@ const Sidebar: React.FC<SidebarProps> = ({
             </button>
 
             {showPinnedSection && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                 {pinnedItems.map(item => (
                   <NavLink
                     key={`pinned-${item.path}`}
                     to={item.path}
                     className={({ isActive }) => `sidebar-nav-link ${isActive ? 'active' : ''}`}
                   >
-                    <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginRight: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', flex: 1, minWidth: 0 }}>
                       <span
                         role="button"
                         title="Unpin from Favorites"
                         onClick={(e) => onTogglePin(item.path, e)}
-                        style={{ color: '#ffb703', fontSize: '0.74rem', cursor: 'pointer', lineHeight: 1 }}
+                        style={{ color: '#ffb703', fontSize: '0.74rem', cursor: 'pointer', lineHeight: 1.35, flexShrink: 0 }}
                       >
                         ★
                       </span>
@@ -606,11 +606,13 @@ const Sidebar: React.FC<SidebarProps> = ({
                         fontSize: '0.68rem',
                         color: item.categoryColor,
                         fontWeight: 700,
-                        minWidth: '18px'
+                        minWidth: '18px',
+                        lineHeight: 1.4,
+                        flexShrink: 0
                       }}>
                         {String(item.moduleNumber).padStart(2, '0')}
                       </span>
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      <span style={{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: 1.3 }}>
                         {item.label}
                       </span>
                     </span>
@@ -662,7 +664,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             </div>
 
             {showRecentSection && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                 {recentItems.slice(0, 4).map(item => (
                   <NavLink
                     key={`recent-${item.path}`}
@@ -670,17 +672,19 @@ const Sidebar: React.FC<SidebarProps> = ({
                     className={({ isActive }) => `sidebar-nav-link ${isActive ? 'active' : ''}`}
                     style={{ opacity: 0.9 }}
                   >
-                    <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginRight: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', flex: 1, minWidth: 0 }}>
                       <span style={{
                         fontFamily: 'var(--font-mono)',
                         fontSize: '0.68rem',
                         color: item.categoryColor,
                         fontWeight: 700,
-                        minWidth: '18px'
+                        minWidth: '18px',
+                        lineHeight: 1.4,
+                        flexShrink: 0
                       }}>
                         {String(item.moduleNumber).padStart(2, '0')}
                       </span>
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      <span style={{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: 1.3 }}>
                         {item.label}
                       </span>
                     </span>
@@ -726,7 +730,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 </button>
 
                 {isOpen && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                     {cat.visibleItems.map(item => {
                       const isPinned = pinnedPaths.includes(item.path);
                       return (
@@ -735,7 +739,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                           to={item.path}
                           className={({ isActive }) => `sidebar-nav-link ${isActive ? 'active' : ''}`}
                         >
-                          <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginRight: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', flex: 1, minWidth: 0 }}>
                             <span
                               role="button"
                               title={isPinned ? 'Unpin from Favorites' : 'Pin to Favorites'}
@@ -744,7 +748,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                                 color: isPinned ? '#ffb703' : 'rgba(148, 163, 184, 0.4)',
                                 fontSize: '0.72rem',
                                 cursor: 'pointer',
-                                lineHeight: 1
+                                lineHeight: 1.35,
+                                flexShrink: 0
                               }}
                             >
                               {isPinned ? '★' : '☆'}
@@ -755,11 +760,13 @@ const Sidebar: React.FC<SidebarProps> = ({
                               color: cat.color,
                               opacity: 0.85,
                               fontWeight: 700,
-                              minWidth: '18px'
+                              minWidth: '18px',
+                              lineHeight: 1.4,
+                              flexShrink: 0
                             }}>
                               {String(item.moduleNumber).padStart(2, '0')}
                             </span>
-                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            <span style={{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: 1.3 }}>
                               {item.label}
                             </span>
                           </span>
