@@ -42,7 +42,7 @@ export interface MethodDoc {
   benchmarks: string;
 }
 
-const METHOD_DOCS: MethodDoc[] = [
+export const METHOD_DOCS: MethodDoc[] = [
   // 1. Module 1
   {
     id: 'M01-Dose',

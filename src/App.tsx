@@ -45,6 +45,7 @@ const GlobalNuclearMapModule = lazyWithRetry(() => import('./modules/Module31/Gl
 import { RegulatoryProvider } from './context/RegulatoryContext';
 import { RegulatorySelectorBar } from './components/RegulatorySelectorBar';
 import { CommandPalette } from './components/CommandPalette';
+import { ModuleInfoTabPanel, MODULE_USER_GUIDES } from './components/ModuleInfoTabPanel';
 import ErrorBoundary from './ErrorBoundary';
 
 const ModuleLoadingSkeleton: React.FC = () => (
@@ -850,8 +851,18 @@ const AppShell: React.FC<{
     localStorage.setItem('radpro_recent_modules', JSON.stringify([]));
   };
 
-  // Track recent module visits
+  // Track recent module visits and reset workspace tab to 'tool' on route change
+  const [workspaceTab, setWorkspaceTab] = useState<'tool' | 'info'>('tool');
+
+  const handleSelectWorkspaceTab = (tab: 'tool' | 'info') => {
+    setWorkspaceTab(tab);
+    if (tab === 'tool') {
+      setTimeout(() => window.dispatchEvent(new Event('resize')), 60);
+    }
+  };
+
   useEffect(() => {
+    setWorkspaceTab('tool');
     const matched = ALL_FLAT_NAV_ITEMS.find(item => item.path === location.pathname);
     if (matched) {
       setRecentPaths(prev => {
@@ -866,6 +877,11 @@ const AppShell: React.FC<{
     return ALL_FLAT_NAV_ITEMS.find(item => item.path === location.pathname) || null;
   }, [location.pathname]);
 
+  const activeUserGuide = useMemo(() => {
+    if (!activeModuleInfo) return null;
+    return MODULE_USER_GUIDES[activeModuleInfo.moduleNumber] || null;
+  }, [activeModuleInfo]);
+
   const handleStepModule = (direction: -1 | 1) => {
     const idx = ALL_FLAT_NAV_ITEMS.findIndex(item => item.path === location.pathname);
     const currentIdx = idx >= 0 ? idx : 0;
@@ -873,7 +889,7 @@ const AppShell: React.FC<{
     navigate(ALL_FLAT_NAV_ITEMS[nextIdx].path);
   };
 
-  // Global keyboard shortcuts: Ctrl+B (Sidebar Collapse), Alt+ArrowLeft / Alt+ArrowRight (Module Stepper)
+  // Global keyboard shortcuts: Ctrl+B (Sidebar Collapse), Alt+ArrowLeft / Alt+ArrowRight (Module Stepper), Alt+I (Toggle Tool Info Tab)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
@@ -885,6 +901,15 @@ const AppShell: React.FC<{
       } else if (e.altKey && e.key === 'ArrowRight') {
         e.preventDefault();
         handleStepModule(1);
+      } else if (e.altKey && e.key.toLowerCase() === 'i') {
+        e.preventDefault();
+        setWorkspaceTab(prev => {
+          const next = prev === 'tool' ? 'info' : 'tool';
+          if (next === 'tool') {
+            setTimeout(() => window.dispatchEvent(new Event('resize')), 60);
+          }
+          return next;
+        });
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -913,10 +938,165 @@ const AppShell: React.FC<{
           onTogglePinActive={activeModuleInfo ? () => handleTogglePin(activeModuleInfo.path) : undefined}
         />
         <CommandPalette isOpen={isCommandPaletteOpen} onClose={() => setIsCommandPaletteOpen(false)} />
-        <div style={{ flex: 1, padding: '20px 30px', overflowY: 'auto' }}>
-          <ErrorBoundary>
-            <Suspense fallback={<ModuleLoadingSkeleton />}>
-              <Routes>
+        <div style={{ flex: 1, padding: '16px 30px 24px 30px', overflowY: 'auto' }}>
+          {/* Dedicated Module Workspace Tab Bar: [ Interactive Tool ] | [ Tool Info & User Guide ] */}
+          {activeModuleInfo && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '12px',
+                marginBottom: '16px',
+                padding: '8px 12px',
+                background: 'rgba(8, 15, 28, 0.85)',
+                border: '1px solid rgba(0, 229, 255, 0.22)',
+                borderRadius: '10px',
+                boxShadow: '0 4px 16px rgba(0, 0, 0, 0.35)'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => handleSelectWorkspaceTab('tool')}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '7px',
+                    padding: '7px 14px',
+                    borderRadius: '7px',
+                    fontSize: '0.82rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                    border:
+                      workspaceTab === 'tool'
+                        ? '1.5px solid var(--color-primary)'
+                        : '1px solid rgba(255, 255, 255, 0.12)',
+                    background:
+                      workspaceTab === 'tool'
+                        ? 'linear-gradient(90deg, rgba(0, 229, 255, 0.2) 0%, rgba(0, 229, 255, 0.08) 100%)'
+                        : 'rgba(255, 255, 255, 0.03)',
+                    color: workspaceTab === 'tool' ? '#ffffff' : '#94a3b8',
+                    boxShadow:
+                      workspaceTab === 'tool'
+                        ? '0 0 12px rgba(0, 229, 255, 0.2)'
+                        : 'none'
+                  }}
+                >
+                  <span style={{ color: workspaceTab === 'tool' ? '#00e5ff' : '#64748b' }}>⚡</span>
+                  <span>
+                    Interactive Tool — M{String(activeModuleInfo.moduleNumber).padStart(2, '0')}: {activeModuleInfo.label}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSelectWorkspaceTab('info')}
+                  title="Read what this tool does, when to use it, step-by-step operator workflow, and governing physics equations (Shortcut: Alt+I)"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '7px',
+                    padding: '7px 14px',
+                    borderRadius: '7px',
+                    fontSize: '0.82rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                    border:
+                      workspaceTab === 'info'
+                        ? `1.5px solid ${activeModuleInfo.categoryColor}`
+                        : '1px solid rgba(0, 229, 255, 0.28)',
+                    background:
+                      workspaceTab === 'info'
+                        ? `${activeModuleInfo.categoryColor}28`
+                        : 'rgba(0, 229, 255, 0.06)',
+                    color: workspaceTab === 'info' ? '#ffffff' : '#e2e8f0',
+                    boxShadow:
+                      workspaceTab === 'info'
+                        ? `0 0 14px ${activeModuleInfo.categoryColor}35`
+                        : 'none'
+                  }}
+                >
+                  <span style={{ fontSize: '0.92rem' }}>ℹ️</span>
+                  <span>Tool Info &amp; User Guide</span>
+                  <span
+                    style={{
+                      fontSize: '0.66rem',
+                      fontFamily: 'var(--font-mono)',
+                      padding: '1px 6px',
+                      borderRadius: '4px',
+                      background: 'rgba(0, 0, 0, 0.35)',
+                      border: '1px solid rgba(255, 255, 255, 0.14)',
+                      color: workspaceTab === 'info' ? '#fff' : '#00e5ff'
+                    }}
+                  >
+                    What This Tool Does
+                  </span>
+                </button>
+              </div>
+
+              {activeUserGuide && (
+                <div
+                  style={{
+                    flex: '1 1 320px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '10px',
+                    padding: '5px 10px',
+                    borderRadius: '6px',
+                    background: 'rgba(0, 0, 0, 0.28)',
+                    borderLeft: `3px solid ${activeModuleInfo.categoryColor}`
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: '0.76rem',
+                      color: '#cbd5e1',
+                      lineHeight: 1.4
+                    }}
+                  >
+                    <strong style={{ color: activeModuleInfo.categoryColor }}>Purpose:</strong>{' '}
+                    {activeUserGuide.whatItDoes}
+                  </span>
+                  {workspaceTab === 'tool' && (
+                    <button
+                      type="button"
+                      onClick={() => handleSelectWorkspaceTab('info')}
+                      style={{
+                        flexShrink: 0,
+                        background: 'transparent',
+                        border: 'none',
+                        color: '#00e5ff',
+                        fontSize: '0.74rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        textDecoration: 'underline',
+                        padding: '2px 4px'
+                      }}
+                    >
+                      Full Guide →
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {workspaceTab === 'info' && activeModuleInfo && (
+            <ModuleInfoTabPanel
+              moduleInfo={activeModuleInfo}
+              onReturnToTool={() => handleSelectWorkspaceTab('tool')}
+            />
+          )}
+
+          <div style={{ display: workspaceTab === 'info' ? 'none' : 'block' }}>
+            <ErrorBoundary>
+              <Suspense fallback={<ModuleLoadingSkeleton />}>
+                <Routes>
                 <Route path="/" element={<Navigate to="/nuclides" replace />} />
                 <Route path="/nuclides" element={<NuclideTableModule />} />
                 <Route path="/dose" element={<DoseCalculatorModule />} />
@@ -953,9 +1133,10 @@ const AppShell: React.FC<{
                 <Route path="/hardware" element={<DetectorHardwareModule />} />
                 <Route path="/scenarios" element={<ScenarioBuilderModule />} />
                 <Route path="/literature" element={<LiteratureModule />} />
-              </Routes>
-            </Suspense>
-          </ErrorBoundary>
+                </Routes>
+              </Suspense>
+            </ErrorBoundary>
+          </div>
         </div>
       </main>
     </div>
