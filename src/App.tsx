@@ -42,10 +42,11 @@ const TacticalGISModule = lazyWithRetry(() => import('./modules/Module29/Tactica
 const HistoricalIncidentsModule = lazyWithRetry(() => import('./modules/Module30/HistoricalIncidentsModule'), 'HistoricalIncidentsModule');
 const GlobalNuclearMapModule = lazyWithRetry(() => import('./modules/Module31/GlobalNuclearMapModule'), 'GlobalNuclearMapModule');
 
-import { RegulatoryProvider } from './context/RegulatoryContext';
+import { RegulatoryProvider, type GlobalSourceContext } from './context/RegulatoryContext';
 import { RegulatorySelectorBar } from './components/RegulatorySelectorBar';
 import { CommandPalette } from './components/CommandPalette';
 import { ModuleInfoTabPanel, MODULE_USER_GUIDES } from './components/ModuleInfoTabPanel';
+import { GlobalSourceAndPinboardDrawer } from './components/GlobalSourceAndPinboardDrawer';
 import ErrorBoundary from './ErrorBoundary';
 
 const ModuleLoadingSkeleton: React.FC = () => (
@@ -217,7 +218,7 @@ const NAV_CATEGORIES: NavCategory[] = [
     color: '#c084fc',
     iconSymbol: '✓',
     items: [
-      { moduleNumber: 34, path: '/verify', label: 'Verification Tests', badge: '60/60 Pass', keywords: ['module 34', 'm34', 'verify', 'test', 'sqa', 'validation', 'benchmark', 'qa'] },
+      { moduleNumber: 34, path: '/verify', label: 'Verification Tests', badge: '64/64 Pass', keywords: ['module 34', 'm34', 'verify', 'test', 'sqa', 'validation', 'benchmark', 'qa'] },
       { moduleNumber: 35, path: '/literature', label: 'Core Literature & Physics', badge: 'Derivations', keywords: ['module 35', 'm35', 'literature', 'citations', 'physics', 'equations', 'formulations', 'references'] }
     ]
   }
@@ -853,12 +854,28 @@ const AppShell: React.FC<{
 
   // Track recent module visits and reset workspace tab to 'tool' on route change
   const [workspaceTab, setWorkspaceTab] = useState<'tool' | 'info'>('tool');
+  const [sourceSyncRevision, setSourceSyncRevision] = useState(0);
 
   const handleSelectWorkspaceTab = (tab: 'tool' | 'info') => {
     setWorkspaceTab(tab);
     if (tab === 'tool') {
       setTimeout(() => window.dispatchEvent(new Event('resize')), 60);
     }
+  };
+
+  const handleApplySourceToCurrentModule = (source: GlobalSourceContext) => {
+    const params = new URLSearchParams(location.search);
+    params.set('isotope', source.isotope);
+    params.set('nuclide', source.isotope);
+    params.set('search', source.isotope);
+    params.set('activity', String(source.activityGBq));
+    params.set('unit', 'GBq');
+    params.set('distance', String(source.distanceM));
+    params.set('material', source.shieldMaterial);
+    params.set('thickness', String(source.shieldThicknessCm));
+    navigate(`${location.pathname}?${params.toString()}`, { replace: true });
+    setWorkspaceTab('tool');
+    setSourceSyncRevision(prev => prev + 1);
   };
 
   useEffect(() => {
@@ -1086,14 +1103,23 @@ const AppShell: React.FC<{
             </div>
           )}
 
+          {/* Global Active Source Sync & Multi-Module Calculation Pinboard Drawer */}
+          <GlobalSourceAndPinboardDrawer
+            activeModuleInfo={activeModuleInfo}
+            onApplySourceToCurrentModule={handleApplySourceToCurrentModule}
+          />
+
           {workspaceTab === 'info' && activeModuleInfo && (
             <ModuleInfoTabPanel
               moduleInfo={activeModuleInfo}
-              onReturnToTool={() => handleSelectWorkspaceTab('tool')}
+              onReturnToTool={() => {
+                setSourceSyncRevision(prev => prev + 1);
+                handleSelectWorkspaceTab('tool');
+              }}
             />
           )}
 
-          <div style={{ display: workspaceTab === 'info' ? 'none' : 'block' }}>
+          <div key={sourceSyncRevision} style={{ display: workspaceTab === 'info' ? 'none' : 'block' }}>
             <ErrorBoundary>
               <Suspense fallback={<ModuleLoadingSkeleton />}>
                 <Routes>

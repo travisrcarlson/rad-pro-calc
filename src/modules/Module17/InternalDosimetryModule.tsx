@@ -1,5 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import PlotComponent from 'react-plotly.js';
+import { BlockMath } from 'react-katex';
 import VerificationBadge from '../../components/VerificationBadge';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
@@ -129,6 +131,7 @@ const BODY_SILHOUETTE_PATH =
   "C 87,14 93,8 100,8 Z";
 
 const InternalDosimetryModule: React.FC = () => {
+  const [searchParams] = useSearchParams();
   const [nuclideKey, setNuclideKey] = useState<string>('Iodine-131');
   const [route, setRoute] = useState<'Inhalation' | 'Ingestion' | 'Injection'>('Inhalation');
   const [intakeActivity, setIntakeActivity] = useState<number>(100); // in kBq
@@ -136,6 +139,73 @@ const InternalDosimetryModule: React.FC = () => {
   const [selectedDay, setSelectedDay] = useState<number>(10); // scrubbing time parameter
   const [timespan, setTimespan] = useState<number>(180); // simulation span (days)
   const [isDossierOpen, setIsDossierOpen] = useState<boolean>(false);
+
+  // ICRP-137 / NIOSH Radon-222 Progeny Working Level (WL / WLM) & Room Ventilation State
+  const [radonConcBqM3, setRadonConcBqM3] = useState<number>(370); // 370 Bq/m³ = 10.0 pCi/L
+  const [radonEquilibriumF, setRadonEquilibriumF] = useState<number>(0.40); // Standard indoor F = 0.40
+  const [radonExposureHoursYr, setRadonExposureHoursYr] = useState<number>(2000); // 2,000 occupational hours/yr
+  const [radonVentilationACH, setRadonVentilationACH] = useState<number>(0.50); // Air changes per hour
+
+  useEffect(() => {
+    const iso = searchParams.get('isotope');
+    const actGBq = searchParams.get('activity');
+    if (iso) {
+      if (iso.includes('131')) setNuclideKey('Iodine-131');
+      else if (iso.includes('137')) setNuclideKey('Cesium-137');
+      else if (iso.includes('90')) setNuclideKey('Strontium-90');
+      else if (iso.includes('239') || iso.includes('241')) setNuclideKey('Plutonium-239');
+      else if (iso.includes('3')) setNuclideKey('Tritium (H-3)');
+    }
+    if (actGBq) {
+      const gBq = parseFloat(actGBq);
+      if (!isNaN(gBq) && gBq > 0) {
+        // Convert GBq to kBq (clamped to practical internal intake range)
+        const kBq = Math.min(100000, Math.max(1, gBq * 1e6));
+        setIntakeActivity(Number(kBq.toFixed(1)));
+      }
+    }
+  }, [searchParams]);
+
+  const radonAnalytics = useMemo(() => {
+    const pCiPerL = radonConcBqM3 / 37.0;
+    const eecBqM3 = radonConcBqM3 * radonEquilibriumF;
+    const workingLevelWL = eecBqM3 / 3700.0;
+    const annualWLM = workingLevelWL * (radonExposureHoursYr / 170.0);
+    const doseICRP137_mSv = annualWLM * 10.0; // ICRP-137 standard occupational 10 mSv/WLM
+    const doseICRP65_mSv = annualWLM * 5.0;   // Traditional ICRP-65 5 mSv/WLM
+
+    // Jacobi Ventilation Curve (0.1 to 4.0 ACH)
+    // Base exhalation rate E_Rn chosen so C_Rn(radonVentilationACH) matches radonConcBqM3
+    const lambdaRn = 0.00755; // h^-1 (Rn-222 decay constant)
+    const exhalationRateBqM3H = radonConcBqM3 * (lambdaRn + radonVentilationACH);
+
+    const achArr: number[] = [];
+    const wlCurve: number[] = [];
+    const doseCurveMSv: number[] = [];
+    for (let i = 1; i <= 40; i++) {
+      const ach = i * 0.1;
+      const cAtAch = exhalationRateBqM3H / (lambdaRn + ach);
+      // Jacobi equilibrium factor decrease with ventilation & plate-out
+      const fAtAch = Math.min(0.85, Math.max(0.08, radonEquilibriumF * ((0.5 + 0.25) / (ach + 0.25))));
+      const wl = (cAtAch * fAtAch) / 3700.0;
+      const wlm = wl * (radonExposureHoursYr / 170.0);
+      achArr.push(Number(ach.toFixed(1)));
+      wlCurve.push(Number(wl.toFixed(4)));
+      doseCurveMSv.push(Number((wlm * 10.0).toFixed(2)));
+    }
+
+    return {
+      pCiPerL,
+      eecBqM3,
+      workingLevelWL,
+      annualWLM,
+      doseICRP137_mSv,
+      doseICRP65_mSv,
+      achArr,
+      wlCurve,
+      doseCurveMSv
+    };
+  }, [radonConcBqM3, radonEquilibriumF, radonExposureHoursYr, radonVentilationACH]);
 
   const nuclide = useMemo(() => RADIONUCLIDES[nuclideKey], [nuclideKey]);
 
@@ -763,6 +833,179 @@ const InternalDosimetryModule: React.FC = () => {
           <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: '10px', lineHeight: '1.4' }}>
             Committed dose builds up over time as the radionuclide resides in the body, decaying and delivering biological damage to the tissues.
           </p>
+        </div>
+      </div>
+
+      {/* ICRP-137 / NIOSH Radon-222 Progeny Working Level (WL / WLM) & Room Ventilation Solver */}
+      <div className="panel" style={{ border: '1px solid rgba(16, 185, 129, 0.35)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '14px' }}>
+          <div>
+            <h3 style={{ margin: 0, color: '#10b981' }}>
+              🌬️ ICRP-137 / NIOSH Radon-222 Progeny Working Level (WL / WLM) &amp; Jacobi Ventilation Solver
+            </h3>
+            <p style={{ margin: '3px 0 0 0', fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>
+              Models short-lived alpha progeny (Po-218, Pb-214, Bi-214, Po-214) Equilibrium Equivalent Concentration (EEC), Working Levels (WL), Cumulative Working Level Months (WLM), and HVAC air-change mitigation.
+            </p>
+          </div>
+          <VerificationBadge testId="VTEST-56" standard="ICRP Pub 137 & 10 CFR 20" />
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '16px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
+              <div>
+                <label className="form-label" style={{ fontSize: '0.76rem' }}>
+                  Radon-222 Gas C_Rn (Bq/m³) [{radonAnalytics.pCiPerL.toFixed(1)} pCi/L]:
+                </label>
+                <input
+                  type="number"
+                  step="10"
+                  min="1"
+                  className="form-input"
+                  value={radonConcBqM3}
+                  onChange={e => setRadonConcBqM3(Math.max(1, Number(e.target.value) || 148))}
+                  style={{ width: '100%' }}
+                />
+              </div>
+              <div>
+                <label className="form-label" style={{ fontSize: '0.76rem' }}>
+                  Progeny Equilibrium Factor F (0.10–1.00):
+                </label>
+                <input
+                  type="number"
+                  step="0.05"
+                  min="0.10"
+                  max="1.00"
+                  className="form-input"
+                  value={radonEquilibriumF}
+                  onChange={e => setRadonEquilibriumF(Math.max(0.1, Math.min(1.0, Number(e.target.value) || 0.4)))}
+                  style={{ width: '100%' }}
+                />
+              </div>
+              <div>
+                <label className="form-label" style={{ fontSize: '0.76rem' }}>
+                  Annual Exposure Duration (h/yr, 1 WM = 170 h):
+                </label>
+                <input
+                  type="number"
+                  step="100"
+                  min="10"
+                  className="form-input"
+                  value={radonExposureHoursYr}
+                  onChange={e => setRadonExposureHoursYr(Math.max(10, Number(e.target.value) || 2000))}
+                  style={{ width: '100%' }}
+                />
+              </div>
+              <div>
+                <label className="form-label" style={{ fontSize: '0.76rem' }}>
+                  Baseline HVAC Ventilation λ_v (ACH, h⁻¹):
+                </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0.05"
+                  className="form-input"
+                  value={radonVentilationACH}
+                  onChange={e => setRadonVentilationACH(Math.max(0.05, Number(e.target.value) || 0.5))}
+                  style={{ width: '100%' }}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+              {[
+                { label: 'WHO Reference (100 Bq/m³)', bq: 100, f: 0.4 },
+                { label: 'US EPA Action Level (148 Bq/m³ = 4 pCi/L)', bq: 148, f: 0.4 },
+                { label: 'ICRP-126 Upper Ref (300 Bq/m³)', bq: 300, f: 0.4 },
+                { label: 'Underground Uranium Mine (1,850 Bq/m³)', bq: 1850, f: 0.5 }
+              ].map((p, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  className="btn btn-secondary"
+                  style={{ padding: '4px 8px', fontSize: '0.72rem' }}
+                  onClick={() => {
+                    setRadonConcBqM3(p.bq);
+                    setRadonEquilibriumF(p.f);
+                  }}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
+              <div className="hud-card">
+                <span className="hud-metric-label">WORKING LEVEL (WL)</span>
+                <span className="hud-metric-value" style={{ color: '#00e5ff' }}>
+                  {radonAnalytics.workingLevelWL.toFixed(4)} WL
+                </span>
+                <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                  EEC = {radonAnalytics.eecBqM3.toFixed(1)} Bq/m³ ({radonAnalytics.pCiPerL.toFixed(2)} pCi/L)
+                </span>
+              </div>
+              <div className="hud-card">
+                <span className="hud-metric-label">ANNUAL CUMULATIVE WLM</span>
+                <span className="hud-metric-value" style={{ color: radonAnalytics.annualWLM <= 4.0 ? '#10b981' : '#ef4444' }}>
+                  {radonAnalytics.annualWLM.toFixed(3)} WLM/yr
+                </span>
+                <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                  MSHA / 10 CFR 20 Limit = 4.0 WLM/yr
+                </span>
+              </div>
+              <div className="hud-card">
+                <span className="hud-metric-label">ICRP-137 EFFECTIVE DOSE</span>
+                <span className="hud-metric-value" style={{ color: '#f59e0b' }}>
+                  {radonAnalytics.doseICRP137_mSv.toFixed(2)} mSv/yr
+                </span>
+                <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                  10 mSv / WLM (ICRP Pub 137 Standard)
+                </span>
+              </div>
+              <div className="hud-card">
+                <span className="hud-metric-label">ICRP-65 / UNSCEAR DOSE</span>
+                <span className="hud-metric-value" style={{ color: '#38bdf8' }}>
+                  {radonAnalytics.doseICRP65_mSv.toFixed(2)} mSv/yr
+                </span>
+                <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                  5.0 mSv / WLM (Traditional Conversion)
+                </span>
+              </div>
+            </div>
+
+            <div className="formula-box" style={{ padding: '8px 12px', fontSize: '0.78rem' }}>
+              <BlockMath math="\text{WL} = \frac{F \cdot C_{\text{Rn}}}{3700\,\text{Bq/m}^3}, \quad \text{WLM} = \text{WL} \cdot \frac{t}{170\,\text{h}}, \quad E_{\text{ICRP-137}} = 10\,\frac{\text{mSv}}{\text{WLM}} \cdot \text{WLM}" />
+            </div>
+          </div>
+
+          <div>
+            <Plot
+              data={[
+                {
+                  x: radonAnalytics.achArr,
+                  y: radonAnalytics.doseCurveMSv,
+                  type: 'scatter',
+                  mode: 'lines',
+                  name: 'Annual Dose vs. Ventilation (mSv/yr)',
+                  line: { color: '#10b981', width: 3 },
+                  fill: 'tozeroy',
+                  fillcolor: 'rgba(16, 185, 129, 0.1)'
+                }
+              ]}
+              layout={{
+                paper_bgcolor: 'transparent',
+                plot_bgcolor: 'rgba(0,0,0,0.25)',
+                margin: { t: 28, r: 20, b: 45, l: 55 },
+                height: 290,
+                font: { color: '#cbd5e1', size: 11 },
+                title: { text: 'Jacobi HVAC Ventilation Mitigation Curve (mSv/yr vs. Air Changes/Hour)', font: { size: 12, color: '#e2e8f0' } },
+                xaxis: { title: 'Ventilation Rate λ_v (Air Changes per Hour, ACH)', gridcolor: 'rgba(255,255,255,0.06)' },
+                yaxis: { title: 'ICRP-137 Annual Effective Dose (mSv/yr)', gridcolor: 'rgba(255,255,255,0.06)' }
+              }}
+              config={{ displayModeBar: false, responsive: true }}
+              style={{ width: '100%' }}
+            />
+          </div>
         </div>
       </div>
 

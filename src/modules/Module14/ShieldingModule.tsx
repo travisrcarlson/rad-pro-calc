@@ -18,7 +18,7 @@ import {
 
 const Plot = (PlotComponent as any).default || PlotComponent;
 
-export type ShieldTab = 'layers' | 'buildup' | 'solver' | 'physics';
+export type ShieldTab = 'layers' | 'buildup' | 'solver' | 'pet_tg108' | 'labyrinth_skyshine' | 'physics';
 
 interface IsotopePreset {
   id: string;
@@ -34,6 +34,7 @@ const ISOTOPE_PRESETS: IsotopePreset[] = [
   { id: 'tc99m', name: 'Tc-99m (140.5 keV)', energyMev: 0.1405, description: 'Diagnostic nuclear medicine. Above Pb & U K-edges.' },
   { id: 'i131', name: 'I-131 (364 keV)', energyMev: 0.364, description: 'Medical radioiodine therapy. Intermediate gamma energy.' },
   { id: 'ir192', name: 'Ir-192 (380 keV avg)', energyMev: 0.380, description: 'Industrial radiography & HDR brachytherapy.' },
+  { id: 'f18', name: 'F-18 PET (511 keV)', energyMev: 0.511, description: 'Positron annihilation photon (AAPM TG-108 PET facility design).' },
   { id: 'cs137', name: 'Cs-137 (661.7 keV)', energyMev: 0.6617, description: 'Standard industrial & irradiator reference gamma line.' },
   { id: 'co60', name: 'Co-60 (1.25 MeV avg)', energyMev: 1.25, description: 'Teletherapy & industrial irradiator. Compton-dominated deep penetration.' },
   { id: 'linac6', name: '6 MV Linac (2.0 MeV eff)', energyMev: 2.0, description: 'Clinical linear accelerator broad spectrum.' },
@@ -59,9 +60,44 @@ export const ShieldingModule: React.FC = () => {
   const [isDossierOpen, setIsDossierOpen] = useState<boolean>(false);
   const agedMixBanner = searchParams.get('agedMix');
 
+  // Initial multi-layer stack
+  const [layers, setLayers] = useState<ShieldLayer[]>([
+    { id: 'l1', materialKey: 'CONCRETE', thicknessCm: 15.0 },
+    { id: 'l2', materialKey: 'LEAD', thicknessCm: 2.0 }
+  ]);
+
+  // AAPM TG-108 PET / Nuclear Medicine Clinic Shielding State
+  const [petActivityMBq, setPetActivityMBq] = useState<number>(555); // 15 mCi F-18 FDG
+  const [petPatientsPerWeek, setPetPatientsPerWeek] = useState<number>(40);
+  const [petUptakeTimeMin, setPetUptakeTimeMin] = useState<number>(60);
+  const [petImagingTimeMin, setPetImagingTimeMin] = useState<number>(30);
+  const [petDistanceM, setPetDistanceM] = useState<number>(2.5);
+  const [petOccupancyT, setPetOccupancyT] = useState<number>(1.0);
+  const [petWeeklyGoalUSv, setPetWeeklyGoalUSv] = useState<number>(20.0); // 20 uSv/wk public, 100 uSv/wk controlled
+  const [petBarrierMaterial, setPetBarrierMaterial] = useState<'LEAD' | 'CONCRETE' | 'IRON'>('LEAD');
+  const [petBarrierThicknessCm, setPetBarrierThicknessCm] = useState<number>(1.2); // 12 mm Pb
+
+  // NCRP-151 Vault Labyrinth (Kersey) & Skyshine State
+  const [mazeWorkloadDoseAt1mSvH, setMazeWorkloadDoseAt1mSvH] = useState<number>(50.0); // Sv/h at 1 m from isocenter/source
+  const [mazeLeg1LengthM, setMazeLeg1LengthM] = useState<number>(4.5); // d1 (m)
+  const [mazeLeg2LengthM, setMazeLeg2LengthM] = useState<number>(6.0); // d2 (m)
+  const [mazeWidthM, setMazeWidthM] = useState<number>(1.5);
+  const [mazeHeightM, setMazeHeightM] = useState<number>(2.4);
+  const [mazeDoorBpeCm, setMazeDoorBpeCm] = useState<number>(10.0); // Borated Polyethylene cm
+  const [mazeDoorLeadCm, setMazeDoorLeadCm] = useState<number>(1.5); // Lead cm
+  const [skyRoofThicknessConcreteCm, setSkyRoofThicknessConcreteCm] = useState<number>(60.0);
+  const [skySolidAngleSr, setSkySolidAngleSr] = useState<number>(0.85);
+  const [skyHorizontalDistM, setSkyHorizontalDistM] = useState<number>(30.0);
+
   useEffect(() => {
     const eParam = searchParams.get('energyMeV');
     const actParam = searchParams.get('activityMBq');
+    const isoParam = searchParams.get('isotope');
+    const actGBqParam = searchParams.get('activity');
+    const distParam = searchParams.get('distance');
+    const matParam = searchParams.get('material');
+    const thickParam = searchParams.get('thickness');
+
     if (eParam) {
       const val = parseFloat(eParam);
       if (!isNaN(val) && val > 0.005) {
@@ -72,17 +108,50 @@ export const ShieldingModule: React.FC = () => {
     if (actParam) {
       const actMBq = parseFloat(actParam);
       if (!isNaN(actMBq) && actMBq > 0) {
-        // Approximate unshielded dose rate at 1m in uSv/h
         setIncidentDoseRate(Math.max(1, Number((actMBq * 0.12).toFixed(1))));
       }
     }
+    if (isoParam) {
+      const lower = isoParam.toLowerCase().replace('-', '');
+      const matched = ISOTOPE_PRESETS.find(p => p.id === lower || p.name.toLowerCase().includes(isoParam.toLowerCase()));
+      if (matched) {
+        setSelectedPresetId(matched.id);
+        setPhotonEnergyMev(matched.energyMev);
+      }
+    }
+    if (actGBqParam) {
+      const gBq = parseFloat(actGBqParam);
+      const r = distParam ? Math.max(0.1, parseFloat(distParam)) : 1.0;
+      if (!isNaN(gBq) && gBq > 0) {
+        // Estimate incident dose rate in uSv/h at distance r
+        const gammaMap: Record<string, number> = {
+          'Co-60': 308.5,
+          'Cs-137': 77.2,
+          'Ir-192': 116.8,
+          'F-18': 143.0,
+          'I-131': 52.2,
+          'Tc-99m': 14.1,
+          'Am-241': 3.1
+        };
+        const gConst = (isoParam && gammaMap[isoParam]) || 120.0;
+        const rateUSvH = (gConst * gBq) / (r * r);
+        setIncidentDoseRate(Math.max(0.1, Number(rateUSvH.toFixed(1))));
+      }
+    }
+    if (matParam && thickParam) {
+      const tVal = parseFloat(thickParam);
+      const matUpper = matParam.toUpperCase();
+      const validKey =
+        matUpper.includes('LEAD') ? 'LEAD' :
+        matUpper.includes('CONCRETE') ? 'CONCRETE' :
+        matUpper.includes('STEEL') || matUpper.includes('IRON') ? 'IRON' :
+        matUpper.includes('TUNGSTEN') ? 'TUNGSTEN' :
+        matUpper.includes('WATER') ? 'WATER' : 'LEAD';
+      if (!isNaN(tVal) && tVal > 0) {
+        setLayers([{ id: 'l_sync_1', materialKey: validKey, thicknessCm: tVal }]);
+      }
+    }
   }, [searchParams]);
-
-  // Initial multi-layer stack
-  const [layers, setLayers] = useState<ShieldLayer[]>([
-    { id: 'l1', materialKey: 'CONCRETE', thicknessCm: 15.0 },
-    { id: 'l2', materialKey: 'LEAD', thicknessCm: 2.0 }
-  ]);
 
   // Solver target limit
   const [targetDoseLimit, setTargetDoseLimit] = useState<number>(2.5); // µSv/h
@@ -356,6 +425,174 @@ export const ShieldingModule: React.FC = () => {
       })
       .sort((a, b) => a.requiredThicknessCm - b.requiredThicknessCm);
   }, [incidentDoseRate, targetDoseLimit, photonEnergyMev, buildupModel]);
+
+  // AAPM TG-108 PET / Nuclear Medicine Facility Shielding Analytics (511 keV Annihilation Photons)
+  const petTg108Analytics = useMemo(() => {
+    const halfLifeMin = 109.77; // F-18 half-life in minutes
+    const gammaPatient = 0.092; // uSv·m²/(MBq·h) including 0.36 patient body self-attenuation
+    const tU = Math.max(1, petUptakeTimeMin);
+    const tI = Math.max(1, petImagingTimeMin);
+    const d = Math.max(0.3, petDistanceM);
+
+    const rU = ((1.443 * halfLifeMin) / tU) * (1 - Math.exp((-Math.LN2 * tU) / halfLifeMin));
+    const rI = ((1.443 * halfLifeMin) / tI) * (1 - Math.exp((-Math.LN2 * tI) / halfLifeMin));
+    const fU = Math.exp((-Math.LN2 * tU) / halfLifeMin);
+    const fVoid = 0.85; // 15% urinary excretion post-uptake
+
+    const unshieldedUptakeWeeklyUSv =
+      gammaPatient * petActivityMBq * petPatientsPerWeek * (tU / 60.0) * rU * (petOccupancyT / (d * d));
+    const unshieldedImagingWeeklyUSv =
+      gammaPatient * petActivityMBq * fVoid * fU * petPatientsPerWeek * (tI / 60.0) * rI * (petOccupancyT / (d * d));
+
+    // AAPM TG-108 Table II Archer parameters for 511 keV (adjusted for thickness x in cm)
+    const archerParams: Record<'LEAD' | 'CONCRETE' | 'IRON', { alpha: number; beta: number; gamma: number; density: number; label: string }> = {
+      LEAD:     { alpha: 1.543,  beta: -0.4408, gamma: 0.2136, density: 11.35, label: 'Lead (Pb)' },
+      CONCRETE: { alpha: 0.1539, beta: -0.1161, gamma: 0.2075, density: 2.35,  label: 'Concrete (2.35 g/cm³)' },
+      IRON:     { alpha: 0.5704, beta: -0.3063, gamma: 0.6326, density: 7.87,  label: 'Steel / Iron (Fe)' }
+    };
+
+    const evalArcher = (mat: 'LEAD' | 'CONCRETE' | 'IRON', xCm: number) => {
+      if (xCm <= 0) return 1.0;
+      const p = archerParams[mat];
+      const base = (1 + p.beta / p.alpha) * Math.exp(p.alpha * p.gamma * xCm) - p.beta / p.alpha;
+      return Math.pow(Math.max(1.0, base), -1.0 / p.gamma);
+    };
+
+    const solveArcherThicknessCm = (mat: 'LEAD' | 'CONCRETE' | 'IRON', reqB: number) => {
+      if (reqB >= 1.0) return 0.0;
+      const p = archerParams[mat];
+      const term = (Math.pow(reqB, -p.gamma) + p.beta / p.alpha) / (1 + p.beta / p.alpha);
+      if (term <= 1.0) return 0.0;
+      return Math.log(term) / (p.alpha * p.gamma);
+    };
+
+    const currentTransmissionB = evalArcher(petBarrierMaterial, petBarrierThicknessCm);
+    const shieldedUptakeWeeklyUSv = unshieldedUptakeWeeklyUSv * currentTransmissionB;
+    const shieldedImagingWeeklyUSv = unshieldedImagingWeeklyUSv * currentTransmissionB;
+
+    const reqBUptake = Math.min(1.0, petWeeklyGoalUSv / Math.max(1e-6, unshieldedUptakeWeeklyUSv));
+    const reqBImaging = Math.min(1.0, petWeeklyGoalUSv / Math.max(1e-6, unshieldedImagingWeeklyUSv));
+
+    const reqUptakeThicknessCm = solveArcherThicknessCm(petBarrierMaterial, reqBUptake);
+    const reqImagingThicknessCm = solveArcherThicknessCm(petBarrierMaterial, reqBImaging);
+
+    // Build curve points for Plotly
+    const maxCurveCm = petBarrierMaterial === 'CONCRETE' ? 50 : petBarrierMaterial === 'IRON' ? 15 : 5.0;
+    const xs: number[] = [];
+    const uptakeCurve: number[] = [];
+    const imagingCurve: number[] = [];
+    for (let i = 0; i <= 50; i++) {
+      const x = (i / 50) * maxCurveCm;
+      const b = evalArcher(petBarrierMaterial, x);
+      xs.push(Number(x.toFixed(2)));
+      uptakeCurve.push(unshieldedUptakeWeeklyUSv * b);
+      imagingCurve.push(unshieldedImagingWeeklyUSv * b);
+    }
+
+    return {
+      rU,
+      rI,
+      fU,
+      unshieldedUptakeWeeklyUSv,
+      unshieldedImagingWeeklyUSv,
+      currentTransmissionB,
+      shieldedUptakeWeeklyUSv,
+      shieldedImagingWeeklyUSv,
+      reqBUptake,
+      reqBImaging,
+      reqUptakeThicknessCm,
+      reqImagingThicknessCm,
+      xs,
+      uptakeCurve,
+      imagingCurve,
+      materialLabel: archerParams[petBarrierMaterial].label
+    };
+  }, [
+    petActivityMBq,
+    petPatientsPerWeek,
+    petUptakeTimeMin,
+    petImagingTimeMin,
+    petDistanceM,
+    petOccupancyT,
+    petWeeklyGoalUSv,
+    petBarrierMaterial,
+    petBarrierThicknessCm
+  ]);
+
+  // NCRP-151 Vault Labyrinth (Kersey / Cossairt) & Roof Skyshine Analytics
+  const labyrinthSkyshineAnalytics = useMemo(() => {
+    const areaM2 = Math.max(0.5, mazeWidthM * mazeHeightM);
+    const sqrtA = Math.sqrt(areaM2);
+    const d1 = Math.max(1.0, mazeLeg1LengthM);
+    const d2 = Math.max(0.5, mazeLeg2LengthM);
+
+    const doseAtMazeMouthSvH = mazeWorkloadDoseAt1mSvH / (d1 * d1);
+    const evaluateLeg2SvH = (dist2: number) => {
+      const geomFactor = areaM2 / (d1 * d1);
+      const decay2 = 0.20 * Math.exp(-dist2 / (1.95 * sqrtA)) + 0.80 * Math.exp(-dist2 / (5.4 * sqrtA));
+      return doseAtMazeMouthSvH * geomFactor * decay2;
+    };
+
+    const unshieldedDoorDoseUSvH = evaluateLeg2SvH(d2) * 1e6; // convert Sv/h to uSv/h
+    const doorAttenuation =
+      0.65 * Math.pow(10, -mazeDoorBpeCm / 4.5) + 0.35 * Math.pow(10, -mazeDoorLeadCm / 5.0);
+    const shieldedDoorDoseUSvH = unshieldedDoorDoseUSvH * doorAttenuation;
+
+    // Roof Skyshine (NCRP-151 Eq. 5.12)
+    const roofTransmission = Math.pow(10, -skyRoofThicknessConcreteCm / 37.0);
+    const dRoofInternalM = 4.0;
+    const evaluateSkyshineUSvH = (dHoriz: number) => {
+      const baseSvH =
+        ((2.5e-2 * mazeWorkloadDoseAt1mSvH * roofTransmission * Math.pow(skySolidAngleSr, 1.3)) /
+          Math.pow(dRoofInternalM + 2.0, 2)) *
+        Math.exp(-dHoriz / 90.0);
+      return baseSvH * 1e6;
+    };
+
+    const skyshineAtReceptorUSvH = evaluateSkyshineUSvH(skyHorizontalDistM);
+
+    // Build Leg 2 profile & Skyshine radial profile
+    const leg2Xs: number[] = [];
+    const leg2DoseUSvH: number[] = [];
+    for (let i = 0; i <= 40; i++) {
+      const x = 0.5 + (i / 40) * 11.5;
+      leg2Xs.push(Number(x.toFixed(2)));
+      leg2DoseUSvH.push(evaluateLeg2SvH(x) * 1e6);
+    }
+
+    const skyXs: number[] = [];
+    const skyDoseUSvH: number[] = [];
+    for (let i = 0; i <= 40; i++) {
+      const r = 5 + (i / 40) * 195;
+      skyXs.push(Number(r.toFixed(1)));
+      skyDoseUSvH.push(evaluateSkyshineUSvH(r));
+    }
+
+    return {
+      areaM2,
+      doseAtMazeMouthSvH,
+      unshieldedDoorDoseUSvH,
+      doorAttenuation,
+      shieldedDoorDoseUSvH,
+      roofTransmission,
+      skyshineAtReceptorUSvH,
+      leg2Xs,
+      leg2DoseUSvH,
+      skyXs,
+      skyDoseUSvH
+    };
+  }, [
+    mazeWorkloadDoseAt1mSvH,
+    mazeLeg1LengthM,
+    mazeLeg2LengthM,
+    mazeWidthM,
+    mazeHeightM,
+    mazeDoorBpeCm,
+    mazeDoorLeadCm,
+    skyRoofThicknessConcreteCm,
+    skySolidAngleSr,
+    skyHorizontalDistM
+  ]);
 
   const handleAddLayer = (materialKey: string = 'LEAD') => {
     const newId = `layer_${Date.now()}`;
@@ -655,6 +892,18 @@ export const ShieldingModule: React.FC = () => {
           onClick={() => setActiveTab('solver')}
         >
           🎯 Exact Broad-Beam Thickness Solver
+        </button>
+        <button
+          className={`tab-btn ${activeTab === 'pet_tg108' ? 'active' : ''}`}
+          onClick={() => setActiveTab('pet_tg108')}
+        >
+          🏥 AAPM TG-108 PET Clinic Shielding
+        </button>
+        <button
+          className={`tab-btn ${activeTab === 'labyrinth_skyshine' ? 'active' : ''}`}
+          onClick={() => setActiveTab('labyrinth_skyshine')}
+        >
+          🌀 NCRP-151 Labyrinth &amp; Skyshine
         </button>
         <button
           className={`tab-btn ${activeTab === 'physics' ? 'active' : ''}`}
@@ -1174,6 +1423,390 @@ export const ShieldingModule: React.FC = () => {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 4A: AAPM TG-108 PET / Nuclear Medicine Clinic Shielding (511 keV Annihilation) */}
+      {activeTab === 'pet_tg108' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '16px' }}>
+            <div style={{ background: 'rgba(5, 10, 18, 0.65)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <h4 style={{ margin: 0, color: '#00e5ff' }}>🏥 AAPM TG-108 PET/CT Clinic Workload &amp; Barrier Inputs</h4>
+                <VerificationBadge testId="VTEST-53" standard="AAPM TG-108 (2006)" />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', marginBottom: '12px' }}>
+                <div>
+                  <label className="form-label" style={{ fontSize: '0.76rem' }}>Administered F-18 Activity A₀ (MBq):</label>
+                  <input
+                    type="number"
+                    className="form-control"
+                    value={petActivityMBq}
+                    onChange={e => setPetActivityMBq(Math.max(10, Number(e.target.value) || 370))}
+                  />
+                </div>
+                <div>
+                  <label className="form-label" style={{ fontSize: '0.76rem' }}>Weekly Patient Workload N_w (pts/wk):</label>
+                  <input
+                    type="number"
+                    className="form-control"
+                    value={petPatientsPerWeek}
+                    onChange={e => setPetPatientsPerWeek(Math.max(1, Number(e.target.value) || 40))}
+                  />
+                </div>
+                <div>
+                  <label className="form-label" style={{ fontSize: '0.76rem' }}>Uptake Room Time t_U (min):</label>
+                  <input
+                    type="number"
+                    className="form-control"
+                    value={petUptakeTimeMin}
+                    onChange={e => setPetUptakeTimeMin(Math.max(5, Number(e.target.value) || 60))}
+                  />
+                </div>
+                <div>
+                  <label className="form-label" style={{ fontSize: '0.76rem' }}>PET/CT Scan Time t_I (min):</label>
+                  <input
+                    type="number"
+                    className="form-control"
+                    value={petImagingTimeMin}
+                    onChange={e => setPetImagingTimeMin(Math.max(5, Number(e.target.value) || 30))}
+                  />
+                </div>
+                <div>
+                  <label className="form-label" style={{ fontSize: '0.76rem' }}>Distance to Receptor d (m):</label>
+                  <input
+                    type="number"
+                    step="0.25"
+                    className="form-control"
+                    value={petDistanceM}
+                    onChange={e => setPetDistanceM(Math.max(0.5, Number(e.target.value) || 2.5))}
+                  />
+                </div>
+                <div>
+                  <label className="form-label" style={{ fontSize: '0.76rem' }}>Occupancy Factor T (0.025–1.0):</label>
+                  <input
+                    type="number"
+                    step="0.05"
+                    min="0.025"
+                    max="1.0"
+                    className="form-control"
+                    value={petOccupancyT}
+                    onChange={e => setPetOccupancyT(Math.max(0.025, Math.min(1.0, Number(e.target.value) || 1.0)))}
+                  />
+                </div>
+                <div>
+                  <label className="form-label" style={{ fontSize: '0.76rem' }}>Weekly Dose Design Goal P (µSv/wk):</label>
+                  <select
+                    className="form-control"
+                    value={petWeeklyGoalUSv}
+                    onChange={e => setPetWeeklyGoalUSv(Number(e.target.value))}
+                  >
+                    <option value={20}>20 µSv/wk (1 mSv/yr Uncontrolled Public)</option>
+                    <option value={100}>100 µSv/wk (5 mSv/yr Controlled ALARA)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="form-label" style={{ fontSize: '0.76rem' }}>Barrier Material &amp; Thickness (cm):</label>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <select
+                      className="form-control"
+                      value={petBarrierMaterial}
+                      onChange={e => setPetBarrierMaterial(e.target.value as 'LEAD' | 'CONCRETE' | 'IRON')}
+                    >
+                      <option value="LEAD">Lead (Pb)</option>
+                      <option value="CONCRETE">Concrete</option>
+                      <option value="IRON">Steel (Fe)</option>
+                    </select>
+                    <input
+                      type="number"
+                      step="0.2"
+                      className="form-control"
+                      value={petBarrierThicknessCm}
+                      onChange={e => setPetBarrierThicknessCm(Math.max(0, Number(e.target.value) || 0))}
+                      style={{ width: '90px' }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="formula-box" style={{ padding: '10px', fontSize: '0.78rem' }}>
+                <BlockMath math="D_{\text{uptake}} = 0.092 \cdot A_0 \cdot N_w \cdot \frac{t_U}{60} \cdot R_U \cdot \frac{T}{d^2} \cdot B_{\text{Archer}}(x), \quad R_U = \frac{1.443 T_{1/2}}{t_U}\left(1 - e^{-\ln 2 \cdot t_U / T_{1/2}}\right)" />
+              </div>
+            </div>
+
+            <div style={{ background: 'rgba(5, 10, 18, 0.65)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <h4 style={{ margin: 0, color: '#10b981' }}>📊 AAPM TG-108 Uptake Room vs. Scanner Room Results</h4>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
+                <div className="hud-card">
+                  <span className="hud-metric-label">UPTAKE ROOM SHIELDED</span>
+                  <span className="hud-metric-value" style={{ color: petTg108Analytics.shieldedUptakeWeeklyUSv <= petWeeklyGoalUSv ? '#10b981' : '#ef4444' }}>
+                    {petTg108Analytics.shieldedUptakeWeeklyUSv.toFixed(1)} µSv/wk
+                  </span>
+                  <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                    Unshielded: {petTg108Analytics.unshieldedUptakeWeeklyUSv.toFixed(1)} µSv/wk (R_U = {petTg108Analytics.rU.toFixed(3)})
+                  </span>
+                </div>
+                <div className="hud-card">
+                  <span className="hud-metric-label">SCANNER ROOM SHIELDED</span>
+                  <span className="hud-metric-value" style={{ color: petTg108Analytics.shieldedImagingWeeklyUSv <= petWeeklyGoalUSv ? '#10b981' : '#ef4444' }}>
+                    {petTg108Analytics.shieldedImagingWeeklyUSv.toFixed(1)} µSv/wk
+                  </span>
+                  <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                    Unshielded: {petTg108Analytics.unshieldedImagingWeeklyUSv.toFixed(1)} µSv/wk (F_U = {petTg108Analytics.fU.toFixed(3)})
+                  </span>
+                </div>
+                <div className="hud-card">
+                  <span className="hud-metric-label">REQ. UPTAKE WALL ({petTg108Analytics.materialLabel})</span>
+                  <span className="hud-metric-value" style={{ color: '#00e5ff' }}>
+                    {petTg108Analytics.reqUptakeThicknessCm.toFixed(2)} cm
+                  </span>
+                  <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                    {(petTg108Analytics.reqUptakeThicknessCm * 10).toFixed(1)} mm for P ≤ {petWeeklyGoalUSv} µSv/wk
+                  </span>
+                </div>
+                <div className="hud-card">
+                  <span className="hud-metric-label">REQ. SCANNER WALL ({petTg108Analytics.materialLabel})</span>
+                  <span className="hud-metric-value" style={{ color: '#38bdf8' }}>
+                    {petTg108Analytics.reqImagingThicknessCm.toFixed(2)} cm
+                  </span>
+                  <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                    Archer B(x) = {petTg108Analytics.currentTransmissionB.toExponential(3)}
+                  </span>
+                </div>
+              </div>
+
+              <Plot
+                data={[
+                  {
+                    x: petTg108Analytics.xs,
+                    y: petTg108Analytics.uptakeCurve,
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'Uptake Room (µSv/wk)',
+                    line: { color: '#ef4444', width: 2.5 }
+                  },
+                  {
+                    x: petTg108Analytics.xs,
+                    y: petTg108Analytics.imagingCurve,
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'PET/CT Scanner Room (µSv/wk)',
+                    line: { color: '#00e5ff', width: 2.5 }
+                  },
+                  {
+                    x: [petTg108Analytics.xs[0], petTg108Analytics.xs[petTg108Analytics.xs.length - 1]],
+                    y: [petWeeklyGoalUSv, petWeeklyGoalUSv],
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: `Design Goal (${petWeeklyGoalUSv} µSv/wk)`,
+                    line: { color: '#10b981', width: 2, dash: 'dash' }
+                  }
+                ]}
+                layout={{
+                  paper_bgcolor: 'transparent',
+                  plot_bgcolor: 'rgba(0,0,0,0.25)',
+                  margin: { t: 24, r: 20, b: 42, l: 55 },
+                  height: 250,
+                  font: { color: '#cbd5e1', size: 11 },
+                  xaxis: { title: `${petTg108Analytics.materialLabel} Thickness x (cm)`, gridcolor: 'rgba(255,255,255,0.06)' },
+                  yaxis: { title: 'Weekly Dose (µSv/wk)', type: 'log', gridcolor: 'rgba(255,255,255,0.06)' },
+                  legend: { orientation: 'h', y: 1.14 }
+                }}
+                config={{ displayModeBar: false, responsive: true }}
+                style={{ width: '100%' }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 4B: NCRP-151 Vault Labyrinth (Kersey / Cossairt) & Skyshine Solver */}
+      {activeTab === 'labyrinth_skyshine' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '16px' }}>
+            <div style={{ background: 'rgba(5, 10, 18, 0.65)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <h4 style={{ margin: 0, color: '#f59e0b' }}>🌀 NCRP-151 Vault Maze (Kersey/Cossairt) &amp; Roof Skyshine</h4>
+                <VerificationBadge testId="VTEST-54" standard="NCRP Report No. 151" />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', marginBottom: '12px' }}>
+                <div>
+                  <label className="form-label" style={{ fontSize: '0.75rem' }}>Source 1m Dose Rate H₀ (Sv/h):</label>
+                  <input
+                    type="number"
+                    className="form-control"
+                    value={mazeWorkloadDoseAt1mSvH}
+                    onChange={e => setMazeWorkloadDoseAt1mSvH(Math.max(0.1, Number(e.target.value) || 50))}
+                  />
+                </div>
+                <div>
+                  <label className="form-label" style={{ fontSize: '0.75rem' }}>Leg 1 Distance d₁ (m) &amp; Leg 2 Length d₂ (m):</label>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <input
+                      type="number"
+                      step="0.5"
+                      className="form-control"
+                      value={mazeLeg1LengthM}
+                      onChange={e => setMazeLeg1LengthM(Math.max(1.0, Number(e.target.value) || 4.5))}
+                      title="Distance d1 from source to maze mouth (m)"
+                    />
+                    <input
+                      type="number"
+                      step="0.5"
+                      className="form-control"
+                      value={mazeLeg2LengthM}
+                      onChange={e => setMazeLeg2LengthM(Math.max(1.0, Number(e.target.value) || 6.0))}
+                      title="Maze corridor length d2 (m)"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="form-label" style={{ fontSize: '0.75rem' }}>Maze Corridor Width W × Height H (m):</label>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <input
+                      type="number"
+                      step="0.1"
+                      className="form-control"
+                      value={mazeWidthM}
+                      onChange={e => setMazeWidthM(Math.max(0.8, Number(e.target.value) || 1.5))}
+                    />
+                    <input
+                      type="number"
+                      step="0.1"
+                      className="form-control"
+                      value={mazeHeightM}
+                      onChange={e => setMazeHeightM(Math.max(1.8, Number(e.target.value) || 2.4))}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="form-label" style={{ fontSize: '0.75rem' }}>Vault Door: BPE (cm) + Lead (cm):</label>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <input
+                      type="number"
+                      step="1.0"
+                      className="form-control"
+                      value={mazeDoorBpeCm}
+                      onChange={e => setMazeDoorBpeCm(Math.max(0, Number(e.target.value) || 0))}
+                      title="Borated Polyethylene thickness (cm)"
+                    />
+                    <input
+                      type="number"
+                      step="0.5"
+                      className="form-control"
+                      value={mazeDoorLeadCm}
+                      onChange={e => setMazeDoorLeadCm(Math.max(0, Number(e.target.value) || 0))}
+                      title="Door Lead thickness (cm)"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="form-label" style={{ fontSize: '0.75rem' }}>Concrete Roof Thickness (cm) &amp; Solid Angle Ω (sr):</label>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <input
+                      type="number"
+                      step="5"
+                      className="form-control"
+                      value={skyRoofThicknessConcreteCm}
+                      onChange={e => setSkyRoofThicknessConcreteCm(Math.max(0, Number(e.target.value) || 60))}
+                    />
+                    <input
+                      type="number"
+                      step="0.1"
+                      className="form-control"
+                      value={skySolidAngleSr}
+                      onChange={e => setSkySolidAngleSr(Math.max(0.05, Number(e.target.value) || 0.85))}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="form-label" style={{ fontSize: '0.75rem' }}>Skyshine Ground Distance d_s (m):</label>
+                  <input
+                    type="number"
+                    step="5"
+                    className="form-control"
+                    value={skyHorizontalDistM}
+                    onChange={e => setSkyHorizontalDistM(Math.max(5, Number(e.target.value) || 30))}
+                  />
+                </div>
+              </div>
+
+              <div className="formula-box" style={{ padding: '10px', fontSize: '0.76rem' }}>
+                <BlockMath math="\dot{H}_{\text{maze}}(d_2) = \frac{\dot{H}_0 A}{d_1^4}\left(0.20 e^{-d_2 / 1.95\sqrt{A}} + 0.80 e^{-d_2 / 5.4\sqrt{A}}\right), \quad \dot{H}_{\text{sky}}(d_s) = \frac{2.5\times 10^{-2} \dot{H}_0 B_{\text{roof}} \Omega^{1.3}}{(d_i + 2)^2} e^{-d_s/90}" />
+              </div>
+            </div>
+
+            <div style={{ background: 'rgba(5, 10, 18, 0.65)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <h4 style={{ margin: 0, color: '#00e5ff' }}>📊 Maze Door &amp; Ground Skyshine Readouts</h4>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
+                <div className="hud-card">
+                  <span className="hud-metric-label">UNSHIELDED MAZE DOOR (d₂={mazeLeg2LengthM}m)</span>
+                  <span className="hud-metric-value" style={{ color: '#f59e0b' }}>
+                    {labyrinthSkyshineAnalytics.unshieldedDoorDoseUSvH.toFixed(1)} µSv/h
+                  </span>
+                  <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                    Cross-Section A = {labyrinthSkyshineAnalytics.areaM2.toFixed(2)} m²
+                  </span>
+                </div>
+                <div className="hud-card">
+                  <span className="hud-metric-label">SHIELDED OUTSIDE DOOR</span>
+                  <span className="hud-metric-value" style={{ color: labyrinthSkyshineAnalytics.shieldedDoorDoseUSvH <= 10 ? '#10b981' : '#ef4444' }}>
+                    {labyrinthSkyshineAnalytics.shieldedDoorDoseUSvH.toFixed(2)} µSv/h
+                  </span>
+                  <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                    {mazeDoorBpeCm} cm BPE + {mazeDoorLeadCm} cm Pb (×{labyrinthSkyshineAnalytics.doorAttenuation.toExponential(2)})
+                  </span>
+                </div>
+                <div className="hud-card">
+                  <span className="hud-metric-label">ROOF TRANSMISSION B_roof</span>
+                  <span className="hud-metric-value" style={{ color: '#38bdf8' }}>
+                    {labyrinthSkyshineAnalytics.roofTransmission.toExponential(2)}
+                  </span>
+                  <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                    {skyRoofThicknessConcreteCm} cm Concrete Roof (TVL = 37 cm)
+                  </span>
+                </div>
+                <div className="hud-card">
+                  <span className="hud-metric-label">SKYSHINE AT d_s = {skyHorizontalDistM} m</span>
+                  <span className="hud-metric-value" style={{ color: labyrinthSkyshineAnalytics.skyshineAtReceptorUSvH <= 2.5 ? '#10b981' : '#f59e0b' }}>
+                    {labyrinthSkyshineAnalytics.skyshineAtReceptorUSvH.toFixed(2)} µSv/h
+                  </span>
+                  <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                    NCRP-151 Air-Scattered Skyshine
+                  </span>
+                </div>
+              </div>
+
+              <Plot
+                data={[
+                  {
+                    x: labyrinthSkyshineAnalytics.leg2Xs,
+                    y: labyrinthSkyshineAnalytics.leg2DoseUSvH,
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'Maze Leg 2 Dose Rate (µSv/h)',
+                    line: { color: '#f59e0b', width: 2.5 }
+                  }
+                ]}
+                layout={{
+                  paper_bgcolor: 'transparent',
+                  plot_bgcolor: 'rgba(0,0,0,0.25)',
+                  margin: { t: 24, r: 20, b: 42, l: 55 },
+                  height: 240,
+                  font: { color: '#cbd5e1', size: 11 },
+                  xaxis: { title: 'Maze Leg 2 Distance d₂ (m)', gridcolor: 'rgba(255,255,255,0.06)' },
+                  yaxis: { title: 'Unshielded Maze Dose (µSv/h)', type: 'log', gridcolor: 'rgba(255,255,255,0.06)' },
+                  legend: { orientation: 'h', y: 1.14 }
+                }}
+                config={{ displayModeBar: false, responsive: true }}
+                style={{ width: '100%' }}
+              />
+            </div>
           </div>
         </div>
       )}

@@ -179,6 +179,91 @@ export const REGULATORY_FRAMEWORKS: Record<RegulatoryFrameworkId, RegulatoryFram
 
 export type UnitSystemMode = 'SI' | 'TRADITIONAL' | 'DUAL';
 
+export interface GlobalSourceContext {
+  isotope: string;
+  activityGBq: number;
+  distanceM: number;
+  shieldMaterial: 'Lead' | 'Steel' | 'Concrete' | 'Tungsten' | 'Water' | 'Depleted Uranium';
+  shieldThicknessCm: number;
+  label: string;
+}
+
+export interface PinnedCalculationItem {
+  id: string;
+  timestamp: string;
+  moduleNumber: number;
+  moduleLabel: string;
+  modulePath: string;
+  title: string;
+  summary: string;
+  metrics: { label: string; value: string }[];
+  notes?: string;
+}
+
+export const GLOBAL_SOURCE_PRESETS: GlobalSourceContext[] = [
+  {
+    isotope: 'Co-60',
+    activityGBq: 370,
+    distanceM: 2.0,
+    shieldMaterial: 'Lead',
+    shieldThicknessCm: 5.0,
+    label: 'Industrial Sterilization / Calibration Co-60 (10 Ci)'
+  },
+  {
+    isotope: 'Ir-192',
+    activityGBq: 3700,
+    distanceM: 5.0,
+    shieldMaterial: 'Tungsten',
+    shieldThicknessCm: 3.0,
+    label: 'NDT Industrial Radiography Camera Ir-192 (100 Ci)'
+  },
+  {
+    isotope: 'Cs-137',
+    activityGBq: 185,
+    distanceM: 1.5,
+    shieldMaterial: 'Lead',
+    shieldThicknessCm: 2.5,
+    label: 'Process Density / Level Gauge Cs-137 (5 Ci)'
+  },
+  {
+    isotope: 'F-18',
+    activityGBq: 0.555,
+    distanceM: 1.0,
+    shieldMaterial: 'Lead',
+    shieldThicknessCm: 1.2,
+    label: 'Clinical PET Oncology Patient F-18 FDG (15 mCi)'
+  },
+  {
+    isotope: 'I-131',
+    activityGBq: 7.4,
+    distanceM: 1.5,
+    shieldMaterial: 'Lead',
+    shieldThicknessCm: 1.5,
+    label: 'Thyroid Ablation Radiotherapy I-131 (200 mCi)'
+  },
+  {
+    isotope: 'Am-241',
+    activityGBq: 185,
+    distanceM: 1.0,
+    shieldMaterial: 'Steel',
+    shieldThicknessCm: 2.0,
+    label: 'Oilfield Well-Logging Am-241/Be Source (5 Ci)'
+  }
+];
+
+// Reference ICRP-107 Specific Gamma Constants Γ in mSv·m²/(h·GBq) and Lead HVL (cm)
+export const ISOTOPE_QUICK_REF: Record<string, { gammaConst_mSv_m2_h_GBq: number; hvlLeadCm: number; hvlConcreteCm: number; halfLifeStr: string }> = {
+  'Co-60':   { gammaConst_mSv_m2_h_GBq: 0.3085, hvlLeadCm: 1.20, hvlConcreteCm: 6.2, halfLifeStr: '5.271 yr' },
+  'Cs-137':  { gammaConst_mSv_m2_h_GBq: 0.0772, hvlLeadCm: 0.65, hvlConcreteCm: 4.8, halfLifeStr: '30.17 yr' },
+  'Ir-192':  { gammaConst_mSv_m2_h_GBq: 0.1168, hvlLeadCm: 0.48, hvlConcreteCm: 4.3, halfLifeStr: '73.83 d' },
+  'F-18':    { gammaConst_mSv_m2_h_GBq: 0.1430, hvlLeadCm: 0.41, hvlConcreteCm: 3.4, halfLifeStr: '109.77 min' },
+  'I-131':   { gammaConst_mSv_m2_h_GBq: 0.0522, hvlLeadCm: 0.30, hvlConcreteCm: 3.1, halfLifeStr: '8.02 d' },
+  'Tc-99m':  { gammaConst_mSv_m2_h_GBq: 0.0141, hvlLeadCm: 0.03, hvlConcreteCm: 2.1, halfLifeStr: '6.01 h' },
+  'Am-241':  { gammaConst_mSv_m2_h_GBq: 0.0031, hvlLeadCm: 0.015, hvlConcreteCm: 1.2, halfLifeStr: '432.2 yr' },
+  'Ra-226':  { gammaConst_mSv_m2_h_GBq: 0.2230, hvlLeadCm: 1.30, hvlConcreteCm: 6.5, halfLifeStr: '1600 yr' },
+  'Na-24':   { gammaConst_mSv_m2_h_GBq: 0.4460, hvlLeadCm: 1.50, hvlConcreteCm: 7.2, halfLifeStr: '14.96 h' }
+};
+
 interface RegulatoryContextType {
   currentFramework: RegulatoryFramework;
   frameworkId: RegulatoryFrameworkId;
@@ -188,6 +273,12 @@ interface RegulatoryContextType {
   setUnitSystem: (mode: UnitSystemMode) => void;
   formatDoseMSv: (mSv: number, suffix?: string) => string;
   formatActivityGBq: (gBq: number) => string;
+  activeSource: GlobalSourceContext;
+  setActiveSource: (partial: Partial<GlobalSourceContext>) => void;
+  pinnedResults: PinnedCalculationItem[];
+  pinCalculation: (item: Omit<PinnedCalculationItem, 'id' | 'timestamp'>) => void;
+  removePinnedCalculation: (id: string) => void;
+  clearPinnedCalculations: () => void;
 }
 
 const RegulatoryContext = createContext<RegulatoryContextType | undefined>(undefined);
@@ -208,6 +299,66 @@ export const RegulatoryProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
     return 'SI';
   });
+
+  const [activeSource, setActiveSourceState] = useState<GlobalSourceContext>(() => {
+    try {
+      const saved = localStorage.getItem('radpro_global_active_source');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.isotope) return parsed;
+      }
+    } catch {
+      // ignore
+    }
+    return GLOBAL_SOURCE_PRESETS[0];
+  });
+
+  const [pinnedResults, setPinnedResultsState] = useState<PinnedCalculationItem[]>(() => {
+    try {
+      const saved = localStorage.getItem('radpro_pinned_calculations');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch {
+      // ignore
+    }
+    return [];
+  });
+
+  const setActiveSource = (partial: Partial<GlobalSourceContext>) => {
+    setActiveSourceState(prev => {
+      const next = { ...prev, ...partial };
+      localStorage.setItem('radpro_global_active_source', JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const pinCalculation = (item: Omit<PinnedCalculationItem, 'id' | 'timestamp'>) => {
+    setPinnedResultsState(prev => {
+      const newItem: PinnedCalculationItem = {
+        ...item,
+        id: `pin-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+      };
+      const next = [newItem, ...prev].slice(0, 30);
+      localStorage.setItem('radpro_pinned_calculations', JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const removePinnedCalculation = (id: string) => {
+    setPinnedResultsState(prev => {
+      const next = prev.filter(p => p.id !== id);
+      localStorage.setItem('radpro_pinned_calculations', JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const clearPinnedCalculations = () => {
+    setPinnedResultsState([]);
+    localStorage.setItem('radpro_pinned_calculations', JSON.stringify([]));
+  };
 
   const setFrameworkId = (id: RegulatoryFrameworkId) => {
     setFrameworkIdState(id);
@@ -253,7 +404,13 @@ export const RegulatoryProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         unitSystem,
         setUnitSystem,
         formatDoseMSv,
-        formatActivityGBq
+        formatActivityGBq,
+        activeSource,
+        setActiveSource,
+        pinnedResults,
+        pinCalculation,
+        removePinnedCalculation,
+        clearPinnedCalculations
       }}
     >
       {children}

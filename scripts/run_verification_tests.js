@@ -748,6 +748,68 @@ const tests = [
     },
     tolerance: 0.001,
     units: 'm (Max Detection Radius)'
+  },
+  {
+    id: 'VTEST-53',
+    name: 'AAPM TG-108 F-18 PET Patient 60-Min Uptake Integral Decay Reduction Factor (R_U)',
+    module: 'Module 4 (AAPM TG-108 PET Clinic Shielding)',
+    standard: 'AAPM Task Group 108 (Madsen et al., Med. Phys. 33, 2006) Eq. 3',
+    expected: 0.8326,
+    compute: () => {
+      const halfLifeMin = 109.77;
+      const tU = 60.0;
+      return ((1.443 * halfLifeMin) / tU) * (1.0 - Math.exp((-Math.LN2 * tU) / halfLifeMin));
+    },
+    tolerance: 0.02,
+    units: 'R_U Decay Factor'
+  },
+  {
+    id: 'VTEST-54',
+    name: 'AAPM TG-108 Archer 511 keV Broad-Beam Lead Transmission Factor B(1.0 cm Pb)',
+    module: 'Module 4 (AAPM TG-108 PET Clinic Shielding)',
+    standard: 'AAPM Task Group 108 Table II Archer Fit (α=1.543, β=-0.4408, γ=0.2136)',
+    expected: 0.3161,
+    compute: () => {
+      const alpha = 1.543, beta = -0.4408, gamma = 0.2136, xCm = 1.0;
+      const base = (1.0 + beta / alpha) * Math.exp(alpha * gamma * xCm) - beta / alpha;
+      return Math.pow(base, -1.0 / gamma);
+    },
+    tolerance: 0.05,
+    units: 'Transmission Fraction B(x)'
+  },
+  {
+    id: 'VTEST-55',
+    name: 'NCRP-151 / Cossairt 2-Leg Accelerator Maze Unshielded Door Dose Rate (d1=4.5m, d2=6.0m)',
+    module: 'Module 4 (NCRP-151 Vault Labyrinth & Skyshine)',
+    standard: 'NCRP Report No. 151 / Cossairt 2-Component Maze Attenuation',
+    expected: 212862.5604,
+    compute: () => {
+      const h0SvH = 50.0, d1 = 4.5, d2 = 6.0, areaM2 = 3.6;
+      const sqrtA = Math.sqrt(areaM2);
+      const mouthSvH = h0SvH / (d1 * d1);
+      const geom = areaM2 / (d1 * d1);
+      const decay2 = 0.20 * Math.exp(-d2 / (1.95 * sqrtA)) + 0.80 * Math.exp(-d2 / (5.4 * sqrtA));
+      return mouthSvH * geom * decay2 * 1e6; // uSv/h
+    },
+    tolerance: 0.02,
+    units: 'µSv/h (Unshielded Maze Door)'
+  },
+  {
+    id: 'VTEST-56',
+    name: 'ICRP Publication 137 Radon-222 Progeny Working Level Month (WLM) & Annual Dose',
+    module: 'Module 3 (Internal Dosimetry & Radon-222 WL/WLM Solver)',
+    standard: 'ICRP Publication 137 (2017) & 10 CFR Part 20 (370 Bq/m³, F=0.40, t=1700 h)',
+    expected: 4.0000,
+    compute: () => {
+      const cRnBqM3 = 370.0;
+      const eqF = 0.40;
+      const hours = 1700.0;
+      const wl = (cRnBqM3 * eqF) / 3700.0; // 0.040 WL
+      const wlm = wl * (hours / 170.0);    // 0.400 WLM
+      return wlm * 10.0;                   // 4.00 mSv/yr
+    },
+    tolerance: 0.001,
+    units: 'mSv/yr (ICRP-137 Radon Dose)'
   }
 ];
 

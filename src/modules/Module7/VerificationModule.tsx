@@ -1582,6 +1582,124 @@ const runAllVerificationTests = (): VerificationTest[] => {
     });
   }
 
+  // VTEST-53: AAPM TG-108 F-18 PET Patient 60-Min Uptake Integral Decay Reduction Factor (R_U)
+  {
+    const halfLifeMin = 109.77;
+    const tU = 60.0;
+    const computedRU = ((1.443 * halfLifeMin) / tU) * (1.0 - Math.exp((-Math.LN2 * tU) / halfLifeMin));
+    const expectedRU = 0.8326;
+    const err = Math.abs((computedRU - expectedRU) / expectedRU) * 100;
+    tests.push({
+      id: 'VTEST-53',
+      name: 'AAPM TG-108 F-18 PET Patient 60-Min Uptake Integral Decay Reduction Factor (R_U)',
+      module: 'Module 4 (AAPM TG-108 PET Clinic Shielding)',
+      category: 'Clinical & Stats',
+      standard: 'AAPM Task Group 108 (Madsen et al., Med. Phys. 33, 2006) Eq. 3',
+      standardDoc: 'AAPM Task Group 108 Report: PET and PET/CT Shielding Requirements (Medical Physics 33(1), 2006)',
+      formulaKatex: 'R_U = \\frac{1.443 T_{1/2}}{t_U}\\left(1 - e^{-\\ln(2)\\,t_U / T_{1/2}}\\right) = 0.8326',
+      inputsDesc: 'F-18 positron emitter half-life T½ = 109.77 min, Patient uptake room stay time t_U = 60.0 min',
+      expectedValue: expectedRU,
+      expectedUnits: 'R_U Factor',
+      expectedDisplay: '0.8326',
+      computedValue: computedRU,
+      computedDisplay: computedRU.toFixed(4),
+      tolerancePct: 0.05,
+      errorPct: err,
+      passed: err <= 0.05,
+      notes: 'Accounts for continuous radioactive decay of F-18 during the 60-minute uptake waiting period prior to PET imaging.'
+    });
+  }
+
+  // VTEST-54: AAPM TG-108 Archer 511 keV Broad-Beam Lead Transmission Factor B(1.0 cm Pb)
+  {
+    const alpha = 1.543, beta = -0.4408, gamma = 0.2136, xCm = 1.0;
+    const base = (1.0 + beta / alpha) * Math.exp(alpha * gamma * xCm) - beta / alpha;
+    const computedB = Math.pow(base, -1.0 / gamma);
+    const expectedB = 0.3161;
+    const err = Math.abs((computedB - expectedB) / expectedB) * 100;
+    tests.push({
+      id: 'VTEST-54',
+      name: 'AAPM TG-108 Archer 511 keV Broad-Beam Lead Transmission Factor B(1.0 cm Pb)',
+      module: 'Module 4 (AAPM TG-108 PET Clinic Shielding)',
+      category: 'Clinical & Stats',
+      standard: 'AAPM Task Group 108 Table II Archer Broad-Beam Fit',
+      standardDoc: 'AAPM Task Group 108 (2006) Table II: Archer Fitting Parameters for 511 keV Annihilation Photons in Lead',
+      formulaKatex: 'B(x) = \\left[\\left(1 + \\frac{\\beta}{\\alpha}\\right)e^{\\alpha\\gamma x} - \\frac{\\beta}{\\alpha}\\right]^{-1/\\gamma} = 0.3161',
+      inputsDesc: '511 keV PET photons through x = 1.0 cm (10 mm) Lead (α = 1.543 cm⁻¹, β = -0.4408 cm⁻¹, γ = 0.2136)',
+      expectedValue: expectedB,
+      expectedUnits: 'B(x)',
+      expectedDisplay: '0.3161 (31.61% Transmission)',
+      computedValue: computedB,
+      computedDisplay: computedB.toFixed(4),
+      tolerancePct: 0.05,
+      errorPct: err,
+      passed: err <= 0.05,
+      notes: 'Verifies Monte Carlo broad-beam Archer transmission curve for 511 keV annihilation photons in clinical PET barriers.'
+    });
+  }
+
+  // VTEST-55: NCRP-151 / Cossairt 2-Leg Accelerator Maze Unshielded Door Dose Rate
+  {
+    const h0SvH = 50.0, d1 = 4.5, d2 = 6.0, areaM2 = 3.6;
+    const sqrtA = Math.sqrt(areaM2);
+    const mouthSvH = h0SvH / (d1 * d1);
+    const geom = areaM2 / (d1 * d1);
+    const decay2 = 0.20 * Math.exp(-d2 / (1.95 * sqrtA)) + 0.80 * Math.exp(-d2 / (5.4 * sqrtA));
+    const computedUSvH = mouthSvH * geom * decay2 * 1e6;
+    const expectedUSvH = 212862.5604;
+    const err = Math.abs((computedUSvH - expectedUSvH) / expectedUSvH) * 100;
+    tests.push({
+      id: 'VTEST-55',
+      name: 'NCRP-151 / Cossairt 2-Leg Accelerator Maze Unshielded Door Dose Rate (d1=4.5m, d2=6.0m)',
+      module: 'Module 4 (NCRP-151 Vault Labyrinth & Skyshine)',
+      category: 'Machines & Beams',
+      standard: 'NCRP Report No. 151 / Cossairt 2-Component Maze Attenuation',
+      standardDoc: 'NCRP Report No. 151 (2005): Structural Shielding Design and Evaluation for Megavoltage X- and Gamma-Ray Radiotherapy Facilities',
+      formulaKatex: '\\dot{H}_{\\text{maze}}(d_2) = \\frac{\\dot{H}_0 A}{d_1^4}\\left(0.20 e^{-d_2 / 1.95\\sqrt{A}} + 0.80 e^{-d_2 / 5.4\\sqrt{A}}\\right)',
+      inputsDesc: 'Source 1m rate H₀ = 50 Sv/h, Leg 1 d₁ = 4.5 m, Leg 2 d₂ = 6.0 m, Corridor cross-section A = 1.5 m × 2.4 m = 3.6 m²',
+      expectedValue: expectedUSvH,
+      expectedUnits: 'µSv/h',
+      expectedDisplay: '212,862.6 µSv/h',
+      computedValue: computedUSvH,
+      computedDisplay: `${computedUSvH.toFixed(1)} µSv/h`,
+      tolerancePct: 0.02,
+      errorPct: err,
+      passed: err <= 0.02,
+      notes: 'Certifies two-component labyrinth attenuation of scattered photons and capture neutrons down a medical/industrial vault entrance maze.'
+    });
+  }
+
+  // VTEST-56: ICRP Publication 137 Radon-222 Progeny Working Level Month (WLM) & Annual Dose
+  {
+    const cRnBqM3 = 370.0;
+    const eqF = 0.40;
+    const hours = 1700.0;
+    const wl = (cRnBqM3 * eqF) / 3700.0;
+    const wlm = wl * (hours / 170.0);
+    const computedDoseMSv = wlm * 10.0;
+    const expectedDoseMSv = 4.0000;
+    const err = Math.abs((computedDoseMSv - expectedDoseMSv) / expectedDoseMSv) * 100;
+    tests.push({
+      id: 'VTEST-56',
+      name: 'ICRP Publication 137 Radon-222 Progeny Working Level Month (WLM) & Annual Dose',
+      module: 'Module 3 (Internal Dosimetry & Radon-222 WL/WLM Solver)',
+      category: 'Decay & Internal',
+      standard: 'ICRP Publication 137 (2017) & 10 CFR Part 20 (370 Bq/m³, F=0.40, t=1700 h)',
+      standardDoc: 'ICRP Publication 137 (2017): Occupational Intakes of Radionuclides: Part 3 (Radon-222 Progeny Dose Conversion)',
+      formulaKatex: '\\text{WL} = \\frac{F \\cdot C_{\\text{Rn}}}{3700} = 0.040\\text{ WL}, \\quad \\text{WLM} = 0.040 \\times \\frac{1700}{170} = 0.400\\text{ WLM} \\implies 4.0000\\text{ mSv}',
+      inputsDesc: 'Radon-222 concentration C_Rn = 370 Bq/m³ (10 pCi/L), Equilibrium factor F = 0.40, Exposure t = 1,700 h (10 Working Months)',
+      expectedValue: expectedDoseMSv,
+      expectedUnits: 'mSv/yr',
+      expectedDisplay: '4.0000 mSv/yr (0.400 WLM)',
+      computedValue: computedDoseMSv,
+      computedDisplay: `${computedDoseMSv.toFixed(4)} mSv/yr`,
+      tolerancePct: 0.001,
+      errorPct: err,
+      passed: err <= 0.001,
+      notes: 'Verifies Radon-222 short-lived progeny Working Level (WL), Working Level Month (WLM), and ICRP-137 (10 mSv/WLM) annual dose conversion.'
+    });
+  }
+
   return tests;
 };
 

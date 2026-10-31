@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { BlockMath, InlineMath } from 'react-katex';
 import { METHOD_DOCS } from '../modules/Module21/LiteratureModule';
 import { type ActiveModuleBreadcrumbInfo } from './RegulatorySelectorBar';
+import { MODULE_WORKED_EXAMPLES } from '../data/moduleWorkedExamples';
+import { useRegulatory } from '../context/RegulatoryContext';
 
 export interface ModuleUserGuide {
   whatItDoes: string;
@@ -724,7 +726,9 @@ export const ModuleInfoTabPanel: React.FC<ModuleInfoTabPanelProps> = ({
   onReturnToTool
 }) => {
   const navigate = useNavigate();
+  const { setActiveSource, pinCalculation } = useRegulatory();
   const guide = MODULE_USER_GUIDES[moduleInfo.moduleNumber] || MODULE_USER_GUIDES[1];
+  const workedExample = MODULE_WORKED_EXAMPLES[moduleInfo.moduleNumber] || MODULE_WORKED_EXAMPLES[1];
   const methodDoc = METHOD_DOCS.find(
     doc => doc.moduleId === `Module ${moduleInfo.moduleNumber}`
   );
@@ -732,6 +736,16 @@ export const ModuleInfoTabPanel: React.FC<ModuleInfoTabPanelProps> = ({
   // Extract first VTEST-XX if mentioned in benchmarks
   const vtestMatch = methodDoc?.benchmarks.match(/VTEST-\d+/);
   const primaryVtestId = vtestMatch ? vtestMatch[0] : null;
+
+  const handleLoadWorkedExample = () => {
+    if (workedExample.sourceSync) {
+      setActiveSource(workedExample.sourceSync);
+    }
+    if (workedExample.queryParams) {
+      navigate(`${moduleInfo.path}${workedExample.queryParams}`);
+    }
+    onReturnToTool();
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '18px', paddingBottom: '28px' }}>
@@ -921,6 +935,152 @@ export const ModuleInfoTabPanel: React.FC<ModuleInfoTabPanelProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Worked Engineering Example (Step-by-Step Solved Problem with 1-Click Tool Loader) */}
+      {workedExample && (
+        <div
+          className="panel"
+          style={{
+            marginBottom: 0,
+            border: '1px solid rgba(16, 185, 129, 0.45)',
+            background: 'linear-gradient(135deg, rgba(6, 22, 24, 0.92) 0%, rgba(8, 15, 28, 0.96) 100%)'
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', marginBottom: '12px' }}>
+            <div style={{ flex: '1 1 420px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                <span
+                  style={{
+                    fontSize: '0.7rem',
+                    fontFamily: 'var(--font-mono)',
+                    fontWeight: 800,
+                    padding: '2px 8px',
+                    borderRadius: '4px',
+                    background: 'rgba(16, 185, 129, 0.2)',
+                    border: '1px solid #10b981',
+                    color: '#10b981'
+                  }}
+                >
+                  WORKED ENGINEERING PROBLEM — M{String(moduleInfo.moduleNumber).padStart(2, '0')}
+                </span>
+              </div>
+              <h3 style={{ margin: '0 0 6px 0', fontSize: '1.08rem', color: '#fff' }}>
+                🧪 {workedExample.title}
+              </h3>
+              <p style={{ margin: 0, fontSize: '0.86rem', color: '#cbd5e1', lineHeight: 1.55 }}>
+                {workedExample.scenario}
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleLoadWorkedExample}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '8px 14px',
+                  fontSize: '0.8rem',
+                  fontWeight: 700,
+                  background: 'linear-gradient(90deg, #10b981 0%, #059669 100%)',
+                  border: '1px solid #34d399',
+                  color: '#fff'
+                }}
+              >
+                <span>⚡ Try Worked Example in Tool</span>
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => {
+                  pinCalculation({
+                    moduleNumber: moduleInfo.moduleNumber,
+                    moduleLabel: moduleInfo.label,
+                    modulePath: moduleInfo.path,
+                    title: `[Worked Benchmark] M${String(moduleInfo.moduleNumber).padStart(2, '0')}: ${workedExample.title}`,
+                    summary: workedExample.result,
+                    metrics: workedExample.inputs.map(inp => ({ label: inp.label, value: inp.value }))
+                  });
+                }}
+                style={{ padding: '8px 12px', fontSize: '0.78rem' }}
+              >
+                📌 Pin Example to Report
+              </button>
+            </div>
+          </div>
+
+          {/* Worked Example Inputs Grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px', marginBottom: '14px' }}>
+            {workedExample.inputs.map((inp, i) => (
+              <div
+                key={i}
+                style={{
+                  background: 'rgba(0, 0, 0, 0.35)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  borderRadius: '6px',
+                  padding: '8px 10px'
+                }}
+              >
+                <div style={{ fontSize: '0.68rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                  {inp.label}
+                </div>
+                <div style={{ fontSize: '0.82rem', color: '#00e5ff', fontWeight: 700, fontFamily: 'var(--font-mono)', marginTop: '2px' }}>
+                  {inp.value}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Step-by-Step Solution Walkthrough */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
+            {workedExample.steps.map((st, idx) => (
+              <div
+                key={idx}
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '10px',
+                  background: 'rgba(0, 0, 0, 0.3)',
+                  padding: '8px 12px',
+                  borderRadius: '6px',
+                  borderLeft: '3px solid #10b981'
+                }}
+              >
+                <span style={{ color: '#10b981', fontWeight: 800, fontFamily: 'var(--font-mono)', fontSize: '0.76rem', flexShrink: 0 }}>
+                  [{idx + 1}]
+                </span>
+                <span style={{ fontSize: '0.83rem', color: '#e2e8f0', lineHeight: 1.5 }}>{st}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Final Verified Engineering Result */}
+          <div
+            style={{
+              background: 'rgba(16, 185, 129, 0.14)',
+              border: '1px solid rgba(16, 185, 129, 0.45)',
+              borderRadius: '8px',
+              padding: '10px 14px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '8px'
+            }}
+          >
+            <div>
+              <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block' }}>
+                ✓ Verified Solution &amp; Engineering Conclusion
+              </span>
+              <strong style={{ fontSize: '0.88rem', color: '#fff', fontFamily: 'var(--font-mono)' }}>
+                {workedExample.result}
+              </strong>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Governing Physics & Mathematical Formulations (from METHOD_DOCS) */}
       {methodDoc && (

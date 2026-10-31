@@ -431,7 +431,7 @@ export const RegulatorySelectorBar: React.FC<RegulatorySelectorBarProps> = ({
             <button
               type="button"
               onClick={() => navigate('/verify')}
-              title="Open Module 34 Institutional 60/60 V&V Test Suite"
+              title="Open Module 34 Institutional 64/64 V&V Test Suite"
               style={{
                 background: 'rgba(16, 185, 129, 0.1)',
                 border: '1px solid rgba(16, 185, 129, 0.3)',
@@ -443,7 +443,7 @@ export const RegulatorySelectorBar: React.FC<RegulatorySelectorBarProps> = ({
                 cursor: 'pointer'
               }}
             >
-              ✓ 60/60 V&amp;V
+              ✓ 64/64 V&amp;V
             </button>
           </div>
         </div>
