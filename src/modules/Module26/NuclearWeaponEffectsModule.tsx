@@ -404,11 +404,11 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
     };
 
     const traces: any[] = [
-      makeCircle(blastCalculations.r20psi_km, `20 psi Heavy Demolition (${blastCalculations.r20psi_km.toFixed(2)} km)`, '#ef4444'),
-      makeCircle(blastCalculations.r10psi_km, `10 psi Factory Collapse (${blastCalculations.r10psi_km.toFixed(2)} km)`, '#f97316', 'dash'),
-      makeCircle(blastCalculations.r5psi_km, `5 psi Residential Flattening (${blastCalculations.r5psi_km.toFixed(2)} km)`, '#eab308'),
-      makeCircle(blastCalculations.r1psi_km, `1 psi Glass Breakage (${blastCalculations.r1psi_km.toFixed(2)} km)`, '#eab308', 'dash'),
-      makeCircle(thermalCalculations.r3rdBurn_km, `3rd Degree Burn Standoff (${thermalCalculations.r3rdBurn_km.toFixed(2)} km)`, '#ff4d4d'),
+      makeCircle(blastCalculations.r20psi_km, `20 psi Heavy Demolition (${blastCalculations.r20psi_km.toFixed(2)} km)`, '#a78bfa'),
+      makeCircle(blastCalculations.r10psi_km, `10 psi Factory Collapse (${blastCalculations.r10psi_km.toFixed(2)} km)`, '#6366f1', 'dash'),
+      makeCircle(blastCalculations.r5psi_km, `5 psi Residential Flattening (${blastCalculations.r5psi_km.toFixed(2)} km)`, '#38bdf8'),
+      makeCircle(blastCalculations.r1psi_km, `1 psi Glass Breakage (${blastCalculations.r1psi_km.toFixed(2)} km)`, '#0ea5e9', 'dash'),
+      makeCircle(thermalCalculations.r3rdBurn_km, `3rd Degree Burn Standoff (${thermalCalculations.r3rdBurn_km.toFixed(2)} km)`, '#f59e0b'),
       makeCircle(thermalCalculations.r1stBurn_km, `1st Degree Burn Perimeter (${thermalCalculations.r1stBurn_km.toFixed(2)} km)`, '#facc15', 'dot'),
       makeCircle(promptRadCalculations.rLd50_km, `Prompt Lethal Radiation LD50 (${promptRadCalculations.rLd50_km.toFixed(2)} km)`, '#00e5ff', 'dashdot'),
       {
@@ -501,8 +501,8 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
       {/* Hydrated Scenario Active Alert Banner */}
       {hydratedDetonationName && (
         <div style={{
-          background: 'rgba(239, 68, 68, 0.1)',
-          border: '1px solid rgba(239, 68, 68, 0.4)',
+          background: 'rgba(56, 189, 248, 0.08)',
+          border: '1px solid rgba(56, 189, 248, 0.35)',
           borderRadius: '8px',
           padding: '12px 16px',
           display: 'flex',
@@ -512,10 +512,10 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
           gap: '10px'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ fontSize: '1.3rem' }}>💥</span>
+            <span style={{ fontSize: '1.3rem' }}>🛰️</span>
             <div>
               <div style={{ fontSize: '0.88rem', color: '#fff', fontWeight: 600 }}>
-                Active Scenario: <span style={{ color: '#f87171' }}>{hydratedDetonationName}</span>
+                Active Scenario: <span style={{ color: '#38bdf8' }}>{hydratedDetonationName}</span>
               </div>
               <div style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)' }}>
                 Weapon yield ({yieldKt >= 1000 ? `${(yieldKt / 1000).toFixed(2)} Mt` : `${yieldKt} kt`}) and {burstMode} burst ({burstAltitudeM < 0 ? `${burstAltitudeM}m DOB` : `+${burstAltitudeM}m HOB`}) parameters automatically loaded from Global Detonations / CTBTO Seismic Inversion
@@ -558,9 +558,9 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
                   padding: '4px 10px',
                   fontSize: '0.75rem',
                   fontWeight: isSelected ? 700 : 500,
-                  background: isSelected ? 'rgba(239, 68, 68, 0.25)' : 'rgba(255, 255, 255, 0.04)',
-                  color: isSelected ? '#f87171' : '#94a3b8',
-                  border: isSelected ? '1px solid #ef4444' : '1px solid rgba(255, 255, 255, 0.08)',
+                  background: isSelected ? 'rgba(56, 189, 248, 0.20)' : 'rgba(255, 255, 255, 0.04)',
+                  color: isSelected ? '#38bdf8' : '#94a3b8',
+                  border: isSelected ? '1px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.08)',
                   borderRadius: '5px'
                 }}
                 title={p.description}
@@ -619,7 +619,7 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
               <label style={{ fontSize: '0.82rem', fontWeight: 600 }}>
                 {burstAltitudeM < 0 ? 'Subterranean Depth (DOB m):' : 'Height / Depth of Burst (m):'}
               </label>
-              <span style={{ fontSize: '0.72rem', fontFamily: 'JetBrains Mono, monospace', color: burstAltitudeM < 0 ? '#a855f7' : burstAltitudeM === 0 ? '#f97316' : '#38bdf8' }}>
+              <span style={{ fontSize: '0.72rem', fontFamily: 'JetBrains Mono, monospace', color: burstAltitudeM < 0 ? '#a78bfa' : burstAltitudeM === 0 ? '#fbbf24' : '#38bdf8' }}>
                 {burstAltitudeM < 0 ? `${burstAltitudeM} m (Sub-Terrain)` : burstAltitudeM === 0 ? '0 m (Surface)' : `+${burstAltitudeM.toLocaleString()} m`}
               </span>
             </div>
@@ -640,7 +640,7 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
               step="10"
               value={Math.max(-1500, Math.min(5000, burstAltitudeM))}
               onChange={(e) => handleBurstAltitudeChange(parseInt(e.target.value) || 0)}
-              style={{ width: '100%', marginTop: '4px', cursor: 'pointer', accentColor: burstAltitudeM < 0 ? '#a855f7' : '#38bdf8' }}
+              style={{ width: '100%', marginTop: '4px', cursor: 'pointer', accentColor: burstAltitudeM < 0 ? '#a78bfa' : '#38bdf8' }}
               title="Scrub between -1,500m subterranean depth and +5,000m airburst altitude (use numeric input up to +100,000m for HEMP)"
             />
             <div style={{ fontSize: '0.73rem', color: 'var(--color-text-muted)' }}>
@@ -688,9 +688,9 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
 
       {/* Real-Time Prompt Weapon HUD */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
-        <div style={{ background: 'rgba(239, 68, 68, 0.08)', padding: '14px', borderRadius: '8px', border: '1px solid #ef4444' }}>
+        <div style={{ background: 'rgba(56, 189, 248, 0.08)', padding: '14px', borderRadius: '8px', border: '1px solid rgba(56, 189, 248, 0.45)' }}>
           <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>PEAK BLAST OVERPRESSURE</div>
-          <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#ef4444', marginTop: '2px' }}>
+          <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#38bdf8', marginTop: '2px' }}>
             {blastCalculations.targetOverpressurePsi.toFixed(2)} psi
           </div>
           <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
@@ -698,9 +698,9 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
           </div>
         </div>
 
-        <div style={{ background: 'rgba(255, 159, 28, 0.08)', padding: '14px', borderRadius: '8px', border: '1px solid #ff9f1c' }}>
+        <div style={{ background: 'rgba(245, 158, 11, 0.08)', padding: '14px', borderRadius: '8px', border: '1px solid rgba(245, 158, 11, 0.45)' }}>
           <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>THERMAL RADIANT FLUENCE</div>
-          <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#ff9f1c', marginTop: '2px' }}>
+          <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#fbbf24', marginTop: '2px' }}>
             {thermalCalculations.targetFluenceCalCm2.toFixed(1)} cal/cm²
           </div>
           <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
@@ -710,25 +710,25 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
           </div>
         </div>
 
-        <div style={{ background: 'rgba(0, 229, 255, 0.08)', padding: '14px', borderRadius: '8px', border: '1px solid #00e5ff' }}>
+        <div style={{ background: 'rgba(167, 139, 250, 0.08)', padding: '14px', borderRadius: '8px', border: '1px solid rgba(167, 139, 250, 0.45)' }}>
           <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>PROMPT INITIAL RADIATION</div>
-          <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#00e5ff', marginTop: '2px' }}>
+          <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#c4b5fd', marginTop: '2px' }}>
             {promptRadCalculations.targetPromptDoseGy >= 10 ? promptRadCalculations.targetPromptDoseGy.toFixed(0) : promptRadCalculations.targetPromptDoseGy.toFixed(2)} Gy
           </div>
           <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
             {burstAltitudeM < 0 && promptRadCalculations.targetPromptDoseGy < 0.01
               ? '🪨 Contained by earth strata'
               : promptRadCalculations.targetPromptDoseGy >= 4.5
-              ? '🚨 Acute Lethal Flash'
+              ? '⚠️ Acute Lethal Flash'
               : 'Sub-lethal prompt flash'}
           </div>
         </div>
 
-        <div style={{ background: 'rgba(16, 185, 129, 0.08)', padding: '14px', borderRadius: '8px', border: '1px solid #10b981' }}>
+        <div style={{ background: 'rgba(16, 185, 129, 0.08)', padding: '14px', borderRadius: '8px', border: '1px solid rgba(16, 185, 129, 0.45)' }}>
           <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-            {burstAltitudeM < 0 ? 'SUBTERRANEAN ROCK CAVITY' : 'LUMINOUS FIREBALL RADIUS'}
+            {burstAltitudeM < 0 ? 'SUBTERRANEAN ROCK CAVITY' : 'ISOTHERMAL FIREBALL RADIUS'}
           </div>
-          <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#10b981', marginTop: '2px' }}>
+          <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#34d399', marginTop: '2px' }}>
             {fireballRadiusM} meters
           </div>
           <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
@@ -741,10 +741,8 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
 
       {/* Tactical Consequence Tier Assessment Banner */}
       <div style={{
-        background: blastCalculations.targetOverpressurePsi >= 20 ? 'rgba(239, 68, 68, 0.15)' :
-                    blastCalculations.targetOverpressurePsi >= 5 ? 'rgba(249, 115, 22, 0.15)' :
-                    blastCalculations.targetOverpressurePsi >= 1 ? 'rgba(234, 179, 8, 0.12)' : 'rgba(16, 185, 129, 0.1)',
-        border: `1px solid ${blastCalculations.targetOverpressurePsi >= 20 ? '#ef4444' : blastCalculations.targetOverpressurePsi >= 5 ? '#f97316' : blastCalculations.targetOverpressurePsi >= 1 ? '#facc15' : '#10b981'}`,
+        background: 'rgba(15, 23, 42, 0.75)',
+        border: `1px solid ${blastCalculations.targetOverpressurePsi >= 20 ? 'rgba(167, 139, 250, 0.5)' : blastCalculations.targetOverpressurePsi >= 5 ? 'rgba(56, 189, 248, 0.5)' : blastCalculations.targetOverpressurePsi >= 1 ? 'rgba(250, 204, 21, 0.45)' : 'rgba(16, 185, 129, 0.45)'}`,
         borderRadius: '8px',
         padding: '12px 18px',
         display: 'flex',
@@ -755,20 +753,20 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <span style={{ fontSize: '1.4rem' }}>
-            {blastCalculations.targetOverpressurePsi >= 20 ? '☠️' : blastCalculations.targetOverpressurePsi >= 5 ? '🏚️' : blastCalculations.targetOverpressurePsi >= 1 ? '🪟' : '🛡️'}
+            {blastCalculations.targetOverpressurePsi >= 20 ? '⚡' : blastCalculations.targetOverpressurePsi >= 5 ? '🏚️' : blastCalculations.targetOverpressurePsi >= 1 ? '🪟' : '🛡️'}
           </span>
           <div>
             <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#fff' }}>
               Target Assessment at {targetDistanceKm} km: {' '}
-              <span style={{ color: blastCalculations.targetOverpressurePsi >= 20 ? '#ef4444' : blastCalculations.targetOverpressurePsi >= 5 ? '#f97316' : blastCalculations.targetOverpressurePsi >= 1 ? '#facc15' : '#34d399' }}>
-                {blastCalculations.targetOverpressurePsi >= 20 ? 'TOTAL REINFORCED STRUCTURE DEMOLITION' :
+              <span style={{ color: blastCalculations.targetOverpressurePsi >= 20 ? '#c4b5fd' : blastCalculations.targetOverpressurePsi >= 5 ? '#38bdf8' : blastCalculations.targetOverpressurePsi >= 1 ? '#facc15' : '#34d399' }}>
+                {blastCalculations.targetOverpressurePsi >= 20 ? 'SEVERE STRUCTURAL OVERPRESSURE (20+ PSI)' :
                  blastCalculations.targetOverpressurePsi >= 5 ? 'HEAVY RESIDENTIAL COLLAPSE (5+ PSI)' :
                  blastCalculations.targetOverpressurePsi >= 1 ? 'MODERATE DAMAGE / FLYING GLASS HAZARD (1+ PSI)' :
                  'STAND-OFF PERIMETER (SAFE OVERPRESSURE)'}
               </span>
             </div>
             <div style={{ fontSize: '0.78rem', color: '#cbd5e1', marginTop: '2px' }}>
-              Overpressure: <strong style={{ color: '#fff' }}>{blastCalculations.targetOverpressurePsi.toFixed(2)} psi</strong> // Wind: <strong style={{ color: '#38bdf8' }}>{blastCalculations.targetWindSpeedMph} mph</strong> // Thermal: <strong style={{ color: '#fbbf24' }}>{thermalCalculations.targetFluenceCalCm2.toFixed(1)} cal/cm²</strong> // Initial Dose: <strong style={{ color: '#a855f7' }}>{promptRadCalculations.targetPromptDoseGy.toFixed(2)} Gy</strong>
+              Overpressure: <strong style={{ color: '#fff' }}>{blastCalculations.targetOverpressurePsi.toFixed(2)} psi</strong> // Wind: <strong style={{ color: '#38bdf8' }}>{blastCalculations.targetWindSpeedMph} mph</strong> // Thermal: <strong style={{ color: '#fbbf24' }}>{thermalCalculations.targetFluenceCalCm2.toFixed(1)} cal/cm²</strong> // Initial Dose: <strong style={{ color: '#c4b5fd' }}>{promptRadCalculations.targetPromptDoseGy.toFixed(2)} Gy</strong>
             </div>
           </div>
         </div>
@@ -799,8 +797,8 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
             cursor: 'pointer',
             padding: '10px 16px',
             fontSize: '0.9rem',
-            borderBottom: activeTab === 'visual_detonation' ? '2px solid #ef4444' : 'none',
-            color: activeTab === 'visual_detonation' ? '#f87171' : 'var(--color-text-muted)',
+            borderBottom: activeTab === 'visual_detonation' ? '2px solid #38bdf8' : 'none',
+            color: activeTab === 'visual_detonation' ? '#38bdf8' : 'var(--color-text-muted)',
             fontWeight: activeTab === 'visual_detonation' ? 'bold' : 'normal',
             display: 'flex',
             alignItems: 'center',
@@ -808,7 +806,7 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
           }}
           onClick={() => setActiveTab('visual_detonation')}
         >
-          <span>🌋 Visual Detonation &amp; Mushroom Cloud (Outrider Mode)</span>
+          <span>🛰️ Visual Detonation &amp; Cloud Telemetry</span>
         </button>
 
         <button
@@ -947,32 +945,32 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
       {activeTab === 'blast' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '14px' }}>
-            <div className="panel" style={{ padding: '16px', borderLeft: '4px solid #ef4444' }}>
-              <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#ef4444' }}>20 PSI: TOTAL DESTRUCTION</div>
+            <div className="panel" style={{ padding: '16px', borderLeft: '4px solid #a78bfa' }}>
+              <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#c4b5fd' }}>20 PSI: TOTAL DESTRUCTION</div>
               <div style={{ fontSize: '1.4rem', fontWeight: 'bold', marginTop: '4px' }}>{blastCalculations.r20psi_km.toFixed(2)} km</div>
               <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
                 Heavy reinforced concrete buildings leveled. 500 mph hurricane-force winds. 100% fatalities.
               </div>
             </div>
 
-            <div className="panel" style={{ padding: '16px', borderLeft: '4px solid #f97316' }}>
-              <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#f97316' }}>10 PSI: HEAVY COLLAPSE</div>
+            <div className="panel" style={{ padding: '16px', borderLeft: '4px solid #6366f1' }}>
+              <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#818cf8' }}>10 PSI: HEAVY COLLAPSE</div>
               <div style={{ fontSize: '1.4rem', fontWeight: 'bold', marginTop: '4px' }}>{blastCalculations.r10psi_km.toFixed(2)} km</div>
               <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
                 Most factories, commercial brick structures destroyed. Multi-ton highway vehicles overturned.
               </div>
             </div>
 
-            <div className="panel" style={{ padding: '16px', borderLeft: '4px solid #eab308' }}>
-              <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#eab308' }}>5 PSI: RESIDENTIAL COLLAPSE</div>
+            <div className="panel" style={{ padding: '16px', borderLeft: '4px solid #38bdf8' }}>
+              <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#38bdf8' }}>5 PSI: RESIDENTIAL COLLAPSE</div>
               <div style={{ fontSize: '1.4rem', fontWeight: 'bold', marginTop: '4px' }}>{blastCalculations.r5psi_km.toFixed(2)} km</div>
               <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
                 Standard residential wood/masonry homes flattened. Universal blunt trauma injuries.
               </div>
             </div>
 
-            <div className="panel" style={{ padding: '16px', borderLeft: '4px solid #38bdf8' }}>
-              <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#38bdf8' }}>1 PSI: GLASS SHATTER ZONE</div>
+            <div className="panel" style={{ padding: '16px', borderLeft: '4px solid #10b981' }}>
+              <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#34d399' }}>1 PSI: GLASS SHATTER ZONE</div>
               <div style={{ fontSize: '1.4rem', fontWeight: 'bold', marginTop: '4px' }}>{blastCalculations.r1psi_km.toFixed(2)} km</div>
               <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
                 Window glass blown inward at high velocity. Doors off hinges. Minor structural damage.
@@ -993,7 +991,7 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
                   type: 'scatter',
                   mode: 'lines',
                   name: 'Incident Overpressure ΔP (psi)',
-                  line: { color: '#ef4444', width: 2.5 }
+                  line: { color: '#38bdf8', width: 2.5 }
                 },
                 {
                   x: blastCalculations.curvePoints.map((p) => p.rKm),
@@ -1001,7 +999,7 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
                   type: 'scatter',
                   mode: 'lines',
                   name: 'Dynamic Wind Pressure q (psi)',
-                  line: { color: '#00e5ff', width: 2, dash: 'dot' }
+                  line: { color: '#a78bfa', width: 2, dash: 'dot' }
                 }
               ]}
               layout={{
@@ -1028,32 +1026,32 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
       {activeTab === 'thermal' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '14px' }}>
-            <div className="panel" style={{ padding: '16px', borderLeft: '4px solid #ef4444' }}>
-              <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#ef4444' }}>3RD-DEGREE FULL THICKNESS</div>
+            <div className="panel" style={{ padding: '16px', borderLeft: '4px solid #f59e0b' }}>
+              <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#fbbf24' }}>3RD-DEGREE FULL THICKNESS</div>
               <div style={{ fontSize: '1.4rem', fontWeight: 'bold', marginTop: '4px' }}>{thermalCalculations.r3rdBurn_km.toFixed(2)} km</div>
               <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
                 Full-thickness charred cutaneous necrosis (Q ≥ 10 cal/cm²). Severe grafting required.
               </div>
             </div>
 
-            <div className="panel" style={{ padding: '16px', borderLeft: '4px solid #f97316' }}>
-              <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#f97316' }}>2ND-DEGREE BLISTERING</div>
+            <div className="panel" style={{ padding: '16px', borderLeft: '4px solid #eab308' }}>
+              <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#facc15' }}>2ND-DEGREE BLISTERING</div>
               <div style={{ fontSize: '1.4rem', fontWeight: 'bold', marginTop: '4px' }}>{thermalCalculations.r2ndBurn_km.toFixed(2)} km</div>
               <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
                 Partial-thickness epidermal blistering and severe fluid loss (Q ≥ 5.5 cal/cm²).
               </div>
             </div>
 
-            <div className="panel" style={{ padding: '16px', borderLeft: '4px solid #facc15' }}>
-              <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#facc15' }}>1ST-DEGREE ERYTHEMA</div>
+            <div className="panel" style={{ padding: '16px', borderLeft: '4px solid #38bdf8' }}>
+              <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#38bdf8' }}>1ST-DEGREE ERYTHEMA</div>
               <div style={{ fontSize: '1.4rem', fontWeight: 'bold', marginTop: '4px' }}>{thermalCalculations.r1stBurn_km.toFixed(2)} km</div>
               <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
                 Painful superficial erythema resembling acute severe sunburn (Q ≥ 3.0 cal/cm²).
               </div>
             </div>
 
-            <div className="panel" style={{ padding: '16px', borderLeft: '4px solid #a855f7' }}>
-              <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#a855f7' }}>NIGHT RETINAL FLASHBLIND</div>
+            <div className="panel" style={{ padding: '16px', borderLeft: '4px solid #a78bfa' }}>
+              <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#c4b5fd' }}>NIGHT RETINAL FLASHBLIND</div>
               <div style={{ fontSize: '1.4rem', fontWeight: 'bold', marginTop: '4px' }}>{thermalCalculations.rFlashblindNight_km.toFixed(1)} km</div>
               <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
                 Dark-adapted pupillary dilation causes temporary blindness for 10–30 minutes.
@@ -1074,7 +1072,7 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
                   type: 'scatter',
                   mode: 'lines',
                   name: 'Radiant Fluence (cal/cm²)',
-                  line: { color: '#ff9f1c', width: 2.5 }
+                  line: { color: '#fbbf24', width: 2.5 }
                 }
               ]}
               layout={{
@@ -1109,23 +1107,23 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
             </p>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
-              <div style={{ background: 'rgba(239, 68, 68, 0.08)', padding: '14px', borderRadius: '8px', border: '1px solid #ef4444' }}>
+              <div style={{ background: 'rgba(167, 139, 250, 0.08)', padding: '14px', borderRadius: '8px', border: '1px solid rgba(167, 139, 250, 0.45)' }}>
                 <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>CNS COLLAPSE RADIUS (20 GY)</div>
-                <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: '#ef4444', marginTop: '2px' }}>
+                <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: '#c4b5fd', marginTop: '2px' }}>
                   {promptRadCalculations.rCns_km.toFixed(2)} km
                 </div>
                 <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Immediate incapacitation within minutes</div>
               </div>
 
-              <div style={{ background: 'rgba(249, 115, 22, 0.08)', padding: '14px', borderRadius: '8px', border: '1px solid #f97316' }}>
+              <div style={{ background: 'rgba(245, 158, 11, 0.08)', padding: '14px', borderRadius: '8px', border: '1px solid rgba(245, 158, 11, 0.45)' }}>
                 <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>LD100 GASTROINTESTINAL (8 GY)</div>
-                <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: '#f97316', marginTop: '2px' }}>
+                <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: '#fbbf24', marginTop: '2px' }}>
                   {promptRadCalculations.rLd100_km.toFixed(2)} km
                 </div>
                 <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>100% mortality without bone marrow transplant</div>
               </div>
 
-              <div style={{ background: 'rgba(0, 229, 255, 0.08)', padding: '14px', borderRadius: '8px', border: '1px solid #00e5ff' }}>
+              <div style={{ background: 'rgba(0, 229, 255, 0.08)', padding: '14px', borderRadius: '8px', border: '1px solid rgba(0, 229, 255, 0.45)' }}>
                 <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>LD50/60 BONE MARROW (4.5 GY)</div>
                 <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: '#00e5ff', marginTop: '2px' }}>
                   {promptRadCalculations.rLd50_km.toFixed(2)} km
@@ -1259,7 +1257,7 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
                       type: 'scatter',
                       mode: 'markers',
                       name: 'Terrain-Shadowed Zone (Thermal ×0.04, Gamma ×0.12)',
-                      marker: { color: '#ef4444', size: 8, symbol: 'x' }
+                      marker: { color: '#38bdf8', size: 8, symbol: 'x' }
                     }
                   ]}
                   layout={{
@@ -1298,7 +1296,7 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px', marginBottom: '20px' }}>
               <div style={{ background: 'rgba(255, 255, 255, 0.03)', padding: '14px', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
                 <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>E1 FAST PULSE (SEMICONDUCTORS)</div>
-                <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#ef4444', marginTop: '2px' }}>
+                <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#a78bfa', marginTop: '2px' }}>
                   {hempCalculations.e1PeakFieldKvm.toFixed(1)} kV/m
                 </div>
                 <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>

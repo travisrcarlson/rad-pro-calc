@@ -294,19 +294,30 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
     }
 
     const hobKm = hobM / 1000.0;
+    const buoyantRiseDeltaKm =
+      hobKm >= 8.0
+        ? Math.max(5.2, baseHTopKm * 0.58)
+        : Math.max(rFireballKm * 2.6, baseHTopKm * (1.0 - Math.min(0.42, hobKm / 22.0)));
     const hTopKm = isUnderground
       ? isFullyContained
         ? Math.max(0.18, 0.12 * Math.pow(y, 0.22)) // Surface spall dust plume height (km)
         : Math.max(0.8, baseHTopKm * Math.max(0.22, Math.pow(ventFraction, 0.42))) // Vented ejecta & cloud height
-      : Math.max(hobKm + rFireballKm * 2.2, baseHTopKm + hobKm * 0.45);
+      : Math.max(hobKm + buoyantRiseDeltaKm, baseHTopKm + hobKm * 0.45);
     const hTopMiles = hTopKm * 0.621371;
     const hTopFeet = hTopKm * 3280.84;
 
-    // 3. Cloud Base Height (H_base in km)
+    // 3. Cloud Base Height (H_base in km) — always strictly >= hobKm for airbursts so high-altitude clouds never dip toward the ground
     const hBaseFraction = Math.max(0.48, Math.min(0.68, 0.62 - 0.04 * Math.log10(Math.max(1, y / 20.0))));
+    const capThicknessKm = Math.max(
+      rFireballKm * 1.85,
+      (hTopKm - hobKm) * 0.42,
+      hTopKm * (1 - hBaseFraction) * (hobKm >= 8.0 ? 0.65 : 1.0)
+    );
     const hBaseKm = isUnderground
       ? hTopKm * 0.42
-      : Math.max(hobKm * 0.65, hTopKm * hBaseFraction);
+      : hobKm > 0
+      ? Math.max(hobKm + Math.max(0.35, rFireballKm * 0.55), hTopKm - capThicknessKm)
+      : hTopKm * hBaseFraction;
     const hBaseMiles = hBaseKm * 0.621371;
 
     // 4. Cloud Cap Diameter (D_cap in km)
@@ -463,26 +474,31 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
     };
   }, [cloudPhysics, currentCity]);
 
-  // Pre-generate Structured 3D Toroidal Vortex Lobes (Depth-Sorted Back -> Core -> Front)
+  // Pre-generate High-Definition Multi-Octave 3D Toroidal Vortex Lobes (168 Billows: Macro Torus, Meso Cauliflower Domes & Fine Crown Florets)
   const smokeLobes = useMemo<SmokeLobe[]>(() => {
     const lobes: SmokeLobe[] = [];
-    const count = 84;
+    const count = 168;
     const golden = Math.PI * (3 - Math.sqrt(5));
     for (let i = 0; i < count; i++) {
-      // Deterministic Phyllotaxis distribution across left/right toroidal vortex rings and central dome
+      // Deterministic Phyllotaxis distribution across left/right toroidal vortex rings, central dome, and fine outer cauliflower florets
       const frac = (i + 0.5) / count;
       const theta = i * golden;
-      // Concentrate billows along the toroidal ring perimeter (0.35..0.92) + dome crown
-      const ringBias = 0.25 + 0.70 * Math.pow(frac, 0.65);
+      const isFineFloret = i >= 108;
+      // Concentrate billows along the toroidal ring perimeter (0.28..0.96) + dome crown
+      const ringBias = isFineFloret
+        ? 0.58 + 0.38 * Math.pow((i - 108) / 60, 0.55)
+        : 0.22 + 0.72 * Math.pow(frac, 0.62);
       const relX = Math.cos(theta) * ringBias;
       // Flattened stratospheric anvil top and rounded toroidal underside
       const rawY = Math.sin(theta) * ringBias;
-      const relY = rawY < 0 ? rawY * 0.48 : rawY * 0.62;
-      const baseRadius = 0.20 + (1 - Math.abs(rawY) * 0.35) * 0.14 + ((i * 17) % 7) * 0.012;
+      const relY = rawY < 0 ? rawY * 0.48 : rawY * 0.60;
+      const baseRadius = isFineFloret
+        ? 0.105 + ((i * 13) % 7) * 0.011
+        : 0.18 + (1 - Math.abs(rawY) * 0.35) * 0.13 + ((i * 17) % 7) * 0.011;
       const phase = (i * 1.13) % (Math.PI * 2);
-      const speed = 0.55 + ((i * 23) % 11) * 0.055;
+      const speed = 0.52 + ((i * 23) % 11) * 0.05;
       const layer: 'back' | 'core' | 'front' =
-        rawY < -0.22 ? 'back' : Math.abs(relX) < 0.58 && rawY > -0.15 ? 'core' : 'front';
+        rawY < -0.24 ? 'back' : Math.abs(relX) < 0.56 && rawY > -0.14 && !isFineFloret ? 'core' : 'front';
 
       lobes.push({
         relX,
@@ -596,8 +612,16 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const width = canvas.width;
-    const height = canvas.height;
+    const width = 960;
+    const height = 520;
+    const dpr = Math.min(2.5, Math.max(2.0, typeof window !== 'undefined' ? window.devicePixelRatio || 2.0 : 2.0));
+    if (canvas.width !== Math.round(width * dpr) || canvas.height !== Math.round(height * dpr)) {
+      canvas.width = Math.round(width * dpr);
+      canvas.height = Math.round(height * dpr);
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
     const t = simTimeSeconds;
     const {
       isUnderground,
@@ -668,16 +692,38 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
     ctx.save();
     ctx.translate(shakeX, shakeY);
 
-    // 1. Atmospheric Sky Gradient (with thermal horizon glow for surface/air/venting bursts)
-    const horizonGlow = isFullyContained ? 0 : Math.max(0, (1.0 - t / 45.0) * ventFraction);
+    // 1. High-Altitude Stratospheric Optical Sky Gradient (Clean telemetry blue-slate with brief Rayleigh flash)
+    const flashScatter = isFullyContained ? 0 : Math.max(0, Math.exp(-t / 3.2) * ventFraction);
     const skyGradient = ctx.createLinearGradient(0, 0, 0, groundY);
-    skyGradient.addColorStop(0.0, '#02040a'); // Mesosphere
-    skyGradient.addColorStop(0.35, '#060d1f'); // Upper Stratosphere
-    skyGradient.addColorStop(0.68, '#0b1933'); // Lower Stratosphere
-    skyGradient.addColorStop(0.88, horizonGlow > 0.1 ? `rgb(${Math.round(18 + 55 * horizonGlow)}, ${Math.round(35 + 22 * horizonGlow)}, 68)` : '#122648');
-    skyGradient.addColorStop(1.0, horizonGlow > 0.1 ? `rgb(${Math.round(28 + 110 * horizonGlow)}, ${Math.round(48 + 45 * horizonGlow)}, 82)` : '#18345e');
+    skyGradient.addColorStop(0.0, '#020611'); // Exosphere / Upper Mesosphere
+    skyGradient.addColorStop(0.32, '#071124'); // Upper Stratosphere
+    skyGradient.addColorStop(0.68, '#0d1f3a'); // Lower Stratosphere / Tropopause
+    skyGradient.addColorStop(
+      0.88,
+      flashScatter > 0.05
+        ? `rgb(${Math.round(20 + 48 * flashScatter)}, ${Math.round(42 + 52 * flashScatter)}, ${Math.round(74 + 55 * flashScatter)})`
+        : '#142c50'
+    );
+    skyGradient.addColorStop(
+      1.0,
+      flashScatter > 0.05
+        ? `rgb(${Math.round(30 + 85 * flashScatter)}, ${Math.round(56 + 78 * flashScatter)}, ${Math.round(92 + 65 * flashScatter)})`
+        : '#1c3b68'
+    );
     ctx.fillStyle = skyGradient;
     ctx.fillRect(-20, -20, width + 40, groundY + 25);
+
+    // Subtle Scientific Optical Telemetry Grid in Sky
+    ctx.save();
+    ctx.strokeStyle = 'rgba(148, 163, 184, 0.045)';
+    ctx.lineWidth = 1;
+    for (let gx = 100; gx < width; gx += 90) {
+      ctx.beginPath();
+      ctx.moveTo(gx, 0);
+      ctx.lineTo(gx, groundY);
+      ctx.stroke();
+    }
+    ctx.restore();
 
     // 2. High-Altitude Stars
     ctx.fillStyle = 'rgba(255, 255, 255, 0.42)';
@@ -863,19 +909,19 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
 
     // 7A. Geological Rock Strata Gradient & Sedimentary/Granitic Bedding Planes
     const earthGrad = ctx.createLinearGradient(0, groundY, 0, height);
-    earthGrad.addColorStop(0.0, '#1e1b18'); // Quaternary Alluvium / Topsoil
-    earthGrad.addColorStop(0.22, '#27221d'); // Volcanic Tuff / Sedimentary Sandstone
-    earthGrad.addColorStop(0.55, '#1c1917'); // Fractured Granitic Pluton
-    earthGrad.addColorStop(1.0, '#0c0a09'); // Deep Metamorphic Basement
+    earthGrad.addColorStop(0.0, '#111824'); // Quaternary Alluvium / Topsoil (Cool Slate)
+    earthGrad.addColorStop(0.22, '#162030'); // Volcanic Tuff / Sedimentary Sandstone
+    earthGrad.addColorStop(0.55, '#0f1722'); // Fractured Granitic Pluton
+    earthGrad.addColorStop(1.0, '#070b12'); // Deep Metamorphic Basement
     ctx.fillStyle = earthGrad;
     ctx.fillRect(-20, groundY, width + 40, subHeight + 40);
 
     if (isUnderground && subHeight > 80) {
       // Draw geological strata boundaries & lithology labels on the right side
       const strataLayers = [
-        { frac: 0.22, name: 'QUATERNARY ALLUVIUM / TUFF', col: 'rgba(168, 162, 158, 0.16)' },
-        { frac: 0.52, name: 'CARBONATE / SANDSTONE STRATA', col: 'rgba(148, 163, 184, 0.14)' },
-        { frac: 0.82, name: 'CRYSTALLINE GRANITE BASEMENT', col: 'rgba(120, 113, 108, 0.14)' }
+        { frac: 0.22, name: 'QUATERNARY ALLUVIUM / TUFF', col: 'rgba(148, 163, 184, 0.18)' },
+        { frac: 0.52, name: 'CARBONATE / SANDSTONE STRATA', col: 'rgba(100, 116, 139, 0.16)' },
+        { frac: 0.82, name: 'CRYSTALLINE GRANITE BASEMENT', col: 'rgba(71, 85, 105, 0.16)' }
       ];
       strataLayers.forEach((st) => {
         const sy = groundY + subHeight * st.frac;
@@ -891,7 +937,7 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
         ctx.setLineDash([]);
 
         ctx.font = '600 8.5px Inter, sans-serif';
-        ctx.fillStyle = 'rgba(168, 162, 158, 0.52)';
+        ctx.fillStyle = 'rgba(148, 163, 184, 0.58)';
         ctx.textAlign = 'right';
         ctx.fillText(st.name, width - 16, sy - 4);
         ctx.textAlign = 'left';
@@ -899,7 +945,7 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
 
       // Left Subterranean Depth Ruler (below groundY)
       const depthStepM = maxDepthM >= 2000 ? 500 : maxDepthM >= 900 ? 250 : 100;
-      ctx.fillStyle = 'rgba(192, 132, 252, 0.85)';
+      ctx.fillStyle = 'rgba(56, 189, 248, 0.85)';
       ctx.font = '9.5px JetBrains Mono, monospace';
       ctx.textAlign = 'right';
       for (let dm = depthStepM; dm <= maxDepthM; dm += depthStepM) {
@@ -909,7 +955,7 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
           ? `-${Math.round(dm * 3.28084).toLocaleString()}ft`
           : `-${dm}m`;
         ctx.fillText(dLabel, 48, dy + 3);
-        ctx.strokeStyle = 'rgba(192, 132, 252, 0.25)';
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.25)';
         ctx.beginPath();
         ctx.moveTo(50, dy);
         ctx.lineTo(55, dy);
@@ -918,8 +964,10 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
       ctx.textAlign = 'left';
     }
 
-    // 7B. Subterranean Detonation Physics: Borehole, Seismic Waves, Fracture Zone, Vapor Cavity, Rubble Chimney & Crater
-    const plasmaIntensity = Math.max(0.08, Math.exp(-t / 55.0));
+    // 7B. Subterranean Detonation Physics & Realistic Thermal Radiative Cooling
+    // Fast radiative cooling of external fireball surface (τ ≈ 9.5s) so cloud transitions rapidly to convective slate/cumulus white
+    const plasmaIntensity = Math.max(0.0, Math.exp(-t / 9.5));
+    const internalWarmth = Math.max(0.0, Math.exp(-t / 18.0));
 
     if (isUnderground) {
       const detY = depthMToY(dobM);
@@ -946,15 +994,15 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
       const wpTw = ctx.measureText(wpLabel).width;
       const wpX = Math.max(64, centerX - rFracturePx - wpTw - 18);
       const wpY = Math.min(height - 16, Math.max(groundY + 18, detY));
-      ctx.fillStyle = 'rgba(9, 10, 15, 0.86)';
-      ctx.strokeStyle = 'rgba(168, 85, 247, 0.55)';
+      ctx.fillStyle = 'rgba(9, 13, 22, 0.90)';
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.55)';
       ctx.lineWidth = 1;
       ctx.fillRect(wpX - 5, wpY - 11, wpTw + 10, 15);
       ctx.strokeRect(wpX - 5, wpY - 11, wpTw + 10, 15);
-      ctx.fillStyle = '#d8b4fe';
+      ctx.fillStyle = '#7dd3fc';
       ctx.fillText(wpLabel, wpX, wpY);
 
-      ctx.strokeStyle = 'rgba(168, 85, 247, 0.45)';
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.45)';
       ctx.beginPath();
       ctx.moveTo(wpX + wpTw + 5, wpY - 3);
       ctx.lineTo(centerX - rCavityPx - 4, detY);
@@ -968,9 +1016,9 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
         ctx.rect(0, groundY, width, subHeight);
         ctx.clip();
 
-        // Compressional P-Wave (fast, cyan-purple)
+        // Compressional P-Wave (fast, telemetry cyan)
         const pWaveR = rCavityPx + t * 55;
-        const pAlpha = Math.max(0, (1 - t / 12.0) * 0.75);
+        const pAlpha = Math.max(0, (1 - t / 12.0) * 0.78);
         if (pAlpha > 0.02) {
           ctx.strokeStyle = `rgba(56, 189, 248, ${pAlpha})`;
           ctx.lineWidth = 2.0;
@@ -979,11 +1027,11 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
           ctx.stroke();
         }
 
-        // Shear S-Wave (slower, amber-magenta)
+        // Shear S-Wave (slower, indigo-violet)
         const sWaveR = rCavityPx + t * 32;
         const sAlpha = Math.max(0, (1 - t / 15.0) * 0.65);
         if (sAlpha > 0.02) {
-          ctx.strokeStyle = `rgba(192, 132, 252, ${sAlpha})`;
+          ctx.strokeStyle = `rgba(167, 139, 250, ${sAlpha})`;
           ctx.lineWidth = 1.6;
           ctx.setLineDash([6, 4]);
           ctx.beginPath();
@@ -1001,8 +1049,8 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
       ctx.clip();
 
       const fracGrad = ctx.createRadialGradient(centerX, detY, rCavityPx * 0.8, centerX, detY, rFracturePx);
-      fracGrad.addColorStop(0.0, 'rgba(234, 88, 12, 0.28)');
-      fracGrad.addColorStop(0.55, 'rgba(147, 51, 234, 0.16)');
+      fracGrad.addColorStop(0.0, 'rgba(56, 189, 248, 0.22)');
+      fracGrad.addColorStop(0.55, 'rgba(99, 102, 241, 0.14)');
       fracGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.0)');
       ctx.fillStyle = fracGrad;
       ctx.beginPath();
@@ -1010,7 +1058,7 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
       ctx.fill();
 
       // Radial hydro-fracture / tectonic fissure lines in rock
-      ctx.strokeStyle = `rgba(251, 146, 60, ${0.25 + 0.35 * plasmaIntensity})`;
+      ctx.strokeStyle = `rgba(148, 163, 184, ${0.28 + 0.35 * plasmaIntensity})`;
       ctx.lineWidth = 1.1;
       for (let f = 0; f < 18; f++) {
         const fAngle = (f / 18) * Math.PI * 2 + 0.17;
@@ -1031,9 +1079,9 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
         const chimneyTopY = detY - chimneyHeightPx;
 
         const chimGrad = ctx.createLinearGradient(centerX - rCavityPx, detY, centerX + rCavityPx, detY);
-        chimGrad.addColorStop(0.0, 'rgba(28, 25, 23, 0.92)');
-        chimGrad.addColorStop(0.5, 'rgba(68, 64, 60, 0.95)');
-        chimGrad.addColorStop(1.0, 'rgba(28, 25, 23, 0.92)');
+        chimGrad.addColorStop(0.0, 'rgba(15, 23, 42, 0.92)');
+        chimGrad.addColorStop(0.5, 'rgba(51, 65, 85, 0.95)');
+        chimGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.92)');
         ctx.fillStyle = chimGrad;
 
         ctx.beginPath();
@@ -1044,26 +1092,26 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
         ctx.closePath();
         ctx.fill();
 
-        ctx.strokeStyle = 'rgba(168, 162, 158, 0.35)';
+        ctx.strokeStyle = 'rgba(148, 163, 184, 0.38)';
         ctx.lineWidth = 1;
         ctx.stroke();
       }
 
-      // 5. Incandescent Vaporized Rock & Plasma Cavity + Basal Molten Silicate Puddle
+      // 5. Incandescent Vaporized Rock & Plasma Cavity + Basal Vitreous Melt Lens
       const cavGrad = ctx.createRadialGradient(centerX, detY, rCavityPx * 0.08, centerX, detY, rCavityPx);
-      cavGrad.addColorStop(0.0, `rgba(255, 255, 240, ${0.98 * plasmaIntensity + 0.15})`);
-      cavGrad.addColorStop(0.38, `rgba(254, 240, 138, ${0.90 * plasmaIntensity + 0.12})`);
-      cavGrad.addColorStop(0.72, `rgba(249, 115, 22, ${0.85 * plasmaIntensity + 0.18})`);
-      cavGrad.addColorStop(0.95, 'rgba(153, 27, 27, 0.85)');
-      cavGrad.addColorStop(1.0, 'rgba(68, 64, 60, 0.9)');
+      cavGrad.addColorStop(0.0, `rgba(255, 255, 255, ${0.95 * internalWarmth + 0.12})`);
+      cavGrad.addColorStop(0.42, `rgba(254, 240, 138, ${0.85 * internalWarmth + 0.10})`);
+      cavGrad.addColorStop(0.76, `rgba(245, 158, 11, ${0.72 * internalWarmth + 0.14})`);
+      cavGrad.addColorStop(0.95, 'rgba(71, 85, 105, 0.88)');
+      cavGrad.addColorStop(1.0, 'rgba(30, 41, 59, 0.95)');
 
       ctx.fillStyle = cavGrad;
       ctx.beginPath();
       ctx.arc(centerX, detY, rCavityPx, 0, Math.PI * 2);
       ctx.fill();
 
-      // Basal Puddle of Molten Radioactive Rock Glass (Vitreous Melt Pool at bottom of cavity)
-      ctx.fillStyle = `rgba(234, 88, 12, ${0.65 + 0.35 * plasmaIntensity})`;
+      // Basal Puddle of Molten Silicate Glass (Vitreous Melt Pool at bottom of cavity)
+      ctx.fillStyle = `rgba(245, 158, 11, ${0.45 + 0.45 * internalWarmth})`;
       ctx.beginPath();
       ctx.arc(centerX, detY, rCavityPx * 0.95, 0.15 * Math.PI, 0.85 * Math.PI, false);
       ctx.closePath();
@@ -1077,7 +1125,7 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
 
       if (spallPulse > 0.5) {
         // Upward seismic ground-spall dome uplift during shock reflection at free surface
-        ctx.fillStyle = 'rgba(120, 113, 108, 0.75)';
+        ctx.fillStyle = 'rgba(100, 116, 139, 0.75)';
         ctx.beginPath();
         ctx.moveTo(centerX - craterHalfW * 1.4, groundY);
         ctx.quadraticCurveTo(centerX, groundY - spallPulse * 2.2, centerX + craterHalfW * 1.4, groundY);
@@ -1088,14 +1136,14 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
       if (rCraterM > 0 && t >= 1.5) {
         // Excavated Throw-Out Crater or Subsidence Sinkhole Bowl
         const craterDepthPx = Math.min(subHeight * 0.32, Math.max(7, rCavityPx * (isFullyContained ? 0.45 : 0.85)));
-        ctx.fillStyle = '#090d16';
+        ctx.fillStyle = '#070b12';
         ctx.beginPath();
         ctx.moveTo(centerX - craterHalfW, groundY);
         ctx.quadraticCurveTo(centerX, groundY + craterDepthPx * 1.6, centerX + craterHalfW, groundY);
         ctx.closePath();
         ctx.fill();
 
-        ctx.strokeStyle = isFullyContained ? 'rgba(168, 162, 158, 0.65)' : 'rgba(251, 146, 60, 0.75)';
+        ctx.strokeStyle = isFullyContained ? 'rgba(148, 163, 184, 0.65)' : 'rgba(56, 189, 248, 0.75)';
         ctx.lineWidth = 1.5;
         ctx.beginPath();
         ctx.moveTo(centerX - craterHalfW * 1.15, groundY);
@@ -1111,11 +1159,11 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
         const fountainH = Math.min(groundY - 48, Math.max(38, (groundY - kmToY(hTopKm * 0.55)) * ejectaProgress));
         const fountainW = Math.max(craterHalfW * 1.25, kmToPixelsX(dStemKm * 0.75));
 
-        // Dark incandescent earth/rock dome & ballistic soil trajectories
+        // Basalt/alluvium ballistic soil dome & rock ejecta trajectories
         const domeGrad = ctx.createRadialGradient(centerX, groundY, fountainW * 0.1, centerX, groundY - fountainH * 0.4, fountainW * 1.2);
-        domeGrad.addColorStop(0.0, `rgba(251, 146, 60, ${0.82 * plasmaIntensity * ventFraction})`);
-        domeGrad.addColorStop(0.45, 'rgba(68, 52, 38, 0.92)');
-        domeGrad.addColorStop(0.85, 'rgba(38, 30, 24, 0.78)');
+        domeGrad.addColorStop(0.0, `rgba(253, 224, 71, ${0.65 * plasmaIntensity * ventFraction})`);
+        domeGrad.addColorStop(0.45, 'rgba(71, 85, 105, 0.90)');
+        domeGrad.addColorStop(0.85, 'rgba(30, 41, 59, 0.78)');
         domeGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.0)');
         ctx.fillStyle = domeGrad;
         ctx.beginPath();
@@ -1126,7 +1174,7 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
 
         // Ballistic rock ejecta streamers
         if (t < 35.0) {
-          ctx.strokeStyle = 'rgba(168, 138, 112, 0.55)';
+          ctx.strokeStyle = 'rgba(148, 163, 184, 0.55)';
           ctx.lineWidth = 1.2;
           for (let ej = 0; ej < 12; ej++) {
             const side = ej % 2 === 0 ? 1 : -1;
@@ -1153,19 +1201,19 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
         ctx.fill();
       }
     } else {
-      // Surface / Airburst Ground Reflection
+      // Surface / Airburst Ground Albedo Reflection (Solar white-gold during initial thermal pulse)
       const capWidthEstPx = Math.max(28, kmToPixelsX(dCapKm));
       const groundGlowR = Math.max(40, capWidthEstPx * 0.65);
       const groundGlow = ctx.createRadialGradient(centerX, groundY, 2, centerX, groundY, groundGlowR);
-      groundGlow.addColorStop(0.0, `rgba(251, 146, 60, ${0.55 * plasmaIntensity})`);
-      groundGlow.addColorStop(0.5, `rgba(220, 38, 38, ${0.22 * plasmaIntensity})`);
+      groundGlow.addColorStop(0.0, `rgba(254, 240, 138, ${0.55 * plasmaIntensity})`);
+      groundGlow.addColorStop(0.5, `rgba(245, 158, 11, ${0.22 * plasmaIntensity})`);
       groundGlow.addColorStop(1.0, 'rgba(0, 0, 0, 0.0)');
       ctx.fillStyle = groundGlow;
       ctx.fillRect(centerX - groundGlowR, groundY - 3, groundGlowR * 2, 14);
     }
 
     // Ground Surface Horizon Line
-    ctx.strokeStyle = isUnderground ? 'rgba(192, 132, 252, 0.45)' : 'rgba(255, 255, 255, 0.24)';
+    ctx.strokeStyle = isUnderground ? 'rgba(56, 189, 248, 0.45)' : 'rgba(226, 232, 240, 0.28)';
     ctx.lineWidth = 1.2;
     ctx.beginPath();
     ctx.moveTo(0, groundY);
@@ -1176,12 +1224,16 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
     // 8. ATMOSPHERIC MUSHROOM CLOUD & SHOCKWAVE KINEMATICS (When Air, Surface, or Shallow Venting Underground)
     // =========================================================================
     const hobKm = !isUnderground && burstAltitudeM > 0 ? burstAltitudeM / 1000.0 : 0;
+    const shob = !isUnderground && burstAltitudeM > 0 ? burstAltitudeM / Math.pow(Math.max(0.001, yieldKt), 1 / 3) : 0;
+    const isHighAltitudeBurst = !isUnderground && (burstAltitudeM >= 3000 || shob > 240);
+    const isLowAirburst = !isUnderground && !isHighAltitudeBurst && burstAltitudeM > 0;
+
+    // Strictly monotonic buoyant cloud ascent from the initial fireball altitude (never dips toward the ground)
     const riseProgress = Math.pow(t / (t + tRiseHalf), 0.92);
-    const currentTopKm = Math.max(hobKm + rFireballKm * 1.15, hobKm * (1 - riseProgress) + hTopKm * riseProgress);
-    const currentBaseKm = Math.max(
-      hobKm * (1 - riseProgress),
-      hBaseKm * Math.pow(riseProgress, 1.18)
-    );
+    const initialTopKm = hobKm + rFireballKm * 1.15;
+    const initialBaseKm = Math.max(0, hobKm - rFireballKm * 0.85);
+    const currentTopKm = initialTopKm + (hTopKm - initialTopKm) * riseProgress;
+    const currentBaseKm = initialBaseKm + (hBaseKm - initialBaseKm) * Math.pow(riseProgress, 1.05);
     const currentCapWidthKm = Math.max(rFireballKm * 2.0, dCapKm * Math.pow(riseProgress, 0.78));
     const currentStemWidthKm = Math.max(rFireballKm * 0.55, dStemKm * Math.pow(riseProgress, 0.58));
 
@@ -1189,16 +1241,32 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
     const baseY = kmToY(currentBaseKm);
     const capCenterY = (topY + baseY) / 2;
     const capRadiusY = Math.max(12, (baseY - topY) / 2);
-    const capWidthPx = Math.max(26, kmToPixelsX(currentCapWidthKm));
+    const capWidthPx = Math.max(28, kmToPixelsX(currentCapWidthKm));
     const capRadiusX = capWidthPx / 2;
     const stemWidthPx = Math.max(12, kmToPixelsX(currentStemWidthKm));
 
     if (!isFullyContained) {
-      // Optional Airburst Detonation Origin Marker & HOB Dashed Line when burstAltitudeM > 0
+      // Airburst Detonation Origin Marker, HOB Telemetry Line & High-Altitude Ionospheric Fluorescence Shell
       if (!isUnderground && hobKm > 0.05) {
         const hobY = kmToY(hobKm);
         ctx.save();
-        ctx.strokeStyle = 'rgba(56, 189, 248, 0.45)';
+
+        // High-Altitude / Stratospheric X-Ray Fluorescence & Compton Ionization Glow Shell (360° spherical airglow)
+        if (isHighAltitudeBurst && t >= 0.02 && t < 35.0) {
+          const ionPulse = Math.exp(-t / 9.0);
+          const ionRadiusPx = Math.max(capRadiusX * 1.65, kmToPixelsX(rFireballKm * 2.8 + Math.min(18, t * 1.4)));
+          const ionGrad = ctx.createRadialGradient(centerX, hobY, ionRadiusPx * 0.06, centerX, hobY, ionRadiusPx);
+          ionGrad.addColorStop(0.0, `rgba(224, 242, 254, ${0.42 * ionPulse})`);
+          ionGrad.addColorStop(0.35, `rgba(56, 189, 248, ${0.26 * ionPulse})`);
+          ionGrad.addColorStop(0.70, `rgba(139, 92, 246, ${0.16 * ionPulse})`);
+          ionGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.0)');
+          ctx.fillStyle = ionGrad;
+          ctx.beginPath();
+          ctx.arc(centerX, hobY, ionRadiusPx, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.42)';
         ctx.lineWidth = 1;
         ctx.setLineDash([4, 4]);
         ctx.beginPath();
@@ -1207,131 +1275,232 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
         ctx.stroke();
         ctx.setLineDash([]);
 
-        ctx.fillStyle = '#38bdf8';
+        // Precision target reticle at burst point (centerX, hobY)
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 1.2;
         ctx.beginPath();
-        ctx.arc(centerX, hobY, 3.5, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.arc(centerX, hobY, 4.5, 0, Math.PI * 2);
+        ctx.moveTo(centerX - 8, hobY);
+        ctx.lineTo(centerX + 8, hobY);
+        ctx.moveTo(centerX, hobY - 8);
+        ctx.lineTo(centerX, hobY + 8);
+        ctx.stroke();
 
         const hobLabel = unitMode === 'imperial'
           ? `☁️ HOB: +${Math.round(burstAltitudeM * 3.28084).toLocaleString()} ft`
           : `☁️ HOB: +${burstAltitudeM.toLocaleString()} m`;
-        ctx.font = '600 9px JetBrains Mono, monospace';
+        ctx.font = '600 9.5px JetBrains Mono, monospace';
         const hTw = ctx.measureText(hobLabel).width;
-        ctx.fillStyle = 'rgba(2, 6, 23, 0.82)';
-        ctx.fillRect(centerX - hTw - 16, Math.min(groundY - 16, hobY - 7), hTw + 8, 13);
+        ctx.fillStyle = 'rgba(2, 6, 23, 0.86)';
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.45)';
+        ctx.lineWidth = 1;
+        const badgeY = Math.min(groundY - 18, Math.max(50, hobY - 7));
+        ctx.fillRect(centerX - hTw - 20, badgeY, hTw + 10, 14);
+        ctx.strokeRect(centerX - hTw - 20, badgeY, hTw + 10, 14);
         ctx.fillStyle = '#38bdf8';
-        ctx.fillText(hobLabel, centerX - hTw - 12, Math.min(groundY - 6, hobY + 3));
+        ctx.fillText(hobLabel, centerX - hTw - 15, badgeY + 10);
         ctx.restore();
       }
 
-      // PHASE A: UPDRAFT SUCTION STEM & GROUND BASE SURGE (t >= 1.0s)
-      if (t >= 1.0) {
-        const stemReveal = Math.min(1.0, (t - 1.0) / 2.2);
-        const stemTopY = groundY - stemReveal * (groundY - (baseY + capRadiusY * 0.15));
-        const isDirtyBurst = burstMode === 'surface' || isUnderground;
+      // PHASE A: 3-REGIME STEM, DETACHED STRATOSPHERIC WAKE & GROUND BASE SURGE PHYSICS
+      // - Regime 1 (isHighAltitudeBurst): Detached stratospheric ionized & ice-crystal wake strictly between hobY and baseY (NEVER touches the ground!)
+      // - Regime 2 (isLowAirburst): Upper condensation funnel below baseY + delayed ground dust pedestal after shockwave ground reflection
+      // - Regime 3 (Surface / Shallow Underground): Continuous ground-attached updraft stem rising smoothly with the mushroom cap
+      if (isHighAltitudeBurst) {
+        const hobY = kmToY(hobKm);
+        const wakeAttachY = baseY + capRadiusY * 0.16;
+        const wakeHeightPx = hobY - wakeAttachY;
+        if (t >= 1.2 && wakeHeightPx > 4) {
+          const wakeAlpha = Math.min(0.82, ((t - 1.2) / 5.0) * 0.82);
+          const upperWakeHalfW = Math.min(capRadiusX * 0.54, stemWidthPx * 0.78);
+          const lowerTailHalfW = Math.max(3, stemWidthPx * 0.14);
+          const midWakeY = wakeAttachY * 0.55 + hobY * 0.45;
 
-        ctx.save();
-        ctx.beginPath();
-        const baseSkirtHalfW = stemWidthPx * (isUnderground ? 1.65 : isDirtyBurst ? 1.45 : 1.15);
-        const throatHalfW = stemWidthPx * (isUnderground ? 0.58 : 0.46);
-        const upperFlaredHalfW = Math.min(capRadiusX * 0.65, stemWidthPx * 0.92);
-        const midStemY = groundY * 0.45 + stemTopY * 0.55;
-
-        ctx.moveTo(centerX - baseSkirtHalfW, groundY);
-        ctx.quadraticCurveTo(centerX - throatHalfW, midStemY, centerX - upperFlaredHalfW, stemTopY);
-        ctx.lineTo(centerX + upperFlaredHalfW, stemTopY);
-        ctx.quadraticCurveTo(centerX + throatHalfW, midStemY, centerX + baseSkirtHalfW, groundY);
-        ctx.closePath();
-
-        const hotCoreFrac = Math.max(0, (1.0 - t / 110.0) * ventFraction);
-        const stemCylGrad = ctx.createLinearGradient(centerX - baseSkirtHalfW, midStemY, centerX + baseSkirtHalfW, midStemY);
-        if (isDirtyBurst) {
-          stemCylGrad.addColorStop(0.0, `rgba(28, 20, 16, ${0.88 * stemReveal})`);
-          stemCylGrad.addColorStop(0.25, `rgba(68, 48, 36, ${0.94 * stemReveal})`);
-          stemCylGrad.addColorStop(0.5, `rgba(${Math.round(95 + 145 * hotCoreFrac)}, ${Math.round(70 + 75 * hotCoreFrac)}, ${Math.round(52 + 20 * hotCoreFrac)}, ${0.96 * stemReveal})`);
-          stemCylGrad.addColorStop(0.75, `rgba(62, 44, 34, ${0.94 * stemReveal})`);
-          stemCylGrad.addColorStop(1.0, `rgba(24, 18, 14, ${0.88 * stemReveal})`);
-        } else {
-          stemCylGrad.addColorStop(0.0, `rgba(30, 36, 48, ${0.82 * stemReveal})`);
-          stemCylGrad.addColorStop(0.28, `rgba(75, 82, 96, ${0.90 * stemReveal})`);
-          stemCylGrad.addColorStop(0.5, `rgba(${Math.round(125 + 120 * hotCoreFrac)}, ${Math.round(128 + 55 * hotCoreFrac)}, ${Math.round(138 - 20 * hotCoreFrac)}, ${0.94 * stemReveal})`);
-          stemCylGrad.addColorStop(0.72, `rgba(70, 76, 90, ${0.90 * stemReveal})`);
-          stemCylGrad.addColorStop(1.0, `rgba(26, 32, 44, ${0.82 * stemReveal})`);
-        }
-        ctx.fillStyle = stemCylGrad;
-        ctx.fill();
-
-        const flankBillows = 10;
-        for (let b = 0; b < flankBillows; b++) {
-          const bf = (b + 0.5) / flankBillows;
-          const by = groundY - bf * (groundY - stemTopY);
-          const halfW = throatHalfW + Math.pow(bf - 0.45, 2) * stemWidthPx * 1.4;
-          const bRad = Math.max(6, stemWidthPx * (0.28 + 0.08 * Math.sin(bf * 9 + t * 0.6)));
-          [-1, 1].forEach((side) => {
-            const bx = centerX + side * halfW * 0.85;
-            const bGrad = ctx.createRadialGradient(bx - side * bRad * 0.2, by, 1, bx, by, bRad);
-            bGrad.addColorStop(0.0, isDirtyBurst ? `rgba(92, 68, 52, ${0.55 * stemReveal})` : `rgba(120, 128, 142, ${0.50 * stemReveal})`);
-            bGrad.addColorStop(0.65, isDirtyBurst ? `rgba(48, 34, 26, ${0.45 * stemReveal})` : `rgba(60, 66, 78, ${0.42 * stemReveal})`);
-            bGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.0)');
-            ctx.fillStyle = bGrad;
-            ctx.beginPath();
-            ctx.arc(bx, by, bRad, 0, Math.PI * 2);
-            ctx.fill();
-          });
-        }
-
-        if (t >= 3.5 && !isUnderground) {
-          const collarY = groundY - 0.62 * (groundY - stemTopY);
-          const collarW = throatHalfW * 2.15;
-          const collarGrad = ctx.createRadialGradient(centerX, collarY, collarW * 0.2, centerX, collarY, collarW);
-          collarGrad.addColorStop(0.0, `rgba(226, 232, 240, ${0.38 * stemReveal})`);
-          collarGrad.addColorStop(0.6, `rgba(148, 163, 184, ${0.28 * stemReveal})`);
-          collarGrad.addColorStop(1.0, 'rgba(148, 163, 184, 0.0)');
-          ctx.fillStyle = collarGrad;
+          ctx.save();
           ctx.beginPath();
-          ctx.ellipse(centerX, collarY, collarW, Math.max(5, collarW * 0.22), 0, 0, Math.PI * 2);
+          ctx.moveTo(centerX - upperWakeHalfW, wakeAttachY);
+          ctx.quadraticCurveTo(centerX - upperWakeHalfW * 0.45, midWakeY, centerX - lowerTailHalfW, hobY);
+          ctx.lineTo(centerX + lowerTailHalfW, hobY);
+          ctx.quadraticCurveTo(centerX + upperWakeHalfW * 0.45, midWakeY, centerX + upperWakeHalfW, wakeAttachY);
+          ctx.closePath();
+
+          const wakeGrad = ctx.createLinearGradient(centerX, wakeAttachY, centerX, hobY);
+          wakeGrad.addColorStop(0.0, `rgba(226, 232, 240, ${0.78 * wakeAlpha})`);
+          wakeGrad.addColorStop(0.45, `rgba(148, 163, 184, ${0.52 * wakeAlpha})`);
+          wakeGrad.addColorStop(0.82, `rgba(56, 189, 248, ${0.24 * wakeAlpha})`);
+          wakeGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.0)');
+          ctx.fillStyle = wakeGrad;
           ctx.fill();
+
+          // Upper stratospheric ice-crystal condensation collar under the ascending torus
+          if (t >= 3.5) {
+            const collarY = wakeAttachY + Math.min(22, wakeHeightPx * 0.32);
+            const collarW = upperWakeHalfW * 1.65;
+            const collarGrad = ctx.createRadialGradient(centerX, collarY, collarW * 0.12, centerX, collarY, collarW);
+            collarGrad.addColorStop(0.0, `rgba(241, 245, 249, ${0.52 * wakeAlpha})`);
+            collarGrad.addColorStop(0.65, `rgba(186, 230, 253, ${0.28 * wakeAlpha})`);
+            collarGrad.addColorStop(1.0, 'rgba(148, 163, 184, 0.0)');
+            ctx.fillStyle = collarGrad;
+            ctx.beginPath();
+            ctx.ellipse(centerX, collarY, collarW, Math.max(5, collarW * 0.18), 0, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.restore();
+        }
+      } else if (t >= 0.6) {
+        // Low Airburst vs. Surface/Underground Updraft Stem
+        const tGroundHit = isLowAirburst ? Math.max(0.8, hobKm / 0.42) : 0.4;
+        const stemAttachY = baseY + capRadiusY * 0.18;
+
+        // For Low Airbursts before ground stem connects: draw descending upper condensation vortex funnel from cap
+        if (isLowAirburst && t >= 1.0) {
+          const hobY = kmToY(hobKm);
+          const funnelBottomY = Math.min(groundY, Math.max(hobY, stemAttachY + (groundY - stemAttachY) * Math.min(1.0, (t - 1.0) / 8.0)));
+          const upperW = Math.min(capRadiusX * 0.58, stemWidthPx * 0.85);
+          const lowerW = stemWidthPx * 0.32;
+          ctx.save();
+          ctx.beginPath();
+          ctx.moveTo(centerX - upperW, stemAttachY);
+          ctx.quadraticCurveTo(centerX - lowerW * 1.1, (stemAttachY + funnelBottomY) * 0.5, centerX - lowerW, funnelBottomY);
+          ctx.lineTo(centerX + lowerW, funnelBottomY);
+          ctx.quadraticCurveTo(centerX + lowerW * 1.1, (stemAttachY + funnelBottomY) * 0.5, centerX + upperW, stemAttachY);
+          ctx.closePath();
+          const fGrad = ctx.createLinearGradient(centerX, stemAttachY, centerX, funnelBottomY);
+          fGrad.addColorStop(0.0, 'rgba(203, 213, 225, 0.84)');
+          fGrad.addColorStop(0.65, 'rgba(100, 116, 139, 0.55)');
+          fGrad.addColorStop(1.0, 'rgba(51, 65, 85, 0.15)');
+          ctx.fillStyle = fGrad;
+          ctx.fill();
+          ctx.restore();
         }
 
-        // Rolling Ground Debris Base Surge Cloud (Extra wide & dense for shallow subterranean bursts like Sedan!)
-        const surgeWidthPx = Math.min(width * 0.38, baseSkirtHalfW * (isUnderground ? 2.2 : 1.5) * (1.0 + Math.min(1.4, t * 0.08)));
-        const surgeHeightPx = Math.max(10, Math.min(34, stemWidthPx * (isUnderground ? 0.62 : 0.42)));
-        const surgeGrad = ctx.createRadialGradient(centerX, groundY, surgeWidthPx * 0.1, centerX, groundY, surgeWidthPx);
-        surgeGrad.addColorStop(0.0, isDirtyBurst ? `rgba(115, 84, 62, ${0.90 * stemReveal})` : `rgba(110, 118, 130, ${0.55 * stemReveal})`);
-        surgeGrad.addColorStop(0.65, isDirtyBurst ? `rgba(62, 45, 34, ${0.72 * stemReveal})` : `rgba(64, 70, 82, ${0.35 * stemReveal})`);
-        surgeGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.0)');
-        ctx.fillStyle = surgeGrad;
-        ctx.beginPath();
-        ctx.ellipse(centerX, groundY - 3, surgeWidthPx, surgeHeightPx, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
+        if (t >= tGroundHit) {
+          const stemReveal = isLowAirburst
+            ? Math.min(1.0, (t - tGroundHit) / 6.5)
+            : Math.min(1.0, (t - 0.4) / 1.4);
+          // Surface/underground stem stays continuously attached to the rising cap; low airburst afterwind stem rises smoothly to meet the funnel
+          const stemTopY = isLowAirburst
+            ? groundY - stemReveal * (groundY - stemAttachY)
+            : Math.min(groundY - 4, stemAttachY);
+          const isDirtyBurst = burstMode === 'surface' || isUnderground;
+
+          if (groundY - stemTopY > 3) {
+            ctx.save();
+            ctx.beginPath();
+            const baseSkirtHalfW = stemWidthPx * (isUnderground ? 1.65 : isDirtyBurst ? 1.45 : 1.12);
+            const throatHalfW = stemWidthPx * (isUnderground ? 0.58 : 0.46);
+            const upperFlaredHalfW = Math.min(capRadiusX * 0.65, stemWidthPx * 0.92);
+            const midStemY = groundY * 0.45 + stemTopY * 0.55;
+
+            ctx.moveTo(centerX - baseSkirtHalfW, groundY);
+            ctx.quadraticCurveTo(centerX - throatHalfW, midStemY, centerX - upperFlaredHalfW, stemTopY);
+            ctx.lineTo(centerX + upperFlaredHalfW, stemTopY);
+            ctx.quadraticCurveTo(centerX + throatHalfW, midStemY, centerX + baseSkirtHalfW, groundY);
+            ctx.closePath();
+
+            const stemWarmCore = Math.max(0, Math.exp(-t / 14.0) * ventFraction);
+            const stemCylGrad = ctx.createLinearGradient(centerX - baseSkirtHalfW, midStemY, centerX + baseSkirtHalfW, midStemY);
+            if (isDirtyBurst) {
+              // Warm taupe-slate soil/ash column with sunlit silver-gray edges
+              stemCylGrad.addColorStop(0.0, `rgba(42, 46, 56, ${0.88 * stemReveal})`);
+              stemCylGrad.addColorStop(0.24, `rgba(92, 98, 110, ${0.93 * stemReveal})`);
+              stemCylGrad.addColorStop(
+                0.5,
+                `rgba(${Math.round(148 + 85 * stemWarmCore)}, ${Math.round(146 + 65 * stemWarmCore)}, ${Math.round(150 - 15 * stemWarmCore)}, ${0.96 * stemReveal})`
+              );
+              stemCylGrad.addColorStop(0.76, `rgba(78, 84, 96, ${0.93 * stemReveal})`);
+              stemCylGrad.addColorStop(1.0, `rgba(34, 38, 48, ${0.88 * stemReveal})`);
+            } else {
+              // Clean airburst condensation & vortex updraft stem (alabaster silver-slate)
+              stemCylGrad.addColorStop(0.0, `rgba(51, 65, 85, ${0.78 * stemReveal})`);
+              stemCylGrad.addColorStop(0.28, `rgba(120, 134, 154, ${0.88 * stemReveal})`);
+              stemCylGrad.addColorStop(
+                0.5,
+                `rgba(${Math.round(192 + 55 * stemWarmCore)}, ${Math.round(198 + 42 * stemWarmCore)}, ${Math.round(210 - 10 * stemWarmCore)}, ${0.94 * stemReveal})`
+              );
+              stemCylGrad.addColorStop(0.72, `rgba(105, 118, 138, ${0.88 * stemReveal})`);
+              stemCylGrad.addColorStop(1.0, `rgba(42, 54, 72, ${0.78 * stemReveal})`);
+            }
+            ctx.fillStyle = stemCylGrad;
+            ctx.fill();
+
+            const flankBillows = 12;
+            for (let b = 0; b < flankBillows; b++) {
+              const bf = (b + 0.5) / flankBillows;
+              const by = groundY - bf * (groundY - stemTopY);
+              const halfW = throatHalfW + Math.pow(bf - 0.45, 2) * stemWidthPx * 1.4;
+              const bRad = Math.max(5, stemWidthPx * (0.26 + 0.08 * Math.sin(bf * 9 + t * 0.6)));
+              [-1, 1].forEach((side) => {
+                const bx = centerX + side * halfW * 0.85;
+                const bGrad = ctx.createRadialGradient(bx - side * bRad * 0.25, by - bRad * 0.15, 1, bx, by, bRad);
+                bGrad.addColorStop(0.0, isDirtyBurst ? `rgba(168, 175, 186, ${0.56 * stemReveal})` : `rgba(214, 224, 236, ${0.56 * stemReveal})`);
+                bGrad.addColorStop(0.65, isDirtyBurst ? `rgba(71, 85, 105, ${0.46 * stemReveal})` : `rgba(100, 116, 139, ${0.42 * stemReveal})`);
+                bGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.0)');
+                ctx.fillStyle = bGrad;
+                ctx.beginPath();
+                ctx.arc(bx, by, bRad, 0, Math.PI * 2);
+                ctx.fill();
+              });
+            }
+
+            // Multi-Tiered Ice-Vapor Condensation Skirts / Bells around Stem
+            if (t >= 3.0 && !isUnderground) {
+              [0.42, 0.68].forEach((skirtFrac, idx) => {
+                const collarY = groundY - skirtFrac * (groundY - stemTopY);
+                const collarW = throatHalfW * (idx === 0 ? 1.85 : 2.35);
+                const collarGrad = ctx.createRadialGradient(centerX, collarY, collarW * 0.15, centerX, collarY, collarW);
+                collarGrad.addColorStop(0.0, `rgba(241, 245, 249, ${0.48 * stemReveal})`);
+                collarGrad.addColorStop(0.6, `rgba(186, 230, 253, ${0.30 * stemReveal})`);
+                collarGrad.addColorStop(1.0, 'rgba(148, 163, 184, 0.0)');
+                ctx.fillStyle = collarGrad;
+                ctx.beginPath();
+                ctx.ellipse(centerX, collarY, collarW, Math.max(5, collarW * 0.2), 0, 0, Math.PI * 2);
+                ctx.fill();
+              });
+            }
+
+            // Rolling Ground Debris Base Surge Cloud
+            const surgeWidthPx = Math.min(width * 0.38, baseSkirtHalfW * (isUnderground ? 2.2 : 1.5) * (1.0 + Math.min(1.4, (t - tGroundHit) * 0.08)));
+            const surgeHeightPx = Math.max(10, Math.min(34, stemWidthPx * (isUnderground ? 0.62 : 0.42)));
+            const surgeGrad = ctx.createRadialGradient(centerX, groundY, surgeWidthPx * 0.1, centerX, groundY, surgeWidthPx);
+            surgeGrad.addColorStop(0.0, isDirtyBurst ? `rgba(148, 156, 168, ${0.84 * stemReveal})` : `rgba(165, 178, 194, ${0.52 * stemReveal})`);
+            surgeGrad.addColorStop(0.65, isDirtyBurst ? `rgba(71, 82, 96, ${0.68 * stemReveal})` : `rgba(82, 94, 110, ${0.34 * stemReveal})`);
+            surgeGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.0)');
+            ctx.fillStyle = surgeGrad;
+            ctx.beginPath();
+            ctx.ellipse(centerX, groundY - 3, surgeWidthPx, surgeHeightPx, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+          }
+        }
       }
 
-      // PHASE B: VOLUMETRIC TOROIDAL MUSHROOM CAP & INCANDESCENT FIREBALL CORE
-      const smokeMaturity = Math.max(0, Math.min(1.0, (t - 1.2) / 6.5));
+      // PHASE B: VOLUMETRIC TOROIDAL MUSHROOM CAP & INCANDESCENT SOLAR-GOLD FIREBALL CORE
+      const smokeMaturity = Math.max(0, Math.min(1.0, (t - 0.8) / 5.2));
       const effPlasma = plasmaIntensity * (isUnderground ? ventFraction * 0.75 : 1.0);
+      const effInternal = internalWarmth * (isUnderground ? ventFraction * 0.75 : 1.0);
 
-      // B1. Back-Layer Toroidal Smoke Billows
+      // B1. Back-Layer Toroidal Shadow Billows (Cool deep slate-gray depth layer)
       if (smokeMaturity > 0.02) {
         smokeLobes.forEach((lobe) => {
           if (lobe.layer !== 'back') return;
           const side = lobe.relX >= 0 ? 1 : -1;
           const rollAngle = lobe.phase + t * lobe.speed * 0.32 * side;
-          const lobeX = centerX + lobe.relX * capRadiusX + Math.cos(rollAngle) * 4;
-          const lobeY = capCenterY + lobe.relY * capRadiusY + Math.sin(rollAngle) * 3;
-          const lobeR = Math.max(8, lobe.baseRadius * capRadiusX);
+          const lobeX = centerX + lobe.relX * capRadiusX + Math.cos(rollAngle) * 3.5;
+          const lobeY = capCenterY + lobe.relY * capRadiusY + Math.sin(rollAngle) * 2.8;
+          const lobeR = Math.max(7, lobe.baseRadius * capRadiusX);
 
           const grad = ctx.createRadialGradient(
-            lobeX - side * lobeR * 0.22,
-            lobeY + lobeR * 0.25,
-            lobeR * 0.08,
+            lobeX - side * lobeR * 0.24,
+            lobeY - lobeR * 0.26,
+            lobeR * 0.06,
             lobeX,
             lobeY,
             lobeR
           );
-          grad.addColorStop(0.0, `rgba(${Math.round(95 + 90 * effPlasma)}, ${Math.round(82 + 40 * effPlasma)}, 75, ${0.78 * smokeMaturity})`);
-          grad.addColorStop(0.55, `rgba(52, 56, 68, ${0.84 * smokeMaturity})`);
-          grad.addColorStop(0.9, `rgba(26, 30, 40, ${0.75 * smokeMaturity})`);
+          grad.addColorStop(0.0, `rgba(${Math.round(142 + 62 * effPlasma)}, ${Math.round(152 + 52 * effPlasma)}, ${Math.round(168 + 18 * effPlasma)}, ${0.82 * smokeMaturity})`);
+          grad.addColorStop(0.58, `rgba(68, 78, 94, ${0.88 * smokeMaturity})`);
+          grad.addColorStop(0.88, `rgba(30, 38, 52, ${0.78 * smokeMaturity})`);
           grad.addColorStop(1.0, 'rgba(15, 23, 42, 0.0)');
 
           ctx.fillStyle = grad;
@@ -1341,33 +1510,33 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
         });
       }
 
-      // B2. Primary Incandescent Plasma Fireball & Toroidal Ring Core
-      if (effPlasma > 0.04) {
+      // B2. Primary Incandescent Fireball & Toroidal Ring Core (Solar White -> Gold -> Warm Amber, no muddy red)
+      if (effInternal > 0.03) {
         const fbExpand = t < 0.6 ? 0.35 + 0.65 * (t / 0.6) : 1.0;
-        const coreRx = capRadiusX * fbExpand * (1.0 - 0.18 * smokeMaturity);
-        const coreRy = capRadiusY * fbExpand * (1.0 - 0.12 * smokeMaturity);
+        const coreRx = capRadiusX * fbExpand * (1.0 - 0.22 * smokeMaturity);
+        const coreRy = capRadiusY * fbExpand * (1.0 - 0.16 * smokeMaturity);
 
-        const haloGrad = ctx.createRadialGradient(centerX, capCenterY, coreRx * 0.1, centerX, capCenterY, coreRx * 1.45);
-        haloGrad.addColorStop(0.0, `rgba(255, 255, 240, ${0.98 * effPlasma})`);
-        haloGrad.addColorStop(0.28, `rgba(254, 240, 138, ${0.92 * effPlasma})`);
-        haloGrad.addColorStop(0.58, `rgba(249, 115, 22, ${0.82 * effPlasma})`);
-        haloGrad.addColorStop(0.82, `rgba(220, 38, 38, ${0.55 * effPlasma})`);
-        haloGrad.addColorStop(1.0, 'rgba(185, 28, 28, 0.0)');
+        const haloGrad = ctx.createRadialGradient(centerX, capCenterY, coreRx * 0.08, centerX, capCenterY, coreRx * 1.38);
+        haloGrad.addColorStop(0.0, `rgba(255, 255, 255, ${0.98 * effInternal})`);
+        haloGrad.addColorStop(0.32, `rgba(254, 249, 195, ${0.90 * effInternal})`);
+        haloGrad.addColorStop(0.64, `rgba(251, 191, 36, ${0.72 * effPlasma})`);
+        haloGrad.addColorStop(0.86, `rgba(217, 119, 6, ${0.38 * effPlasma})`);
+        haloGrad.addColorStop(1.0, 'rgba(217, 119, 6, 0.0)');
 
         ctx.fillStyle = haloGrad;
         ctx.beginPath();
-        ctx.ellipse(centerX, capCenterY, coreRx * 1.35, coreRy * 1.25, 0, 0, Math.PI * 2);
+        ctx.ellipse(centerX, capCenterY, coreRx * 1.3, coreRy * 1.2, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        if (t >= 1.2 && effPlasma > 0.12) {
-          [-0.48, 0.48].forEach((offsetFrac) => {
+        if (t >= 1.0 && effInternal > 0.10) {
+          [-0.46, 0.46].forEach((offsetFrac) => {
             const vx = centerX + offsetFrac * capRadiusX;
-            const vy = capCenterY + capRadiusY * 0.08;
-            const vr = Math.max(10, capRadiusX * 0.42);
+            const vy = capCenterY + capRadiusY * 0.06;
+            const vr = Math.max(10, capRadiusX * 0.40);
             const vGrad = ctx.createRadialGradient(vx, vy, 1, vx, vy, vr);
-            vGrad.addColorStop(0.0, `rgba(255, 250, 220, ${0.92 * effPlasma})`);
-            vGrad.addColorStop(0.45, `rgba(251, 146, 60, ${0.78 * effPlasma})`);
-            vGrad.addColorStop(0.8, `rgba(185, 28, 28, ${0.42 * effPlasma})`);
+            vGrad.addColorStop(0.0, `rgba(255, 253, 235, ${0.88 * effInternal})`);
+            vGrad.addColorStop(0.5, `rgba(251, 191, 36, ${0.58 * effPlasma})`);
+            vGrad.addColorStop(0.85, `rgba(180, 83, 9, ${0.24 * effPlasma})`);
             vGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0.0)');
             ctx.fillStyle = vGrad;
             ctx.beginPath();
@@ -1377,91 +1546,172 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
         }
       }
 
-      // B3. Core & Front Toroidal Cauliflower Lobes
-      if (smokeMaturity > 0.05) {
-        smokeLobes.forEach((lobe) => {
+      // B3. High-Definition Core & Front Toroidal Cumulus-White & Silver-Slate Cauliflower Lobes + Crisp Sunlit Rim Contours
+      if (smokeMaturity > 0.04) {
+        smokeLobes.forEach((lobe, idx) => {
           if (lobe.layer === 'back') return;
           const side = lobe.relX >= 0 ? 1 : -1;
-          const rollAngle = lobe.phase + t * lobe.speed * 0.36;
-          const lobeX = centerX + lobe.relX * capRadiusX + side * Math.cos(rollAngle) * 5;
-          const lobeY = capCenterY + lobe.relY * capRadiusY + Math.sin(rollAngle) * 4;
-          const lobeR = Math.max(8, lobe.baseRadius * capRadiusX);
+          const rollAngle = lobe.phase + t * lobe.speed * 0.34;
+          const lobeX = centerX + lobe.relX * capRadiusX + side * Math.cos(rollAngle) * 4.2;
+          const lobeY = capCenterY + lobe.relY * capRadiusY + Math.sin(rollAngle) * 3.4;
+          const lobeR = Math.max(6.5, lobe.baseRadius * capRadiusX);
 
-          const lightOffsetX = -lobe.relX * lobeR * 0.32;
-          const lightOffsetY = (lobe.relY < 0 ? 0.32 : -0.22) * lobeR;
+          // Top-left solar lighting + internal core scattering
+          const lightOffsetX = -lobe.relX * lobeR * 0.30;
+          const lightOffsetY = -0.34 * lobeR;
           const lobeGrad = ctx.createRadialGradient(
             lobeX + lightOffsetX,
             lobeY + lightOffsetY,
-            lobeR * 0.08,
+            lobeR * 0.06,
             lobeX,
             lobeY,
             lobeR
           );
 
-          const emberGlow = effPlasma * (lobe.layer === 'core' ? 0.85 : 0.45);
-          const rLit = Math.round((isUnderground ? 118 : 148) + 105 * emberGlow);
-          const gLit = Math.round((isUnderground ? 102 : 145) + 35 * emberGlow);
-          const bLit = Math.round((isUnderground ? 92 : 152) - 65 * emberGlow);
+          // Upper crown lobes are bright cumulus-white; lower torus lobes are shaded cool slate
+          const crownFactor = Math.max(0, Math.min(1, (0.65 - lobe.relY) * 0.88));
+          const warmScatter = effInternal * (lobe.layer === 'core' ? 0.52 : 0.20);
 
-          const rMid = Math.round((isUnderground ? 64 : 74) + 90 * emberGlow);
-          const gMid = Math.round((isUnderground ? 54 : 78) - 10 * emberGlow);
-          const bMid = Math.round((isUnderground ? 48 : 90) - 45 * emberGlow);
+          const baseLitR = isUnderground ? 174 : Math.round(186 + 60 * crownFactor);
+          const baseLitG = isUnderground ? 172 : Math.round(192 + 56 * crownFactor);
+          const baseLitB = isUnderground ? 170 : Math.round(204 + 48 * crownFactor);
 
-          const alphaScale = lobe.layer === 'core' ? 0.72 * smokeMaturity : 0.82 * smokeMaturity;
+          const rLit = Math.min(255, Math.round(baseLitR + 45 * warmScatter));
+          const gLit = Math.min(255, Math.round(baseLitG + 32 * warmScatter));
+          const bLit = Math.max(135, Math.round(baseLitB - 16 * warmScatter));
 
+          const rMid = Math.min(242, Math.round((isUnderground ? 102 : 118 + 40 * crownFactor) + 32 * warmScatter));
+          const gMid = Math.min(238, Math.round((isUnderground ? 104 : 124 + 40 * crownFactor) + 18 * warmScatter));
+          const bMid = Math.max(96, Math.round((isUnderground ? 110 : 138 + 38 * crownFactor) - 10 * warmScatter));
+
+          const alphaScale = lobe.layer === 'core' ? 0.80 * smokeMaturity : 0.90 * smokeMaturity;
+
+          // Sculpted high-contrast cumulus stops so each cauliflower dome has crisp definition
           lobeGrad.addColorStop(0.0, `rgba(${rLit}, ${gLit}, ${bLit}, ${alphaScale})`);
-          lobeGrad.addColorStop(0.52, `rgba(${rMid}, ${gMid}, ${bMid}, ${alphaScale * 0.95})`);
-          lobeGrad.addColorStop(0.88, `rgba(30, 34, 44, ${alphaScale * 0.82})`);
+          lobeGrad.addColorStop(0.62, `rgba(${rMid}, ${gMid}, ${bMid}, ${alphaScale * 0.95})`);
+          lobeGrad.addColorStop(0.88, `rgba(42, 54, 72, ${alphaScale * 0.82})`);
           lobeGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.0)');
 
           ctx.fillStyle = lobeGrad;
           ctx.beginPath();
           ctx.arc(lobeX, lobeY, lobeR, 0, Math.PI * 2);
           ctx.fill();
+
+          // Crisp sunlit cauliflower rim highlight on outer crown florets for razor-sharp definition
+          if (lobe.layer === 'front' && lobe.vortexRadius > 0.62 && lobe.relY < 0.18 && idx % 2 === 0) {
+            ctx.save();
+            ctx.strokeStyle = `rgba(248, 250, 252, ${0.28 * smokeMaturity * crownFactor})`;
+            ctx.lineWidth = 1.05;
+            ctx.beginPath();
+            const rimCenterAngle = Math.atan2(lobe.relY - 0.15, lobe.relX);
+            ctx.arc(lobeX, lobeY, lobeR * 0.86, rimCenterAngle - 0.85, rimCenterAngle + 0.85);
+            ctx.stroke();
+            ctx.restore();
+          }
         });
 
-        // B4. Glaciated Ice-Crystal Pileus Cap & Stratospheric Anvil Crown
+        // Subtle Toroidal Circulation Vortex Streamlines (Left & Right Counter-Rotating Convective Cells)
+        if (smokeMaturity > 0.25 && capRadiusX > 28) {
+          ctx.save();
+          ctx.strokeStyle = `rgba(226, 232, 240, ${0.14 * smokeMaturity})`;
+          ctx.lineWidth = 1.0;
+          ctx.setLineDash([3, 5]);
+          [-1, 1].forEach((side) => {
+            const vx = centerX + side * capRadiusX * 0.48;
+            const vy = capCenterY + capRadiusY * 0.05;
+            ctx.beginPath();
+            ctx.ellipse(vx, vy, capRadiusX * 0.28, capRadiusY * 0.36, side * 0.22, 0, Math.PI * 1.65);
+            ctx.stroke();
+          });
+          ctx.setLineDash([]);
+          ctx.restore();
+        }
+
+        // B4. Glaciated Ice-Crystal Pileus Cap & Stratospheric Anvil Shear Whiskers
         if (!isUnderground) {
-          const pileusAlpha = Math.min(0.78, smokeMaturity * 0.75);
-          const shelfGrad = ctx.createLinearGradient(0, topY - 4, 0, topY + capRadiusY * 0.55);
-          shelfGrad.addColorStop(0.0, `rgba(241, 245, 249, ${pileusAlpha})`);
-          shelfGrad.addColorStop(0.45, `rgba(186, 200, 218, ${pileusAlpha * 0.55})`);
-          shelfGrad.addColorStop(1.0, 'rgba(71, 85, 105, 0.0)');
+          const pileusAlpha = Math.min(0.88, smokeMaturity * 0.85);
+          const shelfGrad = ctx.createLinearGradient(0, topY - 8, 0, topY + capRadiusY * 0.52);
+          shelfGrad.addColorStop(0.0, `rgba(248, 250, 252, ${pileusAlpha})`);
+          shelfGrad.addColorStop(0.45, `rgba(224, 242, 254, ${pileusAlpha * 0.62})`);
+          shelfGrad.addColorStop(1.0, 'rgba(148, 163, 184, 0.0)');
           ctx.fillStyle = shelfGrad;
           ctx.beginPath();
-          ctx.ellipse(centerX, topY + capRadiusY * 0.18, capRadiusX * 0.96, Math.max(8, capRadiusY * 0.34), 0, 0, Math.PI * 2);
+          ctx.ellipse(centerX, topY + capRadiusY * 0.14, capRadiusX * 1.04, Math.max(8, capRadiusY * 0.32), 0, 0, Math.PI * 2);
           ctx.fill();
+
+          // Stratospheric Anvil Lateral Outflow Streamers (when cloud approaches tropopause/stratosphere)
+          if (t >= 20.0) {
+            const anvilStretch = Math.min(1.0, (t - 20.0) / 70.0);
+            const anvilRx = capRadiusX * (1.05 + 0.42 * anvilStretch);
+            const anvilRy = Math.max(6, capRadiusY * 0.22);
+            const anvilGrad = ctx.createRadialGradient(centerX, topY + anvilRy, capRadiusX * 0.3, centerX, topY + anvilRy, anvilRx);
+            anvilGrad.addColorStop(0.0, `rgba(241, 245, 249, ${0.48 * anvilStretch})`);
+            anvilGrad.addColorStop(0.65, `rgba(203, 213, 225, ${0.32 * anvilStretch})`);
+            anvilGrad.addColorStop(1.0, 'rgba(148, 163, 184, 0.0)');
+            ctx.fillStyle = anvilGrad;
+            ctx.beginPath();
+            ctx.ellipse(centerX, topY + anvilRy * 0.8, anvilRx, anvilRy, 0, 0, Math.PI * 2);
+            ctx.fill();
+          }
         }
       }
 
-      // PHASE C: SUPERSONIC HEMISPHERICAL SHOCKWAVE FRONT & WILSON CONDENSATION COLLAR
-      if (t > 0.05 && t < 12.0) {
+      // PHASE C: SUPERSONIC HEMISPHERICAL SHOCKWAVE FRONT, MACH STEM & WILSON CONDENSATION COLLAR
+      if (t > 0.05 && t < 18.0) {
         const shockSpeedKmS = 0.42 + 0.75 * Math.exp(-t / 2.5);
-        const shockRadiusPx = kmToPixelsX(rFireballKm + t * shockSpeedKmS * 2.8);
+        const shockDistKm = rFireballKm + t * shockSpeedKmS * 2.8;
+        const shockRadiusPx = kmToPixelsX(shockDistKm);
         const shockOriginY = kmToY(hobKm);
-        const shockAlpha = Math.max(0, Math.min(0.9, (1 - t / 12.0) * 0.9 * (isUnderground ? ventFraction : 1.0)));
+        const shockAlpha = Math.max(0, Math.min(0.92, (1 - t / 18.0) * 0.92 * (isUnderground ? ventFraction : 1.0)));
 
         ctx.save();
         ctx.beginPath();
         ctx.rect(0, 0, width, groundY);
         ctx.clip();
 
+        // Outer optical refractive shockwave shell
         ctx.strokeStyle = `rgba(224, 242, 254, ${shockAlpha})`;
-        ctx.lineWidth = 2.2;
+        ctx.lineWidth = 2.0;
         ctx.shadowColor = '#38bdf8';
         ctx.shadowBlur = 10;
         ctx.beginPath();
         ctx.arc(centerX, shockOriginY, shockRadiusPx, 0, Math.PI * 2);
         ctx.stroke();
 
-        if (!isUnderground && t >= 1.0 && t <= 5.5) {
-          const wilsonBell = Math.sin(((t - 1.0) / 4.5) * Math.PI);
-          const wRx = Math.max(capRadiusX * 1.25, shockRadiusPx * 0.72);
-          const wRy = Math.max(10, capRadiusY * 0.42);
-          const wilsonGrad = ctx.createRadialGradient(centerX, capCenterY, wRx * 0.35, centerX, capCenterY, wRx);
-          wilsonGrad.addColorStop(0.0, 'rgba(240, 249, 255, 0.0)');
-          wilsonGrad.addColorStop(0.55, `rgba(224, 242, 254, ${0.42 * wilsonBell})`);
-          wilsonGrad.addColorStop(0.85, `rgba(186, 230, 253, ${0.28 * wilsonBell})`);
+        // Inner rarefaction wave ring
+        if (shockRadiusPx > 18) {
+          ctx.strokeStyle = `rgba(125, 211, 252, ${shockAlpha * 0.48})`;
+          ctx.lineWidth = 1.0;
+          ctx.beginPath();
+          ctx.arc(centerX, shockOriginY, shockRadiusPx * 0.94, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+
+        // Ground Mach Stem Overpressure Wavefront Telemetry Marker (when blast wave intersects the surface)
+        const dyGround = groundY - shockOriginY;
+        if (!isHighAltitudeBurst && shockRadiusPx > dyGround + 6) {
+          const groundFrontHalfSpanPx = Math.sqrt(Math.max(0, shockRadiusPx * shockRadiusPx - dyGround * dyGround));
+          if (groundFrontHalfSpanPx > 12 && groundFrontHalfSpanPx < width * 0.46) {
+            [-1, 1].forEach((dir) => {
+              const gx = centerX + dir * groundFrontHalfSpanPx;
+              ctx.strokeStyle = `rgba(56, 189, 248, ${shockAlpha * 0.95})`;
+              ctx.lineWidth = 2.2;
+              ctx.beginPath();
+              ctx.moveTo(gx, groundY);
+              ctx.lineTo(gx - dir * 4, groundY - 22);
+              ctx.stroke();
+            });
+          }
+        }
+
+        if (!isUnderground && t >= 0.8 && t <= 6.5) {
+          const wilsonBell = Math.sin(((t - 0.8) / 5.7) * Math.PI);
+          const wRx = Math.max(capRadiusX * 1.28, shockRadiusPx * 0.74);
+          const wRy = Math.max(10, capRadiusY * 0.44);
+          const wilsonGrad = ctx.createRadialGradient(centerX, capCenterY, wRx * 0.30, centerX, capCenterY, wRx);
+          wilsonGrad.addColorStop(0.0, 'rgba(248, 250, 252, 0.0)');
+          wilsonGrad.addColorStop(0.52, `rgba(241, 245, 249, ${0.50 * wilsonBell})`);
+          wilsonGrad.addColorStop(0.82, `rgba(186, 230, 253, ${0.32 * wilsonBell})`);
           wilsonGrad.addColorStop(1.0, 'rgba(224, 242, 254, 0.0)');
           ctx.fillStyle = wilsonGrad;
           ctx.beginPath();
@@ -1481,7 +1731,7 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
 
       if (isUnderground) {
         const detY = depthMToY(dobM);
-        ctx.strokeStyle = '#c084fc';
+        ctx.strokeStyle = '#38bdf8';
         ctx.lineWidth = 1.4;
         ctx.beginPath();
         ctx.moveTo(arrowX, groundY);
@@ -1497,13 +1747,13 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
 
         const subBoxY = Math.max(groundY + 12, Math.min(height - boxH - 10, (groundY + detY) / 2 - boxH / 2));
         ctx.fillStyle = 'rgba(5, 10, 18, 0.90)';
-        ctx.strokeStyle = 'rgba(192, 132, 252, 0.55)';
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.55)';
         ctx.lineWidth = 1;
         ctx.fillRect(arrowX + 8, subBoxY, boxW, boxH);
         ctx.strokeRect(arrowX + 8, subBoxY, boxW, boxH);
 
         ctx.font = 'bold 10px JetBrains Mono, monospace';
-        ctx.fillStyle = '#c084fc';
+        ctx.fillStyle = '#38bdf8';
         ctx.fillText(
           `Cavity Ø: ${(rCavityM * 2).toLocaleString()} m (R=${rCavityM}m)`,
           arrowX + 14,
@@ -1574,7 +1824,7 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
       }
     }
 
-    // 10. Top-Left Live Physical Regime Telemetry Badge
+    // 10. Top-Left Live Physical Regime Telemetry Badge (Clean LLNL / Sandia Optical Telemetry HUD)
     {
       const phaseText = isUnderground
         ? t < 1.2
@@ -1586,6 +1836,12 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
           : isFullyContained
           ? 'PHASE III: RUBBLE CHIMNEY COLLAPSE & SUBSIDENCE BASIN'
           : 'PHASE III: BASE SURGE ROLL & THROW-OUT CRATER FORMATION'
+        : isHighAltitudeBurst
+        ? t < 1.5
+          ? 'PHASE I: STRATOSPHERIC X-RAY FLUORESCENCE & EMP FLASH'
+          : t < 10.0
+          ? 'PHASE II: HIGH-ALTITUDE TOROIDAL PLASMA SHELL EXPANSION'
+          : 'PHASE III: DETACHED STRATOSPHERIC CONDENSATION CLOUD'
         : t < 1.5
         ? 'PHASE I: DOUBLE-FLASH & ISOTHERMAL FIREBALL BREAKAWAY'
         : t < 8.0
@@ -1593,16 +1849,16 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
         : t < 60.0
         ? 'PHASE III: CONVECTIVE CAP EXPANSION & MACH UPDRAFT STEM'
         : 'PHASE IV: STRATOSPHERIC ANVIL STABILIZATION';
-      const estTempK = Math.round(3200 + 650000 * Math.exp(-t / 1.8) + 8500 * Math.exp(-t / 35));
+      const estTempK = Math.round(2900 + 650000 * Math.exp(-t / 1.4) + 5200 * Math.exp(-t / 12));
 
-      ctx.fillStyle = 'rgba(5, 10, 18, 0.86)';
-      ctx.strokeStyle = isUnderground ? 'rgba(192, 132, 252, 0.55)' : 'rgba(249, 115, 22, 0.45)';
+      ctx.fillStyle = 'rgba(6, 12, 24, 0.88)';
+      ctx.strokeStyle = isUnderground ? 'rgba(167, 139, 250, 0.55)' : 'rgba(56, 189, 248, 0.50)';
       ctx.lineWidth = 1;
-      ctx.fillRect(62, 10, 365, 36);
-      ctx.strokeRect(62, 10, 365, 36);
+      ctx.fillRect(62, 10, 386, 36);
+      ctx.strokeRect(62, 10, 386, 36);
 
       ctx.font = 'bold 10px Inter, sans-serif';
-      ctx.fillStyle = isUnderground ? '#c084fc' : '#fb923c';
+      ctx.fillStyle = isUnderground ? '#c4b5fd' : '#38bdf8';
       ctx.fillText(`⚡ ${phaseText}`, 70, 24);
 
       ctx.font = '9.5px JetBrains Mono, monospace';
@@ -1610,10 +1866,34 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
       ctx.fillText(
         isUnderground
           ? `DOB: -${dobM}m | SDOB: ${sdob.toFixed(0)} m/kt¹/³ | Seismic: mb ${seismicMb}`
-          : `Core Temp: ~${estTempK.toLocaleString()} K | HOB: +${burstAltitudeM}m | Ascent: ${Math.round(riseProgress * 100)}%`,
+          : `Surface Temp: ~${estTempK.toLocaleString()} K | HOB: +${burstAltitudeM}m | Ascent: ${Math.round(riseProgress * 100)}%`,
         70,
         39
       );
+    }
+
+    // 10b. Optical Telemetry Corner Rangefinder Brackets (Crisp LLNL/Sandia High-Speed Camera Framing)
+    {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
+      ctx.lineWidth = 1.25;
+      const bLen = 14;
+      const pad = 8;
+      // Top-right corner bracket
+      ctx.beginPath();
+      ctx.moveTo(width - pad - bLen, pad);
+      ctx.lineTo(width - pad, pad);
+      ctx.lineTo(width - pad, pad + bLen);
+      // Bottom-left corner bracket
+      ctx.moveTo(pad, height - pad - bLen);
+      ctx.lineTo(pad, height - pad);
+      ctx.lineTo(pad + bLen, height - pad);
+      // Bottom-right corner bracket
+      ctx.moveTo(width - pad - bLen, height - pad);
+      ctx.lineTo(width - pad, height - pad);
+      ctx.lineTo(width - pad, height - pad - bLen);
+      ctx.stroke();
+      ctx.restore();
     }
 
     // 11. Initial Detonation Double-Pulse Flash Overlay (suppressed on surface if deeply contained underground)
@@ -1623,7 +1903,7 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
     }
 
     ctx.restore();
-  }, [simTimeSeconds, cloudPhysics, flashIntensity, shakeIntensity, burstMode, burstAltitudeM, smokeLobes, unitMode]);
+  }, [simTimeSeconds, cloudPhysics, flashIntensity, shakeIntensity, burstMode, burstAltitudeM, smokeLobes, unitMode, yieldKt]);
 
   // --- CANVAS 2: OUTRIDER REAL-CITY DARK MATTER MAP & BLAST RADIUS SIMULATOR ---
   useEffect(() => {
@@ -1632,8 +1912,16 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const width = canvas.width;
-    const height = canvas.height;
+    const width = 960;
+    const height = 520;
+    const dpr = Math.min(2.5, Math.max(2.0, typeof window !== 'undefined' ? window.devicePixelRatio || 2.0 : 2.0));
+    if (canvas.width !== Math.round(width * dpr) || canvas.height !== Math.round(height * dpr)) {
+      canvas.width = Math.round(width * dpr);
+      canvas.height = Math.round(height * dpr);
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
     const centerX = width / 2;
     const centerY = height / 2;
 
@@ -1716,29 +2004,29 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
     const blastSweepFactor = (targetKm: number) =>
       simTimeSeconds >= 18 ? 1.0 : Math.min(1.0, Math.max(0.18, shockDistKm / Math.max(0.05, targetKm)));
 
-    // 3. OUTRIDER 4-TIER GLOWING TRANSLUCENT ENERGY ZONES
-    // Zone 4: Heat / Thermal Radiation (3rd Degree Burns) or Base Surge Fallout - Amber
+    // 3. SCIENTIFIC GIS 4-TIER ISO-CONTOUR ENERGY ZONES (Clean DTRA / LLNL Palette)
+    // Zone 4: Heat / Thermal Radiation (3rd Degree Burns) or Base Surge Fallout - Warm Amber-Gold
     const rZ4Px = kmToMapPx(rZone4_Thermal3rdKm) * thermalFlashFactor;
     const isZ4Focused = selectedEffect === 'thermal' || selectedEffect === null;
     ctx.save();
-    ctx.fillStyle = isZ4Focused ? 'rgba(245, 158, 11, 0.20)' : 'rgba(245, 158, 11, 0.07)';
+    ctx.fillStyle = isZ4Focused ? 'rgba(245, 158, 11, 0.14)' : 'rgba(245, 158, 11, 0.05)';
     ctx.beginPath();
     ctx.arc(centerX, centerY, rZ4Px, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = '#f59e0b';
-    ctx.lineWidth = isZ4Focused ? 2.2 : 1.1;
+    ctx.strokeStyle = '#fbbf24';
+    ctx.lineWidth = isZ4Focused ? 2.0 : 1.0;
     ctx.shadowColor = '#f59e0b';
-    ctx.shadowBlur = isZ4Focused ? 10 : 3;
+    ctx.shadowBlur = isZ4Focused ? 8 : 2;
     ctx.stroke();
     ctx.restore();
 
-    // Zone 3: Shockwave / Moderate Blast (5 psi) - Electric Cyan / Sky Blue
+    // Zone 3: Shockwave / Moderate Blast (5 psi) - Electric Telemetry Cyan
     const rZ3TargetPx = kmToMapPx(rZone3_Mod5psiKm);
     const rZ3Px = rZ3TargetPx * blastSweepFactor(rZone3_Mod5psiKm);
     const isZ3Focused = selectedEffect === 'shockwave' || selectedEffect === null;
     ctx.save();
     if (rZ3Px < rZ3TargetPx * 0.99) {
-      ctx.strokeStyle = 'rgba(0, 229, 255, 0.35)';
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
       ctx.lineWidth = 1;
       ctx.setLineDash([4, 4]);
       ctx.beginPath();
@@ -1746,50 +2034,50 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
       ctx.stroke();
       ctx.setLineDash([]);
     }
-    ctx.fillStyle = isZ3Focused ? 'rgba(0, 229, 255, 0.22)' : 'rgba(0, 229, 255, 0.07)';
+    ctx.fillStyle = isZ3Focused ? 'rgba(56, 189, 248, 0.16)' : 'rgba(56, 189, 248, 0.05)';
     ctx.beginPath();
     ctx.arc(centerX, centerY, rZ3Px, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = '#00e5ff';
+    ctx.strokeStyle = '#38bdf8';
     ctx.lineWidth = isZ3Focused ? 2.2 : 1.1;
     ctx.shadowColor = '#00e5ff';
-    ctx.shadowBlur = isZ3Focused ? 10 : 3;
+    ctx.shadowBlur = isZ3Focused ? 8 : 2;
     ctx.stroke();
     ctx.restore();
 
-    // Zone 2: Prompt Radiation / Heavy Blast (20 psi) or Fracture Zone - Neon Magenta / Crimson
+    // Zone 2: Prompt Radiation / Heavy Blast (20 psi) or Fracture Zone - Royal Indigo / Violet
     const rZ2TargetPx = kmToMapPx(rZone2_Heavy20psiKm);
     const rZ2Px = rZ2TargetPx * Math.max(thermalFlashFactor * 0.85, blastSweepFactor(rZone2_Heavy20psiKm));
     const isZ2Focused = selectedEffect === 'radiation' || selectedEffect === null;
     ctx.save();
-    ctx.fillStyle = isZ2Focused ? 'rgba(224, 36, 94, 0.34)' : 'rgba(224, 36, 94, 0.11)';
+    ctx.fillStyle = isZ2Focused ? 'rgba(167, 139, 250, 0.22)' : 'rgba(167, 139, 250, 0.07)';
     ctx.beginPath();
     ctx.arc(centerX, centerY, rZ2Px, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = '#e0245e';
-    ctx.lineWidth = isZ2Focused ? 2.6 : 1.3;
-    ctx.shadowColor = '#e0245e';
-    ctx.shadowBlur = isZ2Focused ? 12 : 4;
+    ctx.strokeStyle = '#a78bfa';
+    ctx.lineWidth = isZ2Focused ? 2.4 : 1.2;
+    ctx.shadowColor = '#8b5cf6';
+    ctx.shadowBlur = isZ2Focused ? 10 : 3;
     ctx.stroke();
     ctx.restore();
 
-    // Zone 1: Fireball Core or Subterranean Crater/Cavity - Incandescent Gold / Bright Orange
+    // Zone 1: Fireball Core or Subterranean Crater/Cavity - Solar White-Gold Core
     const rZ1Px = Math.max(4, kmToMapPx(rZone1_FireballKm) * fireballGrowthFactor);
     const isZ1Focused = selectedEffect === 'fireball' || selectedEffect === null;
     ctx.save();
     const fbGrad = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, rZ1Px);
-    fbGrad.addColorStop(0.0, 'rgba(255, 255, 255, 0.98)');
-    fbGrad.addColorStop(0.4, 'rgba(254, 240, 138, 0.95)');
-    fbGrad.addColorStop(0.75, 'rgba(234, 86, 0, 0.92)');
-    fbGrad.addColorStop(1.0, 'rgba(220, 38, 38, 0.85)');
+    fbGrad.addColorStop(0.0, 'rgba(255, 255, 255, 0.96)');
+    fbGrad.addColorStop(0.5, 'rgba(254, 240, 138, 0.90)');
+    fbGrad.addColorStop(0.85, 'rgba(250, 204, 21, 0.82)');
+    fbGrad.addColorStop(1.0, 'rgba(234, 179, 8, 0.72)');
     ctx.fillStyle = fbGrad;
     ctx.beginPath();
     ctx.arc(centerX, centerY, rZ1Px, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = '#fef08a';
     ctx.lineWidth = isZ1Focused ? 2.2 : 1.1;
-    ctx.shadowColor = '#ea5600';
-    ctx.shadowBlur = isZ1Focused ? 15 : 5;
+    ctx.shadowColor = '#facc15';
+    ctx.shadowBlur = isZ1Focused ? 12 : 4;
     ctx.stroke();
     ctx.restore();
 
@@ -1826,7 +2114,7 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
         rPx: kmToMapPx(rZone2_Heavy20psiKm),
         angleDeg: 145,
         label: `${isUnderground ? '🪨 Fracture Zone' : '☢️ 20 psi / Rad'} (${unitMode === 'imperial' ? `${cloudPhysics.rZone2_Heavy20psiMiles.toFixed(2)} mi` : `${rZone2_Heavy20psiKm.toFixed(2)} km`})`,
-        color: '#f472b6'
+        color: '#c4b5fd'
       },
       {
         rPx: kmToMapPx(rZone1_FireballKm),
@@ -1889,11 +2177,11 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span style={{ fontSize: '1.4rem' }}>🌋</span>
+              <span style={{ fontSize: '1.4rem' }}>🛰️</span>
               <div>
-                <strong style={{ fontSize: '1.05rem', color: '#fff' }}>Outrider Visual Detonation &amp; Subterranean / Cloud Simulator</strong>
+                <strong style={{ fontSize: '1.05rem', color: '#fff' }}>Atmospheric &amp; Subterranean Detonation Telemetry Simulator</strong>
                 <div style={{ fontSize: '0.76rem', color: 'var(--color-text-muted)' }}>
-                  Atmospheric mushroom cloud profile, subterranean geological cross-section, toroidal vortex, and dark-matter city cartography
+                  High-altitude optical cloud kinematics, geological lithology cross-section, toroidal vortex physics, and GIS blast cartography
                 </div>
               </div>
             </div>
@@ -1921,9 +2209,9 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
                     style={{
                       padding: '3px 8px',
                       fontSize: '0.72rem',
-                      background: Math.abs(yieldKt - opt.y) < 0.1 ? 'rgba(234, 86, 0, 0.3)' : 'rgba(255,255,255,0.05)',
-                      color: Math.abs(yieldKt - opt.y) < 0.1 ? '#ea5600' : '#94a3b8',
-                      border: Math.abs(yieldKt - opt.y) < 0.1 ? '1px solid #ea5600' : '1px solid rgba(255,255,255,0.1)',
+                      background: Math.abs(yieldKt - opt.y) < 0.1 ? 'rgba(56, 189, 248, 0.22)' : 'rgba(255,255,255,0.05)',
+                      color: Math.abs(yieldKt - opt.y) < 0.1 ? '#38bdf8' : '#94a3b8',
+                      border: Math.abs(yieldKt - opt.y) < 0.1 ? '1px solid #38bdf8' : '1px solid rgba(255,255,255,0.1)',
                       borderRadius: '4px'
                     }}
                   >
@@ -1996,13 +2284,13 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
                   padding: '6px 14px',
                   fontSize: '0.78rem',
                   fontWeight: viewMode === 'map' ? 700 : 500,
-                  background: viewMode === 'map' ? 'rgba(234, 86, 0, 0.25)' : 'transparent',
-                  color: viewMode === 'map' ? '#ea5600' : 'var(--color-text-muted)',
+                  background: viewMode === 'map' ? 'rgba(56, 189, 248, 0.2)' : 'transparent',
+                  color: viewMode === 'map' ? '#38bdf8' : 'var(--color-text-muted)',
                   border: 'none',
                   borderRadius: '4px'
                 }}
               >
-                🗺️ Outrider City Map
+                🗺️ GIS Blast Footprint
               </button>
               <button
                 type="button"
@@ -2045,7 +2333,7 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
                 altM: -Math.max(120, Math.min(2000, Math.round(115 * Math.pow(Math.max(0.01, yieldKt), 1 / 3)))),
                 mode: 'underground' as const,
                 active: burstAltitudeM < 0 && cloudPhysics.isFullyContained,
-                color: '#c084fc'
+                color: '#c4b5fd'
               },
               {
                 id: 'shallow_underground',
@@ -2053,7 +2341,7 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
                 altM: -Math.max(25, Math.min(800, Math.round(41 * Math.pow(Math.max(0.01, yieldKt), 1 / 3)))),
                 mode: 'underground' as const,
                 active: burstAltitudeM < 0 && !cloudPhysics.isFullyContained,
-                color: '#f472b6'
+                color: '#a78bfa'
               },
               {
                 id: 'surface',
@@ -2061,7 +2349,7 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
                 altM: 0,
                 mode: 'surface' as const,
                 active: burstAltitudeM === 0,
-                color: '#fb923c'
+                color: '#fbbf24'
               },
               {
                 id: 'opt_air',
@@ -2077,7 +2365,7 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
                 altM: 15000,
                 mode: 'air' as const,
                 active: burstAltitudeM >= 10000,
-                color: '#facc15'
+                color: '#34d399'
               }
             ].map((reg) => (
               <button
@@ -2123,7 +2411,7 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
                 flex: '1 1 160px',
                 maxWidth: '240px',
                 cursor: 'pointer',
-                accentColor: burstAltitudeM < 0 ? '#c084fc' : burstAltitudeM === 0 ? '#fb923c' : '#38bdf8'
+                accentColor: burstAltitudeM < 0 ? '#a78bfa' : burstAltitudeM === 0 ? '#fbbf24' : '#38bdf8'
               }}
             />
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -2154,7 +2442,7 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
         {(viewMode === 'profile' || viewMode === 'split') && (
           <div className="panel" style={{ padding: '14px', display: 'flex', flexDirection: 'column', gap: '8px', position: 'relative' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 6px', flexWrap: 'wrap', gap: '6px' }}>
-              <span style={{ fontSize: '0.82rem', color: cloudPhysics.isUnderground ? '#c084fc' : '#38bdf8', fontWeight: 600 }}>
+              <span style={{ fontSize: '0.82rem', color: cloudPhysics.isUnderground ? '#c4b5fd' : '#38bdf8', fontWeight: 600 }}>
                 {cloudPhysics.isUnderground
                   ? `Subterranean Geological & Atmospheric Cross-Section (DOB -${cloudPhysics.dobM}m • SDOB ${cloudPhysics.sdob.toFixed(0)} m/kt¹/³)`
                   : `Volumetric Atmospheric Elevation Cross-Section (0–${Math.max(35, Math.ceil((cloudPhysics.hTopKm * 1.3) / 10) * 10)} km • HOB +${burstAltitudeM}m)`}
@@ -2165,12 +2453,12 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
                   : 'Scale Markers: Mt. Everest (8.85 km) • Airliner (11 km) • SR-71 (24 km) • Tropopause Inversion (12 km)'}
               </span>
             </div>
-            <div style={{ position: 'relative', width: '100%', height: '480px', borderRadius: '8px', overflow: 'hidden' }}>
+            <div style={{ position: 'relative', width: '100%', height: '500px', borderRadius: '8px', overflow: 'hidden', border: '1px solid rgba(56, 189, 248, 0.22)' }}>
               <canvas
                 ref={profileCanvasRef}
-                width={800}
-                height={480}
-                style={{ width: '100%', height: '100%', display: 'block', background: '#020307' }}
+                width={960}
+                height={520}
+                style={{ width: '100%', height: '100%', display: 'block', background: '#020611' }}
               />
             </div>
           </div>
@@ -2181,8 +2469,8 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
           <div className="panel" style={{ padding: '14px', display: 'flex', flexDirection: 'column', gap: '8px', position: 'relative' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 6px', flexWrap: 'wrap', gap: '6px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '0.82rem', color: '#ea5600', fontWeight: 600 }}>
-                  Real-City Dark Matter Blast Footprint
+                <span style={{ fontSize: '0.82rem', color: '#38bdf8', fontWeight: 600 }}>
+                  GIS Dark-Matter Blast &amp; Fluence Footprint
                 </span>
                 {selectedEffect && (
                   <button
@@ -2233,9 +2521,9 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
                 {currentCity.category === 'historical_test_site' && (
                   <div style={{
                     fontSize: '0.70rem',
-                    color: '#f97316',
-                    background: 'rgba(249, 115, 22, 0.12)',
-                    border: '1px solid rgba(249, 115, 22, 0.3)',
+                    color: '#38bdf8',
+                    background: 'rgba(56, 189, 248, 0.10)',
+                    border: '1px solid rgba(56, 189, 248, 0.3)',
                     borderRadius: '4px',
                     padding: '3px 8px',
                     maxWidth: '420px',
@@ -2246,11 +2534,11 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
                 )}
               </div>
             </div>
-            <div style={{ position: 'relative', width: '100%', height: '480px', borderRadius: '8px', overflow: 'hidden' }}>
+            <div style={{ position: 'relative', width: '100%', height: '500px', borderRadius: '8px', overflow: 'hidden', border: '1px solid rgba(56, 189, 248, 0.22)' }}>
               <canvas
                 ref={mapCanvasRef}
-                width={800}
-                height={480}
+                width={960}
+                height={520}
                 style={{ width: '100%', height: '100%', display: 'block', background: '#06090e' }}
               />
             </div>
@@ -2261,26 +2549,27 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
       {/* Detonation Control Room & Timeline Scrubber Bar */}
       <div className="panel" style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-          {/* Big Detonate Action Button */}
+          {/* Primary Simulation Sequence Action Button */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <button
               type="button"
               className="btn btn-primary"
               onClick={triggerDetonation}
               style={{
-                background: 'linear-gradient(135deg, #ea5600, #c2410c)',
-                borderColor: '#ea5600',
+                background: 'linear-gradient(135deg, #0284c7, #0369a1)',
+                borderColor: '#38bdf8',
                 color: '#fff',
-                fontSize: '0.92rem',
+                fontSize: '0.88rem',
                 fontWeight: 700,
-                padding: '8px 22px',
-                boxShadow: '0 0 16px rgba(234, 86, 0, 0.45)',
+                padding: '8px 20px',
+                boxShadow: '0 0 14px rgba(56, 189, 248, 0.35)',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '8px'
+                gap: '8px',
+                letterSpacing: '0.02em'
               }}
             >
-              <span>🔴 DETONATE WEAPON</span>
+              <span>⚡ INITIATE TEST SEQUENCE</span>
             </button>
 
             <button
@@ -2357,30 +2646,30 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
             step="0.5"
             value={simTimeSeconds}
             onChange={(e) => setSimTimeSeconds(parseFloat(e.target.value))}
-            style={{ width: '100%', cursor: 'pointer', accentColor: '#ea5600' }}
+            style={{ width: '100%', cursor: 'pointer', accentColor: '#38bdf8' }}
           />
         </div>
       </div>
 
-      {/* OUTRIDER 4-TIER INTERACTIVE EFFECT CARDS */}
+      {/* 4-TIER SCIENTIFIC PHENOMENOLOGY CARDS */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '14px' }}>
         {/* Card 1: Fireball */}
         <div
           onClick={() => setSelectedEffect(selectedEffect === 'fireball' ? null : 'fireball')}
           style={{
-            background: selectedEffect === 'fireball' ? 'rgba(234, 86, 0, 0.18)' : 'rgba(234, 86, 0, 0.06)',
-            border: `1px solid ${selectedEffect === 'fireball' ? '#ea5600' : 'rgba(234, 86, 0, 0.35)'}`,
+            background: selectedEffect === 'fireball' ? 'rgba(234, 179, 8, 0.16)' : 'rgba(15, 23, 42, 0.55)',
+            border: `1px solid ${selectedEffect === 'fireball' ? '#facc15' : 'rgba(250, 204, 21, 0.28)'}`,
             borderRadius: '8px',
             padding: '16px',
             cursor: 'pointer',
             transition: 'all 0.2s ease',
-            boxShadow: selectedEffect === 'fireball' ? '0 0 16px rgba(234, 86, 0, 0.35)' : 'none'
+            boxShadow: selectedEffect === 'fireball' ? '0 0 16px rgba(250, 204, 21, 0.25)' : 'none'
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <strong style={{ color: '#ea5600', fontSize: '0.88rem', letterSpacing: '0.05em' }}>FIREBALL</strong>
-            <span style={{ fontSize: '0.7rem', padding: '2px 6px', background: 'rgba(234, 86, 0, 0.2)', color: '#ea5600', borderRadius: '4px', fontWeight: 600 }}>
-              {selectedEffect === 'fireball' ? 'ACTIVE' : 'CLICK TO VIEW'}
+            <strong style={{ color: '#facc15', fontSize: '0.86rem', letterSpacing: '0.05em' }}>ISOTHERMAL FIREBALL</strong>
+            <span style={{ fontSize: '0.7rem', padding: '2px 6px', background: 'rgba(250, 204, 21, 0.16)', color: '#fef08a', borderRadius: '4px', fontWeight: 600 }}>
+              {selectedEffect === 'fireball' ? 'ACTIVE' : 'FILTER ZONE'}
             </span>
           </div>
           <div style={{ fontSize: '1.6rem', fontWeight: 'bold', color: '#fef08a', marginTop: '8px' }}>
@@ -2393,7 +2682,7 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
             Area: {unitMode === 'imperial' ? `${casualties.areaFireballSqMi} sq mi` : `${casualties.areaFireballKm2} km²`}
           </div>
           <p style={{ fontSize: '0.74rem', color: '#cbd5e1', marginTop: '10px', lineHeight: 1.45 }}>
-            A nuclear fireball begins the moment the weapon detonates. The light and heat are so intense that it can ignite fires several miles away. Anything or anyone inside the fireball is instantly vaporized.
+            X-ray heated air forms an incandescent plasma sphere within milliseconds. As the shock front breaks away, the buoyant sphere rises and cools into a toroidal convective vortex.
           </p>
         </div>
 
@@ -2401,22 +2690,22 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
         <div
           onClick={() => setSelectedEffect(selectedEffect === 'radiation' ? null : 'radiation')}
           style={{
-            background: selectedEffect === 'radiation' ? 'rgba(224, 36, 94, 0.18)' : 'rgba(224, 36, 94, 0.06)',
-            border: `1px solid ${selectedEffect === 'radiation' ? '#e0245e' : 'rgba(224, 36, 94, 0.35)'}`,
+            background: selectedEffect === 'radiation' ? 'rgba(167, 139, 250, 0.16)' : 'rgba(15, 23, 42, 0.55)',
+            border: `1px solid ${selectedEffect === 'radiation' ? '#a78bfa' : 'rgba(167, 139, 250, 0.28)'}`,
             borderRadius: '8px',
             padding: '16px',
             cursor: 'pointer',
             transition: 'all 0.2s ease',
-            boxShadow: selectedEffect === 'radiation' ? '0 0 16px rgba(224, 36, 94, 0.35)' : 'none'
+            boxShadow: selectedEffect === 'radiation' ? '0 0 16px rgba(167, 139, 250, 0.25)' : 'none'
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <strong style={{ color: '#e0245e', fontSize: '0.88rem', letterSpacing: '0.05em' }}>RADIATION</strong>
-            <span style={{ fontSize: '0.7rem', padding: '2px 6px', background: 'rgba(224, 36, 94, 0.2)', color: '#e0245e', borderRadius: '4px', fontWeight: 600 }}>
-              {selectedEffect === 'radiation' ? 'ACTIVE' : 'CLICK TO VIEW'}
+            <strong style={{ color: '#c4b5fd', fontSize: '0.86rem', letterSpacing: '0.05em' }}>HEAVY BLAST &amp; PROMPT RAD</strong>
+            <span style={{ fontSize: '0.7rem', padding: '2px 6px', background: 'rgba(167, 139, 250, 0.16)', color: '#c4b5fd', borderRadius: '4px', fontWeight: 600 }}>
+              {selectedEffect === 'radiation' ? 'ACTIVE' : 'FILTER ZONE'}
             </span>
           </div>
-          <div style={{ fontSize: '1.6rem', fontWeight: 'bold', color: '#f472b6', marginTop: '8px' }}>
+          <div style={{ fontSize: '1.6rem', fontWeight: 'bold', color: '#ddd6fe', marginTop: '8px' }}>
             {unitMode === 'imperial'
               ? `${cloudPhysics.rZone2_Heavy20psiMiles.toFixed(2)} mi`
               : `${cloudPhysics.rZone2_Heavy20psiKm.toFixed(2)} km`}
@@ -2426,7 +2715,7 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
             Area: {unitMode === 'imperial' ? `${casualties.area20psiSqMi} sq mi` : `${casualties.area20psiKm2} km²`}
           </div>
           <p style={{ fontSize: '0.74rem', color: '#cbd5e1', marginTop: '10px', lineHeight: 1.45 }}>
-            Nuclear weapons release lethal prompt ionizing radiation (neutrons and gamma rays). In this zone, radiation is so intense that between 50% and 90% of people will die within hours to a few weeks without ICU intervention.
+            Encompasses the 20-psi severe structural overpressure perimeter and acute prompt ionizing radiation (fission/fusion neutrons and capture gamma rays ≥ 5 Gy).
           </p>
         </div>
 
@@ -2434,22 +2723,22 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
         <div
           onClick={() => setSelectedEffect(selectedEffect === 'shockwave' ? null : 'shockwave')}
           style={{
-            background: selectedEffect === 'shockwave' ? 'rgba(0, 229, 255, 0.18)' : 'rgba(0, 229, 255, 0.06)',
-            border: `1px solid ${selectedEffect === 'shockwave' ? '#00e5ff' : 'rgba(0, 229, 255, 0.35)'}`,
+            background: selectedEffect === 'shockwave' ? 'rgba(56, 189, 248, 0.16)' : 'rgba(15, 23, 42, 0.55)',
+            border: `1px solid ${selectedEffect === 'shockwave' ? '#38bdf8' : 'rgba(56, 189, 248, 0.28)'}`,
             borderRadius: '8px',
             padding: '16px',
             cursor: 'pointer',
             transition: 'all 0.2s ease',
-            boxShadow: selectedEffect === 'shockwave' ? '0 0 16px rgba(0, 229, 255, 0.35)' : 'none'
+            boxShadow: selectedEffect === 'shockwave' ? '0 0 16px rgba(56, 189, 248, 0.25)' : 'none'
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <strong style={{ color: '#00e5ff', fontSize: '0.88rem', letterSpacing: '0.05em' }}>SHOCKWAVE</strong>
-            <span style={{ fontSize: '0.7rem', padding: '2px 6px', background: 'rgba(0, 229, 255, 0.2)', color: '#00e5ff', borderRadius: '4px', fontWeight: 600 }}>
-              {selectedEffect === 'shockwave' ? 'ACTIVE' : 'CLICK TO VIEW'}
+            <strong style={{ color: '#38bdf8', fontSize: '0.86rem', letterSpacing: '0.05em' }}>5-PSI MACH SHOCKWAVE</strong>
+            <span style={{ fontSize: '0.7rem', padding: '2px 6px', background: 'rgba(56, 189, 248, 0.16)', color: '#38bdf8', borderRadius: '4px', fontWeight: 600 }}>
+              {selectedEffect === 'shockwave' ? 'ACTIVE' : 'FILTER ZONE'}
             </span>
           </div>
-          <div style={{ fontSize: '1.6rem', fontWeight: 'bold', color: '#38bdf8', marginTop: '8px' }}>
+          <div style={{ fontSize: '1.6rem', fontWeight: 'bold', color: '#7dd3fc', marginTop: '8px' }}>
             {unitMode === 'imperial'
               ? `${cloudPhysics.rZone3_Mod5psiMiles.toFixed(2)} mi`
               : `${cloudPhysics.rZone3_Mod5psiKm.toFixed(2)} km`}
@@ -2459,7 +2748,7 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
             Area: {unitMode === 'imperial' ? `${casualties.area5psiSqMi} sq mi` : `${casualties.area5psiKm2} km²`}
           </div>
           <p style={{ fontSize: '0.74rem', color: '#cbd5e1', marginTop: '10px', lineHeight: 1.45 }}>
-            The nuclear blast creates a wall of compressed air that expands at supersonic speed. Most residential buildings are leveled, commercial structures severely damaged, and winds reach hurricane speeds over 160 mph.
+            Supersonic Mach-stem airblast wave (ΔP ≥ 5 psi, dynamic winds &gt; 160 mph). Causes widespread structural collapse of unreinforced masonry and residential framing.
           </p>
         </div>
 
@@ -2467,22 +2756,22 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
         <div
           onClick={() => setSelectedEffect(selectedEffect === 'thermal' ? null : 'thermal')}
           style={{
-            background: selectedEffect === 'thermal' ? 'rgba(245, 158, 11, 0.18)' : 'rgba(245, 158, 11, 0.06)',
-            border: `1px solid ${selectedEffect === 'thermal' ? '#f59e0b' : 'rgba(245, 158, 11, 0.35)'}`,
+            background: selectedEffect === 'thermal' ? 'rgba(245, 158, 11, 0.16)' : 'rgba(15, 23, 42, 0.55)',
+            border: `1px solid ${selectedEffect === 'thermal' ? '#f59e0b' : 'rgba(245, 158, 11, 0.28)'}`,
             borderRadius: '8px',
             padding: '16px',
             cursor: 'pointer',
             transition: 'all 0.2s ease',
-            boxShadow: selectedEffect === 'thermal' ? '0 0 16px rgba(245, 158, 11, 0.35)' : 'none'
+            boxShadow: selectedEffect === 'thermal' ? '0 0 16px rgba(245, 158, 11, 0.25)' : 'none'
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <strong style={{ color: '#f59e0b', fontSize: '0.88rem', letterSpacing: '0.05em' }}>HEAT (THERMAL)</strong>
-            <span style={{ fontSize: '0.7rem', padding: '2px 6px', background: 'rgba(245, 158, 11, 0.2)', color: '#f59e0b', borderRadius: '4px', fontWeight: 600 }}>
-              {selectedEffect === 'thermal' ? 'ACTIVE' : 'CLICK TO VIEW'}
+            <strong style={{ color: '#fbbf24', fontSize: '0.86rem', letterSpacing: '0.05em' }}>THERMAL FLUENCE (3RD°)</strong>
+            <span style={{ fontSize: '0.7rem', padding: '2px 6px', background: 'rgba(245, 158, 11, 0.16)', color: '#fbbf24', borderRadius: '4px', fontWeight: 600 }}>
+              {selectedEffect === 'thermal' ? 'ACTIVE' : 'FILTER ZONE'}
             </span>
           </div>
-          <div style={{ fontSize: '1.6rem', fontWeight: 'bold', color: '#fbbf24', marginTop: '8px' }}>
+          <div style={{ fontSize: '1.6rem', fontWeight: 'bold', color: '#fde68a', marginTop: '8px' }}>
             {unitMode === 'imperial'
               ? `${cloudPhysics.rZone4_Thermal3rdMiles.toFixed(2)} mi`
               : `${cloudPhysics.rZone4_Thermal3rdKm.toFixed(2)} km`}
@@ -2492,42 +2781,42 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
             Area: {unitMode === 'imperial' ? `${casualties.areaThermalSqMi} sq mi` : `${casualties.areaThermalKm2} km²`}
           </div>
           <p style={{ fontSize: '0.74rem', color: '#cbd5e1', marginTop: '10px', lineHeight: 1.45 }}>
-            Thermal radiation causes third-degree flash burns to exposed skin, destroys pain-sensing nerve endings, and ignites dry wood, gas mains, and draperies, creating a catastrophic city-scale firestorm.
+            Dual-pulse optical/infrared radiant energy flash (Q ≥ 8–10 cal/cm²). Induces full-thickness flash burns on exposed surfaces and ignites fine kindling materials.
           </p>
         </div>
       </div>
 
-      {/* Human Casualties & Impact Summary (Outrider Style) */}
-      <div className="panel" style={{ padding: '16px 20px', background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(255,255,255,0.1)' }}>
+      {/* Consequence & Impact Telemetry Summary */}
+      <div className="panel" style={{ padding: '16px 20px', background: 'rgba(9, 14, 24, 0.65)', border: '1px solid rgba(148, 163, 184, 0.16)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
-          <h4 style={{ margin: 0, color: '#fff', fontSize: '0.95rem' }}>
-            Casualty &amp; Damage Projections for {currentCity.name} ({yieldKt >= 1000 ? `${(yieldKt / 1000).toFixed(2)} MT` : `${yieldKt} kT`} {burstMode} burst)
+          <h4 style={{ margin: 0, color: '#e2e8f0', fontSize: '0.92rem' }}>
+            Consequence &amp; Footprint Projections — {currentCity.name} ({yieldKt >= 1000 ? `${(yieldKt / 1000).toFixed(2)} MT` : `${yieldKt} kT`} {burstMode} burst)
           </h4>
           <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-            Urban Population Density: {currentCity.popDensityPerKm2.toLocaleString()} people / km²
+            Baseline Population Density: {currentCity.popDensityPerKm2.toLocaleString()} people / km²
           </span>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px' }}>
-          <div style={{ background: 'rgba(239, 68, 68, 0.1)', padding: '12px 16px', borderRadius: '6px', borderLeft: '3px solid #ef4444' }}>
-            <div style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)' }}>ESTIMATED FATALITIES</div>
-            <div style={{ fontSize: '1.65rem', fontWeight: 'bold', color: '#f87171' }}>
+          <div style={{ background: 'rgba(15, 23, 42, 0.75)', padding: '12px 16px', borderRadius: '6px', borderLeft: '3px solid #94a3b8' }}>
+            <div style={{ fontSize: '0.73rem', color: 'var(--color-text-muted)' }}>ESTIMATED FATALITIES</div>
+            <div style={{ fontSize: '1.6rem', fontWeight: 'bold', color: '#f1f5f9' }}>
               {casualties.totalFatalities.toLocaleString()}
             </div>
-            <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>Instant / acute deaths</div>
+            <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>Acute blast &amp; thermal mortality</div>
           </div>
 
-          <div style={{ background: 'rgba(249, 115, 22, 0.1)', padding: '12px 16px', borderRadius: '6px', borderLeft: '3px solid #f97316' }}>
-            <div style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)' }}>ESTIMATED INJURIES</div>
-            <div style={{ fontSize: '1.65rem', fontWeight: 'bold', color: '#fb923c' }}>
+          <div style={{ background: 'rgba(15, 23, 42, 0.75)', padding: '12px 16px', borderRadius: '6px', borderLeft: '3px solid #f59e0b' }}>
+            <div style={{ fontSize: '0.73rem', color: 'var(--color-text-muted)' }}>ESTIMATED INJURIES</div>
+            <div style={{ fontSize: '1.6rem', fontWeight: 'bold', color: '#fbbf24' }}>
               {casualties.totalInjuries.toLocaleString()}
             </div>
             <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>Severe trauma &amp; flash burns</div>
           </div>
 
-          <div style={{ background: 'rgba(0, 229, 255, 0.1)', padding: '12px 16px', borderRadius: '6px', borderLeft: '3px solid #00e5ff' }}>
-            <div style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)' }}>TOTAL IMPACT AREA</div>
-            <div style={{ fontSize: '1.65rem', fontWeight: 'bold', color: '#38bdf8' }}>
+          <div style={{ background: 'rgba(15, 23, 42, 0.75)', padding: '12px 16px', borderRadius: '6px', borderLeft: '3px solid #38bdf8' }}>
+            <div style={{ fontSize: '0.73rem', color: 'var(--color-text-muted)' }}>TOTAL IMPACT AREA</div>
+            <div style={{ fontSize: '1.6rem', fontWeight: 'bold', color: '#38bdf8' }}>
               {unitMode === 'imperial'
                 ? `${casualties.totalImpactAreaSqMi.toLocaleString()} sq mi`
                 : `${casualties.totalImpactAreaKm2.toLocaleString()} km²`}
@@ -2535,9 +2824,9 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
             <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>Full damage footprint</div>
           </div>
 
-          <div style={{ background: 'rgba(16, 185, 129, 0.1)', padding: '12px 16px', borderRadius: '6px', borderLeft: '3px solid #10b981' }}>
-            <div style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)' }}>STABILIZED CLOUD TOP</div>
-            <div style={{ fontSize: '1.65rem', fontWeight: 'bold', color: '#34d399' }}>
+          <div style={{ background: 'rgba(15, 23, 42, 0.75)', padding: '12px 16px', borderRadius: '6px', borderLeft: '3px solid #10b981' }}>
+            <div style={{ fontSize: '0.73rem', color: 'var(--color-text-muted)' }}>STABILIZED CLOUD TOP</div>
+            <div style={{ fontSize: '1.6rem', fontWeight: 'bold', color: '#34d399' }}>
               {unitMode === 'imperial'
                 ? `${cloudPhysics.hTopMiles.toFixed(1)} mi`
                 : `${cloudPhysics.hTopKm.toFixed(1)} km`}
