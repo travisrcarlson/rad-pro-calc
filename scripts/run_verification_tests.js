@@ -810,6 +810,59 @@ const tests = [
     },
     tolerance: 0.001,
     units: 'mSv/yr (ICRP-137 Radon Dose)'
+  },
+  {
+    id: 'VTEST-57',
+    name: 'ISO 11929-1:2019 Characteristic Detection Limit (y#) with Calibration Uncertainty',
+    module: 'Module 27 (MARSSIM & ISO 11929 Detection Limits)',
+    standard: 'ISO 11929-1:2019 Clause 6.3 & 6.4 (Decision Threshold y* & Detection Limit y#)',
+    expected: 3.2505,
+    compute: () => {
+      const rb = 1.0, ts = 60.0, tb = 60.0;
+      const w = 1.0 / (0.40 * 0.50);
+      const k = 1.6448536269514722;
+      const uRelW = 0.05;
+      const yStar = k * w * Math.sqrt(rb / ts + rb / tb);
+      return (2.0 * yStar + (k * k * w) / ts) / (1.0 - k * k * uRelW * uRelW);
+    },
+    tolerance: 0.02,
+    units: 'Bq (ISO 11929 Detection Limit y#)'
+  },
+  {
+    id: 'VTEST-58',
+    name: 'ISO 7503-1:2016 Surface Contamination Activity Concentration (A_s)',
+    module: 'Module 27 / 9 (MARSSIM & Worker Contamination Surveys)',
+    standard: 'ISO 7503-1:2016 Clause 6.2 (Direct Surface Contamination Evaluation)',
+    expected: 1.0000,
+    compute: () => {
+      const rg = 21.0, rb = 1.0, epsI = 0.40, epsS = 0.50, areaCm2 = 100.0;
+      return (rg - rb) / (epsI * epsS * areaCm2);
+    },
+    tolerance: 0.001,
+    units: 'Bq/cm² (ISO 7503 Surface Activity)'
+  },
+  {
+    id: 'VTEST-59',
+    name: 'ISO 4037-3:2019 S-Cs Reference Field Air Kerma to H*(10) Conversion',
+    module: 'Module 1A / 11 (External Dose & Instrument Calibration)',
+    standard: 'ISO 4037-3:2019 Table 25 (S-Cs 661.7 keV Conversion Coefficient)',
+    expected: 3.0000,
+    compute: () => 2.50 * 1.20,
+    tolerance: 0.001,
+    units: 'mSv/h (Ambient Dose Equivalent H*(10))'
+  },
+  {
+    id: 'VTEST-60',
+    name: 'ISO/IEC Guide 98-3 (GUM) Combined & Expanded Uncertainty Budget (k = 2)',
+    module: 'All Modules / Audit Dossier Service (ISO/IEC 17025 Clause 7.6)',
+    standard: 'ISO/IEC Guide 98-3:2008 (GUM) & ISO/IEC 17025:2017 Clause 7.6',
+    expected: 10.0000,
+    compute: () => {
+      const uSourcePct = 3.0, uDetPct = 4.0, kCoverage = 2.0;
+      return kCoverage * Math.sqrt(uSourcePct * uSourcePct + uDetPct * uDetPct);
+    },
+    tolerance: 0.001,
+    units: '% (Expanded Uncertainty U at k=2)'
   }
 ];
 

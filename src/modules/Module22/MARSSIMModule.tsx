@@ -311,6 +311,16 @@ const MARSSIMModule: React.FC = () => {
     const scanMdaBq = scanRateCps / totalEff;
     const scanMdcDpm100cm2 = (scanMdaBq * 60) / probeFactor;
 
+    // ISO 11929-1:2019 Characteristic Limits (Decision Threshold y* & Detection Limit y#)
+    // Conversion factor w = 1 / (epsilon_i * epsilon_s * F), relative standard uncertainty u_rel(w) = 5% (0.05)
+    const wFactor = 1.0 / Math.max(1e-6, totalEff);
+    const uRelW = 0.05;
+    const iso11929DecisionThresholdBq = zAlpha * wFactor * Math.sqrt(rB / sampleTimeSec + rB / bgTimeSec);
+    const denomIso = Math.max(0.1, 1.0 - Math.pow(zAlpha, 2) * Math.pow(uRelW, 2));
+    const iso11929DetectionLimitBq =
+      (2.0 * iso11929DecisionThresholdBq + (Math.pow(zAlpha, 2) * wFactor) / sampleTimeSec) / denomIso;
+    const iso11929DetectionLimitBqCm2 = iso11929DetectionLimitBq / probeAreaCm2;
+
     return {
       lcCounts: Math.max(0, lcCounts),
       ldCounts: Math.max(0, ldCounts),
@@ -319,6 +329,9 @@ const MARSSIMModule: React.FC = () => {
       mdcDpm100cm2: Math.max(0, mdcDpm100cm2),
       mdcBqCm2: Math.max(0, mdcBqCm2),
       scanMdcDpm100cm2: Math.max(0, scanMdcDpm100cm2),
+      iso11929DecisionThresholdBq: Math.max(0, iso11929DecisionThresholdBq),
+      iso11929DetectionLimitBq: Math.max(0, iso11929DetectionLimitBq),
+      iso11929DetectionLimitBqCm2: Math.max(0, iso11929DetectionLimitBqCm2),
       totalEff
     };
   }, [bgCounts, bgTimeSec, sampleTimeSec, instrEfficiency, surfaceEfficiency, probeAreaCm2, wipeRecovery, alphaRisk]);
@@ -816,6 +829,26 @@ const MARSSIMModule: React.FC = () => {
                 </div>
                 <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--color-accent)' }}>
                   {detectionLimits.scanMdcDpm100cm2.toFixed(0)} <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>dpm/100 cm²</span>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ padding: '14px', background: 'rgba(168, 85, 247, 0.06)', border: '1px solid rgba(168, 85, 247, 0.3)', borderRadius: '8px' }}>
+              <div style={{ fontSize: '0.78rem', color: '#c084fc', textTransform: 'uppercase', fontWeight: 'bold', marginBottom: '6px' }}>
+                🌐 ISO 11929-1:2019 &amp; ISO 7503-1:2016 Characteristic Limits (u_rel(w) = 5%)
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(145px, 1fr))', gap: '10px', fontSize: '0.82rem' }}>
+                <div>
+                  <span style={{ color: '#94a3b8', display: 'block', fontSize: '0.72rem' }}>Decision Threshold (y*)</span>
+                  <strong style={{ color: '#fff', fontSize: '1.05rem' }}>{detectionLimits.iso11929DecisionThresholdBq.toFixed(3)} Bq</strong>
+                </div>
+                <div>
+                  <span style={{ color: '#94a3b8', display: 'block', fontSize: '0.72rem' }}>Detection Limit (y#)</span>
+                  <strong style={{ color: '#e9d5ff', fontSize: '1.05rem' }}>{detectionLimits.iso11929DetectionLimitBq.toFixed(3)} Bq</strong>
+                </div>
+                <div>
+                  <span style={{ color: '#94a3b8', display: 'block', fontSize: '0.72rem' }}>ISO 7503 Surface Limit</span>
+                  <strong style={{ color: '#34d399', fontSize: '1.05rem' }}>{detectionLimits.iso11929DetectionLimitBqCm2.toFixed(4)} Bq/cm²</strong>
                 </div>
               </div>
             </div>
