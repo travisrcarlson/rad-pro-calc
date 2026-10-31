@@ -335,6 +335,41 @@ export const CURATED_BRANCHING_SPLITS: Record<string, CuratedBranchSpec> = {
     daughters: [
       { nuclide: 'Lu-177', branchFraction: 1.0, modeLabel: 'β⁻ (1.40 MeV)', qMeV: 1.399, modality: 'beta', laneOffset: 0 }
     ]
+  },
+  'Ac-227': {
+    daughters: [
+      { nuclide: 'Th-227', branchFraction: 0.9862, modeLabel: 'β⁻ (98.62%)', qMeV: 0.0448, modality: 'beta', laneOffset: 0 },
+      { nuclide: 'Fr-223', branchFraction: 0.0138, modeLabel: 'α (1.38%)', qMeV: 5.042, modality: 'alpha', laneOffset: 1 }
+    ]
+  },
+  'Fr-223': {
+    daughters: [
+      { nuclide: 'Ra-223', branchFraction: 1.0, modeLabel: 'β⁻ (1.15 MeV)', qMeV: 1.149, modality: 'beta', laneOffset: 0 }
+    ]
+  },
+  'Ir-192': {
+    daughters: [
+      { nuclide: 'Pt-192', branchFraction: 0.9524, modeLabel: 'β⁻ (95.24%)', qMeV: 1.460, modality: 'beta', laneOffset: 0 },
+      { nuclide: 'Os-192', branchFraction: 0.0476, modeLabel: 'EC (4.76%)', qMeV: 1.046, modality: 'ec_positron', laneOffset: 1 }
+    ]
+  },
+  'K-40': {
+    daughters: [
+      { nuclide: 'Ca-40', branchFraction: 0.8928, modeLabel: 'β⁻ (89.28%)', qMeV: 1.311, modality: 'beta', laneOffset: 0 },
+      { nuclide: 'Ar-40', branchFraction: 0.1072, modeLabel: 'EC/β⁺ (10.72%)', qMeV: 1.505, modality: 'ec_positron', laneOffset: 1 }
+    ]
+  },
+  'Cu-64': {
+    daughters: [
+      { nuclide: 'Ni-64', branchFraction: 0.615, modeLabel: 'EC/β⁺ (61.5%)', qMeV: 1.675, modality: 'ec_positron', laneOffset: 0 },
+      { nuclide: 'Zn-64', branchFraction: 0.385, modeLabel: 'β⁻ (38.5%)', qMeV: 0.579, modality: 'beta', laneOffset: 1 }
+    ]
+  },
+  'At-211': {
+    daughters: [
+      { nuclide: 'Po-211', branchFraction: 0.582, modeLabel: 'EC (58.2%)', qMeV: 0.785, modality: 'ec_positron', laneOffset: 0 },
+      { nuclide: 'Bi-207', branchFraction: 0.418, modeLabel: 'α (41.8%)', qMeV: 5.982, modality: 'alpha', laneOffset: 1 }
+    ]
   }
 };
 

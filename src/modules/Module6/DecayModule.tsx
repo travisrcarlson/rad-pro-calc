@@ -239,6 +239,186 @@ const parseHalfLifeSeconds = (nuc: any): number => {
   return val;
 };
 
+// Pre-index all 3,386 nuclides once for O(1) coordinate & valley-of-stability resolution
+const NUCLIDE_BY_ZN = new Map<string, any>();
+const NUCLIDE_BY_NAME = new Map<string, any>();
+const STABLE_NUCLIDES: any[] = [];
+for (const n of allNuclides as any[]) {
+  NUCLIDE_BY_ZN.set(`${n.Z},${n.N}`, n);
+  NUCLIDE_BY_NAME.set(n.Nuclide, n);
+  if (n['Half-Life'] === 'STABLE') {
+    STABLE_NUCLIDES.push(n);
+  }
+}
+for (const [k, v] of Object.entries(METASTABLE_CATALOG)) {
+  NUCLIDE_BY_NAME.set(k, v);
+}
+
+const prettyDecayMode = (modeStr: string): string => {
+  return String(modeStr || '')
+    .trim()
+    .replace(/^2B-$/i, '2β⁻')
+    .replace(/^2EC$/i, '2EC')
+    .replace(/^2B\+$/i, '2β⁺')
+    .replace(/^B-2N$/i, 'β⁻2n')
+    .replace(/^B-N$/i, 'β⁻n')
+    .replace(/^B-A$/i, 'β⁻α')
+    .replace(/^ECP$/i, 'ECp')
+    .replace(/^B\+P$/i, 'β⁺p')
+    .replace(/^ECA$/i, 'ECα')
+    .replace(/^B\+A$/i, 'β⁺α')
+    .replace(/^EC\+B\+$/i, 'EC+β⁺')
+    .replace(/^B-$/i, 'β⁻')
+    .replace(/^B\+$/i, 'β⁺')
+    .replace(/^A$/i, 'α')
+    .replace(/^2P$/i, '2p')
+    .replace(/^P$/i, 'p')
+    .replace(/^2N$/i, '2n')
+    .replace(/^N$/i, 'n');
+};
+
+interface ResolvedDecayStep {
+  target: any;
+  modality: 'alpha' | 'beta' | 'gamma_it' | 'ec_positron';
+  qMeV: number;
+  modeCode: string;
+}
+
+const resolveModeTarget = (nuc: any, modeStr: string): ResolvedDecayStep | null => {
+  const up = String(modeStr || '').trim().toUpperCase();
+  if (!up || up === 'STABLE') return null;
+
+  const tryCoord = (
+    dz: number,
+    dn: number,
+    modality: 'alpha' | 'beta' | 'gamma_it' | 'ec_positron',
+    qField: string,
+    defaultQKeV: number,
+    code?: string
+  ): ResolvedDecayStep | null => {
+    const target = NUCLIDE_BY_ZN.get(`${nuc.Z + dz},${nuc.N + dn}`);
+    if (!target || target.Nuclide === nuc.Nuclide) return null;
+    const rawQ = parseFloat(nuc[qField] || '0');
+    const qMeV = (!isNaN(rawQ) && rawQ > 0 ? rawQ : defaultQKeV) / 1000;
+    return { target, modality, qMeV, modeCode: code || up };
+  };
+
+  // Match compound / multi-nucleon decay modes before single-character substrings
+  if (up === '2B-') return tryCoord(+2, -2, 'beta', 'Q-Beta', 2000, '2B-');
+  if (up === '2EC' || up === '2B+') return tryCoord(-2, +2, 'ec_positron', 'Q-EC', 2000, up);
+  if (up === 'B-A') return tryCoord(-1, -3, 'alpha', 'Q-Beta', 4000, 'B-A');
+  if (up === 'B-2N') return tryCoord(+1, -3, 'beta', 'Q-Beta', 3000, 'B-2N');
+  if (up === 'B-N') return tryCoord(+1, -2, 'beta', 'Q-Beta', 2500, 'B-N');
+  if (up === 'ECP' || up === 'B+P') return tryCoord(-2, +1, 'ec_positron', 'Q-EC', 3000, up);
+  if (up === 'ECA' || up === 'B+A') return tryCoord(-3, -1, 'alpha', 'Q-EC', 4000, up);
+  if (up === '2P') return tryCoord(-2, 0, 'ec_positron', 'Q-EC', 2000, '2P');
+  if (up === 'P') return tryCoord(-1, 0, 'ec_positron', 'Q-EC', 1500, 'P');
+  if (up === '2N') return tryCoord(0, -2, 'beta', 'Q-Beta', 2000, '2N');
+  if (up === 'N') return tryCoord(0, -1, 'beta', 'Q-Beta', 1500, 'N');
+  if (up === 'A') return tryCoord(-2, -2, 'alpha', 'Q-Alpha', 5000, 'A');
+  if (up === 'B-') return tryCoord(+1, -1, 'beta', 'Q-Beta', 1200, 'B-');
+  if (up === 'B+' || up === 'EC' || up === 'EC+B+') return tryCoord(-1, +1, 'ec_positron', 'Q-EC', 1200, up);
+  if (up === 'IT') {
+    const baseName = String(nuc.Nuclide).replace(/m\d*$/, '');
+    const ground = NUCLIDE_BY_NAME.get(baseName);
+    if (ground && ground.Nuclide !== nuc.Nuclide) {
+      const rawQ = parseFloat(nuc['Q-EC'] || '0');
+      return {
+        target: ground,
+        modality: 'gamma_it',
+        qMeV: (!isNaN(rawQ) && rawQ > 0 ? rawQ : 200) / 1000,
+        modeCode: 'IT'
+      };
+    }
+  }
+  return null;
+};
+
+const resolvePrimaryWithFallback = (nuc: any, seenSet?: Set<string>): ResolvedDecayStep | null => {
+  if (!nuc || nuc['Half-Life'] === 'STABLE') return null;
+
+  const isAllowed = (target: any) => !seenSet || !seenSet.has(target.Nuclide);
+
+  const m1 = String(nuc['Decay Mode'] || '').trim();
+  const r1 = resolveModeTarget(nuc, m1);
+  if (r1 && isAllowed(r1.target)) return r1;
+
+  const m2 = String(nuc['Decay 2'] || '').trim();
+  const r2 = resolveModeTarget(nuc, m2);
+  if (r2 && isAllowed(r2.target)) return r2;
+
+  // Energetic Q-value & valley-of-stability fallback for nuclides with SF / blank / unindexed daughter
+  const qA = parseFloat(nuc['Q-Alpha'] || '0');
+  const qB = parseFloat(nuc['Q-Beta'] || '0');
+  const qE = parseFloat(nuc['Q-EC'] || '0');
+
+  const candidates: { dz: number; dn: number; modality: 'alpha' | 'beta' | 'ec_positron'; q: number; code: string }[] = [];
+  if (nuc.Z > 82 || (!isNaN(qA) && qA > 0)) {
+    candidates.push({ dz: -2, dn: -2, modality: 'alpha', q: !isNaN(qA) && qA > 0 ? qA : 5000, code: 'A' });
+  }
+  if (!isNaN(qB) && qB > 0) {
+    candidates.push({ dz: +1, dn: -1, modality: 'beta', q: qB, code: 'B-' });
+    candidates.push({ dz: +2, dn: -2, modality: 'beta', q: qB, code: '2B-' });
+  }
+  if (!isNaN(qE) && qE > 0) {
+    candidates.push({ dz: -1, dn: +1, modality: 'ec_positron', q: qE, code: 'EC' });
+    candidates.push({ dz: -2, dn: +2, modality: 'ec_positron', q: qE, code: '2EC' });
+  }
+
+  candidates.push(
+    { dz: -2, dn: -2, modality: 'alpha', q: 4500, code: 'A' },
+    { dz: +1, dn: -1, modality: 'beta', q: 1000, code: 'B-' },
+    { dz: -1, dn: +1, modality: 'ec_positron', q: 1000, code: 'EC' },
+    { dz: +2, dn: -2, modality: 'beta', q: 1500, code: '2B-' },
+    { dz: -2, dn: +2, modality: 'ec_positron', q: 1500, code: '2EC' },
+    { dz: -1, dn: 0, modality: 'ec_positron', q: 1200, code: 'P' },
+    { dz: 0, dn: -1, modality: 'beta', q: 1200, code: 'N' }
+  );
+
+  for (const c of candidates) {
+    const found = NUCLIDE_BY_ZN.get(`${nuc.Z + c.dz},${nuc.N + c.dn}`);
+    if (found && found.Nuclide !== nuc.Nuclide && isAllowed(found)) {
+      return { target: found, modality: c.modality, qMeV: c.q / 1000, modeCode: c.code };
+    }
+  }
+
+  // Multi-step bridge toward the nearest valley-of-stability nuclide for extreme drip-line / superheavy isotopes
+  let bestStable: any = null;
+  let bestDist = Infinity;
+  for (const s of STABLE_NUCLIDES) {
+    const d = Math.abs(s.Z - nuc.Z) + Math.abs(s.N - nuc.N);
+    if (d < bestDist) {
+      bestDist = d;
+      bestStable = s;
+    }
+  }
+  if (bestStable) {
+    let bestNeighbor: any = null;
+    let bestNeighborDist = Infinity;
+    for (const n of allNuclides as any[]) {
+      if (n.Nuclide === nuc.Nuclide || !isAllowed(n)) continue;
+      const stepDist = Math.abs(n.Z - nuc.Z) + Math.abs(n.N - nuc.N);
+      if (stepDist <= 4) {
+        const toStable = Math.abs(n.Z - bestStable.Z) + Math.abs(n.N - bestStable.N);
+        if (toStable < bestNeighborDist) {
+          bestNeighborDist = toStable;
+          bestNeighbor = n;
+        }
+      }
+    }
+    if (bestNeighbor) {
+      const dz = bestNeighbor.Z - nuc.Z;
+      const dn = bestNeighbor.N - nuc.N;
+      const modality: 'alpha' | 'beta' | 'ec_positron' =
+        dz <= -2 && dn <= -2 ? 'alpha' : dz > 0 ? 'beta' : 'ec_positron';
+      const code = modality === 'alpha' ? 'A' : modality === 'beta' ? 'B-' : 'EC';
+      return { target: bestNeighbor, modality, qMeV: 2.0, modeCode: code };
+    }
+  }
+
+  return null;
+};
+
 const DecayModule: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -316,21 +496,224 @@ const DecayModule: React.FC = () => {
   };
 
   const findNuclideRecord = (name: string): any | null => {
-    if (METASTABLE_CATALOG[name]) return METASTABLE_CATALOG[name];
-    return allNuclides.find(n => n.Nuclide === name) || null;
+    return NUCLIDE_BY_NAME.get(name) || null;
   };
 
-  // Build Generalized Decay DAG (supporting bifurcating alpha/beta splits & metastable isomers)
+  // Build Generalized Topological Decay DAG (guaranteed to terminate at STABLE end-products with zero overlaps)
   const { activePathIds, chainNodes, chainEdges, rawChainNuclides } = useMemo(() => {
     if (!selectedIsotope) {
       return { activePathIds: [], chainNodes: [] as ChainNuclideNode[], chainEdges: [] as DecayBranchEdge[], rawChainNuclides: [] as any[] };
     }
 
-    const pathIds: string[] = [];
-    const cNodes: ChainNuclideNode[] = [];
+    const rawByName = new Map<string, any>();
+    const preferredLane = new Map<string, number>();
     const cEdges: DecayBranchEdge[] = [];
-    const rawList: any[] = [];
-    const visited = new Map<string, number>();
+    const edgeKeys = new Set<string>();
+
+    const addNode = (nuc: any, lanePref: number) => {
+      if (!nuc) return;
+      if (!rawByName.has(nuc.Nuclide)) {
+        rawByName.set(nuc.Nuclide, nuc);
+        preferredLane.set(nuc.Nuclide, lanePref);
+      }
+    };
+
+    const addEdge = (
+      fromNuc: string,
+      toNuc: string,
+      frac: number,
+      label: string,
+      qMeV: number,
+      modality: 'alpha' | 'beta' | 'gamma_it' | 'ec_positron'
+    ) => {
+      if (fromNuc === toNuc) return;
+      const key = `${fromNuc}->${toNuc}`;
+      if (edgeKeys.has(key)) return;
+      edgeKeys.add(key);
+      cEdges.push({
+        fromNuclide: fromNuc,
+        toNuclide: toNuc,
+        branchFraction: frac,
+        modeLabel: label,
+        qMeV,
+        modality
+      });
+    };
+
+    // Ancestor check prevents any hypothetical cycle when resolving fallback links
+    const canReach = (startName: string, goalName: string): boolean => {
+      if (startName === goalName) return true;
+      const seen = new Set<string>([startName]);
+      const stack = [startName];
+      while (stack.length > 0) {
+        const cur = stack.pop()!;
+        for (const e of cEdges) {
+          if (e.fromNuclide === cur) {
+            if (e.toNuclide === goalName) return true;
+            if (!seen.has(e.toNuclide)) {
+              seen.add(e.toNuclide);
+              stack.push(e.toNuclide);
+            }
+          }
+        }
+      }
+      return false;
+    };
+
+    addNode(selectedIsotope, 0);
+    const expanded = new Set<string>();
+    const queue: { raw: any; lane: number }[] = [{ raw: selectedIsotope, lane: 0 }];
+
+    while (queue.length > 0 && rawByName.size < 45) {
+      const item = queue.shift()!;
+      const nuc = item.raw;
+      if (!nuc || expanded.has(nuc.Nuclide)) continue;
+      expanded.add(nuc.Nuclide);
+
+      const hlStr = String(nuc['Half-Life'] || '').toUpperCase();
+      const mode = String(nuc['Decay Mode'] || '').trim().toUpperCase();
+      if (hlStr === 'STABLE' || mode === 'STABLE') continue;
+
+      // 1. Check Curated Bifurcating & Metastable Split Table first
+      const splitSpec = CURATED_BRANCHING_SPLITS[nuc.Nuclide];
+      if (splitSpec) {
+        for (let idx = 0; idx < splitSpec.daughters.length; idx++) {
+          const dSpec = splitSpec.daughters[idx];
+          const dRaw = findNuclideRecord(dSpec.nuclide);
+          if (dRaw && !canReach(dRaw.Nuclide, nuc.Nuclide)) {
+            const childLane = dSpec.laneOffset ?? (idx === 0 ? item.lane : Math.max(1, item.lane));
+            addNode(dRaw, childLane);
+            addEdge(nuc.Nuclide, dRaw.Nuclide, dSpec.branchFraction, dSpec.modeLabel, dSpec.qMeV, dSpec.modality);
+            if (!expanded.has(dRaw.Nuclide)) {
+              queue.push({ raw: dRaw, lane: childLane });
+            }
+          }
+        }
+        continue;
+      }
+
+      // 2. Resolve primary & secondary decay modes from all_nuclides.json with full valley-of-stability fallback
+      const ancestors = new Set<string>();
+      for (const existing of rawByName.keys()) {
+        if (canReach(existing, nuc.Nuclide)) ancestors.add(existing);
+      }
+
+      const d1 = resolvePrimaryWithFallback(nuc, ancestors);
+      const b1Pct = parseFloat(nuc['Decay %'] || '100');
+      const b1Frac = isNaN(b1Pct) ? 1.0 : Math.min(1.0, Math.max(0.01, b1Pct / 100));
+
+      const mode2 = String(nuc['Decay 2'] || '').trim();
+      const b2Pct = parseFloat(nuc['Decay 2 %'] || '0');
+      const allowSecondaryBranch = (item.lane === 0 && b2Pct >= 5.0) || b2Pct >= 25.0;
+      const d2 = mode2 && allowSecondaryBranch ? resolveModeTarget(nuc, mode2) : null;
+      const validD2 =
+        d2 &&
+        (!d1 || d2.target.Nuclide !== d1.target.Nuclide) &&
+        !canReach(d2.target.Nuclide, nuc.Nuclide)
+          ? d2
+          : null;
+
+      if (d1 && !canReach(d1.target.Nuclide, nuc.Nuclide)) {
+        const effFrac1 = validD2 ? b1Frac : 1.0;
+        const pMode1 = prettyDecayMode(d1.modeCode);
+        addNode(d1.target, item.lane);
+        addEdge(
+          nuc.Nuclide,
+          d1.target.Nuclide,
+          effFrac1,
+          `${pMode1} (${(effFrac1 * 100).toFixed(1)}%)`,
+          d1.qMeV,
+          d1.modality
+        );
+        if (!expanded.has(d1.target.Nuclide)) {
+          queue.push({ raw: d1.target, lane: item.lane });
+        }
+      }
+
+      if (validD2) {
+        const effFrac2 = Math.max(0.01, Math.min(1.0 - b1Frac, b2Pct / 100));
+        const pMode2 = prettyDecayMode(validD2.modeCode);
+        const childLane2 = item.lane === 0 ? 1 : item.lane;
+        addNode(validD2.target, childLane2);
+        addEdge(
+          nuc.Nuclide,
+          validD2.target.Nuclide,
+          effFrac2,
+          `${pMode2} (${(effFrac2 * 100).toFixed(1)}%)`,
+          validD2.qMeV,
+          validD2.modality
+        );
+        if (!expanded.has(validD2.target.Nuclide)) {
+          queue.push({ raw: validD2.target, lane: childLane2 });
+        }
+      }
+    }
+
+    // 3. Guarantee every unstable leaf node continues along its primary decay path until hitting a STABLE nuclide
+    let safetySteps = 0;
+    while (safetySteps < 60) {
+      safetySteps++;
+      const outCount = new Map<string, number>();
+      for (const k of rawByName.keys()) outCount.set(k, 0);
+      for (const e of cEdges) {
+        outCount.set(e.fromNuclide, (outCount.get(e.fromNuclide) || 0) + 1);
+      }
+
+      let progressed = false;
+      for (const [name, nuc] of Array.from(rawByName.entries())) {
+        if ((outCount.get(name) || 0) === 0 && nuc['Half-Life'] !== 'STABLE') {
+          const ancestors = new Set<string>();
+          for (const existing of rawByName.keys()) {
+            if (canReach(existing, name)) ancestors.add(existing);
+          }
+          const d1 = resolvePrimaryWithFallback(nuc, ancestors);
+          if (d1 && !canReach(d1.target.Nuclide, name)) {
+            const lane = preferredLane.get(name) ?? 0;
+            addNode(d1.target, lane);
+            const pMode1 = prettyDecayMode(d1.modeCode);
+            addEdge(name, d1.target.Nuclide, 1.0, `${pMode1} (100.0%)`, d1.qMeV, d1.modality);
+            progressed = true;
+          }
+        }
+      }
+      if (!progressed) break;
+    }
+
+    // 4. Compute longest-path topological rank (generation) so every edge flows strictly left-to-right (gen(u) < gen(v))
+    const genMap = new Map<string, number>();
+    for (const k of rawByName.keys()) genMap.set(k, 0);
+    const totalNodes = rawByName.size;
+    for (let iter = 0; iter < totalNodes + 2; iter++) {
+      let changed = false;
+      for (const e of cEdges) {
+        const gU = genMap.get(e.fromNuclide) ?? 0;
+        const gV = genMap.get(e.toNuclide) ?? 0;
+        if (gU + 1 > gV) {
+          genMap.set(e.toNuclide, gU + 1);
+          changed = true;
+        }
+      }
+      if (!changed) break;
+    }
+
+    // 5. Group by generation & assign collision-free vertical branch lanes
+    const byGen = new Map<number, string[]>();
+    for (const [name, g] of genMap.entries()) {
+      if (!byGen.has(g)) byGen.set(g, []);
+      byGen.get(g)!.push(name);
+    }
+
+    const finalLane = new Map<string, number>();
+    const sortedGens = Array.from(byGen.keys()).sort((a, b) => a - b);
+    for (const g of sortedGens) {
+      const names = byGen.get(g)!;
+      names.sort((a, b) => (preferredLane.get(a) ?? 0) - (preferredLane.get(b) ?? 0));
+      if (names.length === 1) {
+        finalLane.set(names[0], 0);
+      } else {
+        names.forEach((n, idx) => finalLane.set(n, idx));
+      }
+    }
 
     const makeChainNode = (rawNuc: any, generation: number, branchLane: number): ChainNuclideNode => {
       const hlSec = parseHalfLifeSeconds(rawNuc);
@@ -360,110 +743,25 @@ const DecayModule: React.FC = () => {
       };
     };
 
-    // Breadth-first topological DAG construction so parents always precede daughters
-    const queue: { raw: any; gen: number; lane: number }[] = [{ raw: selectedIsotope, gen: 0, lane: 0 }];
+    const orderedNames = Array.from(rawByName.keys()).sort((a, b) => {
+      const ga = genMap.get(a) ?? 0;
+      const gb = genMap.get(b) ?? 0;
+      if (ga !== gb) return ga - gb;
+      return (finalLane.get(a) ?? 0) - (finalLane.get(b) ?? 0);
+    });
 
-    while (queue.length > 0 && cNodes.length < 22) {
-      const item = queue.shift()!;
-      const nuc = item.raw;
-      if (!nuc) continue;
+    const pathIds: string[] = [];
+    const cNodes: ChainNuclideNode[] = [];
+    const rawList: any[] = [];
 
-      if (!visited.has(nuc.Nuclide)) {
-        visited.set(nuc.Nuclide, cNodes.length);
-        pathIds.push(nuc.Nuclide.replace(/m$/, ''));
-        rawList.push(nuc);
-        cNodes.push(makeChainNode(nuc, item.gen, item.lane));
-      } else {
-        continue;
+    for (const name of orderedNames) {
+      const nuc = rawByName.get(name)!;
+      const baseId = nuc.Nuclide.replace(/m\d*$/, '');
+      if (!pathIds.includes(baseId)) {
+        pathIds.push(baseId);
       }
-
-      const mode = String(nuc['Decay Mode'] || '').toUpperCase();
-      if (mode === 'STABLE' || nuc['Half-Life'] === 'STABLE' || !mode) continue;
-
-      // 1. Check Curated Bifurcating & Metastable Split Table first
-      const splitSpec = CURATED_BRANCHING_SPLITS[nuc.Nuclide];
-      if (splitSpec) {
-        for (const dSpec of splitSpec.daughters) {
-          const dRaw = findNuclideRecord(dSpec.nuclide);
-          if (dRaw) {
-            cEdges.push({
-              fromNuclide: nuc.Nuclide,
-              toNuclide: dRaw.Nuclide,
-              branchFraction: dSpec.branchFraction,
-              modeLabel: dSpec.modeLabel,
-              qMeV: dSpec.qMeV,
-              modality: dSpec.modality
-            });
-            if (!visited.has(dRaw.Nuclide)) {
-              queue.push({ raw: dRaw, gen: item.gen + 1, lane: dSpec.laneOffset ?? 0 });
-            }
-          }
-        }
-        continue;
-      }
-
-      // 2. Otherwise inspect standard Decay Mode + Decay 2 from all_nuclides.json
-      const resolveDaughterCoords = (mStr: string): { z: number; n: number; modality: 'alpha' | 'beta' | 'gamma_it' | 'ec_positron'; qMeV: number } | null => {
-        const up = mStr.toUpperCase();
-        if (up.includes('A')) {
-          return { z: nuc.Z - 2, n: nuc.N - 2, modality: 'alpha', qMeV: (parseFloat(nuc['Q-Alpha'] || '0') || 5000) / 1000 };
-        }
-        if (up.includes('B-')) {
-          return { z: nuc.Z + 1, n: nuc.N - 1, modality: 'beta', qMeV: (parseFloat(nuc['Q-Beta'] || '0') || 1000) / 1000 };
-        }
-        if (up.includes('B+') || up.includes('EC')) {
-          return { z: nuc.Z - 1, n: nuc.N + 1, modality: 'ec_positron', qMeV: (parseFloat(nuc['Q-EC'] || '0') || 1000) / 1000 };
-        }
-        return null;
-      };
-
-      const d1Coords = resolveDaughterCoords(mode);
-      const b1Pct = parseFloat(nuc['Decay %'] || '100');
-      const b1Frac = isNaN(b1Pct) ? 1.0 : Math.min(1.0, Math.max(0.01, b1Pct / 100));
-
-      const mode2 = String(nuc['Decay 2'] || '').trim();
-      const b2Pct = parseFloat(nuc['Decay 2 %'] || '0');
-      const d2Coords = mode2 && b2Pct >= 1.0 ? resolveDaughterCoords(mode2) : null;
-
-      if (d1Coords) {
-        const d1Raw = allNuclides.find(n => n.Z === d1Coords.z && n.N === d1Coords.n);
-        if (d1Raw) {
-          const effFrac1 = d2Coords ? b1Frac : 1.0;
-          const prettyMode1 = String(nuc['Decay Mode']).replace('B-', 'β⁻').replace('B+', 'β⁺').replace('A', 'α');
-          cEdges.push({
-            fromNuclide: nuc.Nuclide,
-            toNuclide: d1Raw.Nuclide,
-            branchFraction: effFrac1,
-            modeLabel: `${prettyMode1} (${(effFrac1 * 100).toFixed(1)}%)`,
-            qMeV: d1Coords.qMeV,
-            modality: d1Coords.modality
-          });
-          if (!visited.has(d1Raw.Nuclide)) {
-            queue.push({ raw: d1Raw, gen: item.gen + 1, lane: 0 });
-          }
-        }
-      }
-
-      if (d2Coords) {
-        const d2Raw = allNuclides.find(n => n.Z === d2Coords.z && n.N === d2Coords.n);
-        if (d2Raw && d2Raw.Nuclide !== nuc.Nuclide) {
-          const effFrac2 = Math.min(1.0 - b1Frac, b2Pct / 100);
-          if (effFrac2 > 0.005) {
-            const prettyMode2 = mode2.replace('B-', 'β⁻').replace('B+', 'β⁺').replace('A', 'α');
-            cEdges.push({
-              fromNuclide: nuc.Nuclide,
-              toNuclide: d2Raw.Nuclide,
-              branchFraction: effFrac2,
-              modeLabel: `${prettyMode2} (${(effFrac2 * 100).toFixed(1)}%)`,
-              qMeV: d2Coords.qMeV,
-              modality: d2Coords.modality
-            });
-            if (!visited.has(d2Raw.Nuclide)) {
-              queue.push({ raw: d2Raw, gen: item.gen + 1, lane: 1 });
-            }
-          }
-        }
-      }
+      rawList.push(nuc);
+      cNodes.push(makeChainNode(nuc, genMap.get(name) ?? 0, finalLane.get(name) ?? 0));
     }
 
     return { activePathIds: pathIds, chainNodes: cNodes, chainEdges: cEdges, rawChainNuclides: rawList };
@@ -522,26 +820,59 @@ const DecayModule: React.FC = () => {
 
   const yields = simResult?.statesAtT || [];
 
-  // Build ReactFlow nodes & edges (supporting parallel bifurcating branch lanes!)
+  // Build ReactFlow nodes & edges (topological left-to-right layout with symmetric diamond bifurcations & STABLE end badges)
   const { nodes, edges } = useMemo(() => {
     if (chainNodes.length === 0) return { nodes: [], edges: [] };
     const ns: any[] = [];
     const es: any[] = [];
 
+    const maxGen = Math.max(...chainNodes.map(n => n.generation), 0);
+    // Keep chains up to 9 generations in a single horizontal flow; wrap longer 11-15 generation series at 8 columns
+    const maxPerRow = maxGen < 9 ? 9 : 8;
+
+    const genCounts = new Map<number, number>();
+    for (const n of chainNodes) {
+      genCounts.set(n.generation, (genCounts.get(n.generation) || 0) + 1);
+    }
+
+    // Detect edges that skip over an intermediate generation (e.g. Mo-99 -> Tc-99 bypassing Tc-99m, Cs-137 -> Ba-137 bypassing Ba-137m)
+    const genMap = new Map<string, number>();
+    chainNodes.forEach(n => genMap.set(n.nuclide, n.generation));
+    const bypassedGens = new Set<number>();
+    for (const e of chainEdges) {
+      const gFrom = genMap.get(e.fromNuclide) ?? 0;
+      const gTo = genMap.get(e.toNuclide) ?? 0;
+      if (gTo - gFrom > 1) {
+        for (let g = gFrom + 1; g < gTo; g++) {
+          bypassedGens.add(g);
+        }
+      }
+    }
+
     chainNodes.forEach((cNode, idx) => {
       const y = yields[idx];
       const atomPct = y ? y.atomFractionPct : idx === 0 ? 100 : 0;
       const actMBq = y ? y.activityMBq : 0;
-      const color = getColor(cNode.primaryMode, cNode.halfLifeLabel);
-      const sliceColor = CHAIN_PALETTE[idx % CHAIN_PALETTE.length];
+      const isStable = cNode.halfLifeLabel === 'STABLE' || cNode.primaryMode.toUpperCase() === 'STABLE';
+      const color = isStable ? '#10b981' : getColor(cNode.primaryMode, cNode.halfLifeLabel);
+      const sliceColor = isStable ? '#10b981' : CHAIN_PALETTE[idx % CHAIN_PALETTE.length];
 
-      const maxPerRow = 5;
       const row = Math.floor(cNode.generation / maxPerRow);
       const col = cNode.generation % maxPerRow;
+      const siblingsInCol = genCounts.get(cNode.generation) || 1;
 
-      const currentX = col * 245;
-      // Offset parallel split branches vertically so bifurcations are clearly visible
-      const currentY = row * 280 + 30 + cNode.branchLane * 135;
+      const currentX = col * 228;
+      const rowBaseY = row * 285 + 88;
+
+      let currentY = rowBaseY;
+      if (siblingsInCol === 1) {
+        // Elevate metastable isomer slightly when a direct ground-state bypass arrow passes underneath
+        currentY = bypassedGens.has(cNode.generation) ? rowBaseY - 52 : rowBaseY;
+      } else if (siblingsInCol === 2) {
+        currentY = rowBaseY + (cNode.branchLane === 0 ? -68 : 68);
+      } else {
+        currentY = rowBaseY + (cNode.branchLane - (siblingsInCol - 1) / 2) * 120;
+      }
 
       ns.push({
         id: cNode.nuclide,
@@ -550,20 +881,28 @@ const DecayModule: React.FC = () => {
         targetPosition: 'left',
         data: {
           label: (
-            <div style={{ padding: '5px 7px', textAlign: 'center', fontSize: '0.76rem' }}>
+            <div style={{ padding: '5px 8px', textAlign: 'center', fontSize: '0.76rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
-                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: sliceColor, display: 'inline-block' }} />
-                <strong style={{ fontSize: '0.96rem', color: '#fff' }}>{cNode.nuclide}</strong>
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: sliceColor, display: 'inline-block', boxShadow: isStable ? '0 0 6px #10b981' : 'none' }} />
+                <strong style={{ fontSize: '0.96rem', color: isStable ? '#6ee7b7' : '#fff' }}>{cNode.nuclide}</strong>
                 <span style={{ fontSize: '0.65rem', color: sliceColor, fontWeight: 700 }}>{atomPct.toFixed(1)}%</span>
               </div>
-              <div style={{ color: '#aaa', fontSize: '0.70rem', marginBottom: '3px' }}>
-                {cNode.halfLifeLabel === 'STABLE' ? 'Stable End-Product' : `T½ = ${cNode.halfLifeLabel}`}
+              <div
+                style={{
+                  color: isStable ? '#34d399' : '#aaa',
+                  fontSize: isStable ? '0.66rem' : '0.70rem',
+                  fontWeight: isStable ? 800 : 500,
+                  letterSpacing: isStable ? '0.03em' : 'normal',
+                  marginBottom: '3px'
+                }}
+              >
+                {isStable ? '★ STABLE END-PRODUCT' : `T½ = ${cNode.halfLifeLabel}`}
               </div>
               <div style={{ width: '100%', height: '5px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', overflow: 'hidden', marginBottom: '3px' }}>
                 <div style={{ width: `${Math.min(100, Math.max(0, atomPct))}%`, height: '100%', background: sliceColor }} />
               </div>
-              <div style={{ fontSize: '0.65rem', color: cNode.halfLifeLabel === 'STABLE' ? '#94a3b8' : '#34d399', fontFamily: 'var(--font-mono)' }}>
-                {cNode.halfLifeLabel === 'STABLE'
+              <div style={{ fontSize: '0.65rem', color: isStable ? '#a7f3d0' : '#34d399', fontFamily: 'var(--font-mono)' }}>
+                {isStable
                   ? `${(y?.atoms || 0).toExponential(2)} atoms`
                   : `${actMBq >= 0.01 ? actMBq.toFixed(2) : actMBq.toExponential(2)} MBq`}
               </div>
@@ -572,13 +911,17 @@ const DecayModule: React.FC = () => {
         },
         style: {
           borderLeft: `2px solid ${sliceColor}`,
-          borderRight: '1px solid #444',
-          borderBottom: '1px solid #444',
+          borderRight: isStable ? '1.5px solid #10b981' : '1px solid #444',
+          borderBottom: isStable ? '1.5px solid #10b981' : '1px solid #444',
           borderTop: `6px solid ${color}`,
           borderRadius: '8px',
-          background: idx === 0 ? '#242936' : '#171b22',
-          width: 136,
-          boxShadow: atomPct > 5 ? `0 0 12px ${sliceColor}44` : 'none',
+          background: isStable ? 'linear-gradient(180deg, #09261e 0%, #0d171a 100%)' : idx === 0 ? '#242936' : '#171b22',
+          width: 146,
+          boxShadow: isStable
+            ? '0 0 14px rgba(16, 185, 129, 0.32)'
+            : atomPct > 5
+            ? `0 0 12px ${sliceColor}44`
+            : 'none',
           padding: 0,
           zIndex: 10
         }
@@ -602,9 +945,15 @@ const DecayModule: React.FC = () => {
         type: 'smoothstep',
         label: `${edge.modeLabel}`,
         labelStyle: { fill: edgeColor, fontWeight: 700, fontSize: 10 },
-        labelBgStyle: { fill: '#0a0d14', fillOpacity: 0.88 },
+        labelBgStyle: { fill: '#0a0d14', fillOpacity: 0.9 },
+        labelBgPadding: [4, 2],
+        labelBgBorderRadius: 4,
         markerEnd: { type: MarkerType.ArrowClosed, color: edgeColor },
-        style: { stroke: edgeColor, strokeWidth: Math.max(1.5, edge.branchFraction * 2.8) }
+        style: {
+          stroke: edgeColor,
+          strokeWidth: Math.max(1.6, edge.branchFraction * 2.8),
+          strokeDasharray: edge.branchFraction < 0.15 ? '5 3' : undefined
+        }
       });
     });
 
@@ -1494,6 +1843,7 @@ const DecayModule: React.FC = () => {
             onIsotopeClick={handleIsotopeClick}
             onClearSelection={() => setSelectedIsotope(null)}
             activePathIds={activePathIds}
+            activeEdges={chainEdges}
           />
         </div>
 
@@ -1701,13 +2051,28 @@ const DecayModule: React.FC = () => {
                 nodes={nodes}
                 edges={edges}
                 fitView
+                fitViewOptions={{ padding: 0.18 }}
                 attributionPosition="bottom-right"
                 key={selectedIsotope.Nuclide}
               >
                 <Background color="#444" gap={16} />
                 <Controls />
-                <div style={{ position: 'absolute', top: 8, left: 10, zIndex: 10, background: 'rgba(10, 15, 25, 0.88)', border: '1px solid rgba(56, 189, 248, 0.3)', padding: '4px 10px', borderRadius: '5px', color: '#fff', fontSize: '0.76rem' }}>
-                  <strong>🔗 Decay Topology: {selectedIsotope.Nuclide}</strong> ({chainNodes.length} Nuclides, {chainEdges.length} Transitions)
+                <div style={{ position: 'absolute', top: 8, left: 10, right: 10, zIndex: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px', pointerEvents: 'none' }}>
+                  <div style={{ background: 'rgba(10, 15, 25, 0.9)', border: '1px solid rgba(56, 189, 248, 0.35)', padding: '4px 10px', borderRadius: '5px', color: '#fff', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span>
+                      <strong>🔗 Decay Topology: {selectedIsotope.Nuclide}</strong> ({chainNodes.length} Nuclides, {chainEdges.length} Transitions)
+                    </span>
+                    <span style={{ color: '#34d399', fontWeight: 700, background: 'rgba(16, 185, 129, 0.14)', border: '1px solid rgba(16, 185, 129, 0.45)', borderRadius: '4px', padding: '1px 6px', fontSize: '0.70rem' }}>
+                      ★ Terminates at Stable: {chainNodes.filter(n => n.halfLifeLabel === 'STABLE').map(n => n.nuclide).join(', ') || 'Stable'}
+                    </span>
+                  </div>
+                  <div style={{ background: 'rgba(10, 15, 25, 0.88)', border: '1px solid rgba(255,255,255,0.12)', padding: '3px 8px', borderRadius: '5px', fontSize: '0.68rem', display: 'flex', gap: '8px', color: '#cbd5e1' }}>
+                    <span><strong style={{ color: '#F4D03F' }}>●</strong> α</span>
+                    <span><strong style={{ color: '#5DADE2' }}>●</strong> β⁻</span>
+                    <span><strong style={{ color: '#E74C3C' }}>●</strong> EC/β⁺</span>
+                    <span><strong style={{ color: '#a855f7' }}>●</strong> IT</span>
+                    <span><strong style={{ color: '#10b981' }}>★</strong> Stable</span>
+                  </div>
                 </div>
               </ReactFlow>
             </div>

@@ -5,9 +5,10 @@ interface KarlsruheChartProps {
   onIsotopeClick: (isotopeData: any) => void;
   onClearSelection?: () => void;
   activePathIds?: string[];
+  activeEdges?: Array<{ fromNuclide: string; toNuclide: string; modality?: string }>;
 }
 
-const KarlsruheSvgChart: React.FC<KarlsruheChartProps> = ({ onIsotopeClick, onClearSelection, activePathIds }) => {
+const KarlsruheSvgChart: React.FC<KarlsruheChartProps> = ({ onIsotopeClick, onClearSelection, activePathIds, activeEdges }) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const BOX_SIZE = 100;
@@ -181,6 +182,7 @@ const KarlsruheSvgChart: React.FC<KarlsruheChartProps> = ({ onIsotopeClick, onCl
 
       const isActive = normalizedActiveSet.size > 0 && normalizedActiveSet.has(n.Nuclide);
       const isParent = parentId === n.Nuclide;
+      const isStableActive = isActive && n['Half-Life'] === 'STABLE';
 
       let blockOpacity = 1;
       if (normalizedActiveSet.size > 0 && !isActive) {
@@ -213,9 +215,9 @@ const KarlsruheSvgChart: React.FC<KarlsruheChartProps> = ({ onIsotopeClick, onCl
             y={GAP / 2}
             width={BOX_SIZE - GAP}
             height={BOX_SIZE - GAP}
-            fill={color}
-            stroke={isParent ? '#38bdf8' : isActive ? '#ffffff' : '#111'}
-            strokeWidth={isParent ? '6' : isActive ? '3.5' : '1'}
+            fill={isStableActive ? '#064e3b' : color}
+            stroke={isParent ? '#38bdf8' : isStableActive ? '#10b981' : isActive ? '#ffffff' : '#111'}
+            strokeWidth={isParent || isStableActive ? '6' : isActive ? '3.5' : '1'}
           />
           {/* Main Symbol */}
           <text
@@ -266,8 +268,43 @@ const KarlsruheSvgChart: React.FC<KarlsruheChartProps> = ({ onIsotopeClick, onCl
     });
   }, [onIsotopeClick, normalizedActiveSet, activePathIds]);
 
-  // Draw vector connectors between sequential nodes in activePathIds
+  // Draw true DAG parent -> daughter vector connectors from activeEdges (avoiding false zig-zags across parallel branches)
   const activeChainVectors = useMemo(() => {
+    if (activeEdges && activeEdges.length > 0) {
+      return activeEdges.map((edge, i) => {
+        const fromStripped = edge.fromNuclide.replace(/m\d*$/i, '');
+        const toStripped = edge.toNuclide.replace(/m\d*$/i, '');
+        const fromN = nuclideMap.get(edge.fromNuclide) || nuclideMap.get(fromStripped);
+        const toN = nuclideMap.get(edge.toNuclide) || nuclideMap.get(toStripped);
+        if (!fromN || !toN) return null;
+        const x1 = fromN.N * BOX_SIZE + BOX_SIZE / 2;
+        const y1 = (120 - fromN.Z) * BOX_SIZE + BOX_SIZE / 2;
+        const x2 = toN.N * BOX_SIZE + BOX_SIZE / 2;
+        const y2 = (120 - toN.Z) * BOX_SIZE + BOX_SIZE / 2;
+        if (x1 === x2 && y1 === y2) return null;
+        const strokeColor =
+          edge.modality === 'alpha'
+            ? '#facc15'
+            : edge.modality === 'ec_positron'
+            ? '#f87171'
+            : '#38bdf8';
+        return (
+          <line
+            key={`${edge.fromNuclide}-${edge.toNuclide}-${i}`}
+            x1={x1}
+            y1={y1}
+            x2={x2}
+            y2={y2}
+            stroke={strokeColor}
+            strokeWidth="6"
+            strokeDasharray="12,8"
+            opacity={0.9}
+            pointerEvents="none"
+          />
+        );
+      });
+    }
+
     if (!activePathIds || activePathIds.length < 2) return null;
     const coords: Array<{ id: string; cx: number; cy: number }> = [];
     activePathIds.forEach(id => {
@@ -301,7 +338,7 @@ const KarlsruheSvgChart: React.FC<KarlsruheChartProps> = ({ onIsotopeClick, onCl
         />
       );
     });
-  }, [activePathIds, nuclideMap]);
+  }, [activeEdges, activePathIds, nuclideMap]);
 
   return (
     <div
