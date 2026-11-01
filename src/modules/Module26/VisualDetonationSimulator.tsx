@@ -2,11 +2,11 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 
 export interface VisualDetonationProps {
   yieldKt: number;
-  burstMode: 'surface' | 'air' | 'underground';
+  burstMode: 'surface' | 'air' | 'underground' | 'underwater';
   burstAltitudeM: number;
   onYieldChange?: (y: number) => void;
-  onBurstModeChange?: (mode: 'surface' | 'air' | 'underground') => void;
-  onBurstAltitudeChange?: (altM: number) => void;
+  onBurstModeChange?: (mode: 'surface' | 'air' | 'underground' | 'underwater') => void;
+  onBurstAltitudeChange?: (altM: number, explicitMode?: 'surface' | 'air' | 'underground' | 'underwater') => void;
   initialCityId?: string;
 }
 
@@ -20,7 +20,7 @@ interface CityPreset {
   category?: 'city' | 'historical_test_site';
   flag?: string;
   suggestedYieldKt?: number;
-  burstMode?: 'air' | 'surface' | 'underground';
+  burstMode?: 'air' | 'surface' | 'underground' | 'underwater';
   defaultAltitudeM?: number;
   historicalTestName?: string;
   historicalYear?: number;
@@ -41,6 +41,8 @@ const CITY_PRESETS: CityPreset[] = [
   // 2. Historical Nuclear Proving Grounds & Detonations (By Sovereign Nation)
   // United States 🇺🇸
   { id: 'trinity', name: 'Trinity Site (Alamogordo, NM)', country: 'United States', category: 'historical_test_site', flag: '🇺🇸', lat: 33.6753, lon: -106.4747, popDensityPerKm2: 3, suggestedYieldKt: 21, burstMode: 'surface', defaultAltitudeM: 30, historicalTestName: 'Trinity (Manhattan Project)', historicalYear: 1945, description: 'World\'s first nuclear explosion on 30m steel tower (July 16, 1945)' },
+  { id: 'crossroads_baker', name: 'Bikini Lagoon (Crossroads Baker Underwater)', country: 'United States', category: 'historical_test_site', flag: '🌊', lat: 11.5833, lon: 165.5000, popDensityPerKm2: 2, suggestedYieldKt: 23, burstMode: 'underwater', defaultAltitudeM: -27, historicalTestName: 'Operation Crossroads Baker (Underwater Lagoon)', historicalYear: 1946, description: 'World\'s first underwater nuclear test at -27m depth (2M-ton hollow water column & radioactive mist base surge)' },
+  { id: 'operation_wigwam', name: 'Pacific Ocean (Operation Wigwam Deep Underwater)', country: 'United States', category: 'historical_test_site', flag: '🌊', lat: 28.7333, lon: -126.2667, popDensityPerKm2: 1, suggestedYieldKt: 30, burstMode: 'underwater', defaultAltitudeM: -610, historicalTestName: 'Operation Wigwam (Deep Ocean Underwater)', historicalYear: 1955, description: 'Deep ocean anti-submarine nuclear test at -610m depth (pulsating supercritical steam bubble & spray dome)' },
   { id: 'nts_sedan', name: 'Nevada Test Site (Sedan Crater, NV)', country: 'United States', category: 'historical_test_site', flag: '🇺🇸', lat: 37.1769, lon: -116.0461, popDensityPerKm2: 1, suggestedYieldKt: 104, burstMode: 'underground', defaultAltitudeM: -194, historicalTestName: 'Storax Sedan (Plowshare Subterranean)', historicalYear: 1962, description: 'Shallow subterranean cratering burst at -194m depth (104 kt, 390m crater)' },
   { id: 'castle_bravo', name: 'Bikini Atoll (Castle Bravo, Marshall Islands)', country: 'United States', category: 'historical_test_site', flag: '🇺🇸', lat: 11.6972, lon: 165.2719, popDensityPerKm2: 1, suggestedYieldKt: 15000, burstMode: 'surface', defaultAltitudeM: 0, historicalTestName: 'Castle Bravo Thermonuclear Test', historicalYear: 1954, description: 'Largest US nuclear detonation (15 MT reef surface burst)' },
 
@@ -244,28 +246,63 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
     return CITY_PRESETS.find(c => c.id === selectedCityId) || CITY_PRESETS[0];
   }, [selectedCityId]);
 
-  // --- GLASSTONE & DOLAN / NORDYKE SUBTERRANEAN & ATMOSPHERIC CLOUD PHYSICS ---
+  // --- GLASSTONE & DOLAN / NORDYKE SUBTERRANEAN, UNDERWATER & ATMOSPHERIC CLOUD PHYSICS ---
   const cloudPhysics = useMemo(() => {
     const y = Math.max(0.001, yieldKt);
-    const isUnderground = burstAltitudeM < 0 || burstMode === 'underground';
-    const dobM = burstAltitudeM < 0 ? Math.abs(burstAltitudeM) : isUnderground ? Math.round(45 * Math.pow(y, 1 / 3)) : 0;
-    const hobM = burstAltitudeM > 0 ? burstAltitudeM : 0;
+    const isUnderwater = burstMode === 'underwater';
+    const isUnderground = !isUnderwater && (burstAltitudeM < 0 || burstMode === 'underground');
+    const dobM =
+      burstAltitudeM < 0
+        ? Math.abs(burstAltitudeM)
+        : isUnderwater
+        ? Math.max(15, Math.round(18 * Math.pow(y, 1 / 3)))
+        : isUnderground
+        ? Math.round(45 * Math.pow(y, 1 / 3))
+        : 0;
+    const hobM = !isUnderwater && !isUnderground && burstAltitudeM > 0 ? burstAltitudeM : 0;
 
-    // Subterranean Scaled Depth of Burial (SDOB = DOB / Y^(1/3) in m/kt^(1/3))
+    // Subterranean / Underwater Scaled Depth (SDOB / SDOW = DOB / Y^(1/3) in m/kt^(1/3))
     const sdob = dobM / Math.pow(y, 1 / 3);
     const isFullyContained = isUnderground && sdob >= 90;
-    // Fraction of explosive energy venting to atmosphere for shallow subterranean bursts (0 < SDOB < 90)
+    const isDeepUnderwater = isUnderwater && sdob >= 95;
+    // Fraction of explosive energy venting to atmosphere for shallow subterranean/underwater bursts
     const ventFraction = isUnderground
       ? sdob >= 110
         ? 0.0
         : Math.exp(-Math.pow(sdob / 52.0, 1.85))
+      : isUnderwater
+      ? isDeepUnderwater
+        ? 0.28
+        : Math.max(0.45, Math.exp(-Math.pow(Math.max(0, sdob - 12) / 90.0, 1.4)))
       : 1.0;
 
+    // Underwater Gas/Steam Bubble, Hollow Water Column & Tsunami Wave Dimensions (Glasstone & Dolan Ch. VI §§ 6.36-6.71)
+    const rBubbleM = isUnderwater
+      ? Math.round(Math.max(18, (135 * Math.pow(y, 1 / 3)) / Math.pow(dobM + 10, 0.28)))
+      : 0;
+    const waterColumnWidthKm = isUnderwater
+      ? isDeepUnderwater
+        ? Math.max(0.22, 0.16 * Math.pow(y, 0.30))
+        : Math.max(0.32, 0.22 * Math.pow(y, 1 / 3))
+      : 0;
+    const waterColumnTopKm = isUnderwater
+      ? isDeepUnderwater
+        ? Math.max(0.35, 0.18 * Math.pow(y, 0.28))
+        : Math.max(1.4, 0.72 * Math.pow(y, 0.32) * Math.exp(-Math.max(0, sdob - 12) / 95))
+      : 0;
+    const tsunamiWaveHeightM = isUnderwater
+      ? Math.round(Math.max(2, 9.8 * Math.pow(y, 0.36) * (isDeepUnderwater ? 0.38 : 1.0)))
+      : 0;
+
     // Subterranean Cavity, Fracture Zone, Chimney & Crater Dimensions (Glasstone & Dolan Ch. VI / Nordyke)
-    const rCavityM = Math.round(11.5 * Math.pow(y, 1 / 3)); // Vaporized rock cavity radius (m)
-    const rFractureM = Math.round(42.0 * Math.pow(y, 1 / 3)); // Crushed/fractured rock radius (m)
+    const rCavityM = isUnderwater ? rBubbleM : Math.round(11.5 * Math.pow(y, 1 / 3)); // Vaporized rock cavity or steam bubble radius (m)
+    const rFractureM = isUnderwater ? Math.round(rBubbleM * 2.6) : Math.round(42.0 * Math.pow(y, 1 / 3));
     const hChimneyM = Math.min(dobM, Math.round(rCavityM * 4.5)); // Rubble collapse chimney height (m)
-    const rCraterM = isUnderground
+    const rCraterM = isUnderwater
+      ? isDeepUnderwater
+        ? 0
+        : Math.round(28.0 * Math.pow(y, 0.32)) // Underwater lagoon/seabed hydraulic crater (e.g. Baker ~300m radius)
+      : isUnderground
       ? isFullyContained
         ? dobM < rCavityM * 6.5
           ? Math.round(14.5 * Math.pow(y, 0.30)) // Surface subsidence sinkhole crater
@@ -275,11 +312,11 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
       ? Math.round(18.0 * Math.pow(y, 0.30))
       : 0;
 
-    // Equivalent teleseismic body-wave magnitude m_b (Murphy / Ringdal CTBTO relation)
-    const seismicMb = Number((3.92 + 0.75 * Math.log10(Math.max(0.01, y)) - (isUnderground ? 0.0 : 0.65)).toFixed(2));
+    // Equivalent teleseismic / hydroacoustic magnitude m_b (Murphy / Ringdal CTBTO relation)
+    const seismicMb = Number((3.92 + 0.75 * Math.log10(Math.max(0.01, y)) - (isUnderground || isUnderwater ? 0.0 : 0.65)).toFixed(2));
 
-    // 1. Fireball / Cavity Radius
-    const rFireballM = isUnderground ? rCavityM : Math.round(70 * Math.pow(y, 0.38));
+    // 1. Fireball / Cavity / Bubble Radius
+    const rFireballM = isUnderground || isUnderwater ? rCavityM : Math.round(70 * Math.pow(y, 0.38));
     const rFireballKm = rFireballM / 1000.0;
     const rFireballMiles = rFireballKm * 0.621371;
 
@@ -298,7 +335,11 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
       hobKm >= 8.0
         ? Math.max(5.2, baseHTopKm * 0.58)
         : Math.max(rFireballKm * 2.6, baseHTopKm * (1.0 - Math.min(0.42, hobKm / 22.0)));
-    const hTopKm = isUnderground
+    const hTopKm = isUnderwater
+      ? isDeepUnderwater
+        ? Math.max(0.85, waterColumnTopKm * 1.45) // Deep ocean surface spray dome & mist height
+        : Math.max(2.6, baseHTopKm * 0.52 * Math.max(0.48, ventFraction)) // Crossroads Baker cauliflower condensation cloud + water column top
+      : isUnderground
       ? isFullyContained
         ? Math.max(0.18, 0.12 * Math.pow(y, 0.22)) // Surface spall dust plume height (km)
         : Math.max(0.8, baseHTopKm * Math.max(0.22, Math.pow(ventFraction, 0.42))) // Vented ejecta & cloud height
@@ -313,7 +354,9 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
       (hTopKm - hobKm) * 0.42,
       hTopKm * (1 - hBaseFraction) * (hobKm >= 8.0 ? 0.65 : 1.0)
     );
-    const hBaseKm = isUnderground
+    const hBaseKm = isUnderwater
+      ? hTopKm * 0.36
+      : isUnderground
       ? hTopKm * 0.42
       : hobKm > 0
       ? Math.max(hobKm + Math.max(0.35, rFireballKm * 0.55), hTopKm - capThicknessKm)
@@ -327,22 +370,28 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
     } else {
       baseDCapKm = 6.0 * Math.pow(y / 20.0, 0.38);
     }
-    const dCapKm = isUnderground
+    const dCapKm = isUnderwater
+      ? isDeepUnderwater
+        ? Math.max(0.9, baseDCapKm * 0.45)
+        : Math.max(1.8, baseDCapKm * 0.78)
+      : isUnderground
       ? isFullyContained
         ? Math.max(0.4, (rFractureM * 4.5) / 1000.0)
         : Math.max(0.9, baseDCapKm * Math.max(0.35, Math.pow(ventFraction, 0.35)))
       : baseDCapKm;
     const dCapMiles = dCapKm * 0.621371;
 
-    // 5. Cloud Stem Diameter (D_stem in km)
-    const dStemKm = Math.max(0.25, dCapKm * (isUnderground ? 0.34 : 0.20));
+    // 5. Cloud Stem / Water Column Diameter (D_stem in km)
+    const dStemKm = isUnderwater
+      ? Math.max(0.35, waterColumnWidthKm)
+      : Math.max(0.45, dCapKm * (isUnderground ? 0.34 : 0.28));
     const dStemMiles = dStemKm * 0.621371;
 
     // 6. Buoyant Ascent Half-Time & Stabilization Time
-    const tRiseHalf = Math.max(10, Math.round(28 * Math.pow(y, 0.22) * (isUnderground ? 0.65 : 1.0)));
+    const tRiseHalf = Math.max(8, Math.round(28 * Math.pow(y, 0.22) * (isUnderground || isUnderwater ? 0.58 : 1.0)));
     const tStabilize = Math.max(180, Math.round(240 * Math.pow(y, 0.15)));
 
-    // 7. Outrider 4-Tier Damage Zones (Scaled for Airburst HOB, Surface, and Subterranean DOB)
+    // 7. Outrider 4-Tier Damage Zones (Scaled for Airburst HOB, Surface, Underwater, and Subterranean DOB)
     // Optimal Mach-stem enhancement around HOB ~ 140 * Y^(1/3) m; high-altitude attenuation when HOB >> optimal
     const optHobM = 140 * Math.pow(y, 1 / 3);
     const airburstMachFactor =
@@ -352,32 +401,46 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
         ? 1.0 + 0.22 * Math.sin((Math.min(hobM, optHobM * 1.6) / (optHobM * 1.6)) * Math.PI)
         : Math.max(0.15, Math.exp(-(hobM - optHobM * 1.6) / (4500 * Math.pow(y, 0.25))));
 
-    // Zone 1: Fireball / Subterranean Crater-Cavity Radius
-    const rZone1_FireballKm = isUnderground
+    // Zone 1: Fireball / Subterranean Crater-Cavity / Underwater Plume Core Radius
+    const rZone1_FireballKm = isUnderwater
+      ? Math.max(waterColumnWidthKm * 0.55, rBubbleM / 1000.0)
+      : isUnderground
       ? Math.max(rCavityM, rCraterM) / 1000.0
       : rFireballKm;
     const rZone1_FireballMiles = rZone1_FireballKm * 0.621371;
 
-    // Zone 2: Radiation / Heavy Blast (20 psi) or Severe Seismic Fracture Zone
-    const rZone2_Heavy20psiKm = isUnderground
+    // Zone 2: Radiation / Heavy Blast (20 psi) / Hydraulic Hull-Crush Shock / Fracture Zone
+    const rZone2_Heavy20psiKm = isUnderwater
+      ? Math.max(rZone1_FireballKm * 1.65, 0.42 * Math.pow(y, 0.33))
+      : isUnderground
       ? Math.max((rFractureM * 2.4) / 1000.0, 0.34 * Math.pow(y * Math.max(0.12, ventFraction), 0.33))
       : Math.max(rFireballKm * 1.15, 0.38 * Math.pow(y, 0.33) * Math.min(1.08, airburstMachFactor));
     const rZone2_Heavy20psiMiles = rZone2_Heavy20psiKm * 0.621371;
 
-    // Zone 3: Moderate Blast (5 psi) or Moderate Ground Shock / Base Surge
-    const rZone3_Mod5psiKm = isUnderground
+    // Zone 3: Moderate Blast (5 psi) / Tsunami Wave & Surface Airblast / Ground Shock
+    const rZone3_Mod5psiKm = isUnderwater
+      ? Math.max(rZone2_Heavy20psiKm * 1.85, 0.92 * Math.pow(y, 0.33))
+      : isUnderground
       ? Math.max(rZone2_Heavy20psiKm * 1.85, 0.85 * Math.pow(y * Math.max(0.18, ventFraction), 0.33))
       : Math.max(rZone2_Heavy20psiKm * 1.75, 0.95 * Math.pow(y, 0.33) * airburstMachFactor);
     const rZone3_Mod5psiMiles = rZone3_Mod5psiKm * 0.621371;
 
-    // Zone 4: Thermal Radiation (3rd Degree Burns) or Outer Base Surge / Seismic Damage Perimeter
+    // Zone 4: Thermal Radiation (3rd Degree Burns) / Radioactive Mist Base Surge / Seismic Damage Perimeter
     const highAltThermalAtten = hobM > 15000 ? Math.max(0.25, Math.exp(-(hobM - 15000) / 40000)) : 1.0;
-    const rZone4_Thermal3rdKm = isUnderground
+    const rZone4_Thermal3rdKm = isUnderwater
+      ? Math.max(rZone3_Mod5psiKm * 1.55, 1.48 * Math.pow(y, 0.35))
+      : isUnderground
       ? Math.max(rZone3_Mod5psiKm * 1.45, 0.72 * Math.pow(y * Math.max(0.15, ventFraction), 0.38))
       : Math.max(rZone3_Mod5psiKm * 1.1, 0.82 * Math.pow(y, 0.41) * highAltThermalAtten);
     const rZone4_Thermal3rdMiles = rZone4_Thermal3rdKm * 0.621371;
 
     return {
+      isUnderwater,
+      isDeepUnderwater,
+      rBubbleM,
+      waterColumnWidthKm,
+      waterColumnTopKm,
+      tsunamiWaveHeightM,
       isUnderground,
       dobM,
       hobM,
@@ -624,6 +687,11 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
     ctx.imageSmoothingQuality = 'high';
     const t = simTimeSeconds;
     const {
+      isUnderwater,
+      isDeepUnderwater,
+      rBubbleM,
+      waterColumnWidthKm,
+      tsunamiWaveHeightM,
       isUnderground,
       dobM,
       hobM,
@@ -645,22 +713,32 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
 
     // Dynamic Horizon (groundY) & Viewport Scaling:
     // - For Deep Contained Underground bursts: groundY = 38% from top so 62% of canvas shows the deep geological cross-section
-    // - For Shallow Cratering Underground bursts: groundY = 56% from top so both the subterranean cavity/crater AND the vented ejecta plume/mushroom cloud are clearly visible
+    // - For Shallow Cratering Underground / Underwater bursts: groundY = 56%-60% from top so both the subsurface cavity/bubble AND the towering water column/mushroom cloud are clearly visible
     // - For Surface / Airbursts: groundY = height - 54
-    const groundY = isUnderground
+    const groundY = isUnderwater
+      ? isDeepUnderwater
+        ? Math.round(height * 0.44)
+        : Math.round(height * 0.62)
+      : isUnderground
       ? isFullyContained
         ? Math.round(height * 0.38)
         : Math.round(height * 0.58)
       : height - 54;
 
-    const maxAltKm = isUnderground
+    const maxAltKm = isUnderwater
+      ? isDeepUnderwater
+        ? 4.0
+        : Math.max(6.0, Math.ceil((hTopKm * 1.3) / 2) * 2)
+      : isUnderground
       ? isFullyContained
         ? 6.0
         : Math.max(12, Math.ceil((hTopKm * 1.35) / 5) * 5)
-      : Math.max(35, Math.ceil((Math.max(hTopKm, hobM / 1000 + rFireballKm * 2) * 1.3) / 10) * 10);
+      : Math.max(15, Math.ceil((Math.max(hTopKm, hobM / 1000 + rFireballKm * 2.5) * 1.25) / 5) * 5);
 
-    // Subterranean vertical depth scale (meters below groundY)
-    const maxDepthM = isUnderground
+    // Subterranean / Bathymetric vertical depth scale (meters below groundY)
+    const maxDepthM = isUnderwater
+      ? Math.max(120, Math.ceil(((dobM + rBubbleM * 2.2) * 1.35) / 50) * 50)
+      : isUnderground
       ? Math.max(500, Math.ceil(((dobM + rFractureM * 1.5) * 1.25) / 250) * 250)
       : 300;
 
@@ -675,16 +753,18 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
     };
 
     const kmToPixelsX = (distKm: number) => {
-      const visibleWidthKm = isUnderground
+      const visibleWidthKm = isUnderwater
+        ? Math.max(dCapKm * 2.8, waterColumnWidthKm * 5.5, 3.2)
+        : isUnderground
         ? Math.max(dCapKm * 2.8, (rFractureM * 6) / 1000.0, 2.4)
-        : Math.max(dCapKm * 3.0, 34);
+        : Math.max(dCapKm * 2.6, 16);
       return (distKm / visibleWidthKm) * (width * 0.76);
     };
 
     // Camera Shake Offset during initial shockwave or seismic arrival
     let shakeX = 0, shakeY = 0;
     if (shakeIntensity > 0.01) {
-      const seisMult = isUnderground ? 1.35 : 1.0;
+      const seisMult = isUnderground || isUnderwater ? 1.35 : 1.0;
       shakeX = (Math.random() - 0.5) * 7 * shakeIntensity * seisMult;
       shakeY = (Math.random() - 0.5) * 7 * shakeIntensity * seisMult;
     }
@@ -708,6 +788,8 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
       1.0,
       flashScatter > 0.05
         ? `rgb(${Math.round(30 + 85 * flashScatter)}, ${Math.round(56 + 78 * flashScatter)}, ${Math.round(92 + 65 * flashScatter)})`
+        : isUnderwater
+        ? '#164e63'
         : '#1c3b68'
     );
     ctx.fillStyle = skyGradient;
@@ -775,17 +857,19 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
       );
     }
 
-    // 4. Distant Mountain Silhouette Ranges along Ground Horizon
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.78)';
-    ctx.beginPath();
-    ctx.moveTo(0, groundY);
-    for (let mx = 0; mx <= width; mx += 28) {
-      const my = groundY - 9 - Math.sin(mx * 0.015) * 7 - Math.cos(mx * 0.04) * 5;
-      ctx.lineTo(mx, my);
+    // 4. Distant Mountain Silhouette Ranges (or Distant Atoll Islands when Underwater) along Horizon
+    if (!isUnderwater) {
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.78)';
+      ctx.beginPath();
+      ctx.moveTo(0, groundY);
+      for (let mx = 0; mx <= width; mx += 28) {
+        const my = groundY - 9 - Math.sin(mx * 0.015) * 7 - Math.cos(mx * 0.04) * 5;
+        ctx.lineTo(mx, my);
+      }
+      ctx.lineTo(width, groundY);
+      ctx.closePath();
+      ctx.fill();
     }
-    ctx.lineTo(width, groundY);
-    ctx.closePath();
-    ctx.fill();
 
     // 5. Left Atmospheric Altitude Ruler (x = 0..54, above groundY)
     ctx.fillStyle = 'rgba(148, 163, 184, 0.78)';
@@ -902,50 +986,90 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
     });
 
     // =========================================================================
-    // 7. SUBTERRANEAN GEOLOGICAL STRATA & CRUST CROSS-SECTION (y >= groundY)
+    // 7. SUBTERRANEAN GEOLOGICAL STRATA OR BATHYMETRIC OCEAN CROSS-SECTION (y >= groundY)
     // =========================================================================
     const centerX = width * 0.56;
     const subHeight = height - groundY;
 
-    // 7A. Geological Rock Strata Gradient & Sedimentary/Granitic Bedding Planes
-    const earthGrad = ctx.createLinearGradient(0, groundY, 0, height);
-    earthGrad.addColorStop(0.0, '#111824'); // Quaternary Alluvium / Topsoil (Cool Slate)
-    earthGrad.addColorStop(0.22, '#162030'); // Volcanic Tuff / Sedimentary Sandstone
-    earthGrad.addColorStop(0.55, '#0f1722'); // Fractured Granitic Pluton
-    earthGrad.addColorStop(1.0, '#070b12'); // Deep Metamorphic Basement
-    ctx.fillStyle = earthGrad;
-    ctx.fillRect(-20, groundY, width + 40, subHeight + 40);
+    if (isUnderwater) {
+      // 7-WATER. Deep Marine / Bathymetric Ocean Cross-Section
+      const oceanGrad = ctx.createLinearGradient(0, groundY, 0, height);
+      oceanGrad.addColorStop(0.0, '#0284c7'); // Sunlit Epipelagic Lagoon Surface
+      oceanGrad.addColorStop(0.24, '#0369a1'); // Upper Photic Zone
+      oceanGrad.addColorStop(0.58, '#0c4a6e'); // Mesopelagic Thermocline
+      oceanGrad.addColorStop(0.86, '#082f49'); // Bathypelagic Deep Water
+      oceanGrad.addColorStop(1.0, '#0f172a'); // Benthic Seabed Floor
+      ctx.fillStyle = oceanGrad;
+      ctx.fillRect(-20, groundY, width + 40, subHeight + 40);
 
-    if (isUnderground && subHeight > 80) {
-      // Draw geological strata boundaries & lithology labels on the right side
-      const strataLayers = [
-        { frac: 0.22, name: 'QUATERNARY ALLUVIUM / TUFF', col: 'rgba(148, 163, 184, 0.18)' },
-        { frac: 0.52, name: 'CARBONATE / SANDSTONE STRATA', col: 'rgba(100, 116, 139, 0.16)' },
-        { frac: 0.82, name: 'CRYSTALLINE GRANITE BASEMENT', col: 'rgba(71, 85, 105, 0.16)' }
-      ];
-      strataLayers.forEach((st) => {
-        const sy = groundY + subHeight * st.frac;
-        ctx.strokeStyle = st.col;
-        ctx.lineWidth = 1;
-        ctx.setLineDash([8, 6]);
+      // Subtle underwater solar caustic light rays filtering down from the sea surface
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, groundY, width, subHeight);
+      ctx.clip();
+      for (let ray = 0; ray < 9; ray++) {
+        const rx = 120 + ray * 95 + Math.sin(t * 0.7 + ray) * 8;
+        const rayGrad = ctx.createLinearGradient(rx, groundY, rx + 24, groundY + subHeight * 0.65);
+        rayGrad.addColorStop(0.0, 'rgba(186, 230, 253, 0.09)');
+        rayGrad.addColorStop(1.0, 'rgba(14, 165, 233, 0.0)');
+        ctx.fillStyle = rayGrad;
         ctx.beginPath();
-        ctx.moveTo(54, sy);
-        for (let sx = 60; sx <= width - 16; sx += 40) {
-          ctx.lineTo(sx, sy + Math.sin(sx * 0.025 + st.frac * 5) * 2.5);
-        }
+        ctx.moveTo(rx - 12, groundY);
+        ctx.lineTo(rx + 12, groundY);
+        ctx.lineTo(rx + 42, groundY + subHeight * 0.65);
+        ctx.lineTo(rx + 4, groundY + subHeight * 0.65);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      // Benthic Seabed / Coral & Basalt Floor along the bottom of the ocean cross-section
+      const seabedY = height - 18;
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      ctx.moveTo(0, height);
+      ctx.lineTo(0, seabedY);
+      for (let sx = 0; sx <= width; sx += 32) {
+        const craterDip =
+          !isDeepUnderwater && Math.abs(sx - centerX) < 110 && t >= 0.8
+            ? Math.cos(((sx - centerX) / 110) * (Math.PI / 2)) * 12 * Math.min(1, (t - 0.8) / 2.5)
+            : 0;
+        ctx.lineTo(sx, seabedY + Math.sin(sx * 0.03) * 2.5 + craterDip);
+      }
+      ctx.lineTo(width, height);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.28)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.restore();
+
+      // Bathymetric Zone Lines & Labels on Right Side
+      const bathyZones = [
+        { frac: 0.26, name: 'EPIPELAGIC PHOTIC ZONE', col: 'rgba(125, 211, 252, 0.20)' },
+        { frac: 0.56, name: 'MESOPELAGIC THERMOCLINE', col: 'rgba(56, 189, 248, 0.16)' },
+        { frac: 0.86, name: 'BENTHIC SEABED / LAGOON FLOOR', col: 'rgba(148, 163, 184, 0.22)' }
+      ];
+      bathyZones.forEach((bz) => {
+        const by = groundY + subHeight * bz.frac;
+        ctx.strokeStyle = bz.col;
+        ctx.lineWidth = 1;
+        ctx.setLineDash([6, 6]);
+        ctx.beginPath();
+        ctx.moveTo(54, by);
+        ctx.lineTo(width - 16, by);
         ctx.stroke();
         ctx.setLineDash([]);
 
         ctx.font = '600 8.5px Inter, sans-serif';
-        ctx.fillStyle = 'rgba(148, 163, 184, 0.58)';
+        ctx.fillStyle = 'rgba(186, 230, 253, 0.68)';
         ctx.textAlign = 'right';
-        ctx.fillText(st.name, width - 16, sy - 4);
+        ctx.fillText(bz.name, width - 16, by - 4);
         ctx.textAlign = 'left';
       });
 
-      // Left Subterranean Depth Ruler (below groundY)
-      const depthStepM = maxDepthM >= 2000 ? 500 : maxDepthM >= 900 ? 250 : 100;
-      ctx.fillStyle = 'rgba(56, 189, 248, 0.85)';
+      // Left Bathymetric Depth Ruler (below sea surface)
+      const depthStepM = maxDepthM >= 1000 ? 250 : maxDepthM >= 400 ? 100 : maxDepthM >= 150 ? 50 : 25;
+      ctx.fillStyle = '#38bdf8';
       ctx.font = '9.5px JetBrains Mono, monospace';
       ctx.textAlign = 'right';
       for (let dm = depthStepM; dm <= maxDepthM; dm += depthStepM) {
@@ -955,21 +1079,203 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
           ? `-${Math.round(dm * 3.28084).toLocaleString()}ft`
           : `-${dm}m`;
         ctx.fillText(dLabel, 48, dy + 3);
-        ctx.strokeStyle = 'rgba(56, 189, 248, 0.25)';
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
         ctx.beginPath();
         ctx.moveTo(50, dy);
         ctx.lineTo(55, dy);
         ctx.stroke();
       }
       ctx.textAlign = 'left';
+    } else {
+      // 7A. Geological Rock Strata Gradient & Sedimentary/Granitic Bedding Planes
+      const earthGrad = ctx.createLinearGradient(0, groundY, 0, height);
+      earthGrad.addColorStop(0.0, '#111824'); // Quaternary Alluvium / Topsoil (Cool Slate)
+      earthGrad.addColorStop(0.22, '#162030'); // Volcanic Tuff / Sedimentary Sandstone
+      earthGrad.addColorStop(0.55, '#0f1722'); // Fractured Granitic Pluton
+      earthGrad.addColorStop(1.0, '#070b12'); // Deep Metamorphic Basement
+      ctx.fillStyle = earthGrad;
+      ctx.fillRect(-20, groundY, width + 40, subHeight + 40);
+
+      if (isUnderground && subHeight > 80) {
+        // Draw geological strata boundaries & lithology labels on the right side
+        const strataLayers = [
+          { frac: 0.22, name: 'QUATERNARY ALLUVIUM / TUFF', col: 'rgba(148, 163, 184, 0.18)' },
+          { frac: 0.52, name: 'CARBONATE / SANDSTONE STRATA', col: 'rgba(100, 116, 139, 0.16)' },
+          { frac: 0.82, name: 'CRYSTALLINE GRANITE BASEMENT', col: 'rgba(71, 85, 105, 0.16)' }
+        ];
+        strataLayers.forEach((st) => {
+          const sy = groundY + subHeight * st.frac;
+          ctx.strokeStyle = st.col;
+          ctx.lineWidth = 1;
+          ctx.setLineDash([8, 6]);
+          ctx.beginPath();
+          ctx.moveTo(54, sy);
+          for (let sx = 60; sx <= width - 16; sx += 40) {
+            ctx.lineTo(sx, sy + Math.sin(sx * 0.025 + st.frac * 5) * 2.5);
+          }
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          ctx.font = '600 8.5px Inter, sans-serif';
+          ctx.fillStyle = 'rgba(148, 163, 184, 0.58)';
+          ctx.textAlign = 'right';
+          ctx.fillText(st.name, width - 16, sy - 4);
+          ctx.textAlign = 'left';
+        });
+
+        // Left Subterranean Depth Ruler (below groundY)
+        const depthStepM = maxDepthM >= 2000 ? 500 : maxDepthM >= 900 ? 250 : 100;
+        ctx.fillStyle = 'rgba(56, 189, 248, 0.85)';
+        ctx.font = '9.5px JetBrains Mono, monospace';
+        ctx.textAlign = 'right';
+        for (let dm = depthStepM; dm <= maxDepthM; dm += depthStepM) {
+          const dy = depthMToY(dm);
+          if (dy > height - 8) break;
+          const dLabel = unitMode === 'imperial'
+            ? `-${Math.round(dm * 3.28084).toLocaleString()}ft`
+            : `-${dm}m`;
+          ctx.fillText(dLabel, 48, dy + 3);
+          ctx.strokeStyle = 'rgba(56, 189, 248, 0.25)';
+          ctx.beginPath();
+          ctx.moveTo(50, dy);
+          ctx.lineTo(55, dy);
+          ctx.stroke();
+        }
+        ctx.textAlign = 'left';
+      }
     }
 
-    // 7B. Subterranean Detonation Physics & Realistic Thermal Radiative Cooling
-    // Fast radiative cooling of external fireball surface (τ ≈ 9.5s) so cloud transitions rapidly to convective slate/cumulus white
+    // 7B. Subterranean & Underwater Detonation Physics & Realistic Thermal Radiative Cooling
     const plasmaIntensity = Math.max(0.0, Math.exp(-t / 9.5));
     const internalWarmth = Math.max(0.0, Math.exp(-t / 18.0));
 
-    if (isUnderground) {
+    if (isUnderwater) {
+      const detY = depthMToY(dobM);
+      const pxPerMeterY = (height - groundY - 14) / maxDepthM;
+      // Supercritical steam/fission-gas bubble expands, pulsates, and buoyantly ascends toward the water surface
+      const bubbleAscentFrac = Math.min(1.0, t / (isDeepUnderwater ? 7.5 : 2.2));
+      const bubbleCenterY = detY - (detY - groundY) * Math.pow(bubbleAscentFrac, 0.85);
+      const bubblePulse = 1.0 + 0.14 * Math.sin(t * 5.2) * Math.exp(-t / 6.0);
+      const rBubblePx = Math.max(
+        14,
+        Math.min(subHeight * 0.36, rBubbleM * pxPerMeterY * (t < 0.3 ? 0.35 + 0.65 * (t / 0.3) : bubblePulse))
+      );
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, groundY, width, subHeight);
+      ctx.clip();
+
+      // 1. Mooring Cable from Surface Barge to Submerged Warhead Working Point
+      ctx.strokeStyle = 'rgba(186, 230, 253, 0.40)';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      ctx.moveTo(centerX, groundY);
+      ctx.lineTo(centerX, detY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // 2. Supersonic Hydraulic Shockwave (1,500 m/s in water) & Taylor Surface Cavitation Reflection
+      if (t > 0.01 && t < 12.0) {
+        const hydroWaveR = rBubblePx + t * 72;
+        const hydroAlpha = Math.max(0, (1 - t / 10.0) * 0.88);
+        if (hydroAlpha > 0.02) {
+          ctx.strokeStyle = `rgba(224, 242, 254, ${hydroAlpha})`;
+          ctx.lineWidth = 2.4;
+          ctx.beginPath();
+          ctx.arc(centerX, detY, hydroWaveR, 0, Math.PI * 2);
+          ctx.stroke();
+
+          ctx.strokeStyle = `rgba(56, 189, 248, ${hydroAlpha * 0.55})`;
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          ctx.arc(centerX, detY, hydroWaveR * 0.92, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      }
+
+      // 3. Buoyant Rising Supercritical Steam & Plasma Gas Bubble + Turbulent Wake Trail
+      if (bubbleCenterY + rBubblePx > groundY + 2) {
+        // Turbulent rising bubble wake trail from working point to current bubble position
+        if (detY - bubbleCenterY > 6) {
+          const wakeGrad = ctx.createLinearGradient(centerX, bubbleCenterY, centerX, detY);
+          wakeGrad.addColorStop(0.0, 'rgba(186, 230, 253, 0.45)');
+          wakeGrad.addColorStop(1.0, 'rgba(56, 189, 248, 0.05)');
+          ctx.fillStyle = wakeGrad;
+          ctx.beginPath();
+          ctx.moveTo(centerX - rBubblePx * 0.65, bubbleCenterY);
+          ctx.lineTo(centerX - rBubblePx * 0.25, detY);
+          ctx.lineTo(centerX + rBubblePx * 0.25, detY);
+          ctx.lineTo(centerX + rBubblePx * 0.65, bubbleCenterY);
+          ctx.closePath();
+          ctx.fill();
+        }
+
+        const bubGrad = ctx.createRadialGradient(
+          centerX,
+          bubbleCenterY,
+          rBubblePx * 0.08,
+          centerX,
+          bubbleCenterY,
+          rBubblePx
+        );
+        bubGrad.addColorStop(0.0, `rgba(255, 255, 255, ${0.95 * internalWarmth + 0.25})`);
+        bubGrad.addColorStop(0.40, `rgba(224, 242, 254, ${0.82 * internalWarmth + 0.22})`);
+        bubGrad.addColorStop(0.72, `rgba(56, 189, 248, ${0.65 * plasmaIntensity + 0.28})`);
+        bubGrad.addColorStop(0.94, 'rgba(14, 165, 233, 0.52)');
+        bubGrad.addColorStop(1.0, 'rgba(3, 105, 161, 0.0)');
+        ctx.fillStyle = bubGrad;
+        ctx.beginPath();
+        ctx.arc(centerX, bubbleCenterY, rBubblePx, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Working Point Depth Badge on Left Side
+      const wpLabel = unitMode === 'imperial'
+        ? `🌊 Depth: -${Math.round(dobM * 3.28084).toLocaleString()} ft (-${dobM} m)`
+        : `🌊 Depth: -${dobM} m (Bubble R=${rBubbleM}m)`;
+      ctx.font = '600 9.5px JetBrains Mono, monospace';
+      const wpTw = ctx.measureText(wpLabel).width;
+      const wpX = Math.max(64, centerX - rBubblePx * 1.6 - wpTw - 18);
+      const wpY = Math.min(height - 22, Math.max(groundY + 20, detY));
+      ctx.fillStyle = 'rgba(4, 19, 34, 0.90)';
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.65)';
+      ctx.lineWidth = 1;
+      ctx.fillRect(wpX - 5, wpY - 11, wpTw + 10, 15);
+      ctx.strokeRect(wpX - 5, wpY - 11, wpTw + 10, 15);
+      ctx.fillStyle = '#7dd3fc';
+      ctx.fillText(wpLabel, wpX, wpY);
+      ctx.restore();
+
+      // 4. Propagating Surface Tsunami / Gravity Waves along Ocean Horizon (groundY)
+      if (t >= 0.4) {
+        ctx.save();
+        const waveCount = 4;
+        for (let w = 0; w < waveCount; w++) {
+          const waveDistPx = Math.min(width * 0.44, 24 + (t * 26 + w * 38) % (width * 0.42));
+          const waveAmpPx = Math.max(2.5, Math.min(14, (tsunamiWaveHeightM * 0.38) * (1 - waveDistPx / (width * 0.45))));
+          [-1, 1].forEach((dir) => {
+            const wx = centerX + dir * waveDistPx;
+            ctx.fillStyle = 'rgba(56, 189, 248, 0.55)';
+            ctx.beginPath();
+            ctx.moveTo(wx - 18, groundY);
+            ctx.quadraticCurveTo(wx, groundY - waveAmpPx * 1.8, wx + 18, groundY);
+            ctx.closePath();
+            ctx.fill();
+
+            // Whitecap breaking foam crest
+            ctx.strokeStyle = 'rgba(240, 249, 255, 0.85)';
+            ctx.lineWidth = 1.6;
+            ctx.beginPath();
+            ctx.moveTo(wx - 9, groundY - waveAmpPx * 0.55);
+            ctx.quadraticCurveTo(wx, groundY - waveAmpPx * 1.75, wx + 9, groundY - waveAmpPx * 0.55);
+            ctx.stroke();
+          });
+        }
+        ctx.restore();
+      }
+    } else if (isUnderground) {
       const detY = depthMToY(dobM);
       const pxPerMeterY = (height - groundY - 14) / maxDepthM;
       const rCavityPx = Math.max(10, Math.min(subHeight * 0.28, rCavityM * pxPerMeterY * (t < 0.4 ? 0.35 + 0.65 * (t / 0.4) : 1.0)));
@@ -1212,42 +1518,47 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
       ctx.fillRect(centerX - groundGlowR, groundY - 3, groundGlowR * 2, 14);
     }
 
-    // Ground Surface Horizon Line
-    ctx.strokeStyle = isUnderground ? 'rgba(56, 189, 248, 0.45)' : 'rgba(226, 232, 240, 0.28)';
-    ctx.lineWidth = 1.2;
+    // Ground / Ocean Surface Horizon Line
+    ctx.strokeStyle = isUnderwater
+      ? 'rgba(125, 211, 252, 0.72)'
+      : isUnderground
+      ? 'rgba(56, 189, 248, 0.45)'
+      : 'rgba(226, 232, 240, 0.28)';
+    ctx.lineWidth = isUnderwater ? 1.6 : 1.2;
     ctx.beginPath();
     ctx.moveTo(0, groundY);
     ctx.lineTo(width, groundY);
     ctx.stroke();
 
     // =========================================================================
-    // 8. ATMOSPHERIC MUSHROOM CLOUD & SHOCKWAVE KINEMATICS (When Air, Surface, or Shallow Venting Underground)
+    // 8. ATMOSPHERIC MUSHROOM CLOUD, UNDERWATER PLUME & SHOCKWAVE KINEMATICS
     // =========================================================================
-    const hobKm = !isUnderground && burstAltitudeM > 0 ? burstAltitudeM / 1000.0 : 0;
-    const shob = !isUnderground && burstAltitudeM > 0 ? burstAltitudeM / Math.pow(Math.max(0.001, yieldKt), 1 / 3) : 0;
-    const isHighAltitudeBurst = !isUnderground && (burstAltitudeM >= 3000 || shob > 240);
-    const isLowAirburst = !isUnderground && !isHighAltitudeBurst && burstAltitudeM > 0;
+    const hobKm = !isUnderground && !isUnderwater && burstAltitudeM > 0 ? burstAltitudeM / 1000.0 : 0;
+    const shob = !isUnderground && !isUnderwater && burstAltitudeM > 0 ? burstAltitudeM / Math.pow(Math.max(0.001, yieldKt), 1 / 3) : 0;
+    // Optimal airbursts have shob ≈ 140 m/kt^(1/3), so they are ALWAYS stem-forming low/tropospheric airbursts even at multi-megaton yields
+    const isHighAltitudeBurst = !isUnderground && !isUnderwater && (burstAltitudeM >= 10000 || shob > 280);
+    const isLowAirburst = !isUnderground && !isUnderwater && !isHighAltitudeBurst && burstAltitudeM > 0;
 
     // Strictly monotonic buoyant cloud ascent from the initial fireball altitude (never dips toward the ground)
     const riseProgress = Math.pow(t / (t + tRiseHalf), 0.92);
     const initialTopKm = hobKm + rFireballKm * 1.15;
-    const initialBaseKm = Math.max(0, hobKm - rFireballKm * 0.85);
+    const initialBaseKm = Math.max(0, hobKm - rFireballKm * 0.65);
     const currentTopKm = initialTopKm + (hTopKm - initialTopKm) * riseProgress;
-    const currentBaseKm = initialBaseKm + (hBaseKm - initialBaseKm) * Math.pow(riseProgress, 1.05);
-    const currentCapWidthKm = Math.max(rFireballKm * 2.0, dCapKm * Math.pow(riseProgress, 0.78));
-    const currentStemWidthKm = Math.max(rFireballKm * 0.55, dStemKm * Math.pow(riseProgress, 0.58));
+    const currentBaseKm = initialBaseKm + (hBaseKm - initialBaseKm) * Math.pow(riseProgress, 1.02);
+    const currentCapWidthKm = Math.max(rFireballKm * 2.1, dCapKm * (0.28 + 0.72 * Math.pow(riseProgress, 0.72)));
+    const currentStemWidthKm = Math.max(rFireballKm * 0.75, dStemKm * (0.38 + 0.62 * Math.pow(riseProgress, 0.52)));
 
     const topY = kmToY(currentTopKm);
     const baseY = kmToY(currentBaseKm);
     const capCenterY = (topY + baseY) / 2;
     const capRadiusY = Math.max(12, (baseY - topY) / 2);
-    const capWidthPx = Math.max(28, kmToPixelsX(currentCapWidthKm));
+    const capWidthPx = Math.max(32, kmToPixelsX(currentCapWidthKm));
     const capRadiusX = capWidthPx / 2;
-    const stemWidthPx = Math.max(12, kmToPixelsX(currentStemWidthKm));
+    const stemWidthPx = Math.max(24, kmToPixelsX(currentStemWidthKm));
 
     if (!isFullyContained) {
       // Airburst Detonation Origin Marker, HOB Telemetry Line & High-Altitude Ionospheric Fluorescence Shell
-      if (!isUnderground && hobKm > 0.05) {
+      if (!isUnderground && !isUnderwater && hobKm > 0.05) {
         const hobY = kmToY(hobKm);
         ctx.save();
 
@@ -1255,14 +1566,14 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
         if (isHighAltitudeBurst && t >= 0.02 && t < 35.0) {
           const ionPulse = Math.exp(-t / 9.0);
           const ionRadiusPx = Math.max(capRadiusX * 1.65, kmToPixelsX(rFireballKm * 2.8 + Math.min(18, t * 1.4)));
-          const ionGrad = ctx.createRadialGradient(centerX, hobY, ionRadiusPx * 0.06, centerX, hobY, ionRadiusPx);
+          const ionGrad = ctx.createRadialGradient(centerX, capCenterY, ionRadiusPx * 0.06, centerX, capCenterY, ionRadiusPx);
           ionGrad.addColorStop(0.0, `rgba(224, 242, 254, ${0.42 * ionPulse})`);
           ionGrad.addColorStop(0.35, `rgba(56, 189, 248, ${0.26 * ionPulse})`);
           ionGrad.addColorStop(0.70, `rgba(139, 92, 246, ${0.16 * ionPulse})`);
           ionGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.0)');
           ctx.fillStyle = ionGrad;
           ctx.beginPath();
-          ctx.arc(centerX, hobY, ionRadiusPx, 0, Math.PI * 2);
+          ctx.arc(centerX, capCenterY, ionRadiusPx, 0, Math.PI * 2);
           ctx.fill();
         }
 
@@ -1302,94 +1613,171 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
         ctx.restore();
       }
 
-      // PHASE A: 3-REGIME STEM, DETACHED STRATOSPHERIC WAKE & GROUND BASE SURGE PHYSICS
-      // - Regime 1 (isHighAltitudeBurst): Detached stratospheric ionized & ice-crystal wake strictly between hobY and baseY (NEVER touches the ground!)
-      // - Regime 2 (isLowAirburst): Upper condensation funnel below baseY + delayed ground dust pedestal after shockwave ground reflection
-      // - Regime 3 (Surface / Shallow Underground): Continuous ground-attached updraft stem rising smoothly with the mushroom cap
-      if (isHighAltitudeBurst) {
-        const hobY = kmToY(hobKm);
-        const wakeAttachY = baseY + capRadiusY * 0.16;
-        const wakeHeightPx = hobY - wakeAttachY;
-        if (t >= 1.2 && wakeHeightPx > 4) {
-          const wakeAlpha = Math.min(0.82, ((t - 1.2) / 5.0) * 0.82);
-          const upperWakeHalfW = Math.min(capRadiusX * 0.54, stemWidthPx * 0.78);
-          const lowerTailHalfW = Math.max(3, stemWidthPx * 0.14);
-          const midWakeY = wakeAttachY * 0.55 + hobY * 0.45;
+      // PHASE A: UPWARD-RISING COLUMN / WATER PLUME & BASE SURGE PHYSICS (NO DOWNWARD PROPAGATION)
+      // - Regime 0 (isUnderwater): Supersonic spray dome + Crossroads Baker hollow cylindrical water column shooting UPWARD from sea surface + ballistic water jets + roiling radioactive mist base surge
+      // - Regime 1 (isHighAltitudeBurst): Detached stratospheric cloud with horizontal ice-crystal collar (no downward-hanging wake cone)
+      // - Regime 2 & 3 (isLowAirburst / Surface / Shallow Underground): Ground dust pedestal & suction column shooting strictly UPWARD from groundY into the rising mushroom cap!
+      if (isUnderwater) {
+        if (t >= 0.15) {
+          const plumeReveal = Math.min(1.0, (t - 0.15) / 1.8);
+          const stemAttachY = baseY + capRadiusY * 0.22;
+          const plumeTopY = isDeepUnderwater
+            ? groundY - plumeReveal * Math.max(24, (groundY - topY) * 0.65)
+            : groundY - plumeReveal * Math.max(28, groundY - stemAttachY);
+          const plumeHalfW = Math.max(18, stemWidthPx * (isDeepUnderwater ? 0.85 : 0.72));
 
           ctx.save();
-          ctx.beginPath();
-          ctx.moveTo(centerX - upperWakeHalfW, wakeAttachY);
-          ctx.quadraticCurveTo(centerX - upperWakeHalfW * 0.45, midWakeY, centerX - lowerTailHalfW, hobY);
-          ctx.lineTo(centerX + lowerTailHalfW, hobY);
-          ctx.quadraticCurveTo(centerX + upperWakeHalfW * 0.45, midWakeY, centerX + upperWakeHalfW, wakeAttachY);
-          ctx.closePath();
-
-          const wakeGrad = ctx.createLinearGradient(centerX, wakeAttachY, centerX, hobY);
-          wakeGrad.addColorStop(0.0, `rgba(226, 232, 240, ${0.78 * wakeAlpha})`);
-          wakeGrad.addColorStop(0.45, `rgba(148, 163, 184, ${0.52 * wakeAlpha})`);
-          wakeGrad.addColorStop(0.82, `rgba(56, 189, 248, ${0.24 * wakeAlpha})`);
-          wakeGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.0)');
-          ctx.fillStyle = wakeGrad;
-          ctx.fill();
-
-          // Upper stratospheric ice-crystal condensation collar under the ascending torus
-          if (t >= 3.5) {
-            const collarY = wakeAttachY + Math.min(22, wakeHeightPx * 0.32);
-            const collarW = upperWakeHalfW * 1.65;
-            const collarGrad = ctx.createRadialGradient(centerX, collarY, collarW * 0.12, centerX, collarY, collarW);
-            collarGrad.addColorStop(0.0, `rgba(241, 245, 249, ${0.52 * wakeAlpha})`);
-            collarGrad.addColorStop(0.65, `rgba(186, 230, 253, ${0.28 * wakeAlpha})`);
-            collarGrad.addColorStop(1.0, 'rgba(148, 163, 184, 0.0)');
-            ctx.fillStyle = collarGrad;
+          // 1. Initial Supersonic Cavitation Spray Dome (t < 4.5s)
+          if (t < 4.5) {
+            const sprayAlpha = Math.max(0, (1 - t / 4.5) * 0.85);
+            const sprayW = plumeHalfW * (1.45 + t * 0.25);
+            const sprayH = Math.max(18, (groundY - plumeTopY) * 0.65);
+            const sprayGrad = ctx.createRadialGradient(centerX, groundY, sprayW * 0.1, centerX, groundY - sprayH * 0.3, sprayW);
+            sprayGrad.addColorStop(0.0, `rgba(255, 255, 255, ${sprayAlpha})`);
+            sprayGrad.addColorStop(0.55, `rgba(186, 230, 253, ${sprayAlpha * 0.78})`);
+            sprayGrad.addColorStop(1.0, 'rgba(14, 165, 233, 0.0)');
+            ctx.fillStyle = sprayGrad;
             ctx.beginPath();
-            ctx.ellipse(centerX, collarY, collarW, Math.max(5, collarW * 0.18), 0, 0, Math.PI * 2);
+            ctx.moveTo(centerX - sprayW, groundY);
+            ctx.quadraticCurveTo(centerX, groundY - sprayH * 1.4, centerX + sprayW, groundY);
+            ctx.closePath();
             ctx.fill();
+          }
+
+          // 2. Crossroads Baker Hollow Cylindrical Water Column shooting UPWARD from Ocean Surface
+          if (!isDeepUnderwater && groundY - plumeTopY > 4) {
+            const baseSkirtHalfW = plumeHalfW * 1.42;
+            const upperColumnHalfW = plumeHalfW * 1.05;
+            const midPlumeY = groundY * 0.48 + plumeTopY * 0.52;
+
+            ctx.beginPath();
+            ctx.moveTo(centerX - baseSkirtHalfW, groundY);
+            ctx.quadraticCurveTo(centerX - plumeHalfW * 0.94, midPlumeY, centerX - upperColumnHalfW, plumeTopY);
+            ctx.lineTo(centerX + upperColumnHalfW, plumeTopY);
+            ctx.quadraticCurveTo(centerX + plumeHalfW * 0.94, midPlumeY, centerX + baseSkirtHalfW, groundY);
+            ctx.closePath();
+
+            const waterColGrad = ctx.createLinearGradient(centerX - baseSkirtHalfW, midPlumeY, centerX + baseSkirtHalfW, midPlumeY);
+            waterColGrad.addColorStop(0.0, `rgba(14, 116, 144, ${0.86 * plumeReveal})`);
+            waterColGrad.addColorStop(0.22, `rgba(186, 230, 253, ${0.95 * plumeReveal})`);
+            waterColGrad.addColorStop(0.50, `rgba(248, 250, 252, ${0.98 * plumeReveal})`);
+            waterColGrad.addColorStop(0.78, `rgba(125, 211, 252, ${0.95 * plumeReveal})`);
+            waterColGrad.addColorStop(1.0, `rgba(14, 116, 144, ${0.86 * plumeReveal})`);
+            ctx.fillStyle = waterColGrad;
+            ctx.fill();
+
+            // Vertical upward-rushing water & steam striations inside the hollow water column
+            ctx.strokeStyle = `rgba(255, 255, 255, ${0.55 * plumeReveal})`;
+            ctx.lineWidth = 1.3;
+            for (let s = -3; s <= 3; s++) {
+              const sx = centerX + (s / 3.5) * plumeHalfW * 0.82;
+              ctx.beginPath();
+              ctx.moveTo(sx * 1.02 - centerX * 0.02, groundY - 2);
+              ctx.lineTo(sx, plumeTopY + 4);
+              ctx.stroke();
+            }
+
+            // Ballistic water jets & spray streamers arcing outward and splashing back into the sea
+            if (t >= 0.8 && t < 45.0) {
+              ctx.strokeStyle = 'rgba(224, 242, 254, 0.62)';
+              ctx.lineWidth = 1.25;
+              for (let wj = 0; wj < 10; wj++) {
+                const side = wj % 2 === 0 ? 1 : -1;
+                const hFrac = 0.45 + ((wj * 3) % 5) * 0.11;
+                const startY = groundY - (groundY - plumeTopY) * hFrac;
+                const spanW = plumeHalfW * (1.35 + ((wj * 5) % 6) * 0.16) * side;
+                ctx.beginPath();
+                ctx.moveTo(centerX + side * plumeHalfW * 0.85, startY);
+                ctx.quadraticCurveTo(
+                  centerX + spanW * 0.72,
+                  startY - 18,
+                  centerX + spanW,
+                  groundY
+                );
+                ctx.stroke();
+              }
+            }
+          }
+
+          // 3. Roiling Radioactive Mist Base Surge rolling outward across the sea surface (Glasstone & Dolan § 6.46)
+          if (t >= 1.2) {
+            const surgeProgress = Math.min(1.0, (t - 1.2) / 14.0);
+            const surgeHalfSpanPx = Math.min(
+              width * 0.42,
+              plumeHalfW * 1.45 + surgeProgress * kmToPixelsX(dCapKm * 1.15)
+            );
+            const surgeHeightPx = Math.max(16, Math.min(48, stemWidthPx * 0.68 * (0.45 + 0.55 * surgeProgress)));
+
+            // Multi-billow rolling radioactive mist wall on left & right of water column base
+            const surgeGrad = ctx.createRadialGradient(centerX, groundY, plumeHalfW * 0.3, centerX, groundY - surgeHeightPx * 0.3, surgeHalfSpanPx);
+            surgeGrad.addColorStop(0.0, 'rgba(240, 249, 255, 0.90)');
+            surgeGrad.addColorStop(0.55, 'rgba(186, 230, 253, 0.78)');
+            surgeGrad.addColorStop(0.85, 'rgba(56, 189, 248, 0.45)');
+            surgeGrad.addColorStop(1.0, 'rgba(14, 165, 233, 0.0)');
+            ctx.fillStyle = surgeGrad;
+            ctx.beginPath();
+            ctx.ellipse(centerX, groundY - surgeHeightPx * 0.28, surgeHalfSpanPx, surgeHeightPx, 0, Math.PI, 0, false);
+            ctx.closePath();
+            ctx.fill();
+
+            // Distinct rolling mist billows along the expanding base surge front
+            for (let sb = 0; sb < 10; sb++) {
+              const frac = (sb + 0.5) / 10;
+              const bxOff = frac * surgeHalfSpanPx * 0.92;
+              const bR = surgeHeightPx * (0.55 + 0.35 * Math.sin(frac * Math.PI));
+              [-1, 1].forEach((side) => {
+                const bx = centerX + side * bxOff;
+                const by = groundY - bR * 0.65;
+                const bGrad = ctx.createRadialGradient(bx, by - bR * 0.2, 1, bx, by, bR);
+                bGrad.addColorStop(0.0, 'rgba(248, 250, 252, 0.72)');
+                bGrad.addColorStop(0.65, 'rgba(148, 197, 233, 0.48)');
+                bGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.0)');
+                ctx.fillStyle = bGrad;
+                ctx.beginPath();
+                ctx.arc(bx, by, bR, 0, Math.PI * 2);
+                ctx.fill();
+              });
+            }
           }
           ctx.restore();
         }
-      } else if (t >= 0.6) {
-        // Low Airburst vs. Surface/Underground Updraft Stem
-        const tGroundHit = isLowAirburst ? Math.max(0.8, hobKm / 0.42) : 0.4;
-        const stemAttachY = baseY + capRadiusY * 0.18;
-
-        // For Low Airbursts before ground stem connects: draw descending upper condensation vortex funnel from cap
-        if (isLowAirburst && t >= 1.0) {
-          const hobY = kmToY(hobKm);
-          const funnelBottomY = Math.min(groundY, Math.max(hobY, stemAttachY + (groundY - stemAttachY) * Math.min(1.0, (t - 1.0) / 8.0)));
-          const upperW = Math.min(capRadiusX * 0.58, stemWidthPx * 0.85);
-          const lowerW = stemWidthPx * 0.32;
+      } else if (isHighAltitudeBurst) {
+        // High-Altitude Stratospheric Burst: Horizontal ice-crystal condensation collar directly beneath the ascending torus (never grows downward!)
+        if (t >= 2.0) {
+          const collarAlpha = Math.min(0.75, ((t - 2.0) / 5.0) * 0.75);
+          const collarY = baseY + capRadiusY * 0.22;
+          const collarW = capRadiusX * 0.78;
           ctx.save();
+          const collarGrad = ctx.createRadialGradient(centerX, collarY, collarW * 0.12, centerX, collarY, collarW);
+          collarGrad.addColorStop(0.0, `rgba(241, 245, 249, ${0.52 * collarAlpha})`);
+          collarGrad.addColorStop(0.65, `rgba(186, 230, 253, ${0.28 * collarAlpha})`);
+          collarGrad.addColorStop(1.0, 'rgba(148, 163, 184, 0.0)');
+          ctx.fillStyle = collarGrad;
           ctx.beginPath();
-          ctx.moveTo(centerX - upperW, stemAttachY);
-          ctx.quadraticCurveTo(centerX - lowerW * 1.1, (stemAttachY + funnelBottomY) * 0.5, centerX - lowerW, funnelBottomY);
-          ctx.lineTo(centerX + lowerW, funnelBottomY);
-          ctx.quadraticCurveTo(centerX + lowerW * 1.1, (stemAttachY + funnelBottomY) * 0.5, centerX + upperW, stemAttachY);
-          ctx.closePath();
-          const fGrad = ctx.createLinearGradient(centerX, stemAttachY, centerX, funnelBottomY);
-          fGrad.addColorStop(0.0, 'rgba(203, 213, 225, 0.84)');
-          fGrad.addColorStop(0.65, 'rgba(100, 116, 139, 0.55)');
-          fGrad.addColorStop(1.0, 'rgba(51, 65, 85, 0.15)');
-          ctx.fillStyle = fGrad;
+          ctx.ellipse(centerX, collarY, collarW, Math.max(5, collarW * 0.18), 0, 0, Math.PI * 2);
           ctx.fill();
           ctx.restore();
         }
+      } else {
+        // Optimal / Low Airburst, Surface Burst & Shallow Underground Updraft Column:
+        // The column ALWAYS originates at Ground Zero (groundY) as afterwinds sweep dust inward and shoot UPWARD into the rising mushroom cap!
+        const tGroundHit = isLowAirburst ? Math.min(0.70, Math.max(0.18, hobKm / 1.5)) : 0.12;
+        const stemAttachY = Math.min(groundY - 10, baseY + capRadiusY * 0.24);
 
         if (t >= tGroundHit) {
           const stemReveal = isLowAirburst
-            ? Math.min(1.0, (t - tGroundHit) / 6.5)
-            : Math.min(1.0, (t - 0.4) / 1.4);
-          // Surface/underground stem stays continuously attached to the rising cap; low airburst afterwind stem rises smoothly to meet the funnel
-          const stemTopY = isLowAirburst
-            ? groundY - stemReveal * (groundY - stemAttachY)
-            : Math.min(groundY - 4, stemAttachY);
+            ? Math.min(1.0, (t - tGroundHit) / 1.75)
+            : Math.min(1.0, (t - tGroundHit) / 0.95);
+          // Column top shoots strictly UPWARD from groundY to stemAttachY, then stays locked to the rising cap!
+          const stemTopY = groundY - stemReveal * Math.max(8, groundY - stemAttachY);
           const isDirtyBurst = burstMode === 'surface' || isUnderground;
 
-          if (groundY - stemTopY > 3) {
+          if (groundY - stemTopY > 2) {
             ctx.save();
             ctx.beginPath();
-            const baseSkirtHalfW = stemWidthPx * (isUnderground ? 1.65 : isDirtyBurst ? 1.45 : 1.12);
-            const throatHalfW = stemWidthPx * (isUnderground ? 0.58 : 0.46);
-            const upperFlaredHalfW = Math.min(capRadiusX * 0.65, stemWidthPx * 0.92);
+            const baseSkirtHalfW = stemWidthPx * (isUnderground ? 1.65 : isDirtyBurst ? 1.48 : 1.28);
+            const throatHalfW = stemWidthPx * (isUnderground ? 0.62 : 0.54);
+            const upperFlaredHalfW = Math.min(capRadiusX * 0.72, stemWidthPx * (0.45 + 0.55 * stemReveal));
             const midStemY = groundY * 0.45 + stemTopY * 0.55;
 
             ctx.moveTo(centerX - baseSkirtHalfW, groundY);
@@ -1399,42 +1787,45 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
             ctx.closePath();
 
             const stemWarmCore = Math.max(0, Math.exp(-t / 14.0) * ventFraction);
+            const stemAlpha = Math.min(1.0, 0.35 + 0.65 * stemReveal);
             const stemCylGrad = ctx.createLinearGradient(centerX - baseSkirtHalfW, midStemY, centerX + baseSkirtHalfW, midStemY);
             if (isDirtyBurst) {
               // Warm taupe-slate soil/ash column with sunlit silver-gray edges
-              stemCylGrad.addColorStop(0.0, `rgba(42, 46, 56, ${0.88 * stemReveal})`);
-              stemCylGrad.addColorStop(0.24, `rgba(92, 98, 110, ${0.93 * stemReveal})`);
+              stemCylGrad.addColorStop(0.0, `rgba(42, 46, 56, ${0.88 * stemAlpha})`);
+              stemCylGrad.addColorStop(0.24, `rgba(92, 98, 110, ${0.93 * stemAlpha})`);
               stemCylGrad.addColorStop(
                 0.5,
-                `rgba(${Math.round(148 + 85 * stemWarmCore)}, ${Math.round(146 + 65 * stemWarmCore)}, ${Math.round(150 - 15 * stemWarmCore)}, ${0.96 * stemReveal})`
+                `rgba(${Math.round(148 + 85 * stemWarmCore)}, ${Math.round(146 + 65 * stemWarmCore)}, ${Math.round(150 - 15 * stemWarmCore)}, ${0.96 * stemAlpha})`
               );
-              stemCylGrad.addColorStop(0.76, `rgba(78, 84, 96, ${0.93 * stemReveal})`);
-              stemCylGrad.addColorStop(1.0, `rgba(34, 38, 48, ${0.88 * stemReveal})`);
+              stemCylGrad.addColorStop(0.76, `rgba(78, 84, 96, ${0.93 * stemAlpha})`);
+              stemCylGrad.addColorStop(1.0, `rgba(34, 38, 48, ${0.88 * stemAlpha})`);
             } else {
-              // Clean airburst condensation & vortex updraft stem (alabaster silver-slate)
-              stemCylGrad.addColorStop(0.0, `rgba(51, 65, 85, ${0.78 * stemReveal})`);
-              stemCylGrad.addColorStop(0.28, `rgba(120, 134, 154, ${0.88 * stemReveal})`);
+              // Optimal Airburst afterwind dust & condensation column rising from Ground Zero into the vortex throat
+              stemCylGrad.addColorStop(0.0, `rgba(51, 65, 85, ${0.84 * stemAlpha})`);
+              stemCylGrad.addColorStop(0.26, `rgba(128, 142, 162, ${0.92 * stemAlpha})`);
               stemCylGrad.addColorStop(
                 0.5,
-                `rgba(${Math.round(192 + 55 * stemWarmCore)}, ${Math.round(198 + 42 * stemWarmCore)}, ${Math.round(210 - 10 * stemWarmCore)}, ${0.94 * stemReveal})`
+                `rgba(${Math.round(198 + 52 * stemWarmCore)}, ${Math.round(204 + 40 * stemWarmCore)}, ${Math.round(216 - 12 * stemWarmCore)}, ${0.96 * stemAlpha})`
               );
-              stemCylGrad.addColorStop(0.72, `rgba(105, 118, 138, ${0.88 * stemReveal})`);
-              stemCylGrad.addColorStop(1.0, `rgba(42, 54, 72, ${0.78 * stemReveal})`);
+              stemCylGrad.addColorStop(0.74, `rgba(112, 126, 146, ${0.92 * stemAlpha})`);
+              stemCylGrad.addColorStop(1.0, `rgba(42, 54, 72, ${0.84 * stemAlpha})`);
             }
             ctx.fillStyle = stemCylGrad;
             ctx.fill();
 
-            const flankBillows = 12;
+            // Upward-rising convective billows along the column flanks (phase shifts upward with time t!)
+            const flankBillows = 14;
             for (let b = 0; b < flankBillows; b++) {
-              const bf = (b + 0.5) / flankBillows;
+              // Upward-flowing fractional position along the stem
+              const bf = ((b / flankBillows) + t * 0.18) % 1.0;
               const by = groundY - bf * (groundY - stemTopY);
-              const halfW = throatHalfW + Math.pow(bf - 0.45, 2) * stemWidthPx * 1.4;
-              const bRad = Math.max(5, stemWidthPx * (0.26 + 0.08 * Math.sin(bf * 9 + t * 0.6)));
+              const halfW = throatHalfW + Math.pow(bf - 0.45, 2) * stemWidthPx * 1.35;
+              const bRad = Math.max(6, stemWidthPx * (0.28 + 0.08 * Math.sin(bf * 9)));
               [-1, 1].forEach((side) => {
-                const bx = centerX + side * halfW * 0.85;
+                const bx = centerX + side * halfW * 0.82;
                 const bGrad = ctx.createRadialGradient(bx - side * bRad * 0.25, by - bRad * 0.15, 1, bx, by, bRad);
-                bGrad.addColorStop(0.0, isDirtyBurst ? `rgba(168, 175, 186, ${0.56 * stemReveal})` : `rgba(214, 224, 236, ${0.56 * stemReveal})`);
-                bGrad.addColorStop(0.65, isDirtyBurst ? `rgba(71, 85, 105, ${0.46 * stemReveal})` : `rgba(100, 116, 139, ${0.42 * stemReveal})`);
+                bGrad.addColorStop(0.0, isDirtyBurst ? `rgba(168, 175, 186, ${0.62 * stemAlpha})` : `rgba(220, 230, 242, ${0.65 * stemAlpha})`);
+                bGrad.addColorStop(0.65, isDirtyBurst ? `rgba(71, 85, 105, ${0.48 * stemAlpha})` : `rgba(100, 116, 139, ${0.48 * stemAlpha})`);
                 bGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.0)');
                 ctx.fillStyle = bGrad;
                 ctx.beginPath();
@@ -1443,8 +1834,26 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
               });
             }
 
+            // Upward suction streamlines inside the column core
+            ctx.strokeStyle = `rgba(241, 245, 249, ${0.26 * stemAlpha})`;
+            ctx.lineWidth = 1.1;
+            ctx.setLineDash([6, 6]);
+            ctx.lineDashOffset = -t * 28;
+            [-0.35, 0, 0.35].forEach((relOff) => {
+              ctx.beginPath();
+              ctx.moveTo(centerX + relOff * baseSkirtHalfW, groundY - 2);
+              ctx.quadraticCurveTo(
+                centerX + relOff * throatHalfW * 0.7,
+                midStemY,
+                centerX + relOff * upperFlaredHalfW * 0.85,
+                stemTopY + 2
+              );
+              ctx.stroke();
+            });
+            ctx.setLineDash([]);
+
             // Multi-Tiered Ice-Vapor Condensation Skirts / Bells around Stem
-            if (t >= 3.0 && !isUnderground) {
+            if (t >= 2.2 && !isUnderground) {
               [0.42, 0.68].forEach((skirtFrac, idx) => {
                 const collarY = groundY - skirtFrac * (groundY - stemTopY);
                 const collarW = throatHalfW * (idx === 0 ? 1.85 : 2.35);
@@ -1459,12 +1868,12 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
               });
             }
 
-            // Rolling Ground Debris Base Surge Cloud
-            const surgeWidthPx = Math.min(width * 0.38, baseSkirtHalfW * (isUnderground ? 2.2 : 1.5) * (1.0 + Math.min(1.4, (t - tGroundHit) * 0.08)));
-            const surgeHeightPx = Math.max(10, Math.min(34, stemWidthPx * (isUnderground ? 0.62 : 0.42)));
+            // Rolling Ground Debris & Afterwind Inflow Base Surge Pedestal
+            const surgeWidthPx = Math.min(width * 0.38, baseSkirtHalfW * (isUnderground ? 2.2 : 1.55) * (1.0 + Math.min(1.4, (t - tGroundHit) * 0.09)));
+            const surgeHeightPx = Math.max(12, Math.min(36, stemWidthPx * (isUnderground ? 0.62 : 0.45)));
             const surgeGrad = ctx.createRadialGradient(centerX, groundY, surgeWidthPx * 0.1, centerX, groundY, surgeWidthPx);
-            surgeGrad.addColorStop(0.0, isDirtyBurst ? `rgba(148, 156, 168, ${0.84 * stemReveal})` : `rgba(165, 178, 194, ${0.52 * stemReveal})`);
-            surgeGrad.addColorStop(0.65, isDirtyBurst ? `rgba(71, 82, 96, ${0.68 * stemReveal})` : `rgba(82, 94, 110, ${0.34 * stemReveal})`);
+            surgeGrad.addColorStop(0.0, isDirtyBurst ? `rgba(148, 156, 168, ${0.86 * stemAlpha})` : `rgba(176, 188, 204, ${0.68 * stemAlpha})`);
+            surgeGrad.addColorStop(0.65, isDirtyBurst ? `rgba(71, 82, 96, ${0.68 * stemAlpha})` : `rgba(88, 100, 118, ${0.45 * stemAlpha})`);
             surgeGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.0)');
             ctx.fillStyle = surgeGrad;
             ctx.beginPath();
@@ -1475,12 +1884,12 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
         }
       }
 
-      // PHASE B: VOLUMETRIC TOROIDAL MUSHROOM CAP & INCANDESCENT SOLAR-GOLD FIREBALL CORE
-      const smokeMaturity = Math.max(0, Math.min(1.0, (t - 0.8) / 5.2));
-      const effPlasma = plasmaIntensity * (isUnderground ? ventFraction * 0.75 : 1.0);
-      const effInternal = internalWarmth * (isUnderground ? ventFraction * 0.75 : 1.0);
+      // PHASE B: VOLUMETRIC TOROIDAL MUSHROOM CAP / CAULIFLOWER STEAM CLOUD & FIREBALL CORE
+      const smokeMaturity = Math.max(0, Math.min(1.0, (t - 0.6) / 4.8));
+      const effPlasma = plasmaIntensity * (isUnderground ? ventFraction * 0.75 : isUnderwater ? 0.35 : 1.0);
+      const effInternal = internalWarmth * (isUnderground ? ventFraction * 0.75 : isUnderwater ? 0.40 : 1.0);
 
-      // B1. Back-Layer Toroidal Shadow Billows (Cool deep slate-gray depth layer)
+      // B1. Back-Layer Toroidal Shadow Billows (Cool deep slate-gray or marine slate-blue depth layer)
       if (smokeMaturity > 0.02) {
         smokeLobes.forEach((lobe) => {
           if (lobe.layer !== 'back') return;
@@ -1498,10 +1907,17 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
             lobeY,
             lobeR
           );
-          grad.addColorStop(0.0, `rgba(${Math.round(142 + 62 * effPlasma)}, ${Math.round(152 + 52 * effPlasma)}, ${Math.round(168 + 18 * effPlasma)}, ${0.82 * smokeMaturity})`);
-          grad.addColorStop(0.58, `rgba(68, 78, 94, ${0.88 * smokeMaturity})`);
-          grad.addColorStop(0.88, `rgba(30, 38, 52, ${0.78 * smokeMaturity})`);
-          grad.addColorStop(1.0, 'rgba(15, 23, 42, 0.0)');
+          if (isUnderwater) {
+            grad.addColorStop(0.0, `rgba(224, 242, 254, ${0.84 * smokeMaturity})`);
+            grad.addColorStop(0.58, `rgba(125, 211, 252, ${0.78 * smokeMaturity})`);
+            grad.addColorStop(0.88, `rgba(14, 116, 144, ${0.65 * smokeMaturity})`);
+            grad.addColorStop(1.0, 'rgba(15, 23, 42, 0.0)');
+          } else {
+            grad.addColorStop(0.0, `rgba(${Math.round(142 + 62 * effPlasma)}, ${Math.round(152 + 52 * effPlasma)}, ${Math.round(168 + 18 * effPlasma)}, ${0.82 * smokeMaturity})`);
+            grad.addColorStop(0.58, `rgba(68, 78, 94, ${0.88 * smokeMaturity})`);
+            grad.addColorStop(0.88, `rgba(30, 38, 52, ${0.78 * smokeMaturity})`);
+            grad.addColorStop(1.0, 'rgba(15, 23, 42, 0.0)');
+          }
 
           ctx.fillStyle = grad;
           ctx.beginPath();
@@ -1518,9 +1934,9 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
 
         const haloGrad = ctx.createRadialGradient(centerX, capCenterY, coreRx * 0.08, centerX, capCenterY, coreRx * 1.38);
         haloGrad.addColorStop(0.0, `rgba(255, 255, 255, ${0.98 * effInternal})`);
-        haloGrad.addColorStop(0.32, `rgba(254, 249, 195, ${0.90 * effInternal})`);
-        haloGrad.addColorStop(0.64, `rgba(251, 191, 36, ${0.72 * effPlasma})`);
-        haloGrad.addColorStop(0.86, `rgba(217, 119, 6, ${0.38 * effPlasma})`);
+        haloGrad.addColorStop(0.32, isUnderwater ? `rgba(224, 242, 254, ${0.88 * effInternal})` : `rgba(254, 249, 195, ${0.90 * effInternal})`);
+        haloGrad.addColorStop(0.64, isUnderwater ? `rgba(56, 189, 248, ${0.65 * effPlasma})` : `rgba(251, 191, 36, ${0.72 * effPlasma})`);
+        haloGrad.addColorStop(0.86, isUnderwater ? `rgba(14, 165, 233, ${0.32 * effPlasma})` : `rgba(217, 119, 6, ${0.38 * effPlasma})`);
         haloGrad.addColorStop(1.0, 'rgba(217, 119, 6, 0.0)');
 
         ctx.fillStyle = haloGrad;
@@ -1528,7 +1944,7 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
         ctx.ellipse(centerX, capCenterY, coreRx * 1.3, coreRy * 1.2, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        if (t >= 1.0 && effInternal > 0.10) {
+        if (t >= 1.0 && effInternal > 0.10 && !isUnderwater) {
           [-0.46, 0.46].forEach((offsetFrac) => {
             const vx = centerX + offsetFrac * capRadiusX;
             const vy = capCenterY + capRadiusY * 0.06;
@@ -1568,28 +1984,28 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
             lobeR
           );
 
-          // Upper crown lobes are bright cumulus-white; lower torus lobes are shaded cool slate
+          // Upper crown lobes are bright cumulus-white; lower torus lobes are shaded cool slate or marine mist
           const crownFactor = Math.max(0, Math.min(1, (0.65 - lobe.relY) * 0.88));
           const warmScatter = effInternal * (lobe.layer === 'core' ? 0.52 : 0.20);
 
-          const baseLitR = isUnderground ? 174 : Math.round(186 + 60 * crownFactor);
-          const baseLitG = isUnderground ? 172 : Math.round(192 + 56 * crownFactor);
-          const baseLitB = isUnderground ? 170 : Math.round(204 + 48 * crownFactor);
+          const baseLitR = isUnderwater ? Math.round(215 + 38 * crownFactor) : isUnderground ? 174 : Math.round(186 + 60 * crownFactor);
+          const baseLitG = isUnderwater ? Math.round(234 + 20 * crownFactor) : isUnderground ? 172 : Math.round(192 + 56 * crownFactor);
+          const baseLitB = isUnderwater ? 252 : isUnderground ? 170 : Math.round(204 + 48 * crownFactor);
 
           const rLit = Math.min(255, Math.round(baseLitR + 45 * warmScatter));
           const gLit = Math.min(255, Math.round(baseLitG + 32 * warmScatter));
           const bLit = Math.max(135, Math.round(baseLitB - 16 * warmScatter));
 
-          const rMid = Math.min(242, Math.round((isUnderground ? 102 : 118 + 40 * crownFactor) + 32 * warmScatter));
-          const gMid = Math.min(238, Math.round((isUnderground ? 104 : 124 + 40 * crownFactor) + 18 * warmScatter));
-          const bMid = Math.max(96, Math.round((isUnderground ? 110 : 138 + 38 * crownFactor) - 10 * warmScatter));
+          const rMid = Math.min(242, Math.round((isUnderwater ? 148 + 45 * crownFactor : isUnderground ? 102 : 118 + 40 * crownFactor) + 32 * warmScatter));
+          const gMid = Math.min(245, Math.round((isUnderwater ? 188 + 42 * crownFactor : isUnderground ? 104 : 124 + 40 * crownFactor) + 18 * warmScatter));
+          const bMid = Math.max(96, Math.round((isUnderwater ? 222 + 25 * crownFactor : isUnderground ? 110 : 138 + 38 * crownFactor) - 10 * warmScatter));
 
           const alphaScale = lobe.layer === 'core' ? 0.80 * smokeMaturity : 0.90 * smokeMaturity;
 
           // Sculpted high-contrast cumulus stops so each cauliflower dome has crisp definition
           lobeGrad.addColorStop(0.0, `rgba(${rLit}, ${gLit}, ${bLit}, ${alphaScale})`);
           lobeGrad.addColorStop(0.62, `rgba(${rMid}, ${gMid}, ${bMid}, ${alphaScale * 0.95})`);
-          lobeGrad.addColorStop(0.88, `rgba(42, 54, 72, ${alphaScale * 0.82})`);
+          lobeGrad.addColorStop(0.88, isUnderwater ? `rgba(30, 88, 128, ${alphaScale * 0.78})` : `rgba(42, 54, 72, ${alphaScale * 0.82})`);
           lobeGrad.addColorStop(1.0, 'rgba(15, 23, 42, 0.0)');
 
           ctx.fillStyle = lobeGrad;
@@ -1704,14 +2120,14 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
           }
         }
 
-        if (!isUnderground && t >= 0.8 && t <= 6.5) {
-          const wilsonBell = Math.sin(((t - 0.8) / 5.7) * Math.PI);
-          const wRx = Math.max(capRadiusX * 1.28, shockRadiusPx * 0.74);
-          const wRy = Math.max(10, capRadiusY * 0.44);
-          const wilsonGrad = ctx.createRadialGradient(centerX, capCenterY, wRx * 0.30, centerX, capCenterY, wRx);
+        if (!isUnderground && t >= 0.6 && t <= 6.5) {
+          const wilsonBell = Math.sin(((t - 0.6) / 5.9) * Math.PI) * (isUnderwater ? 1.25 : 1.0);
+          const wRx = Math.max(capRadiusX * 1.32, shockRadiusPx * 0.74);
+          const wRy = Math.max(12, capRadiusY * (isUnderwater ? 0.58 : 0.44));
+          const wilsonGrad = ctx.createRadialGradient(centerX, capCenterY, wRx * 0.25, centerX, capCenterY, wRx);
           wilsonGrad.addColorStop(0.0, 'rgba(248, 250, 252, 0.0)');
-          wilsonGrad.addColorStop(0.52, `rgba(241, 245, 249, ${0.50 * wilsonBell})`);
-          wilsonGrad.addColorStop(0.82, `rgba(186, 230, 253, ${0.32 * wilsonBell})`);
+          wilsonGrad.addColorStop(0.52, `rgba(241, 245, 249, ${Math.min(0.68, 0.50 * wilsonBell)})`);
+          wilsonGrad.addColorStop(0.82, `rgba(186, 230, 253, ${Math.min(0.45, 0.32 * wilsonBell)})`);
           wilsonGrad.addColorStop(1.0, 'rgba(224, 242, 254, 0.0)');
           ctx.fillStyle = wilsonGrad;
           ctx.beginPath();
@@ -1724,12 +2140,54 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
 
     // 9. Clamped Non-Overlapping Dimension Callout Box (Right Side)
     if (t >= 0.8) {
-      const boxW = 186;
+      const boxW = 192;
       const boxH = 54;
       const idealArrowX = centerX + capRadiusX + 20;
       const arrowX = Math.min(width - boxW - 16, Math.max(centerX + 46, idealArrowX));
 
-      if (isUnderground) {
+      if (isUnderwater) {
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.moveTo(arrowX, groundY);
+        ctx.lineTo(arrowX, topY);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(arrowX - 4, topY);
+        ctx.lineTo(arrowX + 4, topY);
+        ctx.moveTo(arrowX - 4, groundY);
+        ctx.lineTo(arrowX + 4, groundY);
+        ctx.stroke();
+
+        const midBoxY = Math.max(48, Math.min(groundY - boxH - 8, (groundY + topY) / 2 - boxH / 2));
+        ctx.fillStyle = 'rgba(4, 19, 34, 0.90)';
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.60)';
+        ctx.lineWidth = 1;
+        ctx.fillRect(arrowX + 8, midBoxY, boxW, boxH);
+        ctx.strokeRect(arrowX + 8, midBoxY, boxW, boxH);
+
+        ctx.font = 'bold 10px JetBrains Mono, monospace';
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillText(
+          `Plume Top: ${currentTopKm.toFixed(2)} km (${Math.round(currentTopKm * 3280.84).toLocaleString()} ft)`,
+          arrowX + 14,
+          midBoxY + 16
+        );
+        ctx.font = '9.5px Inter, sans-serif';
+        ctx.fillStyle = '#e2e8f0';
+        ctx.fillText(
+          `Water Col Ø: ${Math.round(waterColumnWidthKm * 1000).toLocaleString()} m | Wave: ${tsunamiWaveHeightM}m`,
+          arrowX + 14,
+          midBoxY + 32
+        );
+        ctx.fillStyle = '#7dd3fc';
+        ctx.fillText(
+          `Depth: -${dobM} m | Bubble Ø: ${rBubbleM * 2} m`,
+          arrowX + 14,
+          midBoxY + 46
+        );
+      } else if (isUnderground) {
         const detY = depthMToY(dobM);
         ctx.strokeStyle = '#38bdf8';
         ctx.lineWidth = 1.4;
@@ -1773,7 +2231,7 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
           subBoxY + 46
         );
       } else {
-        ctx.strokeStyle = '#00e5ff';
+        ctx.strokeStyle = '#38bdf8';
         ctx.lineWidth = 1.4;
         ctx.beginPath();
         ctx.moveTo(arrowX, groundY);
@@ -1787,7 +2245,7 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
         ctx.lineTo(arrowX + 4, groundY);
         ctx.stroke();
 
-        ctx.fillStyle = '#00e5ff';
+        ctx.fillStyle = '#38bdf8';
         ctx.beginPath();
         ctx.moveTo(arrowX - 4, topY + 7);
         ctx.lineTo(arrowX + 4, topY + 7);
@@ -1797,13 +2255,13 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
 
         const midBoxY = Math.max(48, Math.min(groundY - boxH - 8, (groundY + topY) / 2 - boxH / 2));
         ctx.fillStyle = 'rgba(5, 10, 18, 0.86)';
-        ctx.strokeStyle = 'rgba(0, 229, 255, 0.45)';
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.45)';
         ctx.lineWidth = 1;
         ctx.fillRect(arrowX + 8, midBoxY, boxW, boxH);
         ctx.strokeRect(arrowX + 8, midBoxY, boxW, boxH);
 
         ctx.font = 'bold 10.5px JetBrains Mono, monospace';
-        ctx.fillStyle = '#00e5ff';
+        ctx.fillStyle = '#38bdf8';
         const topLabel = unitMode === 'imperial'
           ? `Top: ${(currentTopKm * 0.621371).toFixed(1)} mi (${Math.round(currentTopKm * 3280.84).toLocaleString()} ft)`
           : `Top: ${currentTopKm.toFixed(1)} km (${Math.round(currentTopKm * 1000).toLocaleString()} m)`;
@@ -1826,7 +2284,15 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
 
     // 10. Top-Left Live Physical Regime Telemetry Badge (Clean LLNL / Sandia Optical Telemetry HUD)
     {
-      const phaseText = isUnderground
+      const phaseText = isUnderwater
+        ? t < 1.0
+          ? 'PHASE I: UNDERWATER STEAM BUBBLE & HYDRAULIC SHOCKWAVE'
+          : t < 5.5
+          ? isDeepUnderwater
+            ? 'PHASE II: PULSATING BUBBLE ASCENT & CAVITATION SPRAY DOME'
+            : 'PHASE II: HOLLOW WATER COLUMN ERUPTION & WILSON DOME'
+          : 'PHASE III: RADIOACTIVE MIST BASE SURGE & TSUNAMI WAVES'
+        : isUnderground
         ? t < 1.2
           ? 'PHASE I: SUBTERRANEAN VAPORIZATION & SEISMIC P-WAVE'
           : t < 6.0
@@ -1845,7 +2311,7 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
         : t < 1.5
         ? 'PHASE I: DOUBLE-FLASH & ISOTHERMAL FIREBALL BREAKAWAY'
         : t < 8.0
-        ? 'PHASE II: TOROIDAL VORTEX LIFT-OFF & WILSON CLOUD'
+        ? 'PHASE II: AFTERWIND UPDRAFT COLUMN & WILSON CLOUD'
         : t < 60.0
         ? 'PHASE III: CONVECTIVE CAP EXPANSION & MACH UPDRAFT STEM'
         : 'PHASE IV: STRATOSPHERIC ANVIL STABILIZATION';
@@ -1854,8 +2320,8 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
       ctx.fillStyle = 'rgba(6, 12, 24, 0.88)';
       ctx.strokeStyle = isUnderground ? 'rgba(167, 139, 250, 0.55)' : 'rgba(56, 189, 248, 0.50)';
       ctx.lineWidth = 1;
-      ctx.fillRect(62, 10, 386, 36);
-      ctx.strokeRect(62, 10, 386, 36);
+      ctx.fillRect(62, 10, 405, 36);
+      ctx.strokeRect(62, 10, 405, 36);
 
       ctx.font = 'bold 10px Inter, sans-serif';
       ctx.fillStyle = isUnderground ? '#c4b5fd' : '#38bdf8';
@@ -1864,7 +2330,9 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
       ctx.font = '9.5px JetBrains Mono, monospace';
       ctx.fillStyle = '#cbd5e1';
       ctx.fillText(
-        isUnderground
+        isUnderwater
+          ? `Water Depth: -${dobM}m | Bubble R: ${rBubbleM}m | Tsunami Wave: ~${tsunamiWaveHeightM}m`
+          : isUnderground
           ? `DOB: -${dobM}m | SDOB: ${sdob.toFixed(0)} m/kt¹/³ | Seismic: mb ${seismicMb}`
           : `Surface Temp: ~${estTempK.toLocaleString()} K | HOB: +${burstAltitudeM}m | Ascent: ${Math.round(riseProgress * 100)}%`,
         70,
@@ -1927,6 +2395,7 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
 
     const {
       isUnderground,
+      isUnderwater,
       rZone1_FireballKm,
       rZone2_Heavy20psiKm,
       rZone3_Mod5psiKm,
@@ -2086,7 +2555,11 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
     if (shockDistKm > 0.02 && shockDistKm <= maxViewKm * 1.15) {
       const shockWavePx = kmToMapPx(shockDistKm);
       ctx.save();
-      ctx.strokeStyle = isUnderground ? 'rgba(192, 132, 252, 0.92)' : 'rgba(255, 255, 255, 0.92)';
+      ctx.strokeStyle = isUnderground
+        ? 'rgba(192, 132, 252, 0.92)'
+        : isUnderwater
+        ? 'rgba(56, 189, 248, 0.95)'
+        : 'rgba(255, 255, 255, 0.92)';
       ctx.lineWidth = 2.2;
       ctx.shadowColor = isUnderground ? '#c084fc' : '#00e5ff';
       ctx.shadowBlur = 12;
@@ -2101,25 +2574,25 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
       {
         rPx: kmToMapPx(rZone4_Thermal3rdKm),
         angleDeg: -35,
-        label: `${isUnderground ? '🌫️ Surge / Felt' : '🔥 3rd° Burn'} (${unitMode === 'imperial' ? `${cloudPhysics.rZone4_Thermal3rdMiles.toFixed(2)} mi` : `${rZone4_Thermal3rdKm.toFixed(2)} km`})`,
+        label: `${isUnderground ? '🌫️ Surge / Felt' : isUnderwater ? '🌫️ Base Surge Mist' : '🔥 3rd° Burn'} (${unitMode === 'imperial' ? `${cloudPhysics.rZone4_Thermal3rdMiles.toFixed(2)} mi` : `${rZone4_Thermal3rdKm.toFixed(2)} km`})`,
         color: '#fbbf24'
       },
       {
         rPx: kmToMapPx(rZone3_Mod5psiKm),
         angleDeg: 35,
-        label: `${isUnderground ? '〰️ 5 psi / Shock' : '💨 5 psi'} (${unitMode === 'imperial' ? `${cloudPhysics.rZone3_Mod5psiMiles.toFixed(2)} mi` : `${rZone3_Mod5psiKm.toFixed(2)} km`})`,
+        label: `${isUnderground ? '〰️ 5 psi / Shock' : isUnderwater ? '🌊 5 psi / Tsunami' : '💨 5 psi'} (${unitMode === 'imperial' ? `${cloudPhysics.rZone3_Mod5psiMiles.toFixed(2)} mi` : `${rZone3_Mod5psiKm.toFixed(2)} km`})`,
         color: '#38bdf8'
       },
       {
         rPx: kmToMapPx(rZone2_Heavy20psiKm),
         angleDeg: 145,
-        label: `${isUnderground ? '🪨 Fracture Zone' : '☢️ 20 psi / Rad'} (${unitMode === 'imperial' ? `${cloudPhysics.rZone2_Heavy20psiMiles.toFixed(2)} mi` : `${rZone2_Heavy20psiKm.toFixed(2)} km`})`,
+        label: `${isUnderground ? '🪨 Fracture Zone' : isUnderwater ? '🌊 Hydraulic 20 psi' : '☢️ 20 psi / Rad'} (${unitMode === 'imperial' ? `${cloudPhysics.rZone2_Heavy20psiMiles.toFixed(2)} mi` : `${rZone2_Heavy20psiKm.toFixed(2)} km`})`,
         color: '#c4b5fd'
       },
       {
         rPx: kmToMapPx(rZone1_FireballKm),
         angleDeg: -145,
-        label: `${isUnderground ? '🕳️ Crater / Cavity' : '☀️ Fireball'} (${unitMode === 'imperial' ? `${cloudPhysics.rZone1_FireballMiles.toFixed(2)} mi` : `${rZone1_FireballKm.toFixed(2)} km`})`,
+        label: `${isUnderground ? '🕳️ Crater / Cavity' : isUnderwater ? '🌊 Plume / Bubble' : '☀️ Fireball'} (${unitMode === 'imperial' ? `${cloudPhysics.rZone1_FireballMiles.toFixed(2)} mi` : `${rZone1_FireballKm.toFixed(2)} km`})`,
         color: '#fef08a'
       }
     ];
@@ -2324,15 +2797,31 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
             <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#cbd5e1', marginRight: '4px' }}>
-              Elevation / Sub-Terrain Regime:
+              Detonation Regime:
             </span>
             {[
+              {
+                id: 'deep_underwater',
+                label: '🌊 Deep Ocean (-500m)',
+                altM: -Math.max(180, Math.min(1000, Math.round(125 * Math.pow(Math.max(0.01, yieldKt), 1 / 3)))),
+                mode: 'underwater' as const,
+                active: cloudPhysics.isUnderwater && cloudPhysics.isDeepUnderwater,
+                color: '#38bdf8'
+              },
+              {
+                id: 'shallow_underwater',
+                label: '🌊 Underwater Plume (Baker)',
+                altM: -Math.max(15, Math.min(180, Math.round(10 * Math.pow(Math.max(0.01, yieldKt), 1 / 3)))),
+                mode: 'underwater' as const,
+                active: cloudPhysics.isUnderwater && !cloudPhysics.isDeepUnderwater,
+                color: '#00e5ff'
+              },
               {
                 id: 'deep_underground',
                 label: '🪨 Deep Contained Sub-Terrain',
                 altM: -Math.max(120, Math.min(2000, Math.round(115 * Math.pow(Math.max(0.01, yieldKt), 1 / 3)))),
                 mode: 'underground' as const,
-                active: burstAltitudeM < 0 && cloudPhysics.isFullyContained,
+                active: cloudPhysics.isUnderground && cloudPhysics.isFullyContained,
                 color: '#c4b5fd'
               },
               {
@@ -2340,7 +2829,7 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
                 label: '⛏️ Shallow Cratering Sub-Terrain',
                 altM: -Math.max(25, Math.min(800, Math.round(41 * Math.pow(Math.max(0.01, yieldKt), 1 / 3)))),
                 mode: 'underground' as const,
-                active: burstAltitudeM < 0 && !cloudPhysics.isFullyContained,
+                active: cloudPhysics.isUnderground && !cloudPhysics.isFullyContained,
                 color: '#a78bfa'
               },
               {
@@ -2348,7 +2837,7 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
                 label: '🌋 Surface (0 m)',
                 altM: 0,
                 mode: 'surface' as const,
-                active: burstAltitudeM === 0,
+                active: burstMode === 'surface' && burstAltitudeM === 0,
                 color: '#fbbf24'
               },
               {
@@ -2356,7 +2845,7 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
                 label: '☁️ Optimal Airburst',
                 altM: Math.max(50, Math.round(140 * Math.pow(Math.max(0.01, yieldKt), 1 / 3))),
                 mode: 'air' as const,
-                active: burstAltitudeM > 0 && burstAltitudeM < 10000,
+                active: burstMode === 'air' && burstAltitudeM > 0 && burstAltitudeM < 10000,
                 color: '#38bdf8'
               },
               {
@@ -2364,7 +2853,7 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
                 label: '⚡ High-Altitude (15 km)',
                 altM: 15000,
                 mode: 'air' as const,
-                active: burstAltitudeM >= 10000,
+                active: burstMode === 'air' && burstAltitudeM >= 10000,
                 color: '#34d399'
               }
             ].map((reg) => (
@@ -2373,8 +2862,8 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
                 type="button"
                 className="btn"
                 onClick={() => {
-                  if (onBurstModeChange) onBurstModeChange(reg.mode);
-                  if (onBurstAltitudeChange) onBurstAltitudeChange(reg.altM);
+                  if (onBurstAltitudeChange) onBurstAltitudeChange(reg.altM, reg.mode);
+                  else if (onBurstModeChange) onBurstModeChange(reg.mode);
                   triggerDetonation();
                 }}
                 style={{
@@ -2394,7 +2883,7 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: '1 1 360px', justifyContent: 'flex-end' }}>
             <span style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
-              {burstAltitudeM < 0 ? 'Depth (DOB):' : 'Height (HOB):'}
+              {burstAltitudeM < 0 ? (cloudPhysics.isUnderwater ? 'Water Depth:' : 'Depth (DOB):') : 'Height (HOB):'}
             </span>
             <input
               type="range"
@@ -2405,13 +2894,13 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
               onChange={(e) => {
                 const v = parseInt(e.target.value) || 0;
                 if (onBurstAltitudeChange) onBurstAltitudeChange(v);
-                else if (onBurstModeChange) onBurstModeChange(v < 0 ? 'underground' : v === 0 ? 'surface' : 'air');
+                else if (onBurstModeChange) onBurstModeChange(v < 0 ? (burstMode === 'underwater' ? 'underwater' : 'underground') : v === 0 ? 'surface' : 'air');
               }}
               style={{
                 flex: '1 1 160px',
                 maxWidth: '240px',
                 cursor: 'pointer',
-                accentColor: burstAltitudeM < 0 ? '#a78bfa' : burstAltitudeM === 0 ? '#fbbf24' : '#38bdf8'
+                accentColor: burstAltitudeM < 0 ? (cloudPhysics.isUnderwater ? '#38bdf8' : '#a78bfa') : burstAltitudeM === 0 ? '#fbbf24' : '#38bdf8'
               }}
             />
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -2445,11 +2934,15 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
               <span style={{ fontSize: '0.82rem', color: cloudPhysics.isUnderground ? '#c4b5fd' : '#38bdf8', fontWeight: 600 }}>
                 {cloudPhysics.isUnderground
                   ? `Subterranean Geological & Atmospheric Cross-Section (DOB -${cloudPhysics.dobM}m • SDOB ${cloudPhysics.sdob.toFixed(0)} m/kt¹/³)`
-                  : `Volumetric Atmospheric Elevation Cross-Section (0–${Math.max(35, Math.ceil((cloudPhysics.hTopKm * 1.3) / 10) * 10)} km • HOB +${burstAltitudeM}m)`}
+                  : cloudPhysics.isUnderwater
+                  ? `Bathymetric Maritime & Atmospheric Cross-Section (Depth -${cloudPhysics.dobM}m • SDOW ${cloudPhysics.sdob.toFixed(0)} m/kt¹/³)`
+                  : `Volumetric Atmospheric Elevation Cross-Section (0–${Math.max(4, Math.ceil((cloudPhysics.hTopKm * 1.28) / 2) * 2)} km • HOB +${burstAltitudeM}m)`}
               </span>
               <span style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)' }}>
                 {cloudPhysics.isUnderground
                   ? `Vapor Cavity Ø: ${cloudPhysics.rCavityM * 2}m • Fracture Zone Ø: ${cloudPhysics.rFractureM * 2}m • Seismic: mb ${cloudPhysics.seismicMb}`
+                  : cloudPhysics.isUnderwater
+                  ? `Steam Bubble Ø: ${cloudPhysics.rBubbleM * 2}m • Plume Top: ${cloudPhysics.waterColumnTopKm.toFixed(2)}km • Tsunami Crest: ${cloudPhysics.tsunamiWaveHeightM}m`
                   : 'Scale Markers: Mt. Everest (8.85 km) • Airliner (11 km) • SR-71 (24 km) • Tropopause Inversion (12 km)'}
               </span>
             </div>
@@ -2494,11 +2987,10 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
                     if (chosen && chosen.suggestedYieldKt && onYieldChange) {
                       onYieldChange(chosen.suggestedYieldKt);
                     }
-                    if (chosen && chosen.burstMode && onBurstModeChange) {
-                      onBurstModeChange(chosen.burstMode);
-                    }
                     if (chosen && typeof chosen.defaultAltitudeM === 'number' && onBurstAltitudeChange) {
-                      onBurstAltitudeChange(chosen.defaultAltitudeM);
+                      onBurstAltitudeChange(chosen.defaultAltitudeM, chosen.burstMode);
+                    } else if (chosen && chosen.burstMode && onBurstModeChange) {
+                      onBurstModeChange(chosen.burstMode);
                     }
                   }}
                   style={{ fontSize: '0.78rem', padding: '4px 10px', maxWidth: '340px' }}

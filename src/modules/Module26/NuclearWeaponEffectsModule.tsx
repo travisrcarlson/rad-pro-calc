@@ -19,7 +19,7 @@ interface WeaponPreset {
   id: string;
   name: string;
   yieldKt: number;
-  burstType: 'surface' | 'air' | 'underground';
+  burstType: 'surface' | 'air' | 'underground' | 'underwater';
   defaultHobM?: number;
   description: string;
 }
@@ -30,6 +30,8 @@ const WEAPON_PRESETS: WeaponPreset[] = [
   { id: 'suitcase_1kt', name: '💣 1.0 kT Improvised Nuclear Device (IND)', yieldKt: 1.0, burstType: 'surface', defaultHobM: 0, description: 'Terrorist/improvised ground-level urban detonation with devastating local blast.' },
   { id: 'hiroshima_15kt', name: '🏙️ 15 kT Gun-Type Fission (Hiroshima Little Boy)', yieldKt: 15, burstType: 'air', defaultHobM: 600, description: 'Air burst at 600m. Optimal blast overpressure and devastating incendiary firestorm.' },
   { id: 'nagasaki_21kt', name: '☢️ 21 kT Implosion Plutonium (Nagasaki Fat Man)', yieldKt: 21, burstType: 'air', defaultHobM: 503, description: 'Air burst at 503m altitude over industrial valley.' },
+  { id: 'crossroads_baker_23kt', name: '🌊 23 kT Underwater Lagoon Burst (Crossroads Baker)', yieldKt: 23, burstType: 'underwater', defaultHobM: -27, description: 'Submerged detonation at -27m in Bikini Lagoon. Blasted a 2-million-ton hollow water column and radioactive mist base surge.' },
+  { id: 'wigwam_30kt', name: '🌊 30 kT Deep Ocean Underwater Burst (Operation Wigwam)', yieldKt: 30, burstType: 'underwater', defaultHobM: -610, description: 'Deep ocean detonation at -610m depth. High-pressure pulsating steam bubble, hydraulic shockwave, and surface spray dome.' },
   { id: 'w76_100kt', name: '🚀 100 kT SLBM Warhead (Trident D5 / W76)', yieldKt: 100, burstType: 'air', defaultHobM: 650, description: 'Modern submarine-launched ballistic missile warhead.' },
   { id: 'sedan_104kt', name: '🕳️ 104 kT Shallow Subterranean Cratering (Storax Sedan)', yieldKt: 104, burstType: 'underground', defaultHobM: -194, description: 'Plowshare underground cratering test at -194m depth. Excavated 390m wide, 98m deep crater.' },
   { id: 'punggye_250kt', name: '🪨 250 kT Deep Underground Contained (Mt. Mantap Tunnel)', yieldKt: 250, burstType: 'underground', defaultHobM: -550, description: 'Fully contained subterranean detonation at -550m depth. Vaporized rock cavity and collapse chimney.' },
@@ -45,7 +47,7 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
   const [activeTab, setActiveTab] = useState<NukeTab>('visual_detonation');
   const [selectedPresetId, setSelectedPresetId] = useState<string>('hiroshima_15kt');
   const [customYieldKt, setCustomYieldKt] = useState<number>(15.0);
-  const [burstMode, setBurstMode] = useState<'surface' | 'air' | 'underground'>('air');
+  const [burstMode, setBurstMode] = useState<'surface' | 'air' | 'underground' | 'underwater'>('air');
   const [burstAltitudeM, setBurstAltitudeM] = useState<number>(600);
   const [atmosphericVisibilityKm, setAtmosphericVisibilityKm] = useState<number>(20);
   const [targetDistanceKm, setTargetDistanceKm] = useState<number>(2.0);
@@ -82,11 +84,13 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
   }, [searchParams]);
 
   // Unified handler that keeps burstAltitudeM and burstMode strictly synchronized
-  const handleBurstAltitudeChange = (newAltM: number) => {
+  const handleBurstAltitudeChange = (newAltM: number, explicitMode?: 'surface' | 'air' | 'underground' | 'underwater') => {
     const clamped = Math.max(-2500, Math.min(100000, Math.round(newAltM)));
     setBurstAltitudeM(clamped);
-    if (clamped < 0) {
-      setBurstMode('underground');
+    if (explicitMode) {
+      setBurstMode(explicitMode);
+    } else if (clamped < 0) {
+      setBurstMode((prev) => (prev === 'underwater' ? 'underwater' : 'underground'));
     } else if (clamped === 0) {
       setBurstMode('surface');
     } else {
@@ -94,19 +98,22 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
     }
   };
 
-  const handleBurstModeChange = (mode: 'surface' | 'air' | 'underground') => {
+  const handleBurstModeChange = (mode: 'surface' | 'air' | 'underground' | 'underwater') => {
     setBurstMode(mode);
     if (mode === 'surface') {
       setBurstAltitudeM(0);
+    } else if (mode === 'underwater') {
+      setBurstAltitudeM((prev) =>
+        prev < 0 ? prev : -Math.max(15, Math.min(600, Math.round(18 * Math.pow(customYieldKt, 1 / 3))))
+      );
     } else if (mode === 'underground') {
-      if (burstAltitudeM >= 0) {
-        // Default to optimal shallow/intermediate subterranean depth (~45 * Y^(1/3) m)
-        setBurstAltitudeM(-Math.max(25, Math.min(1500, Math.round(45 * Math.pow(customYieldKt, 1 / 3)))));
-      }
+      setBurstAltitudeM((prev) =>
+        prev < 0 ? prev : -Math.max(25, Math.min(1500, Math.round(45 * Math.pow(customYieldKt, 1 / 3))))
+      );
     } else {
-      if (burstAltitudeM <= 0) {
-        setBurstAltitudeM(Math.round(140 * Math.pow(customYieldKt, 1 / 3)));
-      }
+      setBurstAltitudeM((prev) =>
+        prev > 0 ? prev : Math.round(140 * Math.pow(customYieldKt, 1 / 3))
+      );
     }
   };
 
@@ -120,11 +127,19 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
       const y = parseFloat(yieldParam);
       if (!isNaN(y) && y > 0) {
         setCustomYieldKt(y);
-        const mode: 'surface' | 'air' | 'underground' =
-          burstParam === 'underground' ? 'underground' : burstParam === 'surface' ? 'surface' : 'air';
+        const mode: 'surface' | 'air' | 'underground' | 'underwater' =
+          burstParam === 'underwater'
+            ? 'underwater'
+            : burstParam === 'underground'
+            ? 'underground'
+            : burstParam === 'surface'
+            ? 'surface'
+            : 'air';
         setBurstMode(mode);
         if (hobParam !== null && !isNaN(parseFloat(hobParam))) {
           setBurstAltitudeM(Math.round(parseFloat(hobParam)));
+        } else if (mode === 'underwater') {
+          setBurstAltitudeM(-Math.max(15, Math.min(600, Math.round(18 * Math.pow(y, 1 / 3)))));
         } else if (mode === 'underground') {
           setBurstAltitudeM(-Math.max(30, Math.min(1200, Math.round(65 * Math.pow(y, 1 / 3)))));
         } else if (mode === 'surface') {
@@ -150,6 +165,8 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
         setBurstAltitudeM(p.defaultHobM);
       } else if (p.burstType === 'surface') {
         setBurstAltitudeM(0);
+      } else if (p.burstType === 'underwater') {
+        setBurstAltitudeM(-Math.round(18 * Math.pow(p.yieldKt, 1 / 3)));
       } else if (p.burstType === 'underground') {
         setBurstAltitudeM(-Math.round(45 * Math.pow(p.yieldKt, 1 / 3)));
       } else {
@@ -438,7 +455,9 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
   // --- Cryptographic Audit Dossier Payload ---
   const dossierPayload: CalculationDossierPayload = useMemo(() => {
     const modeLabel =
-      burstMode === 'underground'
+      burstMode === 'underwater'
+        ? `Underwater Burst (Depth ${Math.abs(burstAltitudeM)}m)`
+        : burstMode === 'underground'
         ? `Subterranean Burst (DOB ${Math.abs(burstAltitudeM)}m)`
         : burstMode === 'surface'
         ? 'Surface Contact Burst (0m)'
@@ -461,7 +480,7 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
         { label: 'Atmospheric Visibility', value: atmosphericVisibilityKm, unit: 'km' }
       ],
       outputs: [
-        { label: burstAltitudeM < 0 ? 'Subterranean Cavity Radius' : 'Fireball Radius', value: fireballRadiusM, unit: 'm', status: 'PASS' },
+        { label: burstMode === 'underwater' ? 'Underwater Steam Bubble Radius' : burstAltitudeM < 0 ? 'Subterranean Cavity Radius' : 'Fireball Radius', value: fireballRadiusM, unit: 'm', status: 'PASS' },
         { label: 'Target Incident Overpressure', value: blastCalculations.targetOverpressurePsi.toFixed(2), unit: 'psi', status: blastCalculations.targetOverpressurePsi > 5 ? 'WARNING' : 'PASS' },
         { label: 'Target Dynamic Wind Speed', value: blastCalculations.targetWindSpeedMph, unit: 'mph', status: 'PASS' },
         { label: '5-psi Severe Damage Radius', value: blastCalculations.r5psi_km.toFixed(2), unit: 'km', status: 'PASS' },
@@ -605,11 +624,12 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
             <select
               className="form-control"
               value={burstMode}
-              onChange={(e) => handleBurstModeChange(e.target.value as 'surface' | 'air' | 'underground')}
+              onChange={(e) => handleBurstModeChange(e.target.value as 'surface' | 'air' | 'underground' | 'underwater')}
               style={{ width: '100%', fontSize: '0.85rem' }}
             >
               <option value="air">☁️ Air Burst (HOB &gt; 0m — Mach Stem Overpressure)</option>
               <option value="surface">🌋 Surface Burst (0m — Ground Cratering &amp; Fallout)</option>
+              <option value="underwater">🌊 Underwater / Maritime Burst (Water Column, Base Surge &amp; Tsunami)</option>
               <option value="underground">⛏️ Subterranean / Underground (DOB &lt; 0m — Cratering / Contained)</option>
             </select>
           </div>
@@ -617,10 +637,20 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <label style={{ fontSize: '0.82rem', fontWeight: 600 }}>
-                {burstAltitudeM < 0 ? 'Subterranean Depth (DOB m):' : 'Height / Depth of Burst (m):'}
+                {burstMode === 'underwater'
+                  ? 'Water Detonation Depth (m):'
+                  : burstAltitudeM < 0
+                  ? 'Subterranean Depth (DOB m):'
+                  : 'Height / Depth of Burst (m):'}
               </label>
-              <span style={{ fontSize: '0.72rem', fontFamily: 'JetBrains Mono, monospace', color: burstAltitudeM < 0 ? '#a78bfa' : burstAltitudeM === 0 ? '#fbbf24' : '#38bdf8' }}>
-                {burstAltitudeM < 0 ? `${burstAltitudeM} m (Sub-Terrain)` : burstAltitudeM === 0 ? '0 m (Surface)' : `+${burstAltitudeM.toLocaleString()} m`}
+              <span style={{ fontSize: '0.72rem', fontFamily: 'JetBrains Mono, monospace', color: burstMode === 'underwater' ? '#06b6d4' : burstAltitudeM < 0 ? '#a78bfa' : burstAltitudeM === 0 ? '#fbbf24' : '#38bdf8' }}>
+                {burstMode === 'underwater'
+                  ? `${burstAltitudeM < 0 ? burstAltitudeM : -Math.abs(burstAltitudeM || 27)} m (Sub-Surface Water)`
+                  : burstAltitudeM < 0
+                  ? `${burstAltitudeM} m (Sub-Terrain)`
+                  : burstAltitudeM === 0
+                  ? '0 m (Surface)'
+                  : `+${burstAltitudeM.toLocaleString()} m`}
               </span>
             </div>
             <input
@@ -640,11 +670,15 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
               step="10"
               value={Math.max(-1500, Math.min(5000, burstAltitudeM))}
               onChange={(e) => handleBurstAltitudeChange(parseInt(e.target.value) || 0)}
-              style={{ width: '100%', marginTop: '4px', cursor: 'pointer', accentColor: burstAltitudeM < 0 ? '#a78bfa' : '#38bdf8' }}
-              title="Scrub between -1,500m subterranean depth and +5,000m airburst altitude (use numeric input up to +100,000m for HEMP)"
+              style={{ width: '100%', marginTop: '4px', cursor: 'pointer', accentColor: burstMode === 'underwater' ? '#06b6d4' : burstAltitudeM < 0 ? '#a78bfa' : '#38bdf8' }}
+              title="Scrub between -1,500m underwater/subterranean depth and +5,000m airburst altitude (use numeric input up to +100,000m for HEMP)"
             />
             <div style={{ fontSize: '0.73rem', color: 'var(--color-text-muted)' }}>
-              {burstAltitudeM < 0
+              {burstMode === 'underwater'
+                ? Math.abs(burstAltitudeM) / Math.pow(Math.max(0.001, yieldKt), 1 / 3) >= 95
+                  ? `🌊 Deep Ocean Underwater Burst (${Math.abs(burstAltitudeM)}m depth — Steam Bubble & Spray Dome)`
+                  : `🌊 Shallow Underwater Plume (${Math.abs(burstAltitudeM)}m depth — Hollow Water Column & Base Surge)`
+                : burstAltitudeM < 0
                 ? Math.abs(burstAltitudeM) / Math.pow(Math.max(0.001, yieldKt), 1 / 3) >= 90
                   ? `🪨 Contained Underground (SDOB ${(Math.abs(burstAltitudeM) / Math.pow(Math.max(0.001, yieldKt), 1 / 3)).toFixed(0)} m/kt¹/³)`
                   : `⛏️ Shallow Cratering Vent (SDOB ${(Math.abs(burstAltitudeM) / Math.pow(Math.max(0.001, yieldKt), 1 / 3)).toFixed(0)} m/kt¹/³)`
