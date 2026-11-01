@@ -169,16 +169,17 @@ export const GlobalSourceAndPinboardDrawer: React.FC<GlobalSourceAndPinboardDraw
           justifyContent: 'space-between',
           flexWrap: 'wrap',
           gap: '10px',
-          padding: '7px 12px',
+          padding: '6px 12px',
           borderRadius: '8px',
-          background: 'rgba(5, 12, 24, 0.82)',
-          border: '1px solid rgba(56, 189, 248, 0.25)'
+          background: 'rgba(9, 15, 26, 0.82)',
+          border: '1px solid rgba(148, 163, 184, 0.2)'
         }}
       >
         {/* Left: Global Active Source Summary & Quick Apply */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           <button
             type="button"
+            className={openDrawer === 'source' ? 'active' : ''}
             onClick={() => setOpenDrawer(prev => (prev === 'source' ? 'none' : 'source'))}
             style={{
               display: 'inline-flex',
@@ -186,23 +187,21 @@ export const GlobalSourceAndPinboardDrawer: React.FC<GlobalSourceAndPinboardDraw
               gap: '6px',
               padding: '4px 10px',
               borderRadius: '6px',
-              fontSize: '0.76rem',
-              fontWeight: 700,
+              fontSize: '0.75rem',
+              fontWeight: 600,
               cursor: 'pointer',
-              background: openDrawer === 'source' ? 'rgba(255, 183, 3, 0.22)' : 'rgba(255, 183, 3, 0.1)',
-              border: '1px solid rgba(255, 183, 3, 0.45)',
-              color: '#ffb703'
+              border: '1px solid rgba(148, 163, 184, 0.22)'
             }}
             title="Configure shared Global Active Source (Isotope, Activity, Standoff, Shielding) across modules"
           >
-            <span>☢️ Active Source:</span>
-            <strong style={{ color: '#fff', fontFamily: 'var(--font-mono)' }}>
+            <span style={{ color: '#94a3b8' }}>Active Source:</span>
+            <strong style={{ color: '#f8fafc', fontFamily: 'var(--font-mono)' }}>
               {activeSource.isotope} ({formatActivityGBq(activeSource.activityGBq)}) @ {activeSource.distanceM}m
             </strong>
-            <span style={{ fontSize: '0.68rem', color: '#cbd5e1' }}>
+            <span style={{ fontSize: '0.68rem', color: '#94a3b8' }}>
               [{activeSource.shieldThicknessCm}cm {activeSource.shieldMaterial}]
             </span>
-            <span style={{ fontSize: '0.62rem' }}>{openDrawer === 'source' ? '▲' : '▼'}</span>
+            <span style={{ fontSize: '0.62rem', color: '#94a3b8' }}>{openDrawer === 'source' ? '▲' : '▼'}</span>
           </button>
 
           <button
@@ -212,24 +211,22 @@ export const GlobalSourceAndPinboardDrawer: React.FC<GlobalSourceAndPinboardDraw
               padding: '4px 10px',
               borderRadius: '6px',
               fontSize: '0.74rem',
-              fontWeight: 700,
+              fontWeight: 600,
               cursor: 'pointer',
-              background: 'rgba(0, 229, 255, 0.12)',
-              border: '1px solid rgba(0, 229, 255, 0.35)',
-              color: '#00e5ff'
+              border: '1px solid rgba(148, 163, 184, 0.22)'
             }}
             title="Push the Global Active Source parameters into the current module"
           >
-            📥 Sync Source to Current Tool
+            Sync Source to Tool
           </button>
 
           <span style={{ fontSize: '0.73rem', color: '#94a3b8', fontFamily: 'var(--font-mono)' }}>
             Unshielded:{' '}
-            <strong style={{ color: '#f8fafc' }}>
+            <strong style={{ color: '#e2e8f0' }}>
               {formatDoseMSv(Number(quickPhysics.unshieldedMSvPerHr.toPrecision(3)), '/h')}
             </strong>{' '}
             → Shielded:{' '}
-            <strong style={{ color: '#10b981' }}>
+            <strong style={{ color: '#cbd5e1' }}>
               {formatDoseMSv(Number(quickPhysics.shieldedMSvPerHr.toPrecision(3)), '/h')}
             </strong>
           </span>
@@ -239,6 +236,7 @@ export const GlobalSourceAndPinboardDrawer: React.FC<GlobalSourceAndPinboardDraw
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           <button
             type="button"
+            className={justPinned ? 'active' : ''}
             onClick={handlePinCurrentModuleSnapshot}
             style={{
               display: 'inline-flex',
@@ -247,19 +245,18 @@ export const GlobalSourceAndPinboardDrawer: React.FC<GlobalSourceAndPinboardDraw
               padding: '4px 10px',
               borderRadius: '6px',
               fontSize: '0.74rem',
-              fontWeight: 700,
+              fontWeight: 600,
               cursor: 'pointer',
-              background: justPinned ? 'rgba(16, 185, 129, 0.25)' : 'rgba(16, 185, 129, 0.12)',
-              border: `1px solid ${justPinned ? '#10b981' : 'rgba(16, 185, 129, 0.4)'}`,
-              color: '#10b981'
+              border: '1px solid rgba(148, 163, 184, 0.22)'
             }}
             title="Pin a snapshot of this module and active source calculation to the Multi-Module Report Ledger"
           >
-            <span>{justPinned ? '✓ Pinned to Ledger!' : '📌 Pin to Report'}</span>
+            <span>{justPinned ? '✓ Pinned to Ledger' : 'Pin to Report'}</span>
           </button>
 
           <button
             type="button"
+            className={openDrawer === 'pinboard' ? 'active' : ''}
             onClick={() => setOpenDrawer(prev => (prev === 'pinboard' ? 'none' : 'pinboard'))}
             style={{
               display: 'inline-flex',
@@ -268,29 +265,27 @@ export const GlobalSourceAndPinboardDrawer: React.FC<GlobalSourceAndPinboardDraw
               padding: '4px 10px',
               borderRadius: '6px',
               fontSize: '0.74rem',
-              fontWeight: 700,
+              fontWeight: 600,
               cursor: 'pointer',
-              background: openDrawer === 'pinboard' ? 'rgba(192, 132, 252, 0.24)' : 'rgba(192, 132, 252, 0.1)',
-              border: '1px solid rgba(192, 132, 252, 0.45)',
-              color: '#c084fc'
+              border: '1px solid rgba(148, 163, 184, 0.22)'
             }}
             title="Open Multi-Module Calculation Pinboard & Combined Dossier Exporter"
           >
-            <span>📋 Calculation Pinboard</span>
+            <span>Calculation Pinboard</span>
             <span
               style={{
                 padding: '0 6px',
                 borderRadius: '10px',
-                background: pinnedResults.length > 0 ? '#c084fc' : 'rgba(255,255,255,0.1)',
-                color: pinnedResults.length > 0 ? '#000' : '#cbd5e1',
-                fontWeight: 800,
+                background: 'rgba(148, 163, 184, 0.16)',
+                color: '#e2e8f0',
+                fontWeight: 700,
                 fontSize: '0.68rem',
                 fontFamily: 'var(--font-mono)'
               }}
             >
               {pinnedResults.length}
             </span>
-            <span style={{ fontSize: '0.62rem' }}>{openDrawer === 'pinboard' ? '▲' : '▼'}</span>
+            <span style={{ fontSize: '0.62rem', color: '#94a3b8' }}>{openDrawer === 'pinboard' ? '▲' : '▼'}</span>
           </button>
         </div>
       </div>

@@ -1649,6 +1649,7 @@ const DecayModule: React.FC = () => {
                 <button
                   key={preset.id}
                   type="button"
+                  className={isSelected ? 'active' : ''}
                   onClick={() => handleSelectPreset(preset)}
                   title={preset.description}
                   style={{
@@ -1656,9 +1657,7 @@ const DecayModule: React.FC = () => {
                     padding: '2px 8px',
                     borderRadius: '4px',
                     cursor: 'pointer',
-                    background: isSelected ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255,255,255,0.03)',
-                    color: isSelected ? '#38bdf8' : '#cbd5e1',
-                    border: isSelected ? '1px solid #38bdf8' : '1px solid rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(148, 163, 184, 0.22)',
                     fontWeight: isSelected ? 700 : 500,
                     display: 'inline-flex',
                     alignItems: 'center',
@@ -1666,7 +1665,7 @@ const DecayModule: React.FC = () => {
                   }}
                 >
                   <span>{preset.label}</span>
-                  <span style={{ fontSize: '0.62rem', padding: '0px 4px', borderRadius: '3px', background: 'rgba(0,0,0,0.35)', color: '#facc15' }}>
+                  <span style={{ fontSize: '0.62rem', padding: '0px 4px', borderRadius: '3px', background: 'rgba(0,0,0,0.35)', color: '#94a3b8' }}>
                     {preset.badge}
                   </span>
                 </button>
@@ -1678,6 +1677,7 @@ const DecayModule: React.FC = () => {
           <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
             <button
               type="button"
+              className={elutionEnabled ? 'active' : ''}
               onClick={() => {
                 const next = !elutionEnabled;
                 setElutionEnabled(next);
@@ -1688,18 +1688,17 @@ const DecayModule: React.FC = () => {
                 padding: '3px 9px',
                 borderRadius: '5px',
                 cursor: 'pointer',
-                fontWeight: 700,
-                background: elutionEnabled ? 'rgba(34, 211, 238, 0.22)' : 'rgba(255,255,255,0.04)',
-                color: elutionEnabled ? '#22d3ee' : '#94a3b8',
-                border: elutionEnabled ? '1px solid #22d3ee' : '1px solid rgba(255,255,255,0.1)'
+                fontWeight: 600,
+                border: '1px solid rgba(148, 163, 184, 0.22)'
               }}
               title="Simulate periodic saline elutions ('milking the cow') with sawtooth daughter regrowth and pie ratio resets"
             >
-              🧪 Generator Milking {elutionEnabled ? 'ON' : 'OFF'}
+              Generator Milking {elutionEnabled ? 'ON' : 'OFF'}
             </button>
 
             <button
               type="button"
+              className={activationEnabled ? 'active' : ''}
               onClick={() => {
                 const next = !activationEnabled;
                 setActivationEnabled(next);
@@ -1714,14 +1713,12 @@ const DecayModule: React.FC = () => {
                 padding: '3px 9px',
                 borderRadius: '5px',
                 cursor: 'pointer',
-                fontWeight: 700,
-                background: activationEnabled ? 'rgba(245, 158, 11, 0.22)' : 'rgba(255,255,255,0.04)',
-                color: activationEnabled ? '#fbbf24' : '#94a3b8',
-                border: activationEnabled ? '1px solid #f59e0b' : '1px solid rgba(255,255,255,0.1)'
+                fontWeight: 600,
+                border: '1px solid rgba(148, 163, 184, 0.22)'
               }}
               title="Simulate in-core thermal neutron activation (σ·Φ·N_target) up to EOB followed by post-discharge cooling"
             >
-              ⚛️ Reactor Activation {activationEnabled ? 'ON' : 'OFF'}
+              Reactor Activation {activationEnabled ? 'ON' : 'OFF'}
             </button>
           </div>
         </div>
@@ -1853,35 +1850,33 @@ const DecayModule: React.FC = () => {
             <div style={{ display: 'flex', gap: '6px' }}>
               <button
                 type="button"
+                className={q2Tab === 'time_series' ? 'active' : ''}
                 onClick={() => setQ2Tab('time_series')}
                 style={{
                   fontSize: '0.75rem',
                   padding: '3px 10px',
                   borderRadius: '5px',
                   cursor: 'pointer',
-                  fontWeight: q2Tab === 'time_series' ? 700 : 500,
-                  background: q2Tab === 'time_series' ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255,255,255,0.04)',
-                  color: q2Tab === 'time_series' ? '#38bdf8' : '#94a3b8',
-                  border: q2Tab === 'time_series' ? '1px solid #38bdf8' : '1px solid rgba(255,255,255,0.08)'
+                  fontWeight: q2Tab === 'time_series' ? 600 : 500,
+                  border: '1px solid rgba(148, 163, 184, 0.22)'
                 }}
               >
-                📈 {elutionEnabled ? 'Sawtooth Elution & Regrowth' : activationEnabled ? 'In-Core Activation & Cooling' : 'Parent & Daughter Time Evolution'}
+                {elutionEnabled ? 'Sawtooth Elution & Regrowth' : activationEnabled ? 'In-Core Activation & Cooling' : 'Parent & Daughter Time Evolution'}
               </button>
               <button
                 type="button"
+                className={q2Tab === 'spectrum' ? 'active' : ''}
                 onClick={() => setQ2Tab('spectrum')}
                 style={{
                   fontSize: '0.75rem',
                   padding: '3px 10px',
                   borderRadius: '5px',
                   cursor: 'pointer',
-                  fontWeight: q2Tab === 'spectrum' ? 700 : 500,
-                  background: q2Tab === 'spectrum' ? 'rgba(168, 85, 247, 0.2)' : 'rgba(255,255,255,0.04)',
-                  color: q2Tab === 'spectrum' ? '#c084fc' : '#94a3b8',
-                  border: q2Tab === 'spectrum' ? '1px solid #a855f7' : '1px solid rgba(255,255,255,0.08)'
+                  fontWeight: q2Tab === 'spectrum' ? 600 : 500,
+                  border: '1px solid rgba(148, 163, 184, 0.22)'
                 }}
               >
-                🔬 Simulated Detector Spectrum
+                Simulated Detector Spectrum
               </button>
             </div>
 
@@ -2094,71 +2089,67 @@ const DecayModule: React.FC = () => {
               </span>
 
               {/* 4-Way Basis Pills */}
-              <div style={{ display: 'flex', gap: '2px', background: 'rgba(0,0,0,0.4)', padding: '2px', borderRadius: '5px', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <div style={{ display: 'flex', gap: '2px', background: 'rgba(15, 23, 42, 0.65)', padding: '2px', borderRadius: '5px', border: '1px solid rgba(148, 163, 184, 0.2)' }}>
                 <button
                   type="button"
+                  className={pieRatioBasis === 'atoms' ? 'active' : ''}
                   onClick={() => setPieRatioBasis('atoms')}
                   style={{
                     fontSize: '0.68rem',
-                    padding: '2px 6px',
+                    padding: '2px 7px',
                     borderRadius: '4px',
                     cursor: 'pointer',
-                    background: pieRatioBasis === 'atoms' ? 'rgba(56, 189, 248, 0.25)' : 'transparent',
-                    color: pieRatioBasis === 'atoms' ? '#38bdf8' : '#94a3b8',
-                    border: 'none',
-                    fontWeight: pieRatioBasis === 'atoms' ? 700 : 400
+                    border: '1px solid transparent',
+                    fontWeight: pieRatioBasis === 'atoms' ? 600 : 400
                   }}
                 >
-                  ⚛️ Atoms %
+                  Atoms %
                 </button>
                 <button
                   type="button"
+                  className={pieRatioBasis === 'activity' ? 'active' : ''}
                   onClick={() => setPieRatioBasis('activity')}
                   style={{
                     fontSize: '0.68rem',
-                    padding: '2px 6px',
+                    padding: '2px 7px',
                     borderRadius: '4px',
                     cursor: 'pointer',
-                    background: pieRatioBasis === 'activity' ? 'rgba(245, 158, 11, 0.25)' : 'transparent',
-                    color: pieRatioBasis === 'activity' ? '#fbbf24' : '#94a3b8',
-                    border: 'none',
-                    fontWeight: pieRatioBasis === 'activity' ? 700 : 400
+                    border: '1px solid transparent',
+                    fontWeight: pieRatioBasis === 'activity' ? 600 : 400
                   }}
                 >
-                  ☢️ Activity
+                  Activity
                 </button>
                 <button
                   type="button"
+                  className={pieRatioBasis === 'heat' ? 'active' : ''}
                   onClick={() => setPieRatioBasis('heat')}
                   style={{
                     fontSize: '0.68rem',
-                    padding: '2px 6px',
+                    padding: '2px 7px',
                     borderRadius: '4px',
                     cursor: 'pointer',
-                    background: pieRatioBasis === 'heat' ? 'rgba(239, 68, 68, 0.25)' : 'transparent',
-                    color: pieRatioBasis === 'heat' ? '#f87171' : '#94a3b8',
-                    border: 'none',
-                    fontWeight: pieRatioBasis === 'heat' ? 700 : 400
+                    border: '1px solid transparent',
+                    fontWeight: pieRatioBasis === 'heat' ? 600 : 400
                   }}
                 >
-                  🔥 Heat
+                  Heat
                 </button>
                 <button
                   type="button"
+                  className={pieRatioBasis === 'modality' ? 'active' : ''}
                   onClick={() => setPieRatioBasis('modality')}
                   style={{
                     fontSize: '0.68rem',
-                    padding: '2px 6px',
+                    padding: '2px 7px',
                     borderRadius: '4px',
                     cursor: 'pointer',
-                    background: pieRatioBasis === 'modality' ? 'rgba(168, 85, 247, 0.25)' : 'transparent',
-                    color: pieRatioBasis === 'modality' ? '#c084fc' : '#94a3b8',
-                    border: 'none',
-                    fontWeight: pieRatioBasis === 'modality' ? 700 : 400
+                    border: '1px solid transparent',
+                    fontWeight: pieRatioBasis === 'modality' ? 600 : 400
                   }}
                   title="Breakdown of emitted radiation power by α-recoil, β-electrons, and γ/IT photons"
                 >
-                  ⚡ α/β/γ Split
+                  α/β/γ Split
                 </button>
               </div>
             </div>

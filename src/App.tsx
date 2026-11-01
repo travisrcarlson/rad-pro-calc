@@ -134,7 +134,7 @@ const NAV_CATEGORIES: NavCategory[] = [
   {
     id: 'dosimetry',
     title: 'Dosimetry & ALARA',
-    color: '#00e5ff',
+    color: '#94a3b8',
     iconSymbol: '◎',
     items: [
       { moduleNumber: 1, path: '/dose', label: 'Dose Calculator', badge: 'ICRP-103', keywords: ['module 1', 'm01', 'dose', 'point', 'gamma', 'alara', 'attenuation', 'curie'] },
@@ -147,7 +147,7 @@ const NAV_CATEGORIES: NavCategory[] = [
   {
     id: 'emergency',
     title: 'Emergency & CBRN',
-    color: '#ff9f1c',
+    color: '#94a3b8',
     iconSymbol: '▲',
     items: [
       { moduleNumber: 6, path: '/first-responder', label: 'Tactical CBRN Response', badge: 'ERG/REAC-TS', keywords: ['module 6', 'm06', 'first responder', 'cbrn', 'hazmat', 'triage', 'decon', 'ki', 'dtpa', 'cordon', 'erg 2024'] },
@@ -165,7 +165,7 @@ const NAV_CATEGORIES: NavCategory[] = [
   {
     id: 'beams',
     title: 'Beams, X-Ray & EW',
-    color: '#a78bfa',
+    color: '#94a3b8',
     iconSymbol: '⚡',
     items: [
       { moduleNumber: 16, path: '/xray', label: 'Pulsed & Flash X-Ray', badge: 'NCRP-147', keywords: ['module 16', 'm16', 'pulsed', 'flash', 'x-ray', 'duty cycle', 'beam'] },
@@ -178,7 +178,7 @@ const NAV_CATEGORIES: NavCategory[] = [
   {
     id: 'nuclear',
     title: 'Nuclear & Physics',
-    color: '#10b981',
+    color: '#94a3b8',
     iconSymbol: '⚛',
     items: [
       { moduleNumber: 21, path: '/criticality', label: 'Criticality & Reactor Core', badge: '4-Factor', keywords: ['module 21', 'm21', 'criticality', 'reactor', 'keff', 'multiplication', 'fuel', 'lattice', 'buckling'] },
@@ -191,7 +191,7 @@ const NAV_CATEGORIES: NavCategory[] = [
   {
     id: 'clinical',
     title: 'Clinical & Decom',
-    color: '#14b8a6',
+    color: '#94a3b8',
     iconSymbol: '✚',
     items: [
       { moduleNumber: 26, path: '/brachytherapy', label: 'Brachytherapy Planner', badge: 'TG-43', keywords: ['module 26', 'm26', 'brachytherapy', 'tg-43', 'seed', 'prostate', 'anisotropy', 'dose rate constant'] },
@@ -201,7 +201,7 @@ const NAV_CATEGORIES: NavCategory[] = [
   {
     id: 'databases',
     title: 'Databases & Regs',
-    color: '#38bdf8',
+    color: '#94a3b8',
     iconSymbol: '▤',
     items: [
       { moduleNumber: 28, path: '/nuclides', label: 'Nuclide Database', badge: 'ICRP-107', keywords: ['module 28', 'm28', 'nuclide', 'isotope', 'half-life', 'decay mode', 'energy', 'branching'] },
@@ -215,7 +215,7 @@ const NAV_CATEGORIES: NavCategory[] = [
   {
     id: 'qa',
     title: 'Verification & QA',
-    color: '#c084fc',
+    color: '#94a3b8',
     iconSymbol: '✓',
     items: [
       { moduleNumber: 34, path: '/verify', label: 'Verification Tests', badge: '64/64 Pass', keywords: ['module 34', 'm34', 'verify', 'test', 'sqa', 'validation', 'benchmark', 'qa'] },
@@ -965,44 +965,30 @@ const AppShell: React.FC<{
                 justifyContent: 'space-between',
                 flexWrap: 'wrap',
                 gap: '12px',
-                marginBottom: '16px',
-                padding: '8px 12px',
-                background: 'rgba(8, 15, 28, 0.85)',
-                border: '1px solid rgba(0, 229, 255, 0.22)',
-                borderRadius: '10px',
-                boxShadow: '0 4px 16px rgba(0, 0, 0, 0.35)'
+                marginBottom: '12px',
+                padding: '7px 12px',
+                background: 'rgba(9, 15, 26, 0.85)',
+                border: '1px solid rgba(148, 163, 184, 0.2)',
+                borderRadius: '8px'
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                 <button
                   type="button"
+                  className={workspaceTab === 'tool' ? 'active' : ''}
                   onClick={() => handleSelectWorkspaceTab('tool')}
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: '7px',
-                    padding: '7px 14px',
-                    borderRadius: '7px',
-                    fontSize: '0.82rem',
-                    fontWeight: 700,
+                    padding: '6px 13px',
+                    borderRadius: '6px',
+                    fontSize: '0.80rem',
+                    fontWeight: 600,
                     cursor: 'pointer',
-                    transition: 'all 0.15s ease',
-                    border:
-                      workspaceTab === 'tool'
-                        ? '1.5px solid var(--color-primary)'
-                        : '1px solid rgba(255, 255, 255, 0.12)',
-                    background:
-                      workspaceTab === 'tool'
-                        ? 'linear-gradient(90deg, rgba(0, 229, 255, 0.2) 0%, rgba(0, 229, 255, 0.08) 100%)'
-                        : 'rgba(255, 255, 255, 0.03)',
-                    color: workspaceTab === 'tool' ? '#ffffff' : '#94a3b8',
-                    boxShadow:
-                      workspaceTab === 'tool'
-                        ? '0 0 12px rgba(0, 229, 255, 0.2)'
-                        : 'none'
+                    border: '1px solid rgba(148, 163, 184, 0.22)'
                   }}
                 >
-                  <span style={{ color: workspaceTab === 'tool' ? '#00e5ff' : '#64748b' }}>⚡</span>
                   <span>
                     Interactive Tool — M{String(activeModuleInfo.moduleNumber).padStart(2, '0')}: {activeModuleInfo.label}
                   </span>
@@ -1010,48 +996,22 @@ const AppShell: React.FC<{
 
                 <button
                   type="button"
+                  className={workspaceTab === 'info' ? 'active' : ''}
                   onClick={() => handleSelectWorkspaceTab('info')}
                   title="Read what this tool does, when to use it, step-by-step operator workflow, and governing physics equations (Shortcut: Alt+I)"
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: '7px',
-                    padding: '7px 14px',
-                    borderRadius: '7px',
-                    fontSize: '0.82rem',
-                    fontWeight: 700,
+                    padding: '6px 13px',
+                    borderRadius: '6px',
+                    fontSize: '0.80rem',
+                    fontWeight: 600,
                     cursor: 'pointer',
-                    transition: 'all 0.15s ease',
-                    border:
-                      workspaceTab === 'info'
-                        ? `1.5px solid ${activeModuleInfo.categoryColor}`
-                        : '1px solid rgba(0, 229, 255, 0.28)',
-                    background:
-                      workspaceTab === 'info'
-                        ? `${activeModuleInfo.categoryColor}28`
-                        : 'rgba(0, 229, 255, 0.06)',
-                    color: workspaceTab === 'info' ? '#ffffff' : '#e2e8f0',
-                    boxShadow:
-                      workspaceTab === 'info'
-                        ? `0 0 14px ${activeModuleInfo.categoryColor}35`
-                        : 'none'
+                    border: '1px solid rgba(148, 163, 184, 0.22)'
                   }}
                 >
-                  <span style={{ fontSize: '0.92rem' }}>ℹ️</span>
                   <span>Tool Info &amp; User Guide</span>
-                  <span
-                    style={{
-                      fontSize: '0.66rem',
-                      fontFamily: 'var(--font-mono)',
-                      padding: '1px 6px',
-                      borderRadius: '4px',
-                      background: 'rgba(0, 0, 0, 0.35)',
-                      border: '1px solid rgba(255, 255, 255, 0.14)',
-                      color: workspaceTab === 'info' ? '#fff' : '#00e5ff'
-                    }}
-                  >
-                    What This Tool Does
-                  </span>
                 </button>
               </div>
 
@@ -1063,20 +1023,20 @@ const AppShell: React.FC<{
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     gap: '10px',
-                    padding: '5px 10px',
+                    padding: '4px 10px',
                     borderRadius: '6px',
-                    background: 'rgba(0, 0, 0, 0.28)',
-                    borderLeft: `3px solid ${activeModuleInfo.categoryColor}`
+                    background: 'rgba(15, 23, 42, 0.45)',
+                    borderLeft: '2px solid rgba(148, 163, 184, 0.4)'
                   }}
                 >
                   <span
                     style={{
-                      fontSize: '0.76rem',
+                      fontSize: '0.75rem',
                       color: '#cbd5e1',
                       lineHeight: 1.4
                     }}
                   >
-                    <strong style={{ color: activeModuleInfo.categoryColor }}>Purpose:</strong>{' '}
+                    <strong style={{ color: '#e2e8f0' }}>Overview:</strong>{' '}
                     {activeUserGuide.whatItDoes}
                   </span>
                   {workspaceTab === 'tool' && (
@@ -1085,17 +1045,15 @@ const AppShell: React.FC<{
                       onClick={() => handleSelectWorkspaceTab('info')}
                       style={{
                         flexShrink: 0,
-                        background: 'transparent',
-                        border: 'none',
-                        color: '#00e5ff',
-                        fontSize: '0.74rem',
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                        textDecoration: 'underline',
-                        padding: '2px 4px'
+                        padding: '3px 9px',
+                        borderRadius: '5px',
+                        border: '1px solid rgba(148, 163, 184, 0.22)',
+                        fontSize: '0.72rem',
+                        fontWeight: 600,
+                        cursor: 'pointer'
                       }}
                     >
-                      Full Guide →
+                      Guide →
                     </button>
                   )}
                 </div>

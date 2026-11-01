@@ -109,26 +109,24 @@ export const RegulatorySelectorBar: React.FC<RegulatorySelectorBarProps> = ({
           )}
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ fontSize: '1.05rem' }}>{currentFramework.flagEmoji}</span>
+            <span style={{ fontSize: '1.0rem' }}>{currentFramework.flagEmoji}</span>
             <span style={{ color: 'var(--color-text-muted)', fontWeight: 600, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
               REGIME:
             </span>
             <button
+              type="button"
+              className={isOpen ? 'active' : ''}
               onClick={() => setIsOpen(!isOpen)}
               style={{
-                background: 'rgba(0, 229, 255, 0.08)',
-                border: `1px solid ${currentFramework.accentColor}`,
-                color: currentFramework.accentColor,
+                border: '1px solid rgba(148, 163, 184, 0.24)',
                 borderRadius: '6px',
                 padding: '3px 9px',
                 fontSize: '0.76rem',
-                fontWeight: 700,
+                fontWeight: 600,
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '5px',
-                transition: 'all 0.2s ease',
-                boxShadow: `0 0 10px ${currentFramework.accentColor}25`
+                gap: '5px'
               }}
             >
               <span>{currentFramework.shortCode}</span>
@@ -142,10 +140,10 @@ export const RegulatorySelectorBar: React.FC<RegulatorySelectorBarProps> = ({
               display: 'flex',
               alignItems: 'center',
               gap: '2px',
-              background: 'rgba(0, 0, 0, 0.35)',
+              background: 'rgba(15, 23, 42, 0.65)',
               padding: '2px 3px',
               borderRadius: '6px',
-              border: '1px solid rgba(0, 229, 255, 0.25)'
+              border: '1px solid rgba(148, 163, 184, 0.22)'
             }}
             title="Switch Statutory Readout Units: SI (mSv, GBq), Traditional US (rem, mrem, Ci), or Dual"
           >
@@ -159,17 +157,15 @@ export const RegulatorySelectorBar: React.FC<RegulatorySelectorBarProps> = ({
                 <button
                   key={u.id}
                   type="button"
+                  className={active ? 'active' : ''}
                   onClick={() => setUnitSystem(u.id)}
                   style={{
                     padding: '2px 7px',
                     fontSize: '0.68rem',
-                    fontWeight: active ? 700 : 500,
+                    fontWeight: active ? 600 : 500,
                     borderRadius: '4px',
-                    border: 'none',
-                    background: active ? 'rgba(0, 229, 255, 0.22)' : 'transparent',
-                    color: active ? '#00e5ff' : '#94a3b8',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease'
+                    border: '1px solid transparent',
+                    cursor: 'pointer'
                   }}
                 >
                   {u.label}
@@ -180,16 +176,17 @@ export const RegulatorySelectorBar: React.FC<RegulatorySelectorBarProps> = ({
 
           {/* Key Limits Preview (dynamically formatted by unitSystem) */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-text-muted)', fontSize: '0.74rem' }}>
-            <span>Occ: <strong style={{ color: '#fff' }}>{formatDoseMSv(currentFramework.limits.occupationalAnnualEffective_mSv, '/yr')}</strong></span>
+            <span>Occ: <strong style={{ color: '#e2e8f0' }}>{formatDoseMSv(currentFramework.limits.occupationalAnnualEffective_mSv, '/yr')}</strong></span>
             <span style={{ opacity: 0.35 }}>|</span>
-            <span>Public: <strong style={{ color: '#fff' }}>{formatDoseMSv(currentFramework.limits.publicAnnualEffective_mSv, '/yr')}</strong></span>
+            <span>Public: <strong style={{ color: '#e2e8f0' }}>{formatDoseMSv(currentFramework.limits.publicAnnualEffective_mSv, '/yr')}</strong></span>
             <span style={{ opacity: 0.35 }}>|</span>
-            <span>Life-Saving: <strong style={{ color: '#f59e0b' }}>{formatDoseMSv(currentFramework.limits.emergencyLifeSaving_mSv)}</strong></span>
+            <span>Life-Saving: <strong style={{ color: '#cbd5e1' }}>{formatDoseMSv(currentFramework.limits.emergencyLifeSaving_mSv)}</strong></span>
           </div>
         </div>
 
         {/* Center: Command Palette Spotlight Launcher */}
         <button
+          type="button"
           onClick={() => {
             if (onOpenCommandPalette) onOpenCommandPalette();
             else window.dispatchEvent(new CustomEvent('open-command-palette'));
@@ -198,25 +195,22 @@ export const RegulatorySelectorBar: React.FC<RegulatorySelectorBarProps> = ({
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
-            background: 'rgba(0, 229, 255, 0.06)',
-            border: '1px solid rgba(0, 229, 255, 0.25)',
+            border: '1px solid rgba(148, 163, 184, 0.24)',
             borderRadius: '6px',
             padding: '4px 12px',
-            color: 'var(--color-text-muted)',
             fontSize: '0.76rem',
-            cursor: 'pointer',
-            transition: 'all 0.15s ease'
+            cursor: 'pointer'
           }}
           title="Open Command Palette (Ctrl+K / ⌘K)"
         >
-          <span style={{ color: 'var(--color-primary)', fontSize: '0.82rem' }}>🔍</span>
+          <span style={{ fontSize: '0.78rem', color: '#94a3b8' }}>🔍</span>
           <span style={{ color: '#94a3b8' }}>Search 35 modules, isotopes, standards...</span>
           <span style={{
             padding: '1px 5px',
             fontSize: '0.66rem',
             borderRadius: '4px',
-            background: 'rgba(255, 255, 255, 0.08)',
-            color: '#00e5ff',
+            background: 'rgba(148, 163, 184, 0.14)',
+            color: '#cbd5e1',
             fontFamily: 'var(--font-mono)'
           }}>
             Ctrl+K
@@ -226,51 +220,51 @@ export const RegulatorySelectorBar: React.FC<RegulatorySelectorBarProps> = ({
         {/* Right: Theme Switcher & Governing Body Standards */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           {/* Tactical Theme Toggle */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '3px', background: 'rgba(0,0,0,0.3)', padding: '2px 4px', borderRadius: '6px', border: '1px solid rgba(65, 90, 119, 0.3)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '3px', background: 'rgba(15, 23, 42, 0.65)', padding: '2px 4px', borderRadius: '6px', border: '1px solid rgba(148, 163, 184, 0.22)' }}>
             <button
-              title="Standard Deep Glassmorphic Theme"
+              type="button"
+              className={currentTheme === 'standard' ? 'active' : ''}
+              title="Standard Deep Slate Theme"
               onClick={() => setTheme('standard')}
               style={{
                 padding: '2px 6px',
                 fontSize: '0.67rem',
                 borderRadius: '4px',
-                border: 'none',
-                background: currentTheme === 'standard' ? 'rgba(0, 229, 255, 0.25)' : 'transparent',
-                color: currentTheme === 'standard' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                border: '1px solid transparent',
                 cursor: 'pointer'
               }}
             >
-              🌌 Standard
+              Standard
             </button>
             <button
-              title="Tactical High-Contrast OLED HUD Theme"
+              type="button"
+              className={currentTheme === 'tactical' ? 'active' : ''}
+              title="High-Contrast OLED HUD Theme"
               onClick={() => setTheme('tactical')}
               style={{
                 padding: '2px 6px',
                 fontSize: '0.67rem',
                 borderRadius: '4px',
-                border: 'none',
-                background: currentTheme === 'tactical' ? 'rgba(255, 183, 3, 0.25)' : 'transparent',
-                color: currentTheme === 'tactical' ? '#ffb703' : 'var(--color-text-muted)',
+                border: '1px solid transparent',
                 cursor: 'pointer'
               }}
             >
-              ⚡ HUD
+              HUD
             </button>
             <button
-              title="Tactical Night-Vision Low-Lux Red Theme"
+              type="button"
+              className={currentTheme === 'night_vision' ? 'active' : ''}
+              title="Night-Vision Low-Lux Red Theme"
               onClick={() => setTheme('night_vision')}
               style={{
                 padding: '2px 6px',
                 fontSize: '0.67rem',
                 borderRadius: '4px',
-                border: 'none',
-                background: currentTheme === 'night_vision' ? 'rgba(239, 68, 68, 0.3)' : 'transparent',
-                color: currentTheme === 'night_vision' ? '#ef4444' : 'var(--color-text-muted)',
+                border: '1px solid transparent',
                 cursor: 'pointer'
               }}
             >
-              🔴 NV-Red
+              NV-Red
             </button>
           </div>
 
@@ -344,12 +338,11 @@ export const RegulatorySelectorBar: React.FC<RegulatorySelectorBarProps> = ({
             {onTogglePinActive && (
               <button
                 type="button"
+                className={isActivePinned ? 'active' : ''}
                 onClick={onTogglePinActive}
                 title={isActivePinned ? 'Unpin module from Sidebar Favorites' : 'Pin module to Sidebar Favorites'}
                 style={{
-                  background: isActivePinned ? 'rgba(255, 183, 3, 0.16)' : 'rgba(255, 255, 255, 0.04)',
-                  border: `1px solid ${isActivePinned ? 'rgba(255, 183, 3, 0.5)' : 'rgba(255, 255, 255, 0.12)'}`,
-                  color: isActivePinned ? '#ffb703' : '#94a3b8',
+                  border: '1px solid rgba(148, 163, 184, 0.22)',
                   borderRadius: '4px',
                   padding: '1px 7px',
                   fontSize: '0.68rem',
@@ -374,9 +367,7 @@ export const RegulatorySelectorBar: React.FC<RegulatorySelectorBarProps> = ({
                   onClick={() => onStepModule(-1)}
                   title="Previous Module (Alt + ←)"
                   style={{
-                    background: 'rgba(255, 255, 255, 0.05)',
-                    border: '1px solid rgba(255, 255, 255, 0.12)',
-                    color: '#cbd5e1',
+                    border: '1px solid rgba(148, 163, 184, 0.22)',
                     borderRadius: '4px',
                     padding: '1px 7px',
                     fontSize: '0.70rem',
@@ -393,9 +384,7 @@ export const RegulatorySelectorBar: React.FC<RegulatorySelectorBarProps> = ({
                   onClick={() => onStepModule(1)}
                   title="Next Module (Alt + →)"
                   style={{
-                    background: 'rgba(255, 255, 255, 0.05)',
-                    border: '1px solid rgba(255, 255, 255, 0.12)',
-                    color: '#cbd5e1',
+                    border: '1px solid rgba(148, 163, 184, 0.22)',
                     borderRadius: '4px',
                     padding: '1px 7px',
                     fontSize: '0.70rem',
@@ -409,12 +398,11 @@ export const RegulatorySelectorBar: React.FC<RegulatorySelectorBarProps> = ({
 
             <button
               type="button"
+              className={copiedLink ? 'active' : ''}
               onClick={handleCopyDeepLink}
               title={`Copy direct link to ${activeModuleInfo.label} (${location.pathname}${location.search})`}
               style={{
-                background: copiedLink ? 'rgba(16, 185, 129, 0.2)' : 'rgba(0, 229, 255, 0.08)',
-                border: `1px solid ${copiedLink ? '#10b981' : 'rgba(0, 229, 255, 0.28)'}`,
-                color: copiedLink ? '#10b981' : '#00e5ff',
+                border: '1px solid rgba(148, 163, 184, 0.22)',
                 borderRadius: '4px',
                 padding: '1px 8px',
                 fontSize: '0.68rem',
@@ -425,17 +413,15 @@ export const RegulatorySelectorBar: React.FC<RegulatorySelectorBarProps> = ({
                 gap: '4px'
               }}
             >
-              <span>{copiedLink ? '✓ Copied URL' : '🔗 Share Link'}</span>
+              <span>{copiedLink ? '✓ Copied URL' : 'Share Link'}</span>
             </button>
 
             <button
               type="button"
               onClick={() => navigate('/verify')}
-              title="Open Module 34 Institutional 64/64 V&V Test Suite"
+              title="Open Module 34 Institutional 68/68 V&V Test Suite"
               style={{
-                background: 'rgba(16, 185, 129, 0.1)',
-                border: '1px solid rgba(16, 185, 129, 0.3)',
-                color: '#10b981',
+                border: '1px solid rgba(148, 163, 184, 0.22)',
                 borderRadius: '4px',
                 padding: '1px 7px',
                 fontSize: '0.67rem',
@@ -443,7 +429,7 @@ export const RegulatorySelectorBar: React.FC<RegulatorySelectorBarProps> = ({
                 cursor: 'pointer'
               }}
             >
-              ✓ 64/64 V&amp;V
+              ✓ 68/68 V&amp;V
             </button>
           </div>
         </div>

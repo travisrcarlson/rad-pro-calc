@@ -1,22 +1,22 @@
 :root {
-  --color-bg-deep: #050a12; /* Very deep navy/black */
-  --color-bg-panel: rgba(22, 36, 56, 0.55); /* Transparent panel for glassmorphism */
-  --color-border: rgba(65, 90, 119, 0.3); /* Subtle transparent border */
-  --color-primary: #00e5ff; /* Cyan neon */
-  --color-primary-hover: #5cffff;
-  --color-accent: #FF9F1C; /* Glowing amber */
+  --color-bg-deep: #060b14; /* Deep slate navy */
+  --color-bg-panel: rgba(15, 23, 42, 0.65); /* Restrained slate panel */
+  --color-border: rgba(148, 163, 184, 0.22); /* Clean subtle slate border */
+  --color-primary: #38bdf8; /* Calm steel-sky blue */
+  --color-primary-hover: #7dd3fc;
+  --color-accent: #cbd5e1; /* Neutral silver-slate accent */
   --color-text-main: #F8FAFC;
   --color-text-muted: #94A3B8;
   
   --color-success: #10B981;
   --color-warning: #F59E0B;
   --color-danger: #EF4444;
-  --color-info: #0ea5e9;
+  --color-info: #38bdf8;
 
   --glass-blur: blur(16px);
-  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
-  --neon-glow: 0 0 10px rgba(0, 229, 255, 0.5), 0 0 20px rgba(0, 229, 255, 0.3);
-  --neon-glow-accent: 0 0 10px rgba(255, 159, 28, 0.5), 0 0 20px rgba(255, 159, 28, 0.3);
+  --glass-shadow: 0 6px 24px 0 rgba(0, 0, 0, 0.35);
+  --neon-glow: 0 2px 8px rgba(56, 189, 248, 0.18);
+  --neon-glow-accent: 0 2px 8px rgba(148, 163, 184, 0.15);
 
   /* Badges for Decay Modes */
   --badge-alpha: #EF4444;
@@ -486,30 +486,85 @@ a:hover {
   font-size: 1.25rem;
 }
 
-/* Button variants */
+/* Unified, Restrained Workstation Button System */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 8px 16px;
-  border-radius: 4px;
-  font-weight: 500;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
   cursor: pointer;
-  border: none;
-  transition: all 0.2s ease;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  background-color: rgba(15, 23, 42, 0.72);
+  color: #e2e8f0;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
   font-family: inherit;
 }
 
+.btn:hover {
+  background-color: rgba(30, 41, 59, 0.9);
+  border-color: rgba(148, 163, 184, 0.45);
+  color: #ffffff;
+}
+
+.btn-sm {
+  padding: 5px 11px;
+  font-size: 0.76rem;
+  border-radius: 5px;
+}
+
 .btn-primary {
-  background-color: var(--color-primary);
-  color: #050a12;
+  background-color: rgba(56, 189, 248, 0.16) !important;
+  border: 1px solid rgba(56, 189, 248, 0.5) !important;
+  color: #f8fafc !important;
   font-weight: 600;
-  box-shadow: 0 0 10px rgba(0, 229, 255, 0.2);
+  box-shadow: none !important;
 }
 .btn-primary:hover {
-  background-color: var(--color-primary-hover);
-  box-shadow: var(--neon-glow);
-  transform: translateY(-1px);
+  background-color: rgba(56, 189, 248, 0.24) !important;
+  border-color: rgba(56, 189, 248, 0.75) !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+
+.btn-secondary,
+.btn-outline-secondary {
+  background-color: rgba(15, 23, 42, 0.68) !important;
+  border: 1px solid rgba(148, 163, 184, 0.22) !important;
+  color: #cbd5e1 !important;
+  box-shadow: none !important;
+}
+.btn-secondary:hover,
+.btn-outline-secondary:hover {
+  background-color: rgba(30, 41, 59, 0.88) !important;
+  border-color: rgba(148, 163, 184, 0.42) !important;
+  color: #f8fafc !important;
+}
+
+/* Normalize multi-colored inline buttons across modules to a calm, cohesive slate-and-steel palette */
+.main-content button:not(.btn-primary):not(.tab-btn):not(.nav-link):not(.react-flow__controls-button) {
+  background: rgba(15, 23, 42, 0.68) !important;
+  border-color: rgba(148, 163, 184, 0.22) !important;
+  color: #cbd5e1 !important;
+  box-shadow: none !important;
+}
+
+.main-content button:not(.btn-primary):not(.tab-btn):not(.nav-link):not(.react-flow__controls-button):hover {
+  background: rgba(30, 41, 59, 0.9) !important;
+  border-color: rgba(148, 163, 184, 0.42) !important;
+  color: #f8fafc !important;
+}
+
+.main-content button.active,
+.main-content button[aria-pressed="true"],
+.main-content .nav-link.active,
+.main-content .tab-btn.active {
+  background: rgba(56, 189, 248, 0.15) !important;
+  border-color: rgba(56, 189, 248, 0.52) !important;
+  color: #f8fafc !important;
 }
 
 .form-group {
