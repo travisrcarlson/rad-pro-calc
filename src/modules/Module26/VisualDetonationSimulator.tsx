@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useRegulatory } from '../../context/RegulatoryContext';
 
 export interface VisualDetonationProps {
   yieldKt: number;
@@ -476,6 +477,41 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
       rZone4_Thermal3rdMiles
     };
   }, [yieldKt, burstAltitudeM, burstMode]);
+
+  const { setLiveModuleTelemetry, openPhysicsTutor } = useRegulatory();
+
+  useEffect(() => {
+    const regimeDesc = cloudPhysics.isUnderwater
+      ? cloudPhysics.isDeepUnderwater
+        ? `Deep Ocean Underwater (${yieldKt} kT at -${cloudPhysics.dobM} m)`
+        : `Shallow Underwater Plume (${yieldKt} kT at -${cloudPhysics.dobM} m)`
+      : cloudPhysics.isUnderground
+      ? cloudPhysics.isFullyContained
+        ? `Deep Contained Subterranean (${yieldKt} kT at -${cloudPhysics.dobM} m)`
+        : `Shallow Cratering Subterranean (${yieldKt} kT at -${cloudPhysics.dobM} m)`
+      : burstAltitudeM >= 10000
+      ? `High-Altitude HEMP Burst (${yieldKt} kT at +${(burstAltitudeM / 1000).toFixed(1)} km)`
+      : burstAltitudeM > 0
+      ? `Airburst Mach-Stem Regime (${yieldKt} kT at +${burstAltitudeM} m)`
+      : `Contact Surface Burst (${yieldKt} kT at 0 m)`;
+
+    setLiveModuleTelemetry({
+      moduleId: 'nuclear-weapons-effects',
+      moduleTitle: 'Prompt Blast & HEMP Simulator',
+      regimeSummary: regimeDesc,
+      parameters: {
+        'Yield (kT)': yieldKt,
+        'Burst Mode': burstMode,
+        'Altitude / Depth (m)': burstAltitudeM,
+        'Scaled Depth/Height': `${cloudPhysics.sdob.toFixed(1)} m/kt¹/³`
+      },
+      computedMetrics: {
+        '5 psi Blast Radius': `${cloudPhysics.rZone3_Mod5psiKm.toFixed(2)} km`,
+        'Base Surge / Thermal': `${cloudPhysics.rZone4_Thermal3rdKm.toFixed(2)} km`,
+        'Stabilized Cloud Top': `${cloudPhysics.hTopKm.toFixed(1)} km`
+      }
+    });
+  }, [yieldKt, burstMode, burstAltitudeM, cloudPhysics, setLiveModuleTelemetry]);
 
   // --- OUTRIDER CASUALTY & HUMAN IMPACT CALCULATOR ---
   const casualties = useMemo(() => {
@@ -2879,6 +2915,31 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
                 {reg.label}
               </button>
             ))}
+
+            <button
+              type="button"
+              className="btn"
+              onClick={() => {
+                const q = cloudPhysics.isUnderwater
+                  ? `Why does detonating a ${yieldKt} kT weapon underwater at -${cloudPhysics.dobM} m quench the thermal flash and produce a radioactive base surge?`
+                  : cloudPhysics.isUnderground
+                  ? `Why does Scaled Depth of Burial (SDOB = ${cloudPhysics.sdob.toFixed(0)} m/kt¹/³) determine whether this ${yieldKt} kT underground burst craters or stays contained?`
+                  : burstAltitudeM >= 10000
+                  ? `Why does a high-altitude burst at +${(burstAltitudeM / 1000).toFixed(1)} km form a spherical plasma cloud with no ground column and generate HEMP?`
+                  : `Why does an airburst at +${burstAltitudeM} m maximize the 5-psi Mach stem radius and draw the debris column strictly upward from the ground?`;
+                openPhysicsTutor(q);
+              }}
+              style={{
+                padding: '4px 10px',
+                fontSize: '0.73rem',
+                fontWeight: 600,
+                borderRadius: '5px',
+                marginLeft: '4px'
+              }}
+              title="Open the Interactive Physics Tutor to explain the exact physical mechanism behind this detonation regime"
+            >
+              🧠 Why Does This Happen?
+            </button>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: '1 1 360px', justifyContent: 'flex-end' }}>

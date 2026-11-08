@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useCallback } from 'react';
 
 export type RegulatoryFrameworkId = 
   | 'US_NRC'       // 10 CFR 20, EPA PAG 2017
@@ -200,6 +200,15 @@ export interface PinnedCalculationItem {
   notes?: string;
 }
 
+export interface LiveModuleTelemetry {
+  moduleId: string;
+  moduleTitle: string;
+  regimeSummary: string;
+  parameters: Record<string, string | number>;
+  computedMetrics: Record<string, string | number>;
+  suggestedQuestions?: string[];
+}
+
 export const GLOBAL_SOURCE_PRESETS: GlobalSourceContext[] = [
   {
     isotope: 'Co-60',
@@ -279,6 +288,9 @@ interface RegulatoryContextType {
   pinCalculation: (item: Omit<PinnedCalculationItem, 'id' | 'timestamp'>) => void;
   removePinnedCalculation: (id: string) => void;
   clearPinnedCalculations: () => void;
+  liveModuleTelemetry: LiveModuleTelemetry | null;
+  setLiveModuleTelemetry: (telemetry: LiveModuleTelemetry | null) => void;
+  openPhysicsTutor: (promptQuestion?: string, customTelemetry?: LiveModuleTelemetry) => void;
 }
 
 const RegulatoryContext = createContext<RegulatoryContextType | undefined>(undefined);
@@ -355,6 +367,23 @@ export const RegulatoryProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     });
   };
 
+  const [liveModuleTelemetry, setLiveModuleTelemetryState] = useState<LiveModuleTelemetry | null>(null);
+
+  const setLiveModuleTelemetry = useCallback((telemetry: LiveModuleTelemetry | null) => {
+    setLiveModuleTelemetryState(telemetry);
+  }, []);
+
+  const openPhysicsTutor = useCallback((promptQuestion?: string, customTelemetry?: LiveModuleTelemetry) => {
+    if (customTelemetry) {
+      setLiveModuleTelemetryState(customTelemetry);
+    }
+    window.dispatchEvent(
+      new CustomEvent('radpro:open-physics-tutor', {
+        detail: { promptQuestion, customTelemetry }
+      })
+    );
+  }, []);
+
   const clearPinnedCalculations = () => {
     setPinnedResultsState([]);
     localStorage.setItem('radpro_pinned_calculations', JSON.stringify([]));
@@ -410,7 +439,10 @@ export const RegulatoryProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         pinnedResults,
         pinCalculation,
         removePinnedCalculation,
-        clearPinnedCalculations
+        clearPinnedCalculations,
+        liveModuleTelemetry,
+        setLiveModuleTelemetry,
+        openPhysicsTutor
       }}
     >
       {children}

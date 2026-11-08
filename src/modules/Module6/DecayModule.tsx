@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import VerificationBadge from '../../components/VerificationBadge';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
+import { useRegulatory } from '../../context/RegulatoryContext';
 import ReactFlow, { Background, Controls, MarkerType } from 'reactflow';
 import 'reactflow/dist/style.css';
 import PlotComponent from 'react-plotly.js';
@@ -1551,6 +1552,41 @@ const DecayModule: React.FC = () => {
     return simResult.elutionEvents.reduce((acc, ev) => acc + ev.harvestedActivityMBq, 0);
   }, [simResult]);
 
+  const { setLiveModuleTelemetry, openPhysicsTutor } = useRegulatory();
+
+  useEffect(() => {
+    const parentName = selectedIsotope?.Nuclide || 'Mo-99';
+    const parentHl = selectedIsotope?.['Half-Life'] || '65.94 h';
+    const terminalNode = chainNodes.find(n => n.lambda === 0) || chainNodes[chainNodes.length - 1];
+    const terminalName = terminalNode ? terminalNode.nuclide : 'Stable Ground State';
+    const daughterNames = chainNodes.slice(1).map(n => n.nuclide).join(' → ') || 'Stable';
+
+    let eqRegime = 'Single-Step Decay to Stable';
+    if (chainNodes.length >= 2 && chainNodes[1].lambda > 0 && chainNodes[0].lambda > 0) {
+      const ratio = chainNodes[1].lambda / chainNodes[0].lambda;
+      if (ratio > 50) eqRegime = `Secular Equilibrium (T₁/₂,₁ ≫ T₁/₂,₂)`;
+      else if (ratio > 1.2) eqRegime = `Transient Equilibrium (T₁/₂,₁ > T₁/₂,₂)`;
+      else eqRegime = `No Equilibrium (T₁/₂,₁ < T₁/₂,₂)`;
+    }
+
+    setLiveModuleTelemetry({
+      moduleId: 'decay-chains',
+      moduleTitle: 'Radiolysis & Decay Chains',
+      regimeSummary: `${parentName} (${parentHl}) → ${terminalName} • ${eqRegime}`,
+      parameters: {
+        'Parent Nuclide': parentName,
+        'Parent Half-Life': parentHl,
+        'Initial Activity': `${initialActivity} MBq`,
+        'Chain Length': `${chainNodes.length} states`
+      },
+      computedMetrics: {
+        'Equilibrium Regime': eqRegime,
+        'Daughter Progeny': daughterNames,
+        'Terminal Stable Nuclide': terminalName
+      }
+    });
+  }, [selectedIsotope, chainNodes, initialActivity, setLiveModuleTelemetry]);
+
   return (
     <div className="panel" style={{ height: '100%', display: 'flex', flexDirection: 'column', gap: '8px' }}>
       {/* HEADER + SEARCH + BENCHMARK CHAINS + RADIOCHEMICAL MODES */}
@@ -1578,6 +1614,24 @@ const DecayModule: React.FC = () => {
               }}
             >
               📜 QA Dossier
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const parentName = selectedIsotope?.Nuclide || 'Mo-99';
+                openPhysicsTutor(
+                  `Why does ${parentName} follow its specific decay chain pathway, how does daughter equilibrium work, and why does it end in a stable atom?`
+                );
+              }}
+              style={{
+                padding: '4px 10px',
+                borderRadius: '6px',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              🧠 Why Does This Happen?
             </button>
           </div>
 

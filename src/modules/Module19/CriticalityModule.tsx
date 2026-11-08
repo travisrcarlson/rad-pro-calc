@@ -1,8 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import VerificationBadge from '../../components/VerificationBadge';
 import PlotComponent from 'react-plotly.js';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
+import { useRegulatory } from '../../context/RegulatoryContext';
 
 const Plot = (PlotComponent as any).default || PlotComponent;
 
@@ -939,6 +940,27 @@ const CriticalityModule: React.FC = () => {
     ]
   }), [activePreset, moderatorType, enrichmentPct, boronPpm, controlInsertionPct, coreHeightM, pitchM, math]);
 
+  const { setLiveModuleTelemetry, openPhysicsTutor } = useRegulatory();
+
+  useEffect(() => {
+    setLiveModuleTelemetry({
+      moduleId: 'criticality',
+      moduleTitle: 'Criticality & Reactor Core Simulator',
+      regimeSummary: `${activePreset.name} • k_eff = ${math.kEff.toFixed(4)} (${math.state})`,
+      parameters: {
+        'Fuel Enrichment': `${enrichmentPct}% U-235`,
+        'Moderator': moderatorType,
+        'Control Bank': `${controlInsertionPct}% inserted`,
+        'Boron Shim': `${boronPpm} ppm`
+      },
+      computedMetrics: {
+        'k_eff': Number(math.kEff.toFixed(4)),
+        'k_inf': Number(math.kInf.toFixed(4)),
+        'Reactivity ρ': `${math.rhoPcm >= 0 ? '+' : ''}${math.rhoPcm.toFixed(0)} pcm ($${(math.rhoPcm / 650).toFixed(2)})`
+      }
+    });
+  }, [activePreset.name, enrichmentPct, moderatorType, controlInsertionPct, boronPpm, math, setLiveModuleTelemetry]);
+
   return (
     <div className="criticality-module">
       <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
@@ -948,7 +970,22 @@ const CriticalityModule: React.FC = () => {
             Model nuclear criticality, four-factor neutron economy, heterogeneous pin-by-pin variables (burnable poisons, steam voids, enrichment grading), and 2D finite-difference spatial diffusion.
           </p>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => {
+              openPhysicsTutor(
+                `Why does ${activePreset.name} with ${enrichmentPct}% enrichment and ${moderatorType} have k_eff = ${math.kEff.toFixed(4)} (${math.state}), and how do moderator balance and delayed neutrons control criticality?`
+              );
+            }}
+            style={{
+              fontSize: '0.8rem',
+              padding: '6px 14px'
+            }}
+          >
+            🧠 Why Does This Happen?
+          </button>
           <button
             className="btn btn-secondary"
             onClick={() => setIsDossierOpen(true)}

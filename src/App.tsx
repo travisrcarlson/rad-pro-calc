@@ -47,6 +47,7 @@ import { RegulatorySelectorBar } from './components/RegulatorySelectorBar';
 import { CommandPalette } from './components/CommandPalette';
 import { ModuleInfoTabPanel, MODULE_USER_GUIDES } from './components/ModuleInfoTabPanel';
 import { GlobalSourceAndPinboardDrawer } from './components/GlobalSourceAndPinboardDrawer';
+import { PhysicsTutorDrawer } from './components/PhysicsTutorDrawer';
 import ErrorBoundary from './ErrorBoundary';
 
 const ModuleLoadingSkeleton: React.FC = () => (
@@ -1066,6 +1067,9 @@ const AppShell: React.FC<{
             activeModuleInfo={activeModuleInfo}
             onApplySourceToCurrentModule={handleApplySourceToCurrentModule}
           />
+
+          {/* Interactive "Why Does This Happen?" Physics Tutor Drawer */}
+          <PhysicsTutorDrawer activeModuleInfo={activeModuleInfo} />
 
           {workspaceTab === 'info' && activeModuleInfo && (
             <ModuleInfoTabPanel
