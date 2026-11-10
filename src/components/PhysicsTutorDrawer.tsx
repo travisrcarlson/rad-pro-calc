@@ -1,12 +1,14 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { BlockMath } from 'react-katex';
+import React, { useState, useEffect, useMemo } from 'react';
+import { BlockMath, InlineMath } from 'react-katex';
 import {
   useRegulatory,
   ISOTOPE_QUICK_REF,
   type LiveModuleTelemetry
 } from '../context/RegulatoryContext';
 import { type ActiveModuleBreadcrumbInfo } from './RegulatorySelectorBar';
-import { MODULE_USER_GUIDES } from './ModuleInfoTabPanel';
+import { MODULE_USER_GUIDES } from '../data/moduleUserGuides';
+
+export type AudienceDepthMode = 'intuitive' | 'engineering' | 'responder';
 
 export interface PhysicsTutorMessage {
   id: string;
@@ -15,6 +17,8 @@ export interface PhysicsTutorMessage {
   question?: string;
   headline: string;
   regimeBadge: string;
+  deltaContext?: string | null;
+  intuitiveTakeaway: string;
   physicalMechanism: string[];
   governingEquations: { label: string; latex: string; meaning: string }[];
   liveSensitivityAnalysis: string[];
@@ -24,18 +28,33 @@ export interface PhysicsTutorMessage {
 
 interface PhysicsTutorDrawerProps {
   activeModuleInfo: ActiveModuleBreadcrumbInfo | null;
+  /** When true, renders embedded inside the right-hand WorkspaceInspectorDrawer without outer collapsible chrome */
+  embeddedInInspector?: boolean;
+  onApplySourceToCurrentModule?: () => void;
 }
 
 type TutorBackendMode = 'deterministic' | 'gemini' | 'ollama';
 
-/**
- * Synthesizes a deterministic, zero-hallucination, live-parameter-interpolated
- * "Why Does This Happen?" physics explanation from the current module telemetry,
- * active global source, and regulatory jurisdiction.
- */
+/** Renders text containing inline $...$ LaTeX segments cleanly via react-katex InlineMath */
+const MathText: React.FC<{ text: string }> = ({ text }) => {
+  const parts = text.split(/(\$[^$]+\$)/g);
+  return (
+    <>
+      {parts.map((part, idx) => {
+        if (part.startsWith('$') && part.endsWith('$') && part.length > 2) {
+          const latex = part.slice(1, -1);
+          return <InlineMath key={idx} math={latex} />;
+        }
+        return <React.Fragment key={idx}>{part}</React.Fragment>;
+      })}
+    </>
+  );
+};
+
 function buildDeterministicPhysicsExplanation(
   question: string,
   telemetry: LiveModuleTelemetry | null,
+  deltaSummary: string | null,
   activeModuleInfo: ActiveModuleBreadcrumbInfo | null,
   activeSource: {
     isotope: string;
@@ -52,12 +71,10 @@ function buildDeterministicPhysicsExplanation(
   const modPath = activeModuleInfo?.path || '';
   const modNum = activeModuleInfo?.moduleNumber || 1;
   const isoRef = ISOTOPE_QUICK_REF[activeSource.isotope] || ISOTOPE_QUICK_REF['Co-60'];
-
-  // Extract live parameters if available
   const params = telemetry?.parameters || {};
   const metrics = telemetry?.computedMetrics || {};
 
-  // --- CASE 1: NUCLEAR WEAPON EFFECTS & DETONATION REGIMES (Module 8 / /nuclear-weapons-effects) ---
+  // --- CASE 1: NUCLEAR WEAPON EFFECTS & DETONATION REGIMES ---
   if (
     modPath === '/nuclear-weapons-effects' ||
     telemetry?.moduleId === 'nuclear-weapons-effects' ||
@@ -69,9 +86,7 @@ function buildDeterministicPhysicsExplanation(
     qLower.includes('high-altitude') ||
     qLower.includes('hemp') ||
     qLower.includes('sdob') ||
-    qLower.includes('underground') ||
-    qLower.includes('mushroom') ||
-    qLower.includes('fireball')
+    qLower.includes('underground')
   ) {
     const yieldKt = Number(params['Yield (kT)'] ?? params.yieldKt ?? 23);
     const burstMode = String(params['Burst Mode'] ?? params.burstMode ?? 'air').toLowerCase();
@@ -79,13 +94,11 @@ function buildDeterministicPhysicsExplanation(
     const shob = Math.abs(altM) / Math.pow(Math.max(0.001, yieldKt), 1 / 3);
     const optHobM = Math.round(140 * Math.pow(Math.max(0.001, yieldKt), 1 / 3));
 
-    // Sub-case 1A: Underwater / Maritime Burst (Baker / Wigwam)
     if (
       qLower.includes('underwater') ||
       qLower.includes('water') ||
       qLower.includes('base surge') ||
       qLower.includes('baker') ||
-      qLower.includes('tsunami') ||
       burstMode === 'underwater'
     ) {
       const depthM = Math.max(5, Math.abs(altM || 27));
@@ -95,46 +108,36 @@ function buildDeterministicPhysicsExplanation(
 
       return {
         question,
+        deltaContext: deltaSummary,
         headline: isDeep
-          ? `Deep Ocean Underwater Detonation Hydrodynamics (${yieldKt.toLocaleString()} kT at -${depthM} m)`
-          : `Shallow Underwater Plume & Base Surge Physics (${yieldKt.toLocaleString()} kT at -${depthM} m)`,
-        regimeBadge: `🌊 Underwater Regime • SDOW = ${sdow.toFixed(1)} m/kt¹/³ • Bubble Ø ${rBubbleM * 2} m`,
+          ? `Deep Ocean Underwater Detonation (${yieldKt.toLocaleString()} kT at -${depthM} m)`
+          : `Shallow Underwater Plume & Base Surge (${yieldKt.toLocaleString()} kT at -${depthM} m)`,
+        regimeBadge: `🌊 Underwater • SDOW = ${sdow.toFixed(1)} m/kt¹/³ • Bubble Ø ${rBubbleM * 2} m`,
+        intuitiveTakeaway: `Water acts like an optical and thermal sponge—it swallows the blinding heat flash within meters, boils into a giant high-pressure steam bubble ($R \\approx ${rBubbleM}\\text{ m}$), and hurls millions of tons of radioactive water skyward. When that water column falls back down, it splashes outward like a dense, invisible fog of concentrated fallout ("base surge").`,
         physicalMechanism: [
-          `1. Thermal Flash Suppression & Supercritical Steam Bubble: Water has an optical absorption coefficient orders of magnitude higher than air and a high latent heat of vaporization (2,260 kJ/kg). At -${depthM} m, soft X-rays and thermal radiation are absorbed within meters, flashes are quenched, and the weapon energy vaporizes surrounding water into a high-pressure supercritical steam cavity (radius ≈ ${rBubbleM} m).`,
-          `2. Incompressible Hydraulic Shockwave (1,500 m/s): Because liquid water is nearly incompressible (bulk modulus K ≈ 2.2 GPa), the acoustic shock wave propagates at ~1,500 m/s—over 4× faster than in air—delivering severe hull-crushing impulse to submerged structures and ship hulls.`,
+          `1. Thermal Quenching & Supercritical Steam Cavity: Liquid water has a high latent heat of vaporization ($2{,}260\\text{ kJ/kg}$). Prompt X-rays and thermal photons at $-${depthM}\\text{ m}$ are absorbed locally, vaporizing seawater into a supercritical steam bubble of radius $R_{\\text{bubble}} \\approx ${rBubbleM}\\text{ m}$.`,
+          `2. Incompressible Hydraulic Shock ($1{,}500\\text{ m/s}$): Because water's bulk modulus ($K \\approx 2.2\\text{ GPa}$) makes it nearly incompressible, the underwater acoustic shock travels $>4\\times$ faster than in air, delivering hull-splitting impulse to submerged vessels.`,
           isDeep
-            ? `3. Deep-Water Bubble Pulsation & Surface Boil (Operation Wigwam Regime): Because the scaled depth SDOW = ${sdow.toFixed(1)} m/kt¹/³ exceeds 45 m/kt¹/³, the steam bubble expands, overshoots hydrostatic equilibrium, contracts, and oscillates through 2–3 cycles as it rises before breaking the surface as a foamy radioactive upwelling dome and long-period gravity wave train.`
-            : `3. Hollow Water Column & Radioactive Base Surge (Crossroads Baker Regime): At shallow scaled depth (SDOW = ${sdow.toFixed(1)} m/kt¹/³ ≤ 45), the expanding gas bubble vents violently through the sea surface, ejecting ~2 million tons of water in a hollow cylindrical column (${metrics['5 psi Blast Radius'] || 'hundreds of meters'} wide). When this massive vertical water column collapses under gravity, it splashes down and flows radially outward as a dense, ground-hugging aerosol mist ("base surge") heavily contaminated with fission products and activated sodium-24 / chlorine-38.`
+            ? `3. Deep Hydrostatic Bubble Pulsation ($\\text{SDOW} = ${sdow.toFixed(1)} > 45$): High hydrostatic pressure forces the steam bubble through $2\\text{–}3$ expansion-contraction oscillations as it rises, venting at the surface as a foamy radioactive boil and gravity wave train.`
+            : `3. Hollow Water Column & Base Surge Mist ($\\text{SDOW} = ${sdow.toFixed(1)} \\le 45$): The gas bubble blows out through the sea surface, throwing up a hollow cylindrical water column (Crossroads Baker geometry). Gravity collapse drives a ground-hugging aerosol mist ("base surge") out to ${metrics['Base Surge / Thermal'] || 'several km'}.`
         ],
         governingEquations: [
           {
-            label: 'Maximum Underwater Gas Bubble Radius (Glasstone & Dolan § 6.39)',
-            latex: 'R_{\\text{bubble}} \\approx \\frac{42 \\, Y^{1/3}}{(d + 10)^{1/4}} \\; \\text{[m]}',
-            meaning: `Determines the peak radius (${rBubbleM} m) of the incandescent steam sphere before hydrostatic pressure reverses its expansion.`
-          },
-          {
-            label: 'Shallow-Water Surface Gravity Wave Phase Speed',
-            latex: 'c_{\\text{wave}} = \\sqrt{g \\, h_{\\text{water}}}, \\qquad P_{\\text{hydraulic}}(r) \\propto \\left(\\frac{Y^{1/3}}{r}\\right)^{1.13}',
-            meaning: 'Governs the outward tsunami wave train speed and underwater peak hydraulic shock pressure.'
+            label: 'Underwater Steam Bubble Radius & Gravity Wave Speed',
+            latex: 'R_{\\text{bubble}} \\approx \\frac{42 \\, Y^{1/3}}{(d + 10)^{1/4}} \\; [\\text{m}], \\qquad c_{\\text{wave}} = \\sqrt{g \\, h_{\\text{water}}}',
+            meaning: `Predicts peak steam cavity radius (${rBubbleM} m) and outward surface tsunami phase velocity.`
           }
         ],
         liveSensitivityAnalysis: [
-          `Current Depth (-${depthM} m) vs. Airburst (+${optHobM} m): Shifting this ${yieldKt} kT device from air into water eliminates long-range 3rd-degree flash burns on land/ships, but replaces it with an intense, lingering radioactive mist base surge that coats all exposed surfaces within ${metrics['Base Surge / Thermal'] || 'several kilometers'}.`,
-          `Increasing Depth Beyond -${Math.round(45 * Math.pow(yieldKt, 1 / 3))} m (SDOW > 45): Will transition the burst from a tall Crossroads Baker hollow water column into a deep-ocean Wigwam bubble-pulsation boil, suppressing the aerial mushroom cap while increasing deep-water acoustic shock range.`
+          `Depth $-${depthM}\\text{ m}$ vs. Airburst $+${optHobM}\\text{ m}$: Eliminates long-range 3rd-degree flash burns, shifting primary lethality to hydraulic shock and wet fission-product / $^{24}\\text{Na}$ base-surge contamination.`,
+          `Transition to Deep Wigwam Regime: Lowering depth past $-${Math.round(45 * Math.pow(yieldKt, 1 / 3))}\\text{ m}$ ($\\text{SDOW} > 45$) suppresses the aerial water plume into a deep-water bubble pulsation boil.`
         ],
-        regulatoryAndOperationalNote: `Under ${frameworkCode} (${frameworkName}), maritime base-surge fallout is a severe internal inhalation and external beta/gamma hazard due to dissolved fission products and neutron-activated seawater (${activeSource.isotope} / Na-24). Ships and coastal responders must seal ventilation ("Citadel Mode") and wash down decks continuously before the mist dries.`,
+        regulatoryAndOperationalNote: `[${frameworkCode}] Wet base-surge mist adheres strongly to ship superstructures and coastal facilities. Immediate ventilation lockdown ("Citadel Mode"), respiratory protection, and continuous saltwater washdown are critical before aerosol droplets dry.`,
         sourceEngine: 'deterministic-physics'
       };
     }
 
-    // Sub-case 1B: Subterranean / Underground Burst
-    if (
-      qLower.includes('underground') ||
-      qLower.includes('sdob') ||
-      qLower.includes('crater') ||
-      qLower.includes('cavity') ||
-      burstMode === 'underground'
-    ) {
+    if (burstMode === 'underground' || qLower.includes('underground') || qLower.includes('sdob')) {
       const dobM = Math.max(1, Math.abs(altM || 150));
       const sdob = dobM / Math.pow(Math.max(0.001, yieldKt), 1 / 3);
       const isContained = sdob >= 115;
@@ -142,208 +145,307 @@ function buildDeterministicPhysicsExplanation(
 
       return {
         question,
+        deltaContext: deltaSummary,
         headline: isContained
-          ? `Deep Contained Subterranean Detonation Physics (${yieldKt.toLocaleString()} kT at -${dobM} m)`
-          : `Shallow Cratering & Base-Surge Subterranean Physics (${yieldKt.toLocaleString()} kT at -${dobM} m)`,
-        regimeBadge: `🪨 Subterranean Regime • SDOB = ${sdob.toFixed(0)} m/kt¹/³ • ${isContained ? 'Fully Contained' : 'Cratering & Venting'}`,
+          ? `Deep Contained Subterranean Burst (${yieldKt.toLocaleString()} kT at -${dobM} m)`
+          : `Shallow Cratering Subterranean Burst (${yieldKt.toLocaleString()} kT at -${dobM} m)`,
+        regimeBadge: `🪨 Subterranean • SDOB = ${sdob.toFixed(0)} m/kt¹/³ • ${isContained ? 'Contained' : 'Cratering'}`,
+        intuitiveTakeaway: isContained
+          ? `Buried this deep ($-${dobM}\\text{ m}$), the sheer weight of the rock overhead acts like a pressure-cooker lid that never blows off. The blast melts a glass-lined underground cave ($R_c \\approx ${rCavityM}\\text{ m}$) that later collapses into a vertical rubble chimney without releasing fallout.`
+          : `At $-${dobM}\\text{ m}$, the upward shock wave bounces off the ground surface and rips the rock lid open like a quarry blast, hurling millions of tons of pulverized, radioactive soil into a deep crater lip and dust surge.`,
         physicalMechanism: [
-          `1. Vaporization Cavity & Lithostatic Melt Liner: Within milliseconds of detonation at -${dobM} m, temperatures >10⁷ K vaporize surrounding rock into a spherical cavity of radius R_c ≈ ${rCavityM} m lined with molten silicate glass ("puddle glass" / trinitite) that traps refractory radionuclides.`,
-          `2. Radial Crushed & Fractured Rock Zone: An outward compressive seismic shock wave crushes rock out to ~2.5 R_c and opens radial fractures out to ~5 R_c, generating a seismic body-wave magnitude around m_b ≈ ${(4.0 + 0.75 * Math.log10(Math.max(0.001, yieldKt))).toFixed(2)}.`,
+          `1. Silicate Vaporization Cavity: Temperatures $>10^7\\text{ K}$ vaporize rock into a cavity of radius $R_c \\approx ${rCavityM}\\text{ m}$ lined with molten glass that traps refractory fission products.`,
+          `2. Seismic Coupling: Compressive shock fractures surrounding rock out to $\\sim 5 R_c$, coupling seismic energy equivalent to $m_b \\approx ${(4.0 + 0.75 * Math.log10(Math.max(0.001, yieldKt))).toFixed(2)}$.`,
           isContained
-            ? `3. Overburden Containment & Chimney Collapse (SDOB = ${sdob.toFixed(0)} ≥ 115 m/kt¹/³): Because the overburden lithostatic pressure exceeds cavity gas pressure before the shock wave can spall the surface to the cavity roof, no crater vents to the atmosphere. Minutes to hours later, the cavity roof collapses upward into a rubblized breccia chimney, sometimes forming a shallow surface subsidence sinkhole.`
-            : `3. Explosive Spall, Throwout Crater & Base Surge (SDOB = ${sdob.toFixed(0)} < 115 m/kt¹/³): At this scaled depth (peak cratering efficiency occurs near Sedan's SDOB ≈ 41 m/kt¹/³), the compressive shock reflects off the free ground surface as a tensile rarefaction wave, spalling the overburden upward and venting high-pressure cavity gases to excavate a throwout crater with an overturned ejecta lip.`
+            ? `3. Full Containment ($\\text{SDOB} = ${sdob.toFixed(0)} \\ge 115$): Lithostatic overburden pressure exceeds cavity gas pressure, preventing atmospheric venting and collapsing upward into a breccia chimney.`
+            : `3. Tensile Spall & Throwout Crater ($\\text{SDOB} = ${sdob.toFixed(0)} < 115$): Surface rarefaction spalls the overburden, venting high-pressure gases (peak cratering occurs near Sedan's $\\text{SDOB} \\approx 41$).`
         ],
         governingEquations: [
           {
-            label: 'Scaled Depth of Burial (SDOB) & Containment Criterion',
-            latex: '\\text{SDOB} = \\frac{d_{\\text{burial}}}{Y^{1/3}} \\; \\left[\\text{m/kt}^{1/3}\\right], \\qquad \\text{Full Containment:} \\; \\text{SDOB} \\ge 115',
-            meaning: `Normalizes burial depth by cube-root yield. Your current SDOB is ${sdob.toFixed(1)} m/kt¹/³.`
-          },
-          {
-            label: 'Subterranean Vapor Cavity Radius & Teleseismic Magnitude',
-            latex: 'R_c \\approx 11 \\frac{Y^{1/3}}{(\\rho \\, d)^{1/4}} \\; \\text{[m]}, \\qquad m_b \\approx 4.0 + 0.75 \\log_{10}(Y_{\\text{kT}})',
-            meaning: 'Relates cavity size to yield and overburden density, and seismic coupling to body-wave magnitude.'
+            label: 'Scaled Depth of Burial & Full Containment Threshold',
+            latex: '\\text{SDOB} = \\frac{d}{Y^{1/3}} \\; [\\text{m/kt}^{1/3}], \\qquad \\text{Contained:} \\; \\text{SDOB} \\ge 115',
+            meaning: `Cube-root yield scaling for subterranean containment (current SDOB = ${sdob.toFixed(1)}).`
           }
         ],
         liveSensitivityAnalysis: [
-          `Optimal Cratering Depth for ${yieldKt} kT: Setting depth to -${Math.round(41 * Math.pow(yieldKt, 1 / 3))} m (SDOB = 41) maximizes crater diameter and refractory fallout throwout (Operation Sedan regime).`,
-          `Full Containment Threshold for ${yieldKt} kT: Lowering depth past -${Math.round(115 * Math.pow(yieldKt, 1 / 3))} m (SDOB ≥ 115) seals the cavity completely, reducing atmospheric airblast and surface fallout to zero.`
+          `Peak Cratering Depth: $-${Math.round(41 * Math.pow(yieldKt, 1 / 3))}\\text{ m}$ ($\\text{SDOB} = 41$) maximizes crater radius and local ejecta fallout.`,
+          `Full Containment Depth: Below $-${Math.round(115 * Math.pow(yieldKt, 1 / 3))}\\text{ m}$ ($\\text{SDOB} \\ge 115$), surface blast and fallout drop to zero.`
         ],
-        regulatoryAndOperationalNote: `Under ${frameworkCode}, shallow cratering bursts deposit up to 70–80% of total fission-product activity into local ejecta and base-surge fallout, requiring immediate downwind shelter-in-place (Protection Factor PF ≥ 10) per NCRP Report 165.`,
+        regulatoryAndOperationalNote: `[${frameworkCode}] Shallow cratering bursts create intense local fallout plumes requiring immediate sheltering ($\\text{PF} \\ge 10$) along the downwind axis per NCRP-165.`,
         sourceEngine: 'deterministic-physics'
       };
     }
 
-    // Sub-case 1C: High-Altitude / Exo-Atmospheric / HEMP Burst
-    if (
-      qLower.includes('high-altitude') ||
-      qLower.includes('hemp') ||
-      qLower.includes('emp') ||
-      qLower.includes('15 km') ||
-      altM >= 10000 ||
-      shob > 280
-    ) {
+    if (altM >= 10000 || shob > 280 || qLower.includes('high-altitude') || qLower.includes('hemp')) {
       return {
         question,
-        headline: `High-Altitude Stratospheric / Ionospheric Detonation & HEMP Physics (${yieldKt.toLocaleString()} kT at +${(altM / 1000).toFixed(1)} km)`,
-        regimeBadge: `⚡ High-Altitude Regime • HOB = +${(altM / 1000).toFixed(1)} km • SHOB = ${Math.round(shob)} m/kt¹/³`,
+        deltaContext: deltaSummary,
+        headline: `High-Altitude Ionospheric Burst & HEMP (${yieldKt.toLocaleString()} kT at +${(altM / 1000).toFixed(1)} km)`,
+        regimeBadge: `⚡ High-Altitude • HOB = +${(altM / 1000).toFixed(1)} km • SHOB = ${Math.round(shob)}`,
+        intuitiveTakeaway: `Up in the thin upper atmosphere ($+${(altM / 1000).toFixed(1)}\\text{ km}$), X-rays travel kilometers instead of meters, inflating a huge glowing plasma sphere. Because the blast is so far above the Earth, its suction never reaches the ground—so **no mushroom stem is pulled up**—while downward gamma rays knock electrons onto Earth's magnetic field lines to trigger a continental EMP.`,
         physicalMechanism: [
-          `1. Why No Ground Column Forms (Decoupled Afterwinds): At +${(altM / 1000).toFixed(1)} km altitude, atmospheric density ρ(z) = ρ₀ exp(-z/H) is exponentially rarified. The incident blast wave attenuates before reaching the ground with enough dynamic pressure to scour soil, and the buoyant fireball's toroidal vortex circulatory suction cannot reach Ground Zero—so no dust stem is drawn up from the earth.`,
-          `2. Extended X-Ray Mean Free Path & Spherical Pancake Cloud: In dense sea-level air, prompt X-rays are absorbed within meters. In the thin upper stratosphere/mesosphere, X-rays travel kilometers before absorption, creating an enormous, diffuse glowing ionospheric plasma sphere that flattens laterally along the atmospheric density gradient without a classic narrow mushroom stem.`,
-          `3. Compton-Electron Geomagnetic HEMP (E1 Pulse): Prompt gamma rays traveling downward strike air molecules in the 20–40 km deposition layer, knocking out relativistic Compton electrons. These electrons spiral around Earth's geomagnetic field lines (Lorentz force F = -e(v × B)), generating a coherent, continental-scale nanosecond electromagnetic pulse (E1 up to 50,000 V/m).`
+          `1. Decoupled Ground Afterwinds: Exponentially thin air density $\\rho(z) = \\rho_0 e^{-z/H}$ weakens the downward shock and prevents vortex updrafts from reaching Ground Zero—eliminating any dust column.`,
+          `2. Rarefied X-Ray Deposition: Long photon mean free paths produce a wide, pancake-like luminescent ionospheric plasma sphere rather than a compact tropospheric torus.`,
+          `3. Geomagnetic Compton $E_1$ HEMP: Downward prompt gammas strip Compton electrons in the $20\\text{–}40\\text{ km}$ layer; Lorentz deflection $\\mathbf{F} = -e(\\mathbf{v} \\times \\mathbf{B})$ radiates a coherent nanosecond electromagnetic pulse up to $50\\text{ kV/m}$.`
         ],
         governingEquations: [
           {
-            label: 'Atmospheric Scale-Height Density & Compton Lorentz Synchrotron Current',
-            latex: '\\rho(z) = \\rho_0 e^{-z / H_0}, \\qquad \\mathbf{F}_{\\text{Lorentz}} = -e \\left(\\mathbf{v}_e \\times \\mathbf{B}_{\\text{Earth}}\\right)',
-            meaning: 'Explains both the rapid expansion of the high-altitude plasma sphere and the coherent transverse current driving HEMP.'
+            label: 'Scale-Height Density & Geomagnetic Lorentz Synchrotron Deflection',
+            latex: '\\rho(z) = \\rho_0 e^{-z/H_0}, \\qquad \\mathbf{F} = -e\\left(\\mathbf{v}_e \\times \\mathbf{B}_{\\text{Earth}}\\right)',
+            meaning: 'Governs upper-atmospheric fireball expansion and coherent transverse HEMP current.'
           }
         ],
         liveSensitivityAnalysis: [
-          `Current Altitude (+${(altM / 1000).toFixed(1)} km) vs. Optimal Airburst (+${optHobM} m): Detonating at high altitude sacrifices ground overpressure (20-psi and 5-psi surface blast rings shrink or vanish), but maximizes line-of-sight thermal flash horizon and High-Altitude Electromagnetic Pulse (HEMP) footprint.`,
-          `Lowering HOB below +3,000 m: Re-couples the shockwave reflection with the ground, restoring the Mach stem and drawing up the classic vertical debris column.`
+          `High Altitude ($+${(altM / 1000).toFixed(1)}\\text{ km}$) vs. Airburst ($+${optHobM}\\text{ m}$): Ground blast overpressure drops dramatically, while line-of-sight HEMP footprint spans hundreds to thousands of kilometers.`
         ],
-        regulatoryAndOperationalNote: `In emergency response planning (${frameworkCode}), high-altitude bursts produce negligible local ground fallout because zero soil or crater debris is entrained into the fireball, shifting priority from radiation cordons to grid/communications resilience (MIL-STD-188-125).`,
+        regulatoryAndOperationalNote: `[${frameworkCode}] Negligible local fallout occurs at ground level; critical infrastructure priority shifts to surge arrestors, Faraday shielding (MIL-STD-188-125), and backup power.`,
         sourceEngine: 'deterministic-physics'
       };
     }
 
-    // Sub-case 1D: Default Airburst vs. Surface Burst (Mach Stem & Upward Debris Column)
     return {
       question,
+      deltaContext: deltaSummary,
       headline:
         altM > 0
-          ? `Optimal Airburst Mach-Stem Reflection & Upward Afterwind Column (${yieldKt.toLocaleString()} kT at +${altM} m)`
-          : `Contact Surface Burst Cratering & Local Fallout Entrainment (${yieldKt.toLocaleString()} kT at 0 m)`,
+          ? `Optimal Airburst Mach-Stem & Upward Debris Column (${yieldKt.toLocaleString()} kT at +${altM} m)`
+          : `Contact Surface Cratering & Fallout Burst (${yieldKt.toLocaleString()} kT at 0 m)`,
       regimeBadge:
         altM > 0
-          ? `☁️ Airburst Regime • HOB = +${altM} m (Optimal ≈ +${optHobM} m) • SHOB = ${shob.toFixed(0)} m/kt¹/³`
-          : `🌋 Contact Surface Regime • HOB = 0 m • High Local Fallout`,
+          ? `☁️ Airburst • HOB = +${altM} m (Opt ≈ +${optHobM} m) • SHOB = ${shob.toFixed(0)}`
+          : `🌋 Surface Burst • HOB = 0 m • Heavy Fallout`,
+      intuitiveTakeaway:
+        altM > 0
+          ? `Detonating at $+${altM}\\text{ m}$ bounces the downward shock wave off the ground so it merges with the outward shock into a single doubled-up wall of pressure (the **Mach Stem**). Meanwhile, the rising hot fireball acts like a giant chimney, sucking dust **strictly upward from Ground Zero** into the cloud base without mixing molten soil into the core.`
+          : `Detonating right on the ground ($0\\text{ m}$) gouges a crater and sucks thousands of tons of vaporized soil straight into the nuclear fireball, coating heavy dust grains with fission products that rain back down as dangerous local fallout.`,
       physicalMechanism: [
         altM > 0
-          ? `1. Why Optimal Airburst (+${altM} m) Maximizes the 5-psi Blast Footprint (Mach Stem Coalescence): The spherical blast wave expands downward and strikes Ground Zero first. Because the reflected wave travels through air already heated and compressed by the incident wave, the reflected shock travels faster than the incident shock. At a critical grazing angle (~40°), the reflected wave catches up to and fuses with the incident wave to form a single, vertical "Mach Stem" wall of overpressure that nearly doubles ground overpressure compared to a free-air burst.`
-          : `1. Contact Surface Energy Partitioning: At 0 m elevation, hemispherical ground reflection occurs immediately at t = 0, excavating a surface crater and vaporizing thousands of tons of soil and siliceous rock directly into the incandescent fireball.`,
-        `2. Why the Debris Column Propagates Strictly UPWARD from the Ground: The mushroom stem does NOT grow downward from the cloud. Instead, as the buoyant hot fireball (T > 3,000 K) rises rapidly like a giant thermal bubble, it rolls inside-out into a rotating toroidal vortex ring. This creates a powerful low-pressure updraft chimney ("afterwinds" reaching 150–300 km/h) that scours dust and debris from Ground Zero and sucks it strictly UPWARD from the earth into the base of the rising cap.`,
+          ? `1. Mach-Stem Shock Coalescence: The ground-reflected wave travels through pre-heated, pre-compressed air behind the incident shock, catching up at a $\\sim 40^\\circ$ triple point to form a vertical Mach stem that extends the $5\\text{-psi}$ damage radius (${metrics['5 psi Blast Radius'] || ''}).`
+          : `1. Hemispherical Crater Vaporization: Direct ground coupling vaporizes surface rock and soil directly into the incandescent plasma core.`,
+        `2. Strictly Upward Afterwind Column: As the buoyant fireball rises and rolls into a rotating toroidal vortex ring, low pressure along its central axis generates $150\\text{–}300\\text{ km/h}$ inward/upward afterwinds that lift surface dust **upward from Ground Zero** into the cap.`,
         altM > 0
-          ? `3. Fallout Suppression in Airbursts: When HOB exceeds the fallout-free threshold (~55 × Y^{0.4} ≈ ${Math.round(55 * Math.pow(yieldKt, 0.4))} m), the incandescent fireball never touches the ground. The upward-sucked dust column consists of heavier, cooler soil particles that do not fuse with microscopic vaporized fission products, drastically reducing lethal local downwind fallout compared to a surface burst.`
-          : `3. Refractory Fallout Condensation: Because vaporized soil mixes intimately with fission products inside the surface-burst fireball, molten silica droplets condense around volatile and refractory radionuclides (Sr-90, Cs-137, I-131, Zr-95), raining down within hours as lethal local fallout.`
+          ? `3. Fallout-Free Fireball Clearance: Above $H_{\\text{ff}} \\approx 55 \\, Y^{0.4} \\approx ${Math.round(55 * Math.pow(yieldKt, 0.4))}\\text{ m}$, the fireball never touches the ground, preventing refractory soil condensation with fission products.`
+          : `3. Refractory Fallout Fractionation: Molten silica droplets condense around $^{90}\\text{Sr}$, $^{137}\\text{Cs}$, and $^{131}\\text{I}$, depositing intense local fallout downwind.`
       ],
       governingEquations: [
         {
-          label: 'Hopkinson-Cranz Cube-Root Blast Scaling & Optimal Mach-Stem Height',
-          latex: 'Z = \\frac{R}{Y^{1/3}}, \\qquad H_{\\text{opt (5 psi)}} \\approx 140 \\, Y^{1/3} \\; \\text{[m]}, \\qquad H_{\\text{fallout-free}} \\approx 55 \\, Y^{0.4} \\; \\text{[m]}',
-          meaning: `For ${yieldKt} kT, optimal 5-psi airburst height is +${optHobM} m and the fallout-free threshold is +${Math.round(55 * Math.pow(yieldKt, 0.4))} m.`
+          label: 'Cube-Root Mach-Stem Optimization & Fallout-Free Height',
+          latex: 'H_{\\text{opt (5 psi)}} \\approx 140 \\, Y^{1/3} \\; [\\text{m}], \\qquad H_{\\text{fallout-free}} \\approx 55 \\, Y^{0.4} \\; [\\text{m}]',
+          meaning: `For ${yieldKt} kT: optimal 5-psi height is +${optHobM} m; fallout-free clearance is +${Math.round(55 * Math.pow(yieldKt, 0.4))} m.`
         }
       ],
       liveSensitivityAnalysis: [
-        `Current Height (+${altM} m) vs. Surface (0 m): Elevating a ${yieldKt} kT burst to +${optHobM} m expands the 5-psi structural damage radius by ~35–45% via Mach-stem enhancement while eliminating local cratering fallout.`,
-        `Try Switching to Underwater (-27 m): Click "🌊 Underwater Plume (Baker)" in the simulator bar to see how water quenches the thermal flash and converts the column into a 2-million-ton hollow water plume and radioactive base surge.`
+        `Height $+${altM}\\text{ m}$ vs. Surface $0\\text{ m}$: Airburst boosts $5\\text{-psi}$ structural damage area while cutting local fallout by $>90\\%$.`
       ],
-      regulatoryAndOperationalNote: `Under ${frameworkCode} (${frameworkName}), an airburst above +${Math.round(55 * Math.pow(yieldKt, 0.4))} m produces prompt gamma/neutron flash and severe blast/thermal trauma but minimal residual fallout, whereas a surface burst requires immediate 7:10 Way-Wigner fallout shelter protocols ($R(t) = R_1 t^{-1.2}$).`,
+      regulatoryAndOperationalNote: `[${frameworkCode}] Surface bursts demand immediate $7:10$ Way-Wigner fallout shelter protocols ($R(t) = R_1 t^{-1.2}$), whereas fallout-free airbursts focus triage on blast trauma and flash burns.`,
       sourceEngine: 'deterministic-physics'
     };
   }
 
-  // --- CASE 2: RADIOACTIVE DECAY CHAINS, EQUILIBRIUM & RADIOLYSIS (Module 24 / /decay) ---
+  // --- CASE 2: DECAY CHAINS & RADIOLYSIS ---
   if (
     modPath === '/decay' ||
     telemetry?.moduleId === 'decay-chains' ||
     qLower.includes('decay') ||
     qLower.includes('bateman') ||
     qLower.includes('equilibrium') ||
-    qLower.includes('secular') ||
-    qLower.includes('transient') ||
-    qLower.includes('stable') ||
-    qLower.includes('tc-99m') ||
-    qLower.includes('mo-99') ||
     qLower.includes('radiolysis')
   ) {
-    const parentIso = String(params['Parent Nuclide'] ?? params.isotope ?? activeSource.isotope ?? 'Mo-99');
+    const parentIso = String(params['Parent Nuclide'] ?? activeSource.isotope ?? 'Mo-99');
     const halfLifeInfo = String(params['Parent Half-Life'] ?? isoRef.halfLifeStr ?? '65.94 h');
-    const equilibriumRegime = String(metrics['Equilibrium Regime'] ?? 'Transient / Secular Bateman Chain');
+    const eqRegime = String(metrics['Equilibrium Regime'] ?? 'Bateman Ingrowth');
     const terminalNuclide = String(metrics['Terminal Stable Nuclide'] ?? 'Stable Ground State');
 
     return {
       question,
-      headline: `Bateman Decay Chain Kinetics, Valley of Stability & Equilibrium (${parentIso})`,
-      regimeBadge: `☢️ Decay Kinematics • Parent: ${parentIso} (${halfLifeInfo}) • ${equilibriumRegime}`,
+      deltaContext: deltaSummary,
+      headline: `Bateman Decay Kinetics & Equilibrium (${parentIso} → ${terminalNuclide})`,
+      regimeBadge: `☢️ Decay Chain • ${parentIso} (${halfLifeInfo}) • ${eqRegime}`,
+      intuitiveTakeaway: `Think of a parent-daughter decay chain like two leaky buckets stacked vertically: ${parentIso} drains into its daughter at rate $\\lambda_1$, while the daughter drains into ${terminalNuclide} at rate $\\lambda_2$. If the top bucket drains much slower than the bottom bucket, the water level in the bottom bucket stabilizes so both flow at the exact same rate (**Equilibrium**)—until every atom eventually lands in a rock-solid **Stable** bucket at the bottom.`,
       physicalMechanism: [
-        `1. Why Nuclides Follow Specific α, β⁻, β⁺/EC, and IT Pathways: Nuclei seek the minimum binding-energy trough along the Segrè Chart ("Valley of β-Stability"). Heavy nuclei with Z > 82 (like U-238, Ra-226, Am-241) experience strong Coulomb proton-proton repulsion and shed ⁴He₂ alpha particles (ΔZ = -2, ΔA = -4) to rapidly reduce mass. Neutron-rich fission products (like ${parentIso}, Cs-137, Co-60, I-131) convert a neutron into a proton via β⁻ decay (ΔZ = +1, ΔA = 0), while proton-rich medical isotopes (like F-18, Ga-68) undergo β⁺ or Electron Capture (ΔZ = -1, ΔA = 0).`,
-        `2. Why Secular vs. Transient Equilibrium Happens: In a parent → daughter chain (N₁ → N₂), the daughter activity is governed by the ratio of half-lives T₁/₂,₁ / T₁/₂,₂. When the parent is much longer-lived (T₁/₂,₁ ≫ T₁/₂,₂, e.g., Cs-137 [30.17 yr] → Ba-137m [2.55 min] or Ra-226 → Rn-222), the daughter builds up over ~7 daughter half-lives until its decay rate exactly matches its production rate (Secular Equilibrium: A₂ ≈ A₁). When T₁/₂,₁ is only ~2–20× longer (e.g., Mo-99 [65.94 h] → Tc-99m [6.01 h]), daughter activity peaks at t_max = ln(λ₂/λ₁)/(λ₂ - λ₁) ≈ 22.84 h and then decays parallel to the parent's half-life (Transient Equilibrium).`,
-        `3. Why Every Physical Chain Must End in a Stable Atom (${terminalNuclide}): Radioactive transmutation continues step-by-step until the progeny reaches a magic or semi-magic nucleon configuration on the stability line with positive separation energy and ΔM < 0 for all decay channels (such as doubly-magic ²⁰⁸Pb [Z=82, N=126], ²⁰⁶Pb, ²⁰⁷Pb, ²⁰⁹Bi, or stable ¹³⁷Ba / ⁶⁰Ni).`
+        `1. Segrè Valley of Stability: Heavy nuclei ($Z > 82$) shed $\\alpha$ particles ($^4\\text{He}$) to relieve Coulomb repulsion; neutron-rich nuclei like ${parentIso} emit $\\beta^-$ electrons ($n \\to p + e^- + \\bar{\\nu}_e$); proton-rich nuclei capture orbital electrons or emit $\\beta^+$.`,
+        `2. Secular vs. Transient Equilibrium: When $T_{1/2,1} \\gg T_{1/2,2}$ (e.g. $^{137}\\text{Cs} \\to {}^{137\\text{m}}\\text{Ba}$), daughter activity matches parent activity after $\\sim 7$ daughter half-lives (**Secular**). When $T_{1/2,1}$ is moderately longer (e.g. $^{99}\\text{Mo} \\to {}^{99\\text{m}}\\text{Tc}$), daughter activity peaks at $t_{\\max} = \\frac{\\ln(\\lambda_2/\\lambda_1)}{\\lambda_2 - \\lambda_1}$ (**Transient**).`,
+        `3. Terminal Stability (${terminalNuclide}): Transmutation halts permanently once the nucleus reaches an energy minimum where $\\Delta M < 0$ for all decay modes (e.g. magic $Z=82$ Lead or stable $^{137}\\text{Ba}$).`
       ],
       governingEquations: [
         {
-          label: 'Two-Compartment Bateman Daughter Activity & Transient Peak Time',
-          latex: 'A_2(t) = A_1(0) \\frac{\\lambda_2}{\\lambda_2 - \\lambda_1} \\left(e^{-\\lambda_1 t} - e^{-\\lambda_2 t}\\right) \\cdot BR, \\qquad t_{\\max} = \\frac{\\ln(\\lambda_2 / \\lambda_1)}{\\lambda_2 - \\lambda_1}',
-          meaning: 'Exact analytical solution for daughter ingrowth and the time of maximum daughter activity.'
-        },
-        {
-          label: 'Aqueous Radiolysis Molecular Gas Generation Rate',
-          latex: 'R_{\\text{H}_2} = A(t) \\cdot E_{\\text{dep}} \\cdot G(\\text{H}_2) \\times 10^{-2} \\; \\text{[molecules/s]}',
-          meaning: 'Linear Energy Transfer (LET) from alpha/beta particles cleaves H₂O bonds, producing flammable H₂ and oxidative H₂O₂.'
+          label: 'Bateman Daughter Activity & Peak Ingrowth Time',
+          latex: 'A_2(t) = A_1(0)\\frac{\\lambda_2}{\\lambda_2 - \\lambda_1}\\left(e^{-\\lambda_1 t} - e^{-\\lambda_2 t}\\right), \\qquad t_{\\max} = \\frac{\\ln(\\lambda_2/\\lambda_1)}{\\lambda_2 - \\lambda_1}',
+          meaning: 'Exact analytical solution for daughter buildup and peak elution time.'
         }
       ],
       liveSensitivityAnalysis: [
-        `Active Nuclide (${parentIso}) Ingrowth Behavior: If you observe total chain activity rising during the first few hours/days before falling, that is NOT energy creation—it is the ingrowth of short-lived radioactive daughters (${metrics['Daughter Progeny'] || 'progeny states'}) each contributing their own decay events per parent disintegration.`,
-        `Radiolysis Impact: Switching from a pure beta/gamma emitter (G(H₂) ≈ 0.45 molecules/100 eV) to an alpha emitter like Am-241 or Pu-238 (G(H₂) ≈ 1.6 molecules/100 eV) increases hydrogen gas generation nearly 3.5× per unit energy because high-LET alpha tracks prevent free-radical recombination.`
+        `Active Chain (${parentIso} → ${metrics['Daughter Progeny'] || terminalNuclide}): Total sample activity can initially *increase* over time as short-lived daughters grow in before decaying toward ${terminalNuclide}.`
       ],
-      regulatoryAndOperationalNote: `Under ${frameworkCode} (${frameworkName}), sealed waste drums containing wet alpha/beta materials must account for radiolytic H₂ flammability (< 4% vol lower explosive limit) and secular daughter gamma ingrowth (e.g., Bi-214 / Tl-208 high-energy gammas growing into aged thorium/radium sources).`,
+      regulatoryAndOperationalNote: `[${frameworkCode}] Dose assessments and transport manifests (IAEA SSR-6) must account for daughter ingrowth over maximum shipping/storage time—especially high-energy gamma daughters like $^{214}\\text{Bi}$ and $^{208}\\text{Tl}$.`,
       sourceEngine: 'deterministic-physics'
     };
   }
 
-  // --- CASE 3: REACTOR CRITICALITY, SIX-FACTOR FORMULA & PROMPT EXCURSIONS (Module 21 & 22 / /criticality) ---
+  // --- CASE 3: CRITICALITY & REACTOR PHYSICS ---
   if (
     modPath === '/criticality' ||
     modPath === '/caas-criticality' ||
     telemetry?.moduleId === 'criticality' ||
     qLower.includes('criticality') ||
     qLower.includes('keff') ||
-    qLower.includes('six-factor') ||
-    qLower.includes('four-factor') ||
-    qLower.includes('delayed neutron') ||
-    qLower.includes('prompt critical') ||
     qLower.includes('moderator') ||
-    qLower.includes('reactivity') ||
-    qLower.includes('dollar')
+    qLower.includes('delayed neutron')
   ) {
-    const keff = Number(metrics['k_eff'] ?? metrics.keff ?? 1.004);
-    const kinf = Number(metrics['k_inf'] ?? metrics.kinf ?? 1.342);
+    const keff = Number(metrics['k_eff'] ?? 1.004);
+    const kinf = Number(metrics['k_inf'] ?? 1.342);
     const rhoStr = String(metrics['Reactivity ρ'] ?? '+400 pcm');
 
     return {
       question,
-      headline: `Neutron Multiplication, Moderator Balance & Delayed-Neutron Kinetics (k_eff = ${keff.toFixed(4)})`,
-      regimeBadge: `⚛️ Reactor Physics • k_∞ = ${kinf.toFixed(4)} • k_eff = ${keff.toFixed(4)} • ρ = ${rhoStr}`,
+      deltaContext: deltaSummary,
+      headline: `Six-Factor Neutron Balance & Delayed-Neutron Control (k_eff = ${keff.toFixed(4)})`,
+      regimeBadge: `⚛️ Neutronics • k_∞ = ${kinf.toFixed(4)} • k_eff = ${keff.toFixed(4)} • ρ = ${rhoStr}`,
+      intuitiveTakeaway: `Fission neutrons are born moving way too fast ($\\sim 2\\text{ MeV}$) to easily split $^{235}\\text{U}$. Water moderator acts like bumper cars that slow neutrons down so $^{235}\\text{U}$ can catch them—and keeping slightly *less* water than ideal guarantees that if the core overheats and boils, $k_{\\text{eff}}$ drops automatically. Meanwhile, a tiny $0.65\\%$ trickle of **delayed neutrons** acts as a natural brake pedal so mechanical rods have seconds—not microseconds—to steer the reactor.`,
       physicalMechanism: [
-        `1. Why the Six-Factor Formula Peaks at an Optimal Moderator-to-Fuel Ratio: Fission neutrons are born fast (~2 MeV), where the radiative capture cross-section in U-238 is large relative to fission. A low-Z moderator (H₂O, D₂O, Graphite) slows neutrons past the U-238 resonance capture region (raising Resonance Escape Probability p) into the thermal regime (< 0.1 eV) where U-235's fission cross-section jumps to ~585 barns. However, adding *too much* moderator absorbs thermal neutrons in the water itself (lowering Thermal Utilization f).`,
-        `2. Why Under-Moderation Provides Inherent Safety (Negative Void/Temperature Coefficient): Commercial LWRs are intentionally designed slightly *under-moderated* (left of the k_eff peak). If core temperature rises or water boils into steam voids, moderator density drops, fewer neutrons are thermalized (p drops faster than f rises), and k_eff automatically decreases—Passively shutting down the excursion!`,
-        `3. Why Delayed Neutrons (β_eff) Make Reactors Controllable vs. Prompt Criticality (ρ ≥ $1.00): Over 99.3% of fission neutrons are emitted within 10⁻¹⁴ s ("prompt"), which alone would give an uncontrollable millisecond doubling time. Fortunately, ~0.65% of U-235 neutrons (β_eff = 0.0065, or 0.0021 for Pu-239) are emitted seconds later by beta-decaying fission fragments (like Br-87, I-137). As long as reactivity ρ < β_eff (< $1.00), the reactor period is governed by the ~13 s delayed precursor half-life. If ρ exceeds β_eff (≥ $1.00, Prompt Critical), the chain reaction multiplies on prompt neutrons alone at microsecond timescales, halted only by Doppler fuel expansion or disassembly (Nordheim-Fuchs model).`
+        `1. Moderator-to-Fuel Optimum: Increasing moderator raises Resonance Escape Probability ($p$) past $^{238}\\text{U}$ capture resonances, but excess moderator parasitically absorbs thermal neutrons, lowering Thermal Utilization ($f$).`,
+        `2. Inherent Negative Void Feedback: Designing lattices slightly *under-moderated* ensures coolant boiling/expansion reduces moderation ($p$ drops faster than $f$ rises), passively lowering $k_{\\text{eff}}$.`,
+        `3. Delayed-Neutron Margin ($\\beta_{\\text{eff}} \\approx 0.0065$): Below $+\\$1.00$ ($\\rho < \\beta_{\\text{eff}}$), flux period follows delayed precursor half-lives ($\\sim 13\\text{ s}$). Above $+\\$1.00$ (**Prompt Critical**), multiplication accelerates onto the microsecond prompt neutron lifetime $l_p$.`
       ],
       governingEquations: [
         {
-          label: 'Six-Factor Multiplication & Reactivity in Dollars ($)',
-          latex: 'k_{\\text{eff}} = \\underbrace{\\eta \\, f \\, p \\, \\epsilon}_{k_\\infty} \\cdot P_{\\text{FNL}} \\cdot P_{\\text{TNL}}, \\qquad \\rho = \\frac{k_{\\text{eff}} - 1}{k_{\\text{eff}}}, \\qquad \\rho_{[\\$]} = \\frac{\\rho}{\\beta_{\\text{eff}}}',
-          meaning: `Combines infinite lattice reproduction (k_∞ = ${kinf.toFixed(4)}) with non-leakage probabilities and normalizes reactivity to the delayed neutron fraction β_eff.`
+          label: 'Six-Factor Multiplication & Dollar Reactivity',
+          latex: 'k_{\\text{eff}} = \\eta \\, f \\, p \\, \\epsilon \\, P_{\\text{FNL}} \\, P_{\\text{TNL}}, \\qquad \\rho_{[\\$]} = \\frac{k_{\\text{eff}} - 1}{k_{\\text{eff}} \\cdot \\beta_{\\text{eff}}}',
+          meaning: `Current infinite lattice k_∞ = ${kinf.toFixed(4)}, finite core k_eff = ${keff.toFixed(4)}.`
         }
       ],
       liveSensitivityAnalysis: [
-        `Current Multiplication State (k_eff = ${keff.toFixed(4)}): ${
+        `Live Core State ($k_{\\text{eff}} = ${keff.toFixed(4)}$): ${
           keff < 0.999
-            ? 'The assembly is subcritical (k_eff < 1); any neutron pulse dies out exponentially unless driven by an external source.'
+            ? 'Subcritical — fission chains decay exponentially.'
             : keff <= 1.0065
-            ? 'The assembly is delayed-supercritical (1 < k_eff < 1 + β_eff); flux rises on a controllable multi-second period governed by delayed neutron precursors.'
-            : 'WARNING: The assembly exceeds prompt criticality (ρ > $1.00); neutron population multiplies on prompt generation time l_p ≈ 10⁻⁴ s!'
-        }`,
-        `Increasing Geometrical Buckling B_g² (Smaller Core Radius or Less Reflector): Increases fast and thermal neutron leakage (lowering P_FNL and P_TNL), pulling k_eff down even if k_∞ > 1.`
+            ? 'Delayed Supercritical — controllable via B₄C rods and soluble boron shim.'
+            : 'Prompt Supercritical (ρ ≥ $1.00) — rapid power excursion!'
+        }`
       ],
-      regulatoryAndOperationalNote: `Per ANSI/ANS-8.1 and ${frameworkCode}, fissile operations outside reactors must maintain a subcritical margin (typically k_eff + 2σ ≤ 0.95) and deploy Criticality Accident Alarm Systems (CAAS per ANSI/ANS-8.3) capable of detecting a minimum accident of concern delivering 20 rad/min at 2 meters.`,
+      regulatoryAndOperationalNote: `[${frameworkCode}] Out-of-reactor fissile storage requires $k_{\\text{eff}} + 2\\sigma \\le 0.95$ (ANSI/ANS-8.1) and dual-channel ANSI/ANS-8.3 CAAS criticality alarms.`,
       sourceEngine: 'deterministic-physics'
     };
   }
 
-  // --- CASE 4: SHIELDING, BUILDUP FACTORS, BREMSSTRAHLUNG & DOSE CALCULATIONS ---
+  // --- CASE 4: GAMMA SPECTROSCOPY (Module 25 / /spectroscopy) ---
+  if (
+    modPath === '/spectroscopy' ||
+    telemetry?.moduleId === 'spectroscopy' ||
+    qLower.includes('compton edge') ||
+    qLower.includes('backscatter') ||
+    qLower.includes('photopeak') ||
+    qLower.includes('fwhm')
+  ) {
+    const eGammaKeV = Number(params['Photopeak Energy (keV)'] ?? 661.7);
+    const comptonEdgeKeV = eGammaKeV / (1 + 511.0 / (2 * eGammaKeV));
+    const backscatterKeV = eGammaKeV - comptonEdgeKeV;
+
+    return {
+      question,
+      deltaContext: deltaSummary,
+      headline: `Gamma Pulse-Height Spectrum Features (${eGammaKeV.toFixed(1)} keV Photopeak)`,
+      regimeBadge: `📊 Spectroscopy • E_γ = ${eGammaKeV.toFixed(1)} keV • Compton Edge = ${comptonEdgeKeV.toFixed(1)} keV`,
+      intuitiveTakeaway: `A detector crystal only measures how much energy a gamma ray **leaves behind inside the crystal**. When the gamma is swallowed whole, you get the sharp **Photopeak** ($${eGammaKeV.toFixed(1)}\\text{ keV}$). When it ricochets off an electron and escapes out the side, it leaves a flat **Compton Shelf** ending at a sharp cliff—the **Compton Edge** ($${comptonEdgeKeV.toFixed(1)}\\text{ keV}$)—representing a head-on $180^\\circ$ billiard-ball collision!`,
+      physicalMechanism: [
+        `1. Full-Energy Photopeak ($E_\\gamma = ${eGammaKeV.toFixed(1)}\\text{ keV}$): Produced by photoelectric absorption (or multiple Compton scatters followed by absorption) depositing $100\\%$ of photon energy inside the active crystal.`,
+        `2. Compton Continuum & Edge ($E_C = ${comptonEdgeKeV.toFixed(1)}\\text{ keV}$): Partial energy deposition when a photon scatters at angle $\\theta$ and escapes the detector. Maximum electron recoil occurs at $\\theta = 180^\\circ$, forming the sharp Compton Edge.`,
+        `3. $180^\\circ$ Backscatter Peak ($E_{\\text{bs}} = ${backscatterKeV.toFixed(1)}\\text{ keV}$): Gamma rays that strike surrounding lead shield walls first, scatter backward at $\\sim 180^\\circ$, and then enter the detector deposit the leftover energy $E_\\gamma - E_C \\approx 180\\text{–}250\\text{ keV}$.`
+      ],
+      governingEquations: [
+        {
+          label: 'Compton Recoil Edge & Detector FWHM Energy Resolution',
+          latex: 'E_{\\text{Compton Edge}} = \\frac{E_\\gamma}{1 + \\frac{m_e c^2}{2 E_\\gamma}}, \\qquad R(\\%) = \\frac{\\text{FWHM}}{H_0} \\times 100\\% \\propto \\frac{1}{\\sqrt{E_\\gamma}}',
+          meaning: `HPGe semiconductors achieve ~0.15% resolution (3,000× more e-h pairs than NaI(Tl) scintillation photons at ~7% resolution).`
+        }
+      ],
+      liveSensitivityAnalysis: [
+        `At $E_\\gamma = ${eGammaKeV.toFixed(1)}\\text{ keV}$: Expect the Compton Edge at $${comptonEdgeKeV.toFixed(1)}\\text{ keV}$ and the shield Backscatter Peak near $${backscatterKeV.toFixed(1)}\\text{ keV}$. If $E_\\gamma > 1{,}022\\text{ keV}$, Single ($E_\\gamma - 511$) and Double ($E_\\gamma - 1022$) Escape Peaks also appear.`
+      ],
+      regulatoryAndOperationalNote: `[${frameworkCode}] Never misidentify a ~$200\\text{ keV}$ shield backscatter peak or coincidence sum peak as a second contaminant nuclide; grading Lead shields with thin Copper/Tin liners suppresses Pb X-ray fluorescence ($75\\text{ keV}$).`,
+      sourceEngine: 'deterministic-physics'
+    };
+  }
+
+  // --- CASE 5: ATMOSPHERIC PLUME DISPERSION (Module 13 / /plume) ---
+  if (
+    modPath === '/plume' ||
+    telemetry?.moduleId === 'plume' ||
+    qLower.includes('plume') ||
+    qLower.includes('pasquill') ||
+    qLower.includes('stability class')
+  ) {
+    const stabClass = String(params['Stability Class'] ?? 'D (Neutral)');
+    const windMs = Number(params['Wind Speed (m/s)'] ?? 4.5);
+    const stackM = Number(params['Release Height (m)'] ?? 30);
+
+    return {
+      question,
+      deltaContext: deltaSummary,
+      headline: `Gaussian Plume Turbulence & Stability Class Physics (Class ${stabClass})`,
+      regimeBadge: `🌬️ Plume Model • Stability ${stabClass} • u = ${windMs} m/s • H = ${stackM} m`,
+      intuitiveTakeaway: `Sunny daytime air (Class A/B) boils with thermal updrafts that whip a smoke plume up and down—bringing elevated stack releases down to the ground close to the source, but diluting them fast. Clear calm nights (Class F) create a smooth, laminar ribbon of air that keeps an elevated plume aloft nearby, or traps a ground release in a narrow, concentrated corridor many kilometers downwind!`,
+      physicalMechanism: [
+        `1. Turbulent Eddy Diffusion ($\\sigma_y, \\sigma_z$): Crosswind ($\\sigma_y$) and vertical ($\\sigma_z$) Briggs dispersion coefficients grow with downwind distance $x$ according to solar insolation and mechanical wind shear (Pasquill-Gifford Classes A–F).`,
+        `2. Wind-Speed Dilution ($\\chi \\propto 1/u$): Doubling wind speed $u$ from $${windMs}\\text{ m/s}$ stretches the released activity over twice the volume of air per second, halving centerline concentration while halving arrival time.`,
+        `3. Ground Reflection Image Term: For an elevated release ($H = ${stackM}\\text{ m}$), ground concentration is zero right at the stack base ($x \\to 0$) and peaks downwind where vertical spread $\\sigma_z(x) \\approx H / \\sqrt{2}$.`
+      ],
+      governingEquations: [
+        {
+          label: 'Ground-Level Centerline Gaussian Plume Equation',
+          latex: '\\chi(x, 0, 0) = \\frac{Q}{\\pi \\, u \\, \\sigma_y(x) \\, \\sigma_z(x)} \\exp\\!\\left(-\\frac{H^2}{2\\sigma_z^2(x)}\\right)',
+          meaning: 'Models ground-reflected airborne concentration χ [Bq/m³] along the downwind centerline.'
+        }
+      ],
+      liveSensitivityAnalysis: [
+        `Shifting Stability from Class D → Class F (Nighttime Inversion): Suppresses vertical mixing $\\sigma_z$, pushing peak ground concentration much farther downwind and keeping ground-level releases dangerously concentrated.`
+      ],
+      regulatoryAndOperationalNote: `[${frameworkCode}] EPA PAG Manual & IAEA GSG-2 trigger sheltering at $10\\text{ mSv}$ and evacuation at $50\\text{ mSv}$ projected TEDE (plus $50\\text{ mGy}$ thyroid KI prophylaxis threshold for $^{131}\\text{I}$).`,
+      sourceEngine: 'deterministic-physics'
+    };
+  }
+
+  // --- CASE 6: X-RAY TUBE & BREMSSTRAHLUNG SPECTRA (Module 16/17) ---
+  if (
+    modPath === '/xray-tube' ||
+    modPath === '/xray' ||
+    telemetry?.moduleId === 'xray-tube' ||
+    qLower.includes('duane-hunt') ||
+    qLower.includes('kvp') ||
+    qLower.includes('filtration') ||
+    qLower.includes('beam hardening')
+  ) {
+    const kvp = Number(params['Tube Potential (kVp)'] ?? 120);
+    const filterMm = Number(params['Al Filtration (mm)'] ?? 2.5);
+    const lambdaMinNm = 1.23984 / kvp;
+
+    return {
+      question,
+      deltaContext: deltaSummary,
+      headline: `Bremsstrahlung Continuum, Duane-Hunt Cutoff & Beam Hardening (${kvp} kVp)`,
+      regimeBadge: `⚡ X-Ray Physics • ${kvp} kVp • λ_min = ${lambdaMinNm.toFixed(4)} nm • Filter = ${filterMm} mm Al`,
+      intuitiveTakeaway: `Electrons slammed across $${kvp}\\text{ kVp}$ into a tungsten anode brake violently around heavy nuclei, spraying a continuous rainbow of X-rays (**Bremsstrahlung**) up to a hard energy ceiling of exactly $${kvp}\\text{ keV}$ (where a single electron gives up $100\\%$ of its kinetic energy in one shot). Adding Aluminum filtration strips away "soft" low-energy X-rays that would only burn patient skin without penetrating to the detector (**Beam Hardening**).`,
+      physicalMechanism: [
+        `1. Duane-Hunt Quantum Cutoff ($E_{\\max} = e V_{\\text{kVp}}$): Conservation of energy forbids any photon above $${kvp}\\text{ keV}$, fixing minimum wavelength at $\\lambda_{\\min} = ${lambdaMinNm.toFixed(4)}\\text{ nm}$.`,
+        `2. Kramers Bremsstrahlung + Characteristic Lines: Braking radiation scales with $Z \\cdot I \\cdot V_{\\text{kVp}}^2$, superimposed with sharp $K_\\alpha / K_\\beta$ shell-transition spikes once kVp exceeds the target's K-edge ($69.5\\text{ keV}$ for Tungsten).`,
+        `3. Aluminum Filtration & Beam Hardening ($${filterMm}\\text{ mm Al}$): Low-energy photons suffer $\\tau \\propto E^{-3}$ photoelectric absorption in the filter, shifting mean spectrum energy upward and increasing the Half-Value Layer (HVL).`
+      ],
+      governingEquations: [
+        {
+          label: 'Duane-Hunt Cutoff & Kramers Integrated Bremsstrahlung Intensity',
+          latex: '\\lambda_{\\min} \\; [\\text{nm}] = \\frac{h c}{e V} = \\frac{1.2398}{\\text{kVp}}, \\qquad I_{\\text{total}} \\propto i_{\\text{mA}} \\cdot Z_{\\text{anode}} \\cdot (\\text{kVp})^2',
+          meaning: 'Doubling kVp quadruples unfiltered X-ray power output while shifting penetrating power upward.'
+        }
+      ],
+      liveSensitivityAnalysis: [
+        `Increasing kVp vs. mA: Raising mA scales photon quantity linearly ($I \\propto \\text{mA}$) without changing HVL, whereas raising kVp increases both intensity ($\\propto \\text{kVp}^2$) and penetration.`
+      ],
+      regulatoryAndOperationalNote: `[${frameworkCode}] Diagnostic and NDT enclosures (NCRP Report 147) size primary barriers for unattenuated workload $W \\cdot U \\cdot T$ and secondary barriers for $90^\\circ$ patient scatter + tube housing leakage.`,
+      sourceEngine: 'deterministic-physics'
+    };
+  }
+
+  // --- DEFAULT CASE: DOSE, INVERSE-SQUARE & BROAD-BEAM SHIELDING ---
   const unshieldedDoseMSvH =
     (isoRef.gammaConst_mSv_m2_h_GBq * activeSource.activityGBq) /
     Math.pow(Math.max(0.1, activeSource.distanceM), 2);
@@ -354,46 +456,50 @@ function buildDeterministicPhysicsExplanation(
 
   return {
     question,
-    headline: `Photon Attenuation, Compton Buildup & Inverse-Square Physics (${activeSource.isotope}, ${activeSource.activityGBq} GBq)`,
-    regimeBadge: `🛡️ M${String(modNum).padStart(2, '0')} • ${activeSource.isotope} at ${activeSource.distanceM} m • ${activeSource.shieldThicknessCm} cm ${activeSource.shieldMaterial}`,
+    deltaContext: deltaSummary,
+    headline: `Inverse-Square Divergence & Compton Scatter Buildup (${activeSource.isotope}, ${activeSource.activityGBq} GBq)`,
+    regimeBadge: `🛡️ M${String(modNum).padStart(2, '0')} • ${activeSource.isotope} @ ${activeSource.distanceM} m • ${activeSource.shieldThicknessCm} cm ${activeSource.shieldMaterial}`,
+    intuitiveTakeaway: `Stepping twice as far from ${activeSource.isotope} spreads its gamma rays over $4\\times$ the spherical surface area ($1/r^2$). Placing ${activeSource.shieldThicknessCm} cm of ${activeSource.shieldMaterial} in between blocks most direct photons, **but** many gamma rays ricochet off electrons inside the shield (Compton scatter) and still emerge forward—meaning real-world "broad-beam" dose is $${approxBuildup.toFixed(1)}\\times$ higher than naive textbook exponential decay predicts!`,
     physicalMechanism: [
-      `1. Geometric Inverse-Square Divergence (1/r²): Isotropic photons emitted from a point-like ${activeSource.isotope} source (${activeSource.activityGBq} GBq) spread over the surface of a sphere of area 4πr². Doubling standoff distance from ${activeSource.distanceM} m to ${(activeSource.distanceM * 2).toFixed(1)} m distributes the same photon flux over 4× the area, cutting unshielded dose rate from ${unshieldedDoseMSvH.toFixed(3)} mSv/h to ${(unshieldedDoseMSvH / 4).toFixed(3)} mSv/h.`,
-      `2. Why Broad-Beam Shielding Requires a Buildup Factor B(μx) > 1: Naive Beer-Lambert attenuation (I = I₀ e^{-μx}) assumes any photon that interacts in the ${activeSource.shieldThicknessCm} cm ${activeSource.shieldMaterial} slab is completely removed ("narrow-beam geometry"). In reality, intermediate-energy gamma rays (0.2–3 MeV) interact primarily via Compton Scattering—deflecting at a lower energy (E' < E) into the forward direction and still reaching the receptor! Neglecting the Buildup Factor B(μx) ≈ ${approxBuildup.toFixed(2)} would dangerously underestimate true dose rate by ${((1 - 1 / approxBuildup) * 100).toFixed(0)}%.`,
-      `3. Photoelectric Z⁴ Absorption vs. Bremsstrahlung X-Ray Production: High-Z materials like Lead (Z=82) and Tungsten (Z=74) excel at stopping gamma rays because the photoelectric cross-section scales as τ ∝ Z⁴ / E³. However, for energetic pure beta emitters (like Sr-90/Y-90 or P-32), high-Z shields decelerate electrons rapidly and radiate penetrating Bremsstrahlung X-rays (f_brems ∝ Z · E_β)—which is why beta sources are shielded first with low-Z acrylic/plastic, followed by lead on the outside.`
+      `1. Geometric Inverse-Square Law ($1/r^2$): At $r = ${activeSource.distanceM}\\text{ m}$, isotropic $4\\pi r^2$ divergence yields an unshielded rate of $${unshieldedDoseMSvH.toFixed(3)}\\text{ mSv/h}$.`,
+      `2. Broad-Beam Compton Buildup ($B(\\mu x) \\approx ${approxBuildup.toFixed(2)}$): Multiple-scattered degraded photons penetrate forward through thick barriers alongside uncollided photons ($e^{-\\mu x}$), raising true dose rate from $${(unshieldedDoseMSvH * narrowTrans).toFixed(4)}$ to $${shieldedDoseMSvH.toFixed(4)}\\text{ mSv/h}$.`,
+      `3. High-$Z$ Photoelectric vs. Beta Bremsstrahlung: High-$Z$ shields ($\tau \\propto Z^4/E^3$) stop gammas efficiently, whereas pure $\\beta^-$ emitters require low-$Z$ plastic inner linings first to avoid radiative Bremsstrahlung ($f_{\\text{brem}} \\propto Z \\cdot E_\\beta$).`
     ],
     governingEquations: [
       {
-        label: 'Broad-Beam Shielded Point-Source Dose Rate with Compton Buildup',
-        latex: '\\dot{H}(r, x) = \\frac{\\Gamma \\cdot A}{r^2} \\, B(\\mu x, E) \\, e^{-\\mu(E) \\, x}',
-        meaning: `Combines specific gamma constant Γ (${isoRef.gammaConst_mSv_m2_h_GBq} mSv·m²/h·GBq for ${activeSource.isotope}), inverse-square law, exponential attenuation, and Compton scatter buildup.`
-      },
-      {
-        label: 'Half-Value Layer (HVL) & Tenth-Value Layer (TVL) Relationship',
-        latex: '\\text{HVL} = \\frac{\\ln(2)}{\\mu}, \\qquad \\text{TVL} = \\frac{\\ln(10)}{\\mu} = \\frac{\\ln(10)}{\\ln(2)} \\, \\text{HVL} \\approx 3.322 \\, \\text{HVL}',
-        meaning: `Every 1 TVL (${(isoRef.hvlLeadCm * 3.322).toFixed(2)} cm Pb for ${activeSource.isotope}) reduces narrow-beam transmission by 10×.`
+        label: 'Broad-Beam Shielded Point-Source Dose Rate',
+        latex: '\\dot{H}^*(10) = \\frac{\\Gamma \\cdot A}{r^2} \\, B(\\mu x, E) \\, e^{-\\mu(E) \\, x}, \\qquad \\text{TVL} = \\frac{\\ln(10)}{\\ln(2)}\\,\\text{HVL} \\approx 3.322\\,\\text{HVL}',
+        meaning: `Γ = ${isoRef.gammaConst_mSv_m2_h_GBq} mSv·m²/(h·GBq) for ${activeSource.isotope}; 1 Pb TVL ≈ ${(isoRef.hvlLeadCm * 3.322).toFixed(2)} cm.`
       }
     ],
     liveSensitivityAnalysis: [
-      `Current Active Source (${activeSource.isotope}, ${activeSource.activityGBq} GBq at ${activeSource.distanceM} m): Unshielded dose rate is ${unshieldedDoseMSvH.toFixed(3)} mSv/h. With ${activeSource.shieldThicknessCm} cm thickness (~${hvlCount.toFixed(1)} Pb-equivalent HVLs), narrow-beam math predicts ${(unshieldedDoseMSvH * narrowTrans).toFixed(4)} mSv/h, whereas realistic broad-beam with Compton buildup (B ≈ ${approxBuildup.toFixed(2)}) yields ${shieldedDoseMSvH.toFixed(4)} mSv/h.`,
+      `Adding $+1\\text{ TVL}$ ($+${(isoRef.hvlLeadCm * 3.322).toFixed(2)}\\text{ cm}$ Pb-eq): Cuts uncollided flux $10\\times$, though Compton buildup softens total reduction to $\\sim 6\\text{–}8\\times$.`,
       activeModuleInfo && MODULE_USER_GUIDES[activeModuleInfo.moduleNumber]
-        ? `Active Module Context (${activeModuleInfo.label}): ${MODULE_USER_GUIDES[activeModuleInfo.moduleNumber].whatItDoes}`
-        : `Adjusting Standoff Distance vs. Shield Thickness: Increasing distance requires zero structural mass, whereas adding 1 TVL of shielding reduces flux by roughly an order of magnitude.`
+        ? `Active Tool (${activeModuleInfo.label}): ${MODULE_USER_GUIDES[activeModuleInfo.moduleNumber].whatItDoes}`
+        : `Doubling Standoff Distance ($${activeSource.distanceM}\\text{ m} \\to ${(activeSource.distanceM * 2).toFixed(1)}\\text{ m}$): Cuts dose rate by exactly $75\\%$ with zero added shield weight.`
     ],
-    regulatoryAndOperationalNote: `Under ${frameworkCode} (${frameworkName}), the annual occupational effective dose limit is ${occLimitMSv} mSv/yr. At the current shielded dose rate (${shieldedDoseMSvH.toFixed(3)} mSv/h), a worker reaches the annual administrative limit in ${(occLimitMSv / Math.max(1e-6, shieldedDoseMSvH)).toFixed(1)} hours.`,
+    regulatoryAndOperationalNote: `[${frameworkCode}] Annual occupational limit is $${occLimitMSv}\\text{ mSv/yr}$ (${frameworkName}). At $${shieldedDoseMSvH.toFixed(3)}\\text{ mSv/h}$, administrative stay-time ceiling is $${(occLimitMSv / Math.max(1e-6, shieldedDoseMSvH)).toFixed(1)}\\text{ h}$.`,
     sourceEngine: 'deterministic-physics'
   };
 }
 
-export const PhysicsTutorDrawer: React.FC<PhysicsTutorDrawerProps> = ({ activeModuleInfo }) => {
+export const PhysicsTutorDrawer: React.FC<PhysicsTutorDrawerProps> = ({
+  activeModuleInfo,
+  embeddedInInspector = false,
+  onApplySourceToCurrentModule
+}) => {
   const {
     currentFramework,
     activeSource,
+    setActiveSource,
     pinnedResults,
     pinCalculation,
-    liveModuleTelemetry
+    liveModuleTelemetry,
+    telemetryDeltaSummary
   } = useRegulatory();
 
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(embeddedInInspector);
+  const [depthMode, setDepthMode] = useState<AudienceDepthMode>('engineering');
   const [customQuestion, setCustomQuestion] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -414,9 +520,7 @@ export const PhysicsTutorDrawer: React.FC<PhysicsTutorDrawerProps> = ({ activeMo
   });
 
   const [messages, setMessages] = useState<PhysicsTutorMessage[]>([]);
-  const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
-  // Build context-aware suggested questions based on active module & live sliders
   const suggestedQuestions = useMemo(() => {
     if (liveModuleTelemetry?.suggestedQuestions && liveModuleTelemetry.suggestedQuestions.length > 0) {
       return liveModuleTelemetry.suggestedQuestions;
@@ -424,43 +528,94 @@ export const PhysicsTutorDrawer: React.FC<PhysicsTutorDrawerProps> = ({ activeMo
     const path = activeModuleInfo?.path || '';
     if (path === '/nuclear-weapons-effects') {
       return [
-        'Why does Optimal Airburst maximize the 5-psi radius via the Mach stem and suck the debris column strictly upward?',
-        'Why does an Underwater detonation (-27m Baker) quench the thermal flash and create a radioactive base surge?',
-        'Why does a High-Altitude burst (15 km+) form a spherical pancake cloud with no ground column and generate HEMP?',
-        'Why does Scaled Depth of Burial (SDOB) determine whether an underground burst craters or stays fully contained?'
+        'Why does Optimal Airburst maximize 5-psi Mach-stem radius and pull the debris stem strictly upward?',
+        'Why does an Underwater Baker burst quench thermal flash and create a radioactive base surge?',
+        'Why does a High-Altitude burst (15 km+) form a spherical plasma cloud with no ground stem and generate HEMP?',
+        'Why does SDOB determine whether an underground burst craters or stays fully contained?'
       ];
     }
     if (path === '/decay') {
       return [
-        'Why does this parent nuclide follow its specific α / β⁻ / EC pathway toward the valley of stability?',
-        'Why do parent-daughter pairs like Mo-99 → Tc-99m reach Transient vs. Secular Equilibrium?',
-        'Why do all natural actinide decay chains terminate in stable Lead (Pb-206, Pb-207, Pb-208) or Bi-209?',
-        'Why does alpha decay radiolyze water into H₂ gas 3.5× faster per keV than beta/gamma decay?'
+        'Why does this parent nuclide follow its specific α / β⁻ / EC pathway toward stability?',
+        'Why do parent-daughter pairs reach Secular vs. Transient Equilibrium?',
+        'Why do all natural actinide chains end in stable Lead (Pb-206/207/208) or Bi-209?'
       ];
     }
     if (path === '/criticality' || path === '/caas-criticality') {
       return [
         'Why does the Six-Factor Formula peak at an optimal moderator-to-fuel ratio?',
-        'Why does an under-moderated reactor core have an inherent negative temperature/void feedback?',
-        'Why do delayed neutrons (β_eff) make a reactor controllable while ρ ≥ $1.00 triggers a prompt excursion?'
+        'Why does under-moderation provide inherent negative void/temperature safety?',
+        'Why do delayed neutrons (β_eff) allow control while ρ ≥ $1.00 causes a prompt excursion?'
+      ];
+    }
+    if (path === '/spectroscopy') {
+      return [
+        'Why does a gamma spectrum show a sharp Compton Edge and a ~200 keV Backscatter Peak?',
+        'Why does HPGe have 30× sharper FWHM resolution than NaI(Tl)?'
+      ];
+    }
+    if (path === '/plume') {
+      return [
+        'Why does nighttime Pasquill Class F carry concentrated plumes much farther downwind than daytime Class A?',
+        'Why does an elevated stack release peak some distance downwind instead of at Ground Zero?'
+      ];
+    }
+    if (path === '/xray-tube' || path === '/xray') {
+      return [
+        'Why does kVp set a hard Duane-Hunt cutoff while Aluminum filtration hardens the X-ray beam?'
       ];
     }
     return [
-      `Why does ${activeSource.shieldThicknessCm} cm of ${activeSource.shieldMaterial} produce Compton scatter buildup B(μx) > 1 for ${activeSource.isotope}?`,
-      'Why does Optimal Airburst vs. Underwater detonation shift the dominant hazard from flash burns to base surge?',
-      'Why do Mo-99 → Tc-99m and Cs-137 → Ba-137m exhibit Transient vs. Secular Equilibrium?',
-      'Why do delayed neutrons (β_eff) govern reactor control before prompt criticality?'
+      `Why does ${activeSource.shieldThicknessCm} cm ${activeSource.shieldMaterial} produce Compton buildup B(μx) > 1 for ${activeSource.isotope}?`,
+      'Why must pure beta emitters be shielded with low-Z plastic before high-Z Lead (Bremsstrahlung)?'
     ];
   }, [liveModuleTelemetry, activeModuleInfo, activeSource]);
+
+  // Built-in bi-directional "What-If Experiment" actions (module-specific or Global Source fallback)
+  const whatIfExperiments = useMemo(() => {
+    if (liveModuleTelemetry?.whatIfActions && liveModuleTelemetry.whatIfActions.length > 0) {
+      return liveModuleTelemetry.whatIfActions;
+    }
+    const isoRef = ISOTOPE_QUICK_REF[activeSource.isotope] || ISOTOPE_QUICK_REF['Co-60'];
+    const tvlCm = Number((isoRef.hvlLeadCm * 3.322).toFixed(2));
+    return [
+      {
+        label: `▶ Double Distance (${activeSource.distanceM} → ${(activeSource.distanceM * 2).toFixed(1)} m)`,
+        description: 'Test 1/r² inverse-square 4× flux reduction',
+        run: () => {
+          setActiveSource({ distanceM: Number((activeSource.distanceM * 2).toFixed(2)) });
+          if (onApplySourceToCurrentModule) setTimeout(onApplySourceToCurrentModule, 30);
+        }
+      },
+      {
+        label: `▶ Add +1 TVL Shield (+${tvlCm} cm)`,
+        description: 'Add one Tenth-Value Layer and observe Compton buildup B(μx)',
+        run: () => {
+          setActiveSource({
+            shieldThicknessCm: Number((activeSource.shieldThicknessCm + tvlCm).toFixed(2))
+          });
+          if (onApplySourceToCurrentModule) setTimeout(onApplySourceToCurrentModule, 30);
+        }
+      },
+      {
+        label: activeSource.isotope === 'Co-60' ? '▶ Switch Source → Cs-137' : '▶ Switch Source → Co-60',
+        description: 'Compare 662 keV (Cs-137) vs 1.17/1.33 MeV (Co-60) penetration',
+        run: () => {
+          setActiveSource({ isotope: activeSource.isotope === 'Co-60' ? 'Cs-137' : 'Co-60' });
+          if (onApplySourceToCurrentModule) setTimeout(onApplySourceToCurrentModule, 30);
+        }
+      }
+    ];
+  }, [liveModuleTelemetry, activeSource, setActiveSource, onApplySourceToCurrentModule]);
 
   const askTutorQuestion = async (questionText: string, overrideTelemetry?: LiveModuleTelemetry | null) => {
     const q = questionText.trim() || suggestedQuestions[0];
     const activeTel = overrideTelemetry !== undefined ? overrideTelemetry : liveModuleTelemetry;
 
-    // Always compute the deterministic baseline first (0 ms latency, 100% verified math)
     const deterministicBase = buildDeterministicPhysicsExplanation(
       q,
       activeTel,
+      telemetryDeltaSummary,
       activeModuleInfo,
       activeSource,
       currentFramework.name,
@@ -470,7 +625,6 @@ export const PhysicsTutorDrawer: React.FC<PhysicsTutorDrawerProps> = ({ activeMo
 
     const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
-    // If deterministic mode is active (or Gemini selected without key), commit immediately
     if (backendMode === 'deterministic' || (backendMode === 'gemini' && !geminiApiKey.trim())) {
       const newMsg: PhysicsTutorMessage = {
         id: `tutor-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -478,26 +632,32 @@ export const PhysicsTutorDrawer: React.FC<PhysicsTutorDrawerProps> = ({ activeMo
         timestamp: nowStr,
         ...deterministicBase
       };
-      setMessages(prev => [newMsg, ...prev].slice(0, 15));
+      setMessages(prev => [newMsg, ...prev].slice(0, 12));
       return;
     }
 
-    // Optional Live LLM Enhancement (Grounded strictly on deterministic telemetry)
     setIsGenerating(true);
     try {
+      const audienceNote =
+        depthMode === 'intuitive'
+          ? 'Use vivid physical analogies accessible to a student while keeping numbers exact.'
+          : depthMode === 'responder'
+          ? 'Focus on tactical field hazards, cordons, stay-time, and protective actions.'
+          : 'Use rigorous Certified Health Physicist (CHP) / nuclear engineering terminology.';
+
       const systemPrompt = [
-        `You are the RadPro Calc Interactive Physics Tutor (ISO/IEC 17025 & IEEE 730 Compliant).`,
-        `CRITICAL SAFETY RULE: Never invent or guess physics calculations. Lock all numbers strictly to the deterministic simulator telemetry below:`,
-        `- Active Module: ${activeModuleInfo ? `M${activeModuleInfo.moduleNumber}: ${activeModuleInfo.label}` : 'General Workspace'}`,
-        `- Active Global Source: ${activeSource.isotope}, Activity = ${activeSource.activityGBq} GBq, Distance = ${activeSource.distanceM} m, Shield = ${activeSource.shieldThicknessCm} cm ${activeSource.shieldMaterial}`,
-        `- Active Regulatory Standard: ${currentFramework.shortCode} (${currentFramework.name}), Occupational Annual Limit = ${currentFramework.limits.occupationalAnnualEffective_mSv} mSv/yr`,
+        `You are the RadPro Calc Interactive Physics Tutor (ISO/IEC 17025 Compliant). ${audienceNote}`,
+        `CRITICAL RULE: Never guess math. Lock every number strictly to the verified simulator telemetry below:`,
+        `- Active Module: ${activeModuleInfo ? `M${activeModuleInfo.moduleNumber}: ${activeModuleInfo.label}` : 'Workspace'}`,
+        `- Global Source: ${activeSource.isotope}, ${activeSource.activityGBq} GBq at ${activeSource.distanceM} m, Shield: ${activeSource.shieldThicknessCm} cm ${activeSource.shieldMaterial}`,
+        `- Regulatory Standard: ${currentFramework.shortCode} (Limit: ${currentFramework.limits.occupationalAnnualEffective_mSv} mSv/yr)`,
         activeTel
-          ? `- Live Module Regime: ${activeTel.regimeSummary}\n- Live Parameters: ${JSON.stringify(activeTel.parameters)}\n- Verified Computed Outputs: ${JSON.stringify(activeTel.computedMetrics)}`
+          ? `- Live Regime: ${activeTel.regimeSummary}\n- Live Parameters: ${JSON.stringify(activeTel.parameters)}\n- Computed Outputs: ${JSON.stringify(activeTel.computedMetrics)}`
           : '',
+        telemetryDeltaSummary ? `- Recent Parameter Delta: ${telemetryDeltaSummary}` : '',
         pinnedResults.length > 0
-          ? `- Recent Pinned Calculations: ${JSON.stringify(pinnedResults.slice(0, 3).map(p => ({ title: p.title, summary: p.summary })))}`
-          : '',
-        `Explain clearly WHY the physical phenomenon happens in 3 concise paragraphs using the exact numbers above.`
+          ? `- Pinned Calculations: ${JSON.stringify(pinnedResults.slice(0, 2).map(p => p.title))}`
+          : ''
       ]
         .filter(Boolean)
         .join('\n');
@@ -519,19 +679,20 @@ export const PhysicsTutorDrawer: React.FC<PhysicsTutorDrawerProps> = ({ activeMo
           const data = await res.json();
           const llmText: string | undefined = data?.candidates?.[0]?.content?.parts?.[0]?.text;
           if (llmText) {
-            const paragraphs = llmText
-              .split(/\n\n+/)
-              .map(p => p.trim())
-              .filter(Boolean);
-            const newMsg: PhysicsTutorMessage = {
-              id: `tutor-${Date.now()}`,
-              role: 'tutor',
-              timestamp: nowStr,
-              ...deterministicBase,
-              physicalMechanism: paragraphs.length > 0 ? paragraphs : deterministicBase.physicalMechanism,
-              sourceEngine: 'gemini-2.5-flash'
-            };
-            setMessages(prev => [newMsg, ...prev].slice(0, 15));
+            const paragraphs = llmText.split(/\n\n+/).map(p => p.trim()).filter(Boolean);
+            setMessages(prev =>
+              [
+                {
+                  id: `tutor-${Date.now()}`,
+                  role: 'tutor' as const,
+                  timestamp: nowStr,
+                  ...deterministicBase,
+                  physicalMechanism: paragraphs.length > 0 ? paragraphs : deterministicBase.physicalMechanism,
+                  sourceEngine: 'gemini-2.5-flash' as const
+                },
+                ...prev
+              ].slice(0, 12)
+            );
             setIsGenerating(false);
             return;
           }
@@ -540,565 +701,535 @@ export const PhysicsTutorDrawer: React.FC<PhysicsTutorDrawerProps> = ({ activeMo
         const res = await fetch(`${ollamaUrl.replace(/\/$/, '')}/api/generate`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: ollamaModel,
-            system: systemPrompt,
-            prompt: q,
-            stream: false
-          })
+          body: JSON.stringify({ model: ollamaModel, system: systemPrompt, prompt: q, stream: false })
         });
         if (res.ok) {
           const data = await res.json();
           const llmText: string | undefined = data?.response;
           if (llmText) {
-            const paragraphs = llmText
-              .split(/\n\n+/)
-              .map((p: string) => p.trim())
-              .filter(Boolean);
-            const newMsg: PhysicsTutorMessage = {
-              id: `tutor-${Date.now()}`,
-              role: 'tutor',
-              timestamp: nowStr,
-              ...deterministicBase,
-              physicalMechanism: paragraphs.length > 0 ? paragraphs : deterministicBase.physicalMechanism,
-              sourceEngine: 'local-ollama'
-            };
-            setMessages(prev => [newMsg, ...prev].slice(0, 15));
+            const paragraphs = llmText.split(/\n\n+/).map((p: string) => p.trim()).filter(Boolean);
+            setMessages(prev =>
+              [
+                {
+                  id: `tutor-${Date.now()}`,
+                  role: 'tutor' as const,
+                  timestamp: nowStr,
+                  ...deterministicBase,
+                  physicalMechanism: paragraphs.length > 0 ? paragraphs : deterministicBase.physicalMechanism,
+                  sourceEngine: 'local-ollama' as const
+                },
+                ...prev
+              ].slice(0, 12)
+            );
             setIsGenerating(false);
             return;
           }
         }
       }
     } catch {
-      // Fallback cleanly to deterministic physics engine if offline or key invalid
+      // Fallback cleanly to deterministic physics engine
     }
 
-    const fallbackMsg: PhysicsTutorMessage = {
-      id: `tutor-${Date.now()}`,
-      role: 'tutor',
-      timestamp: nowStr,
-      ...deterministicBase
-    };
-    setMessages(prev => [fallbackMsg, ...prev].slice(0, 15));
+    setMessages(prev =>
+      [
+        {
+          id: `tutor-${Date.now()}`,
+          role: 'tutor' as const,
+          timestamp: nowStr,
+          ...deterministicBase
+        },
+        ...prev
+      ].slice(0, 12)
+    );
     setIsGenerating(false);
   };
 
-  // Listen for global 'radpro:open-physics-tutor' events triggered from any module
   useEffect(() => {
     const handleOpenEvent = (e: Event) => {
       const customEvt = e as CustomEvent<{ promptQuestion?: string; customTelemetry?: LiveModuleTelemetry }>;
       setIsOpen(true);
       const q = customEvt.detail?.promptQuestion || suggestedQuestions[0];
-      const customTel = customEvt.detail?.customTelemetry;
-      askTutorQuestion(q, customTel);
+      askTutorQuestion(q, customEvt.detail?.customTelemetry);
     };
     window.addEventListener('radpro:open-physics-tutor', handleOpenEvent);
     return () => window.removeEventListener('radpro:open-physics-tutor', handleOpenEvent);
   });
 
-  // Auto-generate initial explanation when opened for the first time
+  // Auto-generate explanation when opened or when switching modules while open
   useEffect(() => {
-    if (isOpen && messages.length === 0) {
+    if ((isOpen || embeddedInInspector) && messages.length === 0) {
       askTutorQuestion(suggestedQuestions[0]);
     }
-  }, [isOpen]);
+  }, [isOpen, embeddedInInspector]);
 
   const currentExplanation = messages[0] || null;
+  const previousHistory = messages.slice(1);
+
+  const tutorBody = (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      {/* Audience Depth Lens + Engine Settings Row */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
+        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+          {(
+            [
+              { id: 'intuitive', label: '🎓 Intuitive' },
+              { id: 'engineering', label: '⚛️ CHP / Physics' },
+              { id: 'responder', label: '🚨 Field Ops' }
+            ] as const
+          ).map(mode => (
+            <button
+              key={mode.id}
+              type="button"
+              className={depthMode === mode.id ? 'active' : ''}
+              onClick={() => setDepthMode(mode.id)}
+              style={{
+                padding: '3px 8px',
+                borderRadius: '4px',
+                fontSize: '0.71rem',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              {mode.label}
+            </button>
+          ))}
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setShowSettings(prev => !prev)}
+          style={{ padding: '3px 8px', borderRadius: '4px', fontSize: '0.70rem', cursor: 'pointer' }}
+        >
+          ⚙️ {backendMode === 'deterministic' ? 'Offline Engine' : backendMode === 'gemini' ? 'Gemini 2.5' : 'Ollama'}
+        </button>
+      </div>
+
+      {showSettings && (
+        <div
+          style={{
+            padding: '10px',
+            background: 'rgba(15, 23, 42, 0.8)',
+            border: '1px solid rgba(148, 163, 184, 0.22)',
+            borderRadius: '6px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px'
+          }}
+        >
+          <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+            {(
+              [
+                { id: 'deterministic', label: '⚡ Deterministic (Offline)' },
+                { id: 'gemini', label: '✨ Gemini 2.5 API' },
+                { id: 'ollama', label: '🖥️ Local Ollama' }
+              ] as const
+            ).map(opt => (
+              <button
+                key={opt.id}
+                type="button"
+                className={backendMode === opt.id ? 'active' : ''}
+                onClick={() => {
+                  setBackendMode(opt.id);
+                  localStorage.setItem('radpro_tutor_backend', opt.id);
+                }}
+                style={{ padding: '3px 8px', borderRadius: '4px', fontSize: '0.70rem', cursor: 'pointer' }}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          {backendMode === 'gemini' && (
+            <input
+              type="password"
+              className="form-control"
+              placeholder="Paste Gemini API Key (AIza...)"
+              value={geminiApiKey}
+              onChange={e => {
+                setGeminiApiKey(e.target.value);
+                localStorage.setItem('radpro_gemini_api_key', e.target.value);
+              }}
+              style={{ fontSize: '0.74rem', padding: '4px 8px' }}
+            />
+          )}
+          {backendMode === 'ollama' && (
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <input
+                type="text"
+                className="form-control"
+                value={ollamaUrl}
+                onChange={e => {
+                  setOllamaUrl(e.target.value);
+                  localStorage.setItem('radpro_ollama_url', e.target.value);
+                }}
+                style={{ fontSize: '0.73rem', padding: '4px 6px', flex: 1 }}
+              />
+              <input
+                type="text"
+                className="form-control"
+                value={ollamaModel}
+                onChange={e => {
+                  setOllamaModel(e.target.value);
+                  localStorage.setItem('radpro_ollama_model', e.target.value);
+                }}
+                style={{ fontSize: '0.73rem', padding: '4px 6px', width: '95px' }}
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Rolling Delta (Δ) Tracker Banner */}
+      {telemetryDeltaSummary && (
+        <div
+          style={{
+            padding: '8px 10px',
+            background: 'rgba(14, 116, 144, 0.18)',
+            border: '1px solid rgba(56, 189, 248, 0.35)',
+            borderRadius: '6px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '5px'
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '6px' }}>
+            <span style={{ fontSize: '0.70rem', fontWeight: 700, color: '#38bdf8' }}>
+              Δ SLIDER CHANGE DETECTED
+            </span>
+            <button
+              type="button"
+              onClick={() => askTutorQuestion(`Why did changing ${telemetryDeltaSummary} alter the physics behavior?`)}
+              style={{ padding: '2px 8px', borderRadius: '4px', fontSize: '0.69rem', fontWeight: 600, cursor: 'pointer' }}
+            >
+              Explain Δ Change →
+            </button>
+          </div>
+          <div style={{ fontSize: '0.71rem', color: '#e2e8f0', fontFamily: 'var(--font-mono)' }}>
+            {telemetryDeltaSummary}
+          </div>
+        </div>
+      )}
+
+      {/* Live Simulator Telemetry Pills */}
+      {liveModuleTelemetry && (
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '5px',
+            padding: '7px 9px',
+            background: 'rgba(15, 23, 42, 0.65)',
+            borderRadius: '6px',
+            borderLeft: '3px solid #38bdf8'
+          }}
+        >
+          {Object.entries(liveModuleTelemetry.parameters).map(([k, v]) => (
+            <span
+              key={k}
+              style={{
+                fontSize: '0.69rem',
+                padding: '2px 6px',
+                borderRadius: '4px',
+                background: 'rgba(30, 41, 59, 0.9)',
+                color: '#cbd5e1',
+                fontFamily: 'var(--font-mono)'
+              }}
+            >
+              {k}: <strong style={{ color: '#f8fafc' }}>{String(v)}</strong>
+            </span>
+          ))}
+          {Object.entries(liveModuleTelemetry.computedMetrics).map(([k, v]) => (
+            <span
+              key={k}
+              style={{
+                fontSize: '0.69rem',
+                padding: '2px 6px',
+                borderRadius: '4px',
+                background: 'rgba(14, 116, 144, 0.24)',
+                color: '#bae6fd',
+                fontFamily: 'var(--font-mono)'
+              }}
+            >
+              {k}: <strong>{String(v)}</strong>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Bi-Directional Clickable "Run What-If Experiment" Pills */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+        <span style={{ fontSize: '0.69rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>
+          Interactive What-If Experiments (Live Control):
+        </span>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+          {whatIfExperiments.map((act, idx) => (
+            <button
+              key={idx}
+              type="button"
+              onClick={() => {
+                act.run();
+                setTimeout(() => {
+                  askTutorQuestion(`Explain what happens when we run: ${act.label}`);
+                }, 90);
+              }}
+              title={act.description}
+              style={{
+                padding: '4px 8px',
+                borderRadius: '5px',
+                fontSize: '0.71rem',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              {act.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Custom Question Input */}
+      <form
+        onSubmit={e => {
+          e.preventDefault();
+          if (!customQuestion.trim()) return;
+          askTutorQuestion(customQuestion);
+          setCustomQuestion('');
+        }}
+        style={{ display: 'flex', gap: '6px' }}
+      >
+        <input
+          type="text"
+          className="form-control"
+          placeholder="Ask why any phenomenon happens..."
+          value={customQuestion}
+          onChange={e => setCustomQuestion(e.target.value)}
+          style={{ flex: 1, fontSize: '0.77rem', padding: '6px 9px' }}
+        />
+        <button
+          type="submit"
+          disabled={isGenerating}
+          style={{ padding: '6px 11px', borderRadius: '5px', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}
+        >
+          {isGenerating ? '...' : 'Ask'}
+        </button>
+      </form>
+
+      {/* Suggested Phenomenon Chips */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+        {suggestedQuestions.map((sq, idx) => (
+          <button
+            key={idx}
+            type="button"
+            onClick={() => askTutorQuestion(sq)}
+            style={{
+              padding: '3px 8px',
+              borderRadius: '4px',
+              fontSize: '0.70rem',
+              cursor: 'pointer',
+              textAlign: 'left'
+            }}
+          >
+            💡 {sq}
+          </button>
+        ))}
+      </div>
+
+      {/* Active Explanation Card (Adapted to Selected Audience Depth Lens) */}
+      {currentExplanation && (
+        <div
+          style={{
+            background: 'rgba(15, 23, 42, 0.78)',
+            border: '1px solid rgba(148, 163, 184, 0.22)',
+            borderRadius: '8px',
+            padding: '12px 14px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '11px'
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', borderBottom: '1px solid rgba(148, 163, 184, 0.14)', paddingBottom: '8px' }}>
+            <div>
+              <div style={{ fontSize: '0.68rem', color: '#38bdf8', fontFamily: 'var(--font-mono)' }}>
+                {currentExplanation.regimeBadge}
+              </div>
+              <h4 style={{ margin: '2px 0 0 0', fontSize: '0.88rem', color: '#f8fafc', lineHeight: 1.35 }}>
+                {currentExplanation.headline}
+              </h4>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                pinCalculation({
+                  moduleNumber: activeModuleInfo?.moduleNumber || 0,
+                  moduleLabel: activeModuleInfo?.label || 'Physics Tutor',
+                  modulePath: activeModuleInfo?.path || '/',
+                  title: `Physics Tutor: ${currentExplanation.headline}`,
+                  summary: currentExplanation.intuitiveTakeaway,
+                  metrics: [
+                    { label: 'Regime', value: currentExplanation.regimeBadge },
+                    { label: 'Engine', value: currentExplanation.sourceEngine }
+                  ],
+                  notes: currentExplanation.regulatoryAndOperationalNote
+                });
+              }}
+              style={{ padding: '3px 8px', borderRadius: '4px', fontSize: '0.69rem', cursor: 'pointer', flexShrink: 0 }}
+              title="Pin explanation to Calculation Pinboard & Master Audit Dossier"
+            >
+              📌 Pin
+            </button>
+          </div>
+
+          {/* Intuitive Summary Box (Highlighted first in 'intuitive' mode, compact callout in others) */}
+          {(depthMode === 'intuitive' || depthMode === 'engineering') && (
+            <div
+              style={{
+                padding: '8px 10px',
+                borderRadius: '6px',
+                background: depthMode === 'intuitive' ? 'rgba(14, 116, 144, 0.18)' : 'rgba(30, 41, 59, 0.55)',
+                borderLeft: '3px solid #38bdf8',
+                fontSize: '0.78rem',
+                lineHeight: 1.52,
+                color: '#e2e8f0'
+              }}
+            >
+              <strong style={{ color: '#7dd3fc' }}>Intuitive Picture: </strong>
+              <MathText text={currentExplanation.intuitiveTakeaway} />
+            </div>
+          )}
+
+          {/* Detailed Engineering Mechanism & Equations (Shown in 'engineering' & 'intuitive') */}
+          {depthMode !== 'responder' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
+              <strong style={{ fontSize: '0.72rem', color: '#cbd5e1', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Causal Physics Mechanism
+              </strong>
+              {(depthMode === 'intuitive'
+                ? currentExplanation.physicalMechanism.slice(0, 2)
+                : currentExplanation.physicalMechanism
+              ).map((para, idx) => (
+                <p key={idx} style={{ margin: 0, fontSize: '0.78rem', lineHeight: 1.55, color: '#cbd5e1' }}>
+                  <MathText text={para} />
+                </p>
+              ))}
+            </div>
+          )}
+
+          {depthMode === 'engineering' && currentExplanation.governingEquations.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {currentExplanation.governingEquations.map((eq, idx) => (
+                <div
+                  key={idx}
+                  style={{
+                    background: 'rgba(9, 14, 24, 0.82)',
+                    border: '1px solid rgba(148, 163, 184, 0.16)',
+                    borderRadius: '6px',
+                    padding: '8px 10px'
+                  }}
+                >
+                  <div style={{ fontSize: '0.70rem', fontWeight: 600, color: '#e2e8f0' }}>{eq.label}</div>
+                  <div style={{ overflowX: 'auto', fontSize: '0.84rem' }}>
+                    <BlockMath math={eq.latex} />
+                  </div>
+                  <div style={{ fontSize: '0.70rem', color: '#94a3b8', lineHeight: 1.38 }}>{eq.meaning}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Live Sensitivity */}
+          <div
+            style={{
+              background: 'rgba(14, 116, 144, 0.10)',
+              border: '1px solid rgba(56, 189, 248, 0.22)',
+              borderRadius: '6px',
+              padding: '8px 10px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '4px'
+            }}
+          >
+            <strong style={{ fontSize: '0.71rem', color: '#38bdf8', textTransform: 'uppercase' }}>
+              Slider Sensitivity
+            </strong>
+            {currentExplanation.liveSensitivityAnalysis.map((item, idx) => (
+              <div key={idx} style={{ fontSize: '0.76rem', color: '#e2e8f0', lineHeight: 1.45 }}>
+                • <MathText text={item} />
+              </div>
+            ))}
+          </div>
+
+          {/* Operational & Regulatory Box (Featured prominently in 'responder' mode) */}
+          <div
+            style={{
+              padding: depthMode === 'responder' ? '10px 12px' : '6px 0 0 0',
+              background: depthMode === 'responder' ? 'rgba(245, 158, 11, 0.12)' : 'transparent',
+              border: depthMode === 'responder' ? '1px solid rgba(245, 158, 11, 0.35)' : 'none',
+              borderTop: depthMode === 'responder' ? undefined : '1px solid rgba(148, 163, 184, 0.14)',
+              borderRadius: depthMode === 'responder' ? '6px' : '0',
+              fontSize: '0.75rem',
+              color: depthMode === 'responder' ? '#fde68a' : '#94a3b8',
+              lineHeight: 1.48
+            }}
+          >
+            <strong style={{ color: depthMode === 'responder' ? '#fbbf24' : '#cbd5e1' }}>
+              {depthMode === 'responder' ? '🚨 Tactical Field Action & Limits: ' : 'Regulatory & Ops: '}
+            </strong>
+            <MathText text={currentExplanation.regulatoryAndOperationalNote} />
+          </div>
+        </div>
+      )}
+
+      {/* Collapsible Session Q&A History Thread */}
+      {previousHistory.length > 0 && (
+        <details style={{ fontSize: '0.74rem', color: '#94a3b8' }}>
+          <summary style={{ cursor: 'pointer', fontWeight: 600, padding: '4px 0' }}>
+            Earlier Questions in This Session ({previousHistory.length})
+          </summary>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '6px' }}>
+            {previousHistory.map(msg => (
+              <div
+                key={msg.id}
+                style={{
+                  padding: '8px 10px',
+                  borderRadius: '6px',
+                  background: 'rgba(15, 23, 42, 0.55)',
+                  border: '1px solid rgba(148, 163, 184, 0.15)'
+                }}
+              >
+                <div style={{ fontSize: '0.68rem', color: '#64748b', fontFamily: 'var(--font-mono)' }}>
+                  {msg.timestamp} • {msg.regimeBadge}
+                </div>
+                <div style={{ fontWeight: 600, color: '#e2e8f0', marginTop: '2px' }}>{msg.headline}</div>
+                <div style={{ fontSize: '0.74rem', color: '#cbd5e1', marginTop: '4px', lineHeight: 1.45 }}>
+                  <MathText text={msg.intuitiveTakeaway} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
+    </div>
+  );
+
+  if (embeddedInInspector) {
+    return tutorBody;
+  }
 
   return (
     <div
       style={{
         marginBottom: '12px',
         background: 'rgba(9, 15, 26, 0.90)',
-        border: isOpen
-          ? '1px solid rgba(56, 189, 248, 0.45)'
-          : '1px solid rgba(148, 163, 184, 0.22)',
+        border: '1px solid rgba(148, 163, 184, 0.22)',
         borderRadius: '8px',
-        overflow: 'hidden',
-        transition: 'border-color 0.2s ease'
+        overflow: 'hidden'
       }}
     >
-      {/* Compact Always-Visible Tutor Bar */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: '10px',
-          padding: '8px 14px',
-          background: isOpen ? 'rgba(15, 23, 42, 0.85)' : 'transparent'
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-          <button
-            type="button"
-            className={isOpen ? 'active' : ''}
-            onClick={() => setIsOpen(prev => !prev)}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '7px',
-              padding: '5px 12px',
-              borderRadius: '6px',
-              fontSize: '0.78rem',
-              fontWeight: 600,
-              cursor: 'pointer'
-            }}
-          >
-            <span>🧠 &ldquo;Why Does This Happen?&rdquo; Physics Tutor</span>
-            <span style={{ fontSize: '0.68rem', opacity: 0.8 }}>{isOpen ? '▲' : '▼'}</span>
-          </button>
-
-          <span
-            style={{
-              fontSize: '0.74rem',
-              color: '#94a3b8',
-              fontFamily: 'var(--font-mono)'
-            }}
-          >
-            {liveModuleTelemetry
-              ? `Live Context: ${liveModuleTelemetry.regimeSummary}`
-              : `Context: ${activeModuleInfo ? `M${String(activeModuleInfo.moduleNumber).padStart(2, '0')} ${activeModuleInfo.label}` : activeSource.isotope}`}
-          </span>
-        </div>
-
-        {/* One-Click Contextual "Explain Current State" Chips */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-          {suggestedQuestions.slice(0, 2).map((sq, idx) => (
-            <button
-              key={idx}
-              type="button"
-              onClick={() => {
-                setIsOpen(true);
-                askTutorQuestion(sq);
-              }}
-              style={{
-                padding: '4px 10px',
-                borderRadius: '5px',
-                fontSize: '0.72rem',
-                cursor: 'pointer',
-                maxWidth: '320px',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap'
-              }}
-              title={sq}
-            >
-              💡 {sq}
-            </button>
-          ))}
-
-          <button
-            type="button"
-            onClick={() => {
-              setIsOpen(true);
-              setShowSettings(prev => !prev);
-            }}
-            style={{
-              padding: '4px 9px',
-              borderRadius: '5px',
-              fontSize: '0.71rem',
-              cursor: 'pointer'
-            }}
-            title="Configure Deterministic Offline Engine vs. Gemini API / Local Ollama"
-          >
-            ⚙️ {backendMode === 'deterministic' ? 'Deterministic AI' : backendMode === 'gemini' ? 'Gemini 2.5' : 'Ollama'}
-          </button>
-        </div>
+      <div style={{ padding: '8px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <button type="button" onClick={() => setIsOpen(prev => !prev)} style={{ padding: '5px 12px', fontSize: '0.78rem' }}>
+          🧠 Physics Tutor {isOpen ? '▲' : '▼'}
+        </button>
       </div>
-
-      {/* Expanded Interactive Physics Tutor Workspace */}
-      {isOpen && (
-        <div
-          style={{
-            padding: '14px 16px',
-            borderTop: '1px solid rgba(148, 163, 184, 0.16)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '14px'
-          }}
-        >
-          {/* Optional AI Backend Configuration Bar */}
-          {showSettings && (
-            <div
-              style={{
-                padding: '12px 14px',
-                background: 'rgba(15, 23, 42, 0.75)',
-                border: '1px solid rgba(148, 163, 184, 0.22)',
-                borderRadius: '6px',
-                display: 'flex',
-                flexWrap: 'wrap',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: '12px'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#e2e8f0' }}>
-                  Reasoning Engine Mode:
-                </span>
-                {(
-                  [
-                    { id: 'deterministic', label: '⚡ Built-In Deterministic Physics Engine (Offline / Zero-Hallucination)' },
-                    { id: 'gemini', label: '✨ Google Gemini 2.5 Flash API (Grounded Telemetry)' },
-                    { id: 'ollama', label: '🖥️ Local Ollama LLM (Air-Gapped localhost:11434)' }
-                  ] as const
-                ).map(opt => (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    className={backendMode === opt.id ? 'active' : ''}
-                    onClick={() => {
-                      setBackendMode(opt.id);
-                      localStorage.setItem('radpro_tutor_backend', opt.id);
-                    }}
-                    style={{
-                      padding: '4px 10px',
-                      borderRadius: '5px',
-                      fontSize: '0.72rem',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-
-              {backendMode === 'gemini' && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: '1 1 280px' }}>
-                  <input
-                    type="password"
-                    className="form-control"
-                    placeholder="Paste Gemini API Key (AIza...)"
-                    value={geminiApiKey}
-                    onChange={e => {
-                      setGeminiApiKey(e.target.value);
-                      localStorage.setItem('radpro_gemini_api_key', e.target.value);
-                    }}
-                    style={{ fontSize: '0.75rem', padding: '4px 8px', maxWidth: '280px' }}
-                  />
-                  <span style={{ fontSize: '0.70rem', color: '#94a3b8' }}>
-                    Stored locally in browser • Automatically falls back to deterministic engine if offline
-                  </span>
-                </div>
-              )}
-
-              {backendMode === 'ollama' && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                  <input
-                    type="text"
-                    className="form-control"
-                    placeholder="http://localhost:11434"
-                    value={ollamaUrl}
-                    onChange={e => {
-                      setOllamaUrl(e.target.value);
-                      localStorage.setItem('radpro_ollama_url', e.target.value);
-                    }}
-                    style={{ fontSize: '0.75rem', padding: '4px 8px', width: '180px' }}
-                  />
-                  <input
-                    type="text"
-                    className="form-control"
-                    placeholder="Model (e.g. llama3.2)"
-                    value={ollamaModel}
-                    onChange={e => {
-                      setOllamaModel(e.target.value);
-                      localStorage.setItem('radpro_ollama_model', e.target.value);
-                    }}
-                    style={{ fontSize: '0.75rem', padding: '4px 8px', width: '130px' }}
-                  />
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Live Slider & Telemetry Context Snapshot Strip */}
-          {liveModuleTelemetry && (
-            <div
-              style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '8px 12px',
-                background: 'rgba(15, 23, 42, 0.6)',
-                borderRadius: '6px',
-                borderLeft: '3px solid #38bdf8'
-              }}
-            >
-              <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#e2e8f0', textTransform: 'uppercase' }}>
-                Live Simulator State:
-              </span>
-              {Object.entries(liveModuleTelemetry.parameters).map(([k, v]) => (
-                <span
-                  key={k}
-                  style={{
-                    fontSize: '0.72rem',
-                    padding: '2px 8px',
-                    borderRadius: '4px',
-                    background: 'rgba(30, 41, 59, 0.85)',
-                    border: '1px solid rgba(148, 163, 184, 0.2)',
-                    color: '#cbd5e1',
-                    fontFamily: 'var(--font-mono)'
-                  }}
-                >
-                  {k}: <strong style={{ color: '#f8fafc' }}>{String(v)}</strong>
-                </span>
-              ))}
-              {Object.entries(liveModuleTelemetry.computedMetrics).map(([k, v]) => (
-                <span
-                  key={k}
-                  style={{
-                    fontSize: '0.72rem',
-                    padding: '2px 8px',
-                    borderRadius: '4px',
-                    background: 'rgba(14, 116, 144, 0.22)',
-                    border: '1px solid rgba(56, 189, 248, 0.3)',
-                    color: '#bae6fd',
-                    fontFamily: 'var(--font-mono)'
-                  }}
-                >
-                  {k}: <strong>{String(v)}</strong>
-                </span>
-              ))}
-            </div>
-          )}
-
-          {/* Suggested "Why Does This Happen?" Topic Pills */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
-            <span style={{ fontSize: '0.73rem', fontWeight: 600, color: '#94a3b8' }}>
-              Explore Phenomenon:
-            </span>
-            {suggestedQuestions.map((sq, idx) => (
-              <button
-                key={idx}
-                type="button"
-                onClick={() => askTutorQuestion(sq)}
-                style={{
-                  padding: '4px 10px',
-                  borderRadius: '5px',
-                  fontSize: '0.73rem',
-                  cursor: 'pointer'
-                }}
-              >
-                {sq}
-              </button>
-            ))}
-          </div>
-
-          {/* Custom Question Input Bar */}
-          <form
-            onSubmit={e => {
-              e.preventDefault();
-              if (!customQuestion.trim()) return;
-              askTutorQuestion(customQuestion);
-              setCustomQuestion('');
-            }}
-            style={{ display: 'flex', gap: '8px', alignItems: 'center' }}
-          >
-            <input
-              type="text"
-              className="form-control"
-              placeholder="Ask any 'Why does this happen?' question about the current sliders, regime, decay chain, or criticality..."
-              value={customQuestion}
-              onChange={e => setCustomQuestion(e.target.value)}
-              style={{ flex: 1, fontSize: '0.80rem', padding: '7px 12px' }}
-            />
-            <button
-              type="submit"
-              disabled={isGenerating}
-              style={{
-                padding: '7px 16px',
-                borderRadius: '6px',
-                fontSize: '0.78rem',
-                fontWeight: 600,
-                cursor: 'pointer'
-              }}
-            >
-              {isGenerating ? 'Analyzing Physics...' : 'Explain Physics →'}
-            </button>
-          </form>
-
-          {/* Active Explanation Card */}
-          {currentExplanation && (
-            <div
-              ref={messagesEndRef}
-              style={{
-                background: 'rgba(15, 23, 42, 0.72)',
-                border: '1px solid rgba(148, 163, 184, 0.22)',
-                borderRadius: '8px',
-                padding: '16px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '14px'
-              }}
-            >
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'flex-start',
-                  flexWrap: 'wrap',
-                  gap: '10px',
-                  borderBottom: '1px solid rgba(148, 163, 184, 0.15)',
-                  paddingBottom: '10px'
-                }}
-              >
-                <div>
-                  <div style={{ fontSize: '0.72rem', color: '#38bdf8', fontFamily: 'var(--font-mono)', marginBottom: '3px' }}>
-                    {currentExplanation.regimeBadge}
-                  </div>
-                  <h4 style={{ margin: 0, fontSize: '0.96rem', color: '#f8fafc' }}>
-                    {currentExplanation.headline}
-                  </h4>
-                  {currentExplanation.question && (
-                    <div style={{ fontSize: '0.74rem', color: '#94a3b8', marginTop: '3px' }}>
-                      Query: &ldquo;{currentExplanation.question}&rdquo;
-                    </div>
-                  )}
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span
-                    style={{
-                      fontSize: '0.68rem',
-                      padding: '3px 8px',
-                      borderRadius: '4px',
-                      background: 'rgba(30, 41, 59, 0.9)',
-                      border: '1px solid rgba(148, 163, 184, 0.25)',
-                      color: '#cbd5e1',
-                      fontFamily: 'var(--font-mono)'
-                    }}
-                  >
-                    {currentExplanation.sourceEngine === 'deterministic-physics'
-                      ? '✓ Verified Deterministic Physics Engine'
-                      : currentExplanation.sourceEngine === 'gemini-2.5-flash'
-                      ? '✨ Gemini 2.5 Flash + Verified Telemetry'
-                      : '🖥️ Local Ollama + Verified Telemetry'}
-                  </span>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      pinCalculation({
-                        moduleNumber: activeModuleInfo?.moduleNumber || 0,
-                        moduleLabel: activeModuleInfo?.label || 'Physics Tutor',
-                        modulePath: activeModuleInfo?.path || '/',
-                        title: `Physics Tutor: ${currentExplanation.headline}`,
-                        summary: currentExplanation.physicalMechanism[0] || currentExplanation.headline,
-                        metrics: [
-                          { label: 'Regime', value: currentExplanation.regimeBadge },
-                          { label: 'Engine', value: currentExplanation.sourceEngine }
-                        ],
-                        notes: currentExplanation.regulatoryAndOperationalNote
-                      });
-                    }}
-                    style={{
-                      padding: '4px 10px',
-                      borderRadius: '5px',
-                      fontSize: '0.72rem',
-                      cursor: 'pointer'
-                    }}
-                    title="Pin this physics explanation to your Calculation Pinboard & Audit Dossier"
-                  >
-                    📌 Pin Explanation
-                  </button>
-                </div>
-              </div>
-
-              {/* Section 1: Causal Physical Mechanism */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <strong style={{ fontSize: '0.78rem', color: '#e2e8f0', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                  1. Causal Physical Mechanism (&ldquo;Why It Happens&rdquo;)
-                </strong>
-                {currentExplanation.physicalMechanism.map((para, idx) => (
-                  <p
-                    key={idx}
-                    style={{
-                      margin: 0,
-                      fontSize: '0.81rem',
-                      lineHeight: 1.58,
-                      color: '#cbd5e1'
-                    }}
-                  >
-                    {para}
-                  </p>
-                ))}
-              </div>
-
-              {/* Section 2: Governing Equations (KaTeX) */}
-              {currentExplanation.governingEquations.length > 0 && (
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-                    gap: '10px'
-                  }}
-                >
-                  {currentExplanation.governingEquations.map((eq, idx) => (
-                    <div
-                      key={idx}
-                      style={{
-                        background: 'rgba(9, 14, 24, 0.78)',
-                        border: '1px solid rgba(148, 163, 184, 0.18)',
-                        borderRadius: '6px',
-                        padding: '10px 12px'
-                      }}
-                    >
-                      <div style={{ fontSize: '0.73rem', fontWeight: 600, color: '#e2e8f0', marginBottom: '4px' }}>
-                        {eq.label}
-                      </div>
-                      <div style={{ overflowX: 'auto', padding: '2px 0' }}>
-                        <BlockMath math={eq.latex} />
-                      </div>
-                      <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '4px', lineHeight: 1.4 }}>
-                        {eq.meaning}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Section 3: Live Slider Sensitivity Analysis */}
-              <div
-                style={{
-                  background: 'rgba(14, 116, 144, 0.12)',
-                  border: '1px solid rgba(56, 189, 248, 0.25)',
-                  borderRadius: '6px',
-                  padding: '10px 14px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '6px'
-                }}
-              >
-                <strong style={{ fontSize: '0.76rem', color: '#38bdf8', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                  2. Live Parameter Sensitivity (&ldquo;What Happens When You Move the Sliders?&rdquo;)
-                </strong>
-                {currentExplanation.liveSensitivityAnalysis.map((item, idx) => (
-                  <div key={idx} style={{ fontSize: '0.79rem', color: '#e2e8f0', lineHeight: 1.5 }}>
-                    • {item}
-                  </div>
-                ))}
-              </div>
-
-              {/* Section 4: Regulatory & Operational Note */}
-              <div
-                style={{
-                  fontSize: '0.76rem',
-                  color: '#94a3b8',
-                  borderTop: '1px solid rgba(148, 163, 184, 0.14)',
-                  paddingTop: '8px',
-                  lineHeight: 1.45
-                }}
-              >
-                <strong style={{ color: '#cbd5e1' }}>Operational &amp; Regulatory Context:</strong>{' '}
-                {currentExplanation.regulatoryAndOperationalNote}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+      {isOpen && <div style={{ padding: '12px 14px' }}>{tutorBody}</div>}
     </div>
   );
 };

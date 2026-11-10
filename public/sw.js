@@ -1,5 +1,7 @@
-// RadPro Analyst Progressive Web App (PWA) Service Worker
-const CACHE_NAME = 'radpro-cache-v2';
+// RadPro Analyst Progressive Web App (PWA) Service Worker — Offline Field Edition
+const CACHE_NAME = 'radpro-cache-v3';
+const TILE_CACHE_NAME = 'radpro-map-tiles-v1';
+const MAX_CACHED_TILES = 350;
 
 const STATIC_ASSETS = [
   '/',
@@ -9,28 +11,24 @@ const STATIC_ASSETS = [
 ];
 
 self.addEventListener('install', (event) => {
-  // Pre-cache core shell
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(STATIC_ASSETS);
-    })
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
   );
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
-  // Delete all stale caches (such as radpro-cache-v1) immediately
   event.waitUntil(
-    caches.keys().then((keys) => {
-      return Promise.all(
+    caches.keys().then((keys) =>
+      Promise.all(
         keys.map((key) => {
-          if (key !== CACHE_NAME) {
-            console.log('[SW] Purging outdated cache:', key);
+          if (key !== CACHE_NAME && key !== TILE_CACHE_NAME) {
             return caches.delete(key);
           }
+          return undefined;
         })
-      );
-    })
+      )
+    )
   );
   self.clients.claim();
 });
@@ -45,50 +43,86 @@ self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
   const url = new URL(event.request.url);
-  const isNavigate = event.request.mode === 'navigate' || event.request.headers.get('accept')?.includes('text/html');
 
-  // Strategy 1: Network-First for HTML navigation
-  // Ensures new deployments immediately serve the fresh index.html with up-to-date chunk hashes
+  // Bypass caching for external live AI / weather APIs so offline errors fail fast & cleanly
+  if (
+    url.hostname.includes('generativelanguage.googleapis.com') ||
+    url.hostname.includes('localhost') && url.port === '11434' ||
+    url.hostname.includes('open-meteo.com')
+  ) {
+    return;
+  }
+
+  // Cache-first + LRU cap for GIS map tiles (CartoDB / OSM) so field maps work offline
+  if (
+    url.hostname.includes('basemaps.cartocdn.com') ||
+    url.hostname.includes('tile.openstreetmap.org')
+  ) {
+    event.respondWith(
+      caches.open(TILE_CACHE_NAME).then((tileCache) =>
+        tileCache.match(event.request).then((cachedTile) => {
+          if (cachedTile) return cachedTile;
+          return fetch(event.request)
+            .then((netRes) => {
+              if (netRes && netRes.status === 200) {
+                const clone = netRes.clone();
+                tileCache.put(event.request, clone).then(() => {
+                  tileCache.keys().then((keys) => {
+                    if (keys.length > MAX_CACHED_TILES) {
+                      tileCache.delete(keys[0]);
+                    }
+                  });
+                });
+              }
+              return netRes;
+            })
+            .catch(() => cachedTile || Response.error());
+        })
+      )
+    );
+    return;
+  }
+
+  // Only handle same-origin assets below
+  if (url.origin !== self.location.origin) return;
+
+  const isNavigate =
+    event.request.mode === 'navigate' ||
+    event.request.headers.get('accept')?.includes('text/html');
+
+  // Strategy 1: Network-First for HTML navigation (fresh deployments + full offline fallback)
   if (isNavigate) {
     event.respondWith(
       fetch(event.request)
         .then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {
             const copy = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put('/index.html', copy);
-            });
+            caches.open(CACHE_NAME).then((cache) => cache.put('/index.html', copy));
           }
           return networkResponse;
         })
-        .catch(() => {
-          // Offline fallback
-          return caches.match('/index.html').then((cached) => cached || caches.match('/'));
-        })
+        .catch(() =>
+          caches.match('/index.html').then((cached) => cached || caches.match('/'))
+        )
     );
     return;
   }
 
-  // Strategy 2: Cache-first with network fallback for static hashed assets (/assets/*)
+  // Strategy 2: Cache-first with network fallback for hashed JS/CSS/font bundles
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
+      if (cachedResponse) return cachedResponse;
 
-      return fetch(event.request).then((networkResponse) => {
-        // Only cache valid 200 responses
-        if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
+      return fetch(event.request)
+        .then((networkResponse) => {
+          if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
+            return networkResponse;
+          }
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseToCache));
           return networkResponse;
-        }
-
-        const responseToCache = networkResponse.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, responseToCache);
-        });
-
-        return networkResponse;
-      });
+        })
+        .catch(() => cachedResponse || Response.error());
     })
   );
 });

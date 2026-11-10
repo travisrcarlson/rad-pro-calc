@@ -1,16 +1,17 @@
 {
-  "name": "RadPro Analyst - Health Physics Suite",
-  "short_name": "RadPro",
-  "description": "Professional Health Physics, Radiation Protection & Emergency CBRN Engineering Suite",
+  "name": "RadPro Calc — Radiological & Nuclear Engineering Suite",
+  "short_name": "RadPro Calc",
+  "description": "ISO/IEC 17025 & IEEE 730 Verified Health Physics, Shielding, Criticality, Decay & CBRN Consequence Suite",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#050a12",
-  "theme_color": "#00e5ff",
+  "background_color": "#090f1a",
+  "theme_color": "#0f172a",
   "icons": [
     {
       "src": "/favicon.svg",
       "sizes": "192x192 512x512",
-      "type": "image/svg+xml"
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
     }
   ]
 }

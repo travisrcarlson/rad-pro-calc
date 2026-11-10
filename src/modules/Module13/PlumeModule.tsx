@@ -5,6 +5,7 @@ import PlotComponent from 'react-plotly.js';
 import { BlockMath, InlineMath } from 'react-katex';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
+import { useRegulatory } from '../../context/RegulatoryContext';
 import {
   fetchLiveSiteMeteorology,
   REFERENCE_MET_SITES,
@@ -384,6 +385,38 @@ const PlumeModule: React.FC = () => {
     </div>
   );
 
+  const { setLiveModuleTelemetry, openPhysicsTutor } = useRegulatory();
+
+  useEffect(() => {
+    setLiveModuleTelemetry({
+      moduleId: 'plume',
+      moduleTitle: 'Atmospheric Gaussian Plume Model',
+      regimeSummary: `Pasquill Class ${stability} • u = ${windSpeed} m/s • H = ${releaseHeight} m`,
+      parameters: {
+        'Stability Class': stability,
+        'Wind Speed (m/s)': windSpeed,
+        'Release Height (m)': releaseHeight,
+        'Release Rate': `${releaseRate} Ci/s`
+      },
+      computedMetrics: {
+        'Inversion Lid': `${mixingHeightM} m`,
+        'Rain Washout': `${rainRateMmHr} mm/h`
+      },
+      whatIfActions: [
+        {
+          label: stability === 'F' ? '▶ Switch → Class A (Sunny Unstable)' : '▶ Switch → Class F (Night Inversion)',
+          description: 'Compare strong daytime vertical turbulence vs concentrated nighttime laminar plume',
+          run: () => setStability(stability === 'F' ? 'A' : 'F')
+        },
+        {
+          label: `▶ Double Wind Speed (${windSpeed} → ${(windSpeed * 2).toFixed(1)} m/s)`,
+          description: 'Observe 1/u dilution of centerline plume concentration',
+          run: () => setWindSpeed(Number(Math.min(25, windSpeed * 2).toFixed(1)))
+        }
+      ]
+    });
+  }, [stability, windSpeed, releaseHeight, releaseRate, mixingHeightM, rainRateMmHr, setLiveModuleTelemetry]);
+
   return (
     <div className="panel" style={{ height: '100%', display: 'flex', flexDirection: 'column', gap: '16px' }}>
       
@@ -401,8 +434,20 @@ const PlumeModule: React.FC = () => {
             Estimate downwind radioactive plume concentration, ground touch-down peak distances, and crosswind isopleths using standard Briggs dispersion coefficients.
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
           <VerificationBadge testId="VTEST-09" standard="EPA AERMOD" />
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() =>
+              openPhysicsTutor(
+                `Why does Pasquill Stability Class ${stability} at ${windSpeed} m/s wind and ${releaseHeight} m stack height shape the downwind Gaussian plume this way?`
+              )
+            }
+            style={{ fontSize: '0.82rem', padding: '7px 12px' }}
+          >
+            🧠 Why Does This Happen?
+          </button>
           <button
             className="btn btn-primary"
             onClick={() => navigate('/tactical-gis')}

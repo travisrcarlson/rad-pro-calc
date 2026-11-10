@@ -50,7 +50,7 @@ export const AuditDossierModal: React.FC<AuditDossierModalProps> = ({ payload, i
         width: '100%',
         maxWidth: '600px',
         borderRadius: '10px',
-        border: '1px solid rgba(0, 229, 255, 0.4)',
+        border: '1px solid rgba(148, 163, 184, 0.32)',
         boxShadow: '0 20px 50px rgba(0, 0, 0, 0.8)',
         padding: '24px',
         display: 'flex',

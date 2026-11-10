@@ -957,7 +957,27 @@ const CriticalityModule: React.FC = () => {
         'k_eff': Number(math.kEff.toFixed(4)),
         'k_inf': Number(math.kInf.toFixed(4)),
         'Reactivity ρ': `${math.rhoPcm >= 0 ? '+' : ''}${math.rhoPcm.toFixed(0)} pcm ($${(math.rhoPcm / 650).toFixed(2)})`
-      }
+      },
+      whatIfActions: [
+        {
+          label: '▶ Full SCRAM (100% Rods)',
+          description: 'Insert all B₄C control rods and observe subcritical shutdown margin',
+          run: () => setControlInsertionPct(100)
+        },
+        {
+          label: '▶ Critical Trim (30% Rods)',
+          description: 'Withdraw control bank to nominal critical trim',
+          run: () => setControlInsertionPct(30)
+        },
+        {
+          label: moderatorType === 'Light Water (H2O)' ? '▶ Switch Moderator → D₂O' : '▶ Switch Moderator → H₂O',
+          description: 'Compare parasitic thermal absorption in Light Water vs Heavy Water',
+          run: () =>
+            setModeratorType(
+              moderatorType === 'Light Water (H2O)' ? 'Heavy Water (D2O)' : 'Light Water (H2O)'
+            )
+        }
+      ]
     });
   }, [activePreset.name, enrichmentPct, moderatorType, controlInsertionPct, boronPpm, math, setLiveModuleTelemetry]);
 
@@ -994,10 +1014,7 @@ const CriticalityModule: React.FC = () => {
               alignItems: 'center',
               gap: '6px',
               fontSize: '0.8rem',
-              padding: '6px 14px',
-              border: '1px solid rgba(0, 229, 255, 0.4)',
-              color: '#00e5ff',
-              background: 'rgba(0, 229, 255, 0.08)'
+              padding: '6px 14px'
             }}
           >
             <span>🛡️</span>
@@ -1010,11 +1027,11 @@ const CriticalityModule: React.FC = () => {
       {/* Preset Library Category Tabs */}
       <div className="panel" style={{ padding: '15px 20px', marginBottom: '20px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '10px' }}>
-          <h3 style={{ margin: 0, fontSize: '1rem', color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '1px' }}>
+          <h3 style={{ margin: 0, fontSize: '0.92rem', color: '#e2e8f0', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
             Reactor Core Presets Library
           </h3>
           <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-            12 Historical & Commercial Core Configurations
+            12 Historical &amp; Commercial Core Configurations
           </span>
         </div>
 
@@ -1023,15 +1040,12 @@ const CriticalityModule: React.FC = () => {
           {CATEGORIES.map((cat) => (
             <button
               key={cat}
-              className="btn btn-primary"
+              type="button"
+              className={selectedCategory === cat ? 'btn active' : 'btn'}
               style={{
-                fontSize: '0.8rem',
+                fontSize: '0.78rem',
                 padding: '6px 14px',
-                background: selectedCategory === cat ? 'var(--color-primary)' : 'rgba(255, 255, 255, 0.03)',
-                color: selectedCategory === cat ? '#000' : 'var(--color-text-muted)',
-                border: '1px solid var(--color-border)',
-                boxShadow: 'none',
-                fontWeight: selectedCategory === cat ? 'bold' : 'normal'
+                fontWeight: selectedCategory === cat ? 600 : 500
               }}
               onClick={() => setSelectedCategory(cat)}
             >
@@ -1041,19 +1055,17 @@ const CriticalityModule: React.FC = () => {
         </div>
 
         {/* Preset Buttons Grid */}
-        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '15px' }}>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '15px' }}>
           {filteredPresets.map((p) => {
             const isSelected = activePreset.name === p.name;
             return (
               <button
                 key={p.name}
-                className="btn btn-primary"
+                type="button"
+                className={isSelected ? 'btn active' : 'btn'}
                 style={{
-                  fontSize: '0.8rem',
-                  padding: '6px 12px',
-                  background: isSelected ? 'rgba(0, 229, 255, 0.2)' : 'rgba(22, 36, 56, 0.8)',
-                  color: isSelected ? '#00e5ff' : '#fff',
-                  border: `1px solid ${isSelected ? '#00e5ff' : 'var(--color-border)'}`
+                  fontSize: '0.78rem',
+                  padding: '6px 12px'
                 }}
                 onClick={() => applyPreset(p)}
               >

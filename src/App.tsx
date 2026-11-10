@@ -42,13 +42,14 @@ const TacticalGISModule = lazyWithRetry(() => import('./modules/Module29/Tactica
 const HistoricalIncidentsModule = lazyWithRetry(() => import('./modules/Module30/HistoricalIncidentsModule'), 'HistoricalIncidentsModule');
 const GlobalNuclearMapModule = lazyWithRetry(() => import('./modules/Module31/GlobalNuclearMapModule'), 'GlobalNuclearMapModule');
 
-import { RegulatoryProvider, type GlobalSourceContext } from './context/RegulatoryContext';
+import { RegulatoryProvider, useRegulatory, type GlobalSourceContext } from './context/RegulatoryContext';
 import { RegulatorySelectorBar } from './components/RegulatorySelectorBar';
 import { CommandPalette } from './components/CommandPalette';
-import { ModuleInfoTabPanel, MODULE_USER_GUIDES } from './components/ModuleInfoTabPanel';
-import { GlobalSourceAndPinboardDrawer } from './components/GlobalSourceAndPinboardDrawer';
-import { PhysicsTutorDrawer } from './components/PhysicsTutorDrawer';
+import { MODULE_USER_GUIDES } from './data/moduleUserGuides';
+import { WorkspaceInspectorDrawer, type InspectorTabId } from './components/WorkspaceInspectorDrawer';
 import ErrorBoundary from './ErrorBoundary';
+
+const ModuleInfoTabPanel = lazyWithRetry(() => import('./components/ModuleInfoTabPanel'), 'ModuleInfoTabPanel');
 
 const ModuleLoadingSkeleton: React.FC = () => (
   <div style={{
@@ -219,7 +220,7 @@ const NAV_CATEGORIES: NavCategory[] = [
     color: '#94a3b8',
     iconSymbol: '✓',
     items: [
-      { moduleNumber: 34, path: '/verify', label: 'Verification Tests', badge: '64/64 Pass', keywords: ['module 34', 'm34', 'verify', 'test', 'sqa', 'validation', 'benchmark', 'qa'] },
+      { moduleNumber: 34, path: '/verify', label: 'Verification Tests', badge: '68/68 Pass', keywords: ['module 34', 'm34', 'verify', 'test', 'sqa', 'validation', 'benchmark', 'qa'] },
       { moduleNumber: 35, path: '/literature', label: 'Core Literature & Physics', badge: 'Derivations', keywords: ['module 35', 'm35', 'literature', 'citations', 'physics', 'equations', 'formulations', 'references'] }
     ]
   }
@@ -853,9 +854,43 @@ const AppShell: React.FC<{
     localStorage.setItem('radpro_recent_modules', JSON.stringify([]));
   };
 
+  const {
+    activeSource,
+    pinnedResults,
+    liveModuleTelemetry,
+    telemetryDeltaSummary,
+    clearLiveModuleTelemetry,
+    formatActivityGBq
+  } = useRegulatory();
+
   // Track recent module visits and reset workspace tab to 'tool' on route change
   const [workspaceTab, setWorkspaceTab] = useState<'tool' | 'info'>('tool');
   const [sourceSyncRevision, setSourceSyncRevision] = useState(0);
+  const [isInspectorOpen, setIsInspectorOpen] = useState<boolean>(false);
+  const [inspectorTab, setInspectorTab] = useState<InspectorTabId>('tutor');
+  const [copiedShareLink, setCopiedShareLink] = useState<boolean>(false);
+
+  const toggleInspectorTab = (tab: InspectorTabId) => {
+    setIsInspectorOpen(prevOpen => {
+      const nextOpen = prevOpen && inspectorTab === tab ? false : true;
+      setInspectorTab(tab);
+      setTimeout(() => window.dispatchEvent(new Event('resize')), 60);
+      return nextOpen;
+    });
+  };
+
+  useEffect(() => {
+    const handleOpenInspector = (e: Event) => {
+      const evt = e as CustomEvent<{ tab?: InspectorTabId }>;
+      if (evt.detail?.tab) {
+        setInspectorTab(evt.detail.tab);
+      }
+      setIsInspectorOpen(true);
+      setTimeout(() => window.dispatchEvent(new Event('resize')), 60);
+    };
+    window.addEventListener('radpro:open-inspector', handleOpenInspector);
+    return () => window.removeEventListener('radpro:open-inspector', handleOpenInspector);
+  }, []);
 
   const handleSelectWorkspaceTab = (tab: 'tool' | 'info') => {
     setWorkspaceTab(tab);
@@ -879,8 +914,28 @@ const AppShell: React.FC<{
     setSourceSyncRevision(prev => prev + 1);
   };
 
+  const handleCopyScenarioPermalink = () => {
+    const params = new URLSearchParams(location.search);
+    params.set('isotope', activeSource.isotope);
+    params.set('activity', String(activeSource.activityGBq));
+    params.set('distance', String(activeSource.distanceM));
+    params.set('material', activeSource.shieldMaterial);
+    params.set('thickness', String(activeSource.shieldThicknessCm));
+    if (liveModuleTelemetry) {
+      Object.entries(liveModuleTelemetry.parameters).forEach(([k, v]) => {
+        const cleanKey = k.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+        params.set(cleanKey, String(v));
+      });
+    }
+    const shareUrl = `${window.location.origin}${location.pathname}?${params.toString()}`;
+    navigator.clipboard?.writeText(shareUrl).catch(() => {});
+    setCopiedShareLink(true);
+    setTimeout(() => setCopiedShareLink(false), 2000);
+  };
+
   useEffect(() => {
     setWorkspaceTab('tool');
+    clearLiveModuleTelemetry();
     const matched = ALL_FLAT_NAV_ITEMS.find(item => item.path === location.pathname);
     if (matched) {
       setRecentPaths(prev => {
@@ -889,7 +944,7 @@ const AppShell: React.FC<{
         return next;
       });
     }
-  }, [location.pathname]);
+  }, [location.pathname, clearLiveModuleTelemetry]);
 
   const activeModuleInfo = useMemo(() => {
     return ALL_FLAT_NAV_ITEMS.find(item => item.path === location.pathname) || null;
@@ -907,7 +962,7 @@ const AppShell: React.FC<{
     navigate(ALL_FLAT_NAV_ITEMS[nextIdx].path);
   };
 
-  // Global keyboard shortcuts: Ctrl+B (Sidebar Collapse), Alt+ArrowLeft / Alt+ArrowRight (Module Stepper), Alt+I (Toggle Tool Info Tab)
+  // Global keyboard shortcuts: Ctrl+B (Sidebar), Alt+Left/Right (Module Stepper), Alt+I (Guide), Alt+T (Physics Tutor), Esc (Close Drawer)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
@@ -921,18 +976,18 @@ const AppShell: React.FC<{
         handleStepModule(1);
       } else if (e.altKey && e.key.toLowerCase() === 'i') {
         e.preventDefault();
-        setWorkspaceTab(prev => {
-          const next = prev === 'tool' ? 'info' : 'tool';
-          if (next === 'tool') {
-            setTimeout(() => window.dispatchEvent(new Event('resize')), 60);
-          }
-          return next;
-        });
+        toggleInspectorTab('guide');
+      } else if (e.altKey && e.key.toLowerCase() === 't') {
+        e.preventDefault();
+        toggleInspectorTab('tutor');
+      } else if (e.key === 'Escape' && isInspectorOpen) {
+        setIsInspectorOpen(false);
+        setTimeout(() => window.dispatchEvent(new Event('resize')), 60);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [location.pathname]);
+  }, [location.pathname, isInspectorOpen, inspectorTab]);
 
   return (
     <div className="app-container">
@@ -956,175 +1011,193 @@ const AppShell: React.FC<{
           onTogglePinActive={activeModuleInfo ? () => handleTogglePin(activeModuleInfo.path) : undefined}
         />
         <CommandPalette isOpen={isCommandPaletteOpen} onClose={() => setIsCommandPaletteOpen(false)} />
-        <div style={{ flex: 1, padding: '16px 30px 24px 30px', overflowY: 'auto' }}>
-          {/* Dedicated Module Workspace Tab Bar: [ Interactive Tool ] | [ Tool Info & User Guide ] */}
-          {activeModuleInfo && (
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                flexWrap: 'wrap',
-                gap: '12px',
-                marginBottom: '12px',
-                padding: '7px 12px',
-                background: 'rgba(9, 15, 26, 0.85)',
-                border: '1px solid rgba(148, 163, 184, 0.2)',
-                borderRadius: '8px'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                <button
-                  type="button"
-                  className={workspaceTab === 'tool' ? 'active' : ''}
-                  onClick={() => handleSelectWorkspaceTab('tool')}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '7px',
-                    padding: '6px 13px',
-                    borderRadius: '6px',
-                    fontSize: '0.80rem',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    border: '1px solid rgba(148, 163, 184, 0.22)'
-                  }}
-                >
-                  <span>
-                    Interactive Tool — M{String(activeModuleInfo.moduleNumber).padStart(2, '0')}: {activeModuleInfo.label}
-                  </span>
-                </button>
 
-                <button
-                  type="button"
-                  className={workspaceTab === 'info' ? 'active' : ''}
-                  onClick={() => handleSelectWorkspaceTab('info')}
-                  title="Read what this tool does, when to use it, step-by-step operator workflow, and governing physics equations (Shortcut: Alt+I)"
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '7px',
-                    padding: '6px 13px',
-                    borderRadius: '6px',
-                    fontSize: '0.80rem',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    border: '1px solid rgba(148, 163, 184, 0.22)'
-                  }}
-                >
-                  <span>Tool Info &amp; User Guide</span>
-                </button>
-              </div>
-
-              {activeUserGuide && (
-                <div
-                  style={{
-                    flex: '1 1 320px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: '10px',
-                    padding: '4px 10px',
-                    borderRadius: '6px',
-                    background: 'rgba(15, 23, 42, 0.45)',
-                    borderLeft: '2px solid rgba(148, 163, 184, 0.4)'
-                  }}
-                >
-                  <span
+        {/* Split Workspace Stage: [ Center Active Module Canvas ] + [ Docked Right-Hand Inspector Drawer ] */}
+        <div style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden' }}>
+          <div style={{ flex: 1, minWidth: 0, padding: '12px 24px 24px 24px', overflowY: 'auto' }}>
+            {/* Single Consolidated Compact Workspace Ribbon (Reclaims ~190 px of vertical height) */}
+            {activeModuleInfo && (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: '8px',
+                  marginBottom: '12px',
+                  padding: '6px 10px',
+                  background: 'rgba(9, 15, 26, 0.88)',
+                  border: '1px solid rgba(148, 163, 184, 0.2)',
+                  borderRadius: '8px'
+                }}
+              >
+                {/* Left: Active Module Mode Switcher & Live Context Pill */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', minWidth: 0 }}>
+                  <button
+                    type="button"
+                    className={workspaceTab === 'tool' ? 'active' : ''}
+                    onClick={() => handleSelectWorkspaceTab('tool')}
                     style={{
-                      fontSize: '0.75rem',
-                      color: '#cbd5e1',
-                      lineHeight: 1.4
+                      padding: '4px 10px',
+                      borderRadius: '5px',
+                      fontSize: '0.76rem',
+                      fontWeight: 600,
+                      cursor: 'pointer'
                     }}
                   >
-                    <strong style={{ color: '#e2e8f0' }}>Overview:</strong>{' '}
-                    {activeUserGuide.whatItDoes}
-                  </span>
-                  {workspaceTab === 'tool' && (
-                    <button
-                      type="button"
-                      onClick={() => handleSelectWorkspaceTab('info')}
-                      style={{
-                        flexShrink: 0,
-                        padding: '3px 9px',
-                        borderRadius: '5px',
-                        border: '1px solid rgba(148, 163, 184, 0.22)',
-                        fontSize: '0.72rem',
-                        fontWeight: 600,
-                        cursor: 'pointer'
-                      }}
-                    >
-                      Guide →
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
+                    M{String(activeModuleInfo.moduleNumber).padStart(2, '0')}: {activeModuleInfo.label}
+                  </button>
 
-          {/* Global Active Source Sync & Multi-Module Calculation Pinboard Drawer */}
-          <GlobalSourceAndPinboardDrawer
+                  <span
+                    title={activeUserGuide?.whatItDoes}
+                    style={{
+                      fontSize: '0.72rem',
+                      color: '#94a3b8',
+                      fontFamily: 'var(--font-mono)',
+                      padding: '2px 8px',
+                      borderRadius: '4px',
+                      background: 'rgba(15, 23, 42, 0.65)',
+                      border: '1px solid rgba(148, 163, 184, 0.14)',
+                      maxWidth: '380px',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    {liveModuleTelemetry
+                      ? liveModuleTelemetry.regimeSummary
+                      : `Ref: ${activeSource.isotope} • ${formatActivityGBq(activeSource.activityGBq)} @ ${activeSource.distanceM} m`}
+                  </span>
+                </div>
+
+                {/* Right: Unified Inspector Drawer Triggers & Permalink Copy */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    className={isInspectorOpen && inspectorTab === 'source' ? 'active' : ''}
+                    onClick={() => toggleInspectorTab('source')}
+                    title="Open Global Reference Source, Smart Unit Converter & Cross-Module Pipeline"
+                    style={{ padding: '4px 9px', borderRadius: '5px', fontSize: '0.73rem', fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    ☢️ Source ({activeSource.isotope})
+                  </button>
+
+                  <button
+                    type="button"
+                    className={isInspectorOpen && inspectorTab === 'pinboard' ? 'active' : ''}
+                    onClick={() => toggleInspectorTab('pinboard')}
+                    title="Open Calculation Pinboard, .radproj Save/Load & Multi-Module Master Dossier"
+                    style={{ padding: '4px 9px', borderRadius: '5px', fontSize: '0.73rem', fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    📌 Pins ({pinnedResults.length})
+                  </button>
+
+                  <button
+                    type="button"
+                    className={(isInspectorOpen && inspectorTab === 'guide') || workspaceTab === 'info' ? 'active' : ''}
+                    onClick={() => toggleInspectorTab('guide')}
+                    title="Open Tool Info, Worked Benchmark & Mathematical Reference (Shortcut: Alt+I)"
+                    style={{ padding: '4px 9px', borderRadius: '5px', fontSize: '0.73rem', fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    📖 Guide
+                  </button>
+
+                  <button
+                    type="button"
+                    className={isInspectorOpen && inspectorTab === 'tutor' ? 'active' : ''}
+                    onClick={() => toggleInspectorTab('tutor')}
+                    title="Open Side-by-Side Interactive 'Why Does This Happen?' Physics Tutor (Shortcut: Alt+T)"
+                    style={{ padding: '4px 9px', borderRadius: '5px', fontSize: '0.73rem', fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    🧠 Physics Tutor{telemetryDeltaSummary ? ' • Δ' : ''}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleCopyScenarioPermalink}
+                    title="Copy shareable scenario permalink URL to clipboard"
+                    style={{ padding: '4px 9px', borderRadius: '5px', fontSize: '0.73rem', fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    {copiedShareLink ? '✓ Link Copied' : '🔗 Share'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {workspaceTab === 'info' && activeModuleInfo && (
+              <Suspense fallback={<ModuleLoadingSkeleton />}>
+                <ModuleInfoTabPanel
+                  moduleInfo={activeModuleInfo}
+                  onReturnToTool={() => {
+                    setSourceSyncRevision(prev => prev + 1);
+                    handleSelectWorkspaceTab('tool');
+                  }}
+                />
+              </Suspense>
+            )}
+
+            <div key={sourceSyncRevision} style={{ display: workspaceTab === 'info' ? 'none' : 'block' }}>
+              <ErrorBoundary>
+                <Suspense fallback={<ModuleLoadingSkeleton />}>
+                  <Routes>
+                  <Route path="/" element={<Navigate to="/nuclides" replace />} />
+                  <Route path="/nuclides" element={<NuclideTableModule />} />
+                  <Route path="/dose" element={<DoseCalculatorModule />} />
+                  <Route path="/visualisation" element={<VisualisationModule />} />
+                  <Route path="/transport" element={<TransportModule />} />
+                  <Route path="/reg" element={<RegModule />} />
+                  <Route path="/decay" element={<DecayModule />} />
+                  <Route path="/verify" element={<VerificationModule />} />
+                  <Route path="/spatial3d" element={<Spatial3DModule />} />
+                  <Route path="/worker" element={<WorkerDosimetryModule />} />
+                  <Route path="/xray" element={<PulsedXRayModule />} />
+                  <Route path="/equipment" element={<EquipmentLibraryModule />} />
+                  <Route path="/responder" element={<ReverseResponderModule />} />
+                  <Route path="/shielding" element={<ShieldingModule />} />
+                  <Route path="/plume" element={<PlumeModule />} />
+                  <Route path="/laser" element={<LaserModule />} />
+                  <Route path="/xray-tube" element={<XRayTubeModule />} />
+                  <Route path="/xray-distortion" element={<XRayDistortionModule />} />
+                  <Route path="/internal-dose" element={<InternalDosimetryModule />} />
+                  <Route path="/emr-safety" element={<EMRModule />} />
+                  <Route path="/criticality" element={<CriticalityModule />} />
+                  <Route path="/spectroscopy" element={<SpectroscopyModule />} />
+                  <Route path="/marssim" element={<MARSSIMModule />} />
+                  <Route path="/brachytherapy" element={<BrachytherapyModule />} />
+                  <Route path="/first-responder" element={<FirstResponderModule />} />
+                  <Route path="/cbrn-consequence" element={<CBRNConsequenceModule />} />
+                  <Route path="/nuclear-weapons-effects" element={<NuclearWeaponEffectsModule />} />
+                  <Route path="/medical-countermeasures" element={<MedicalCountermeasuresModule />} />
+                  <Route path="/caas-criticality" element={<CAASCriticalityModule />} />
+                  <Route path="/tactical-gis" element={<TacticalGISModule />} />
+                  <Route path="/incidents" element={<HistoricalIncidentsModule />} />
+                  <Route path="/global-map" element={<GlobalNuclearMapModule />} />
+                  <Route path="/monte-carlo" element={<MonteCarloModule />} />
+                  <Route path="/hardware" element={<DetectorHardwareModule />} />
+                  <Route path="/scenarios" element={<ScenarioBuilderModule />} />
+                  <Route path="/literature" element={<LiteratureModule />} />
+                  </Routes>
+                </Suspense>
+              </ErrorBoundary>
+            </div>
+          </div>
+
+          {/* Right-Hand Docked Split Workspace Inspector Drawer */}
+          <WorkspaceInspectorDrawer
+            isOpen={isInspectorOpen}
+            activeTab={inspectorTab}
+            onSelectTab={tab => setInspectorTab(tab)}
+            onClose={() => {
+              setIsInspectorOpen(false);
+              setTimeout(() => window.dispatchEvent(new Event('resize')), 60);
+            }}
+            onOpenFullWidthGuide={() => {
+              setIsInspectorOpen(false);
+              handleSelectWorkspaceTab('info');
+            }}
             activeModuleInfo={activeModuleInfo}
             onApplySourceToCurrentModule={handleApplySourceToCurrentModule}
           />
-
-          {/* Interactive "Why Does This Happen?" Physics Tutor Drawer */}
-          <PhysicsTutorDrawer activeModuleInfo={activeModuleInfo} />
-
-          {workspaceTab === 'info' && activeModuleInfo && (
-            <ModuleInfoTabPanel
-              moduleInfo={activeModuleInfo}
-              onReturnToTool={() => {
-                setSourceSyncRevision(prev => prev + 1);
-                handleSelectWorkspaceTab('tool');
-              }}
-            />
-          )}
-
-          <div key={sourceSyncRevision} style={{ display: workspaceTab === 'info' ? 'none' : 'block' }}>
-            <ErrorBoundary>
-              <Suspense fallback={<ModuleLoadingSkeleton />}>
-                <Routes>
-                <Route path="/" element={<Navigate to="/nuclides" replace />} />
-                <Route path="/nuclides" element={<NuclideTableModule />} />
-                <Route path="/dose" element={<DoseCalculatorModule />} />
-                <Route path="/visualisation" element={<VisualisationModule />} />
-                <Route path="/transport" element={<TransportModule />} />
-                <Route path="/reg" element={<RegModule />} />
-                <Route path="/decay" element={<DecayModule />} />
-                <Route path="/verify" element={<VerificationModule />} />
-                <Route path="/spatial3d" element={<Spatial3DModule />} />
-                <Route path="/worker" element={<WorkerDosimetryModule />} />
-                <Route path="/xray" element={<PulsedXRayModule />} />
-                <Route path="/equipment" element={<EquipmentLibraryModule />} />
-                <Route path="/responder" element={<ReverseResponderModule />} />
-                <Route path="/shielding" element={<ShieldingModule />} />
-                <Route path="/plume" element={<PlumeModule />} />
-                <Route path="/laser" element={<LaserModule />} />
-                <Route path="/xray-tube" element={<XRayTubeModule />} />
-                <Route path="/xray-distortion" element={<XRayDistortionModule />} />
-                <Route path="/internal-dose" element={<InternalDosimetryModule />} />
-                <Route path="/emr-safety" element={<EMRModule />} />
-                <Route path="/criticality" element={<CriticalityModule />} />
-                <Route path="/spectroscopy" element={<SpectroscopyModule />} />
-                <Route path="/marssim" element={<MARSSIMModule />} />
-                <Route path="/brachytherapy" element={<BrachytherapyModule />} />
-                <Route path="/first-responder" element={<FirstResponderModule />} />
-                <Route path="/cbrn-consequence" element={<CBRNConsequenceModule />} />
-                <Route path="/nuclear-weapons-effects" element={<NuclearWeaponEffectsModule />} />
-                <Route path="/medical-countermeasures" element={<MedicalCountermeasuresModule />} />
-                <Route path="/caas-criticality" element={<CAASCriticalityModule />} />
-                <Route path="/tactical-gis" element={<TacticalGISModule />} />
-                <Route path="/incidents" element={<HistoricalIncidentsModule />} />
-                <Route path="/global-map" element={<GlobalNuclearMapModule />} />
-                <Route path="/monte-carlo" element={<MonteCarloModule />} />
-                <Route path="/hardware" element={<DetectorHardwareModule />} />
-                <Route path="/scenarios" element={<ScenarioBuilderModule />} />
-                <Route path="/literature" element={<LiteratureModule />} />
-                </Routes>
-              </Suspense>
-            </ErrorBoundary>
-          </div>
         </div>
       </main>
     </div>

@@ -200,6 +200,12 @@ export interface PinnedCalculationItem {
   notes?: string;
 }
 
+export interface WhatIfExperimentAction {
+  label: string;
+  description?: string;
+  run: () => void;
+}
+
 export interface LiveModuleTelemetry {
   moduleId: string;
   moduleTitle: string;
@@ -207,6 +213,17 @@ export interface LiveModuleTelemetry {
   parameters: Record<string, string | number>;
   computedMetrics: Record<string, string | number>;
   suggestedQuestions?: string[];
+  whatIfActions?: WhatIfExperimentAction[];
+}
+
+export interface RadProWorkspaceProject {
+  formatVersion: '1.0';
+  projectName: string;
+  exportedAt: string;
+  frameworkId: RegulatoryFrameworkId;
+  unitSystem: UnitSystemMode;
+  activeSource: GlobalSourceContext;
+  pinnedResults: PinnedCalculationItem[];
 }
 
 export const GLOBAL_SOURCE_PRESETS: GlobalSourceContext[] = [
@@ -289,8 +306,16 @@ interface RegulatoryContextType {
   removePinnedCalculation: (id: string) => void;
   clearPinnedCalculations: () => void;
   liveModuleTelemetry: LiveModuleTelemetry | null;
+  previousModuleTelemetry: LiveModuleTelemetry | null;
+  telemetryDeltaSummary: string | null;
   setLiveModuleTelemetry: (telemetry: LiveModuleTelemetry | null) => void;
+  clearLiveModuleTelemetry: () => void;
   openPhysicsTutor: (promptQuestion?: string, customTelemetry?: LiveModuleTelemetry) => void;
+  openInspectorDrawer: (tab: 'source' | 'pinboard' | 'guide' | 'tutor') => void;
+  projectName: string;
+  setProjectName: (name: string) => void;
+  exportWorkspaceProject: () => void;
+  importWorkspaceProject: (jsonContent: string) => { ok: boolean; message: string };
 }
 
 const RegulatoryContext = createContext<RegulatoryContextType | undefined>(undefined);
@@ -367,21 +392,129 @@ export const RegulatoryProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     });
   };
 
+  const [projectName, setProjectNameState] = useState<string>(() => {
+    return localStorage.getItem('radpro_project_name') || 'RadPro Engineering Evaluation';
+  });
+
+  const setProjectName = useCallback((name: string) => {
+    setProjectNameState(name);
+    localStorage.setItem('radpro_project_name', name);
+  }, []);
+
   const [liveModuleTelemetry, setLiveModuleTelemetryState] = useState<LiveModuleTelemetry | null>(null);
+  const [previousModuleTelemetry, setPreviousModuleTelemetryState] = useState<LiveModuleTelemetry | null>(null);
+  const [telemetryDeltaSummary, setTelemetryDeltaSummaryState] = useState<string | null>(null);
 
   const setLiveModuleTelemetry = useCallback((telemetry: LiveModuleTelemetry | null) => {
-    setLiveModuleTelemetryState(telemetry);
+    setLiveModuleTelemetryState(prev => {
+      if (!telemetry) {
+        setPreviousModuleTelemetryState(null);
+        setTelemetryDeltaSummaryState(null);
+        return null;
+      }
+      if (prev && prev.moduleId === telemetry.moduleId) {
+        const paramChanges: string[] = [];
+        for (const [k, v] of Object.entries(telemetry.parameters)) {
+          const oldVal = prev.parameters[k];
+          if (oldVal !== undefined && String(oldVal) !== String(v)) {
+            paramChanges.push(`${k}: ${oldVal} → ${v}`);
+          }
+        }
+        const metricChanges: string[] = [];
+        for (const [k, v] of Object.entries(telemetry.computedMetrics)) {
+          const oldVal = prev.computedMetrics[k];
+          if (oldVal !== undefined && String(oldVal) !== String(v)) {
+            metricChanges.push(`${k}: ${oldVal} → ${v}`);
+          }
+        }
+        if (paramChanges.length > 0 || metricChanges.length > 0) {
+          setPreviousModuleTelemetryState(prev);
+          const summaryParts = [...paramChanges.slice(0, 2), ...metricChanges.slice(0, 2)];
+          setTelemetryDeltaSummaryState(summaryParts.join(' | '));
+        }
+      } else {
+        setPreviousModuleTelemetryState(null);
+        setTelemetryDeltaSummaryState(null);
+      }
+      return telemetry;
+    });
+  }, []);
+
+  const clearLiveModuleTelemetry = useCallback(() => {
+    setLiveModuleTelemetryState(null);
+    setPreviousModuleTelemetryState(null);
+    setTelemetryDeltaSummaryState(null);
+  }, []);
+
+  const openInspectorDrawer = useCallback((tab: 'source' | 'pinboard' | 'guide' | 'tutor') => {
+    window.dispatchEvent(new CustomEvent('radpro:open-inspector', { detail: { tab } }));
   }, []);
 
   const openPhysicsTutor = useCallback((promptQuestion?: string, customTelemetry?: LiveModuleTelemetry) => {
     if (customTelemetry) {
       setLiveModuleTelemetryState(customTelemetry);
     }
+    window.dispatchEvent(new CustomEvent('radpro:open-inspector', { detail: { tab: 'tutor' } }));
     window.dispatchEvent(
       new CustomEvent('radpro:open-physics-tutor', {
         detail: { promptQuestion, customTelemetry }
       })
     );
+  }, []);
+
+  const exportWorkspaceProject = useCallback(() => {
+    const payload: RadProWorkspaceProject = {
+      formatVersion: '1.0',
+      projectName,
+      exportedAt: new Date().toISOString(),
+      frameworkId,
+      unitSystem,
+      activeSource,
+      pinnedResults
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const safeSlug = projectName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'radpro-project';
+    a.download = `${safeSlug}-${new Date().toISOString().slice(0, 10)}.radproj.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [projectName, frameworkId, unitSystem, activeSource, pinnedResults]);
+
+  const importWorkspaceProject = useCallback((jsonContent: string): { ok: boolean; message: string } => {
+    try {
+      const parsed = JSON.parse(jsonContent) as Partial<RadProWorkspaceProject>;
+      if (!parsed || typeof parsed !== 'object') {
+        return { ok: false, message: 'Invalid .radproj file structure.' };
+      }
+      if (parsed.projectName) {
+        setProjectNameState(parsed.projectName);
+        localStorage.setItem('radpro_project_name', parsed.projectName);
+      }
+      if (parsed.frameworkId && parsed.frameworkId in REGULATORY_FRAMEWORKS) {
+        setFrameworkIdState(parsed.frameworkId);
+        localStorage.setItem('radpro_regulatory_framework', parsed.frameworkId);
+      }
+      if (parsed.unitSystem === 'SI' || parsed.unitSystem === 'TRADITIONAL' || parsed.unitSystem === 'DUAL') {
+        setUnitSystemState(parsed.unitSystem);
+        localStorage.setItem('radpro_unit_system', parsed.unitSystem);
+      }
+      if (parsed.activeSource && parsed.activeSource.isotope) {
+        setActiveSourceState(parsed.activeSource);
+        localStorage.setItem('radpro_global_active_source', JSON.stringify(parsed.activeSource));
+      }
+      if (Array.isArray(parsed.pinnedResults)) {
+        setPinnedResultsState(parsed.pinnedResults);
+        localStorage.setItem('radpro_pinned_calculations', JSON.stringify(parsed.pinnedResults));
+      }
+      return {
+        ok: true,
+        message: `Loaded project "${parsed.projectName || 'Workspace'}" (${parsed.pinnedResults?.length || 0} pinned calculations).`
+      };
+    } catch {
+      return { ok: false, message: 'Could not parse JSON in .radproj file.' };
+    }
   }, []);
 
   const clearPinnedCalculations = () => {
@@ -441,8 +574,16 @@ export const RegulatoryProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         removePinnedCalculation,
         clearPinnedCalculations,
         liveModuleTelemetry,
+        previousModuleTelemetry,
+        telemetryDeltaSummary,
         setLiveModuleTelemetry,
-        openPhysicsTutor
+        clearLiveModuleTelemetry,
+        openPhysicsTutor,
+        openInspectorDrawer,
+        projectName,
+        setProjectName,
+        exportWorkspaceProject,
+        importWorkspaceProject
       }}
     >
       {children}

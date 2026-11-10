@@ -4,6 +4,7 @@ import VerificationBadge from '../../components/VerificationBadge';
 import PlotComponent from 'react-plotly.js';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
+import { useRegulatory } from '../../context/RegulatoryContext';
 import {
   parseAnsiN42Xml,
   parseOrtecSpeOrCsv,
@@ -544,6 +545,41 @@ const SpectroscopyModule: React.FC = () => {
     ]
   }), [ingestedSpectrum, detector, isotope, activityKBq, liveTimeSec, mariscottiZThreshold, idToleranceKeV, identifiedPeaks]);
 
+  const { setLiveModuleTelemetry, openPhysicsTutor } = useRegulatory();
+
+  useEffect(() => {
+    const primaryE = identifiedPeaks[0]?.energyKeV || isotope.gammas[0]?.energyKeV || 661.7;
+    const comptonEdge = primaryE / (1 + 511.0 / (2 * primaryE));
+    setLiveModuleTelemetry({
+      moduleId: 'spectroscopy',
+      moduleTitle: 'Gamma Spectroscopy & MCA Analyzer',
+      regimeSummary: `${detector.name.split(' ')[0]} • ${isotope.symbol} (${primaryE.toFixed(1)} keV)`,
+      parameters: {
+        'Identified Nuclide': isotope.symbol,
+        'Detector': detector.name.split(' (')[0],
+        'Photopeak Energy (keV)': Number(primaryE.toFixed(1)),
+        'FWHM @ 662 keV': `${detector.fwhmAt662keV} keV`
+      },
+      computedMetrics: {
+        'Compton Edge': `${comptonEdge.toFixed(1)} keV`,
+        'Backscatter Peak': `${(primaryE - comptonEdge).toFixed(1)} keV`,
+        'Resolved Peaks': identifiedPeaks.length
+      },
+      whatIfActions: [
+        {
+          label: detector.name.startsWith('HPGe') ? '▶ Switch Detector → NaI(Tl)' : '▶ Switch Detector → HPGe',
+          description: 'Compare 0.27% HPGe semiconductor resolution vs 7.0% NaI(Tl) scintillator broadening',
+          run: () => setDetector(detector.name.startsWith('HPGe') ? DETECTORS[1] : DETECTORS[0])
+        },
+        {
+          label: hasShielding ? '▶ Remove Lead Cave Backscatter' : '▶ Add Lead Cave Backscatter',
+          description: 'Toggle ~200 keV 180° shield backscatter peak & Pb X-ray fluorescence',
+          run: () => setHasShielding(!hasShielding)
+        }
+      ]
+    });
+  }, [detector, isotope, identifiedPeaks, hasShielding, setLiveModuleTelemetry]);
+
   return (
     <div className="spectroscopy-module">
       <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
@@ -553,7 +589,19 @@ const SpectroscopyModule: React.FC = () => {
             Ingest real-world ANSI N42.42 XML, ORTEC Maestro (.SPE), or MCA CSV spectra—or simulate HPGe/NaI(Tl)/LaBr₃/CZT detectors with Mariscotti generalized second-difference peak search and trapezoidal Compton continuum subtraction.
           </p>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() =>
+              openPhysicsTutor(
+                `Why does ${isotope.symbol} produce a Compton Edge and Backscatter Peak in ${detector.name}, and why is HPGe resolution sharper than NaI(Tl)?`
+              )
+            }
+            style={{ fontSize: '0.8rem', padding: '6px 12px' }}
+          >
+            🧠 Why Does This Happen?
+          </button>
           <button
             className="btn btn-secondary"
             onClick={() => setIsDossierOpen(true)}

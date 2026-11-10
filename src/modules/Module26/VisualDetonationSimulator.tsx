@@ -478,6 +478,15 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
     };
   }, [yieldKt, burstAltitudeM, burstMode]);
 
+  // --- TRIGGER DETONATION EVENT ---
+  const triggerDetonation = useCallback(() => {
+    setSimTimeSeconds(0.0);
+    setIsPlaying(true);
+    setFlashIntensity(1.0);
+    setShakeIntensity(1.0);
+    soundEngine.playDetonation(yieldKt);
+  }, [yieldKt]);
+
   const { setLiveModuleTelemetry, openPhysicsTutor } = useRegulatory();
 
   useEffect(() => {
@@ -509,9 +518,46 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
         '5 psi Blast Radius': `${cloudPhysics.rZone3_Mod5psiKm.toFixed(2)} km`,
         'Base Surge / Thermal': `${cloudPhysics.rZone4_Thermal3rdKm.toFixed(2)} km`,
         'Stabilized Cloud Top': `${cloudPhysics.hTopKm.toFixed(1)} km`
-      }
+      },
+      whatIfActions: [
+        {
+          label: '▶ Optimal Airburst',
+          description: 'Set HOB to optimal 5-psi Mach-stem coalescence height',
+          run: () => {
+            const optM = Math.max(50, Math.round(140 * Math.pow(Math.max(0.01, yieldKt), 1 / 3)));
+            if (onBurstAltitudeChange) onBurstAltitudeChange(optM, 'air');
+            triggerDetonation();
+          }
+        },
+        {
+          label: '▶ Underwater Plume (Baker)',
+          description: 'Detonate underwater to observe thermal quenching & radioactive base surge',
+          run: () => {
+            const dM = -Math.max(15, Math.min(180, Math.round(10 * Math.pow(Math.max(0.01, yieldKt), 1 / 3))));
+            if (onBurstAltitudeChange) onBurstAltitudeChange(dM, 'underwater');
+            triggerDetonation();
+          }
+        },
+        {
+          label: '▶ High-Altitude HEMP (15 km)',
+          description: 'Detonate in upper atmosphere (no ground stem, wide plasma sphere)',
+          run: () => {
+            if (onBurstAltitudeChange) onBurstAltitudeChange(15000, 'air');
+            triggerDetonation();
+          }
+        },
+        {
+          label: '▶ Contained Underground',
+          description: 'Bury past SDOB = 115 m/kt¹/³ for full lithostatic containment',
+          run: () => {
+            const dobM = -Math.max(120, Math.min(2000, Math.round(120 * Math.pow(Math.max(0.01, yieldKt), 1 / 3))));
+            if (onBurstAltitudeChange) onBurstAltitudeChange(dobM, 'underground');
+            triggerDetonation();
+          }
+        }
+      ]
     });
-  }, [yieldKt, burstMode, burstAltitudeM, cloudPhysics, setLiveModuleTelemetry]);
+  }, [yieldKt, burstMode, burstAltitudeM, cloudPhysics, setLiveModuleTelemetry, onBurstAltitudeChange, triggerDetonation]);
 
   // --- OUTRIDER CASUALTY & HUMAN IMPACT CALCULATOR ---
   const casualties = useMemo(() => {
@@ -612,15 +658,6 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
     const order = { back: 0, core: 1, front: 2 };
     return lobes.sort((a, b) => order[a.layer] - order[b.layer]);
   }, []);
-
-  // --- TRIGGER DETONATION EVENT ---
-  const triggerDetonation = useCallback(() => {
-    setSimTimeSeconds(0.0);
-    setIsPlaying(true);
-    setFlashIntensity(1.0);
-    setShakeIntensity(1.0);
-    soundEngine.playDetonation(yieldKt);
-  }, [yieldKt]);
 
   // Toggle Mute Audio
   const toggleMute = () => {
