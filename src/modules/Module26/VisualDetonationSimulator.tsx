@@ -11,6 +11,13 @@ export interface VisualDetonationProps {
   initialCityId?: string;
 }
 
+interface EmpiricalBenchmarkItem {
+  metricLabel: string;
+  measuredValue: string;
+  sourceCitation: string;
+  computeModeled: (cp: any, cas: any) => string;
+}
+
 interface CityPreset {
   id: string;
   name: string;
@@ -18,6 +25,14 @@ interface CityPreset {
   lat: number;
   lon: number;
   popDensityPerKm2: number;
+  /** Fraction of surrounding footprint on land vs water/harbor/ocean (0.0 – 1.0) */
+  landFraction?: number;
+  /** Characteristic urban core density e-folding scale radius (km) */
+  urbanCoreRadiusKm?: number;
+  /** Topographic ridge / valley blast & thermal transmission factor (1.0 = flat plain, <1 = hill shadowing) */
+  terrainShieldingFactor?: number;
+  terrainNote?: string;
+  empiricalBenchmarks?: EmpiricalBenchmarkItem[];
   category?: 'city' | 'historical_test_site';
   flag?: string;
   suggestedYieldKt?: number;
@@ -29,47 +44,237 @@ interface CityPreset {
 }
 
 const CITY_PRESETS: CityPreset[] = [
-  // 1. Populated Metropolitan Centers
-  { id: 'regina', name: 'Regina, Saskatchewan', country: 'Canada', category: 'city', flag: '🇨🇦', lat: 50.448906, lon: -104.6108, popDensityPerKm2: 2250, description: 'Capital city of Saskatchewan, Canadian Prairies' },
-  { id: 'nyc', name: 'New York City (Manhattan)', country: 'United States', category: 'city', flag: '🇺🇸', lat: 40.7128, lon: -74.0060, popDensityPerKm2: 11300, description: 'Financial district and dense urban center' },
-  { id: 'dc', name: 'Washington D.C. (The Capitol)', country: 'United States', category: 'city', flag: '🇺🇸', lat: 38.8899, lon: -77.0090, popDensityPerKm2: 4400, description: 'National government and federal installations' },
-  { id: 'london', name: 'London (Westminster)', country: 'United Kingdom', category: 'city', flag: '🇬🇧', lat: 51.5074, lon: -0.1278, popDensityPerKm2: 5700, description: 'Central London metropolitan area' },
-  { id: 'tokyo', name: 'Tokyo (Shinjuku)', country: 'Japan', category: 'city', flag: '🇯🇵', lat: 35.6895, lon: 139.6917, popDensityPerKm2: 15400, description: 'World\'s most populous metropolitan agglomeration' },
-  { id: 'kyiv', name: 'Kyiv (Maidan)', country: 'Ukraine', category: 'city', flag: '🇺🇦', lat: 50.4501, lon: 30.5234, popDensityPerKm2: 3500, description: 'Capital of Ukraine, Dnipro river basin' },
-  { id: 'hiroshima', name: 'Hiroshima (Ground Zero)', country: 'Japan', category: 'city', flag: '🇯🇵', lat: 34.3955, lon: 132.4536, popDensityPerKm2: 4200, suggestedYieldKt: 15, burstMode: 'air', defaultAltitudeM: 600, historicalTestName: 'Little Boy combat drop', historicalYear: 1945, description: 'First wartime atomic bombing (August 6, 1945, 600m HOB)' },
-  { id: 'nagasaki', name: 'Nagasaki (Hypocenter)', country: 'Japan', category: 'city', flag: '🇯🇵', lat: 32.7702, lon: 129.8657, popDensityPerKm2: 3800, suggestedYieldKt: 21, burstMode: 'air', defaultAltitudeM: 503, historicalTestName: 'Fat Man combat drop', historicalYear: 1945, description: 'Second wartime atomic bombing (August 9, 1945, 503m HOB)' },
+  // 1. Populated Metropolitan Centers (Grounded with Coastal Water Masking, Radial Density Decay & Terrain)
+  { id: 'regina', name: 'Regina, Saskatchewan', country: 'Canada', category: 'city', flag: '🇨🇦', lat: 50.448906, lon: -104.6108, popDensityPerKm2: 2250, landFraction: 0.96, urbanCoreRadiusKm: 6.5, terrainShieldingFactor: 1.0, terrainNote: 'Flat glaciolacustrine prairie plain (zero ridge shadowing)', description: 'Capital city of Saskatchewan, Canadian Prairies' },
+  { id: 'nyc', name: 'New York City (Manhattan)', country: 'United States', category: 'city', flag: '🇺🇸', lat: 40.7128, lon: -74.0060, popDensityPerKm2: 11300, landFraction: 0.62, urbanCoreRadiusKm: 12.5, terrainShieldingFactor: 0.94, terrainNote: '38% Hudson/East River & Upper Bay water masking + high-rise canyon shadowing', description: 'Financial district and dense urban center' },
+  { id: 'dc', name: 'Washington D.C. (The Capitol)', country: 'United States', category: 'city', flag: '🇺🇸', lat: 38.8899, lon: -77.0090, popDensityPerKm2: 4400, landFraction: 0.86, urbanCoreRadiusKm: 10.5, terrainShieldingFactor: 0.96, terrainNote: 'Potomac/Anacostia river basin (~14% water)', description: 'National government and federal installations' },
+  { id: 'london', name: 'London (Westminster)', country: 'United Kingdom', category: 'city', flag: '🇬🇧', lat: 51.5074, lon: -0.1278, popDensityPerKm2: 5700, landFraction: 0.92, urbanCoreRadiusKm: 14.0, terrainShieldingFactor: 0.96, terrainNote: 'Thames Valley gentle basin', description: 'Central London metropolitan area' },
+  { id: 'tokyo', name: 'Tokyo (Shinjuku)', country: 'Japan', category: 'city', flag: '🇯🇵', lat: 35.6895, lon: 139.6917, popDensityPerKm2: 15400, landFraction: 0.74, urbanCoreRadiusKm: 18.0, terrainShieldingFactor: 0.93, terrainNote: '26% Tokyo Bay maritime sector in outer rings', description: 'World\'s most populous metropolitan agglomeration' },
+  { id: 'kyiv', name: 'Kyiv (Maidan)', country: 'Ukraine', category: 'city', flag: '🇺🇦', lat: 50.4501, lon: 30.5234, popDensityPerKm2: 3500, landFraction: 0.88, urbanCoreRadiusKm: 11.0, terrainShieldingFactor: 0.92, terrainNote: 'Right-bank Dnipro bluffs (~100 m relief) + river channel', description: 'Capital of Ukraine, Dnipro river basin' },
+  {
+    id: 'hiroshima',
+    name: 'Hiroshima (Ground Zero)',
+    country: 'Japan',
+    category: 'city',
+    flag: '🇯🇵',
+    lat: 34.3955,
+    lon: 132.4536,
+    popDensityPerKm2: 6500,
+    landFraction: 0.82,
+    urbanCoreRadiusKm: 4.2,
+    terrainShieldingFactor: 0.98,
+    terrainNote: 'Flat Ota River deltaic plain (unobstructed circular Mach-stem sweep)',
+    suggestedYieldKt: 15,
+    burstMode: 'air',
+    defaultAltitudeM: 600,
+    historicalTestName: 'Little Boy combat drop',
+    historicalYear: 1945,
+    description: 'First wartime atomic bombing (August 6, 1945, 600m HOB)',
+    empiricalBenchmarks: [
+      { metricLabel: '5-psi Severe Blast Radius', measuredValue: '1.60 – 1.72 km', sourceCitation: 'USSBS / Glasstone & Dolan (1977)', computeModeled: cp => `${cp.rZone3_Mod5psiKm.toFixed(2)} km` },
+      { metricLabel: '3rd-Degree Flash Burn Horizon', measuredValue: '1.95 – 2.10 km', sourceCitation: 'RERF DS02 Dosimetry System', computeModeled: cp => `${cp.rZone4_Thermal3rdKm.toFixed(2)} km` },
+      { metricLabel: 'Acute 1945 Fatalities', measuredValue: '70,000 – 90,000', sourceCitation: 'USSBS / Hiroshima Peace Memorial', computeModeled: (_, cas) => cas.totalFatalities.toLocaleString() }
+    ]
+  },
+  {
+    id: 'nagasaki',
+    name: 'Nagasaki (Hypocenter)',
+    country: 'Japan',
+    category: 'city',
+    flag: '🇯🇵',
+    lat: 32.7702,
+    lon: 129.8657,
+    popDensityPerKm2: 5600,
+    landFraction: 0.78,
+    urbanCoreRadiusKm: 3.6,
+    terrainShieldingFactor: 0.71,
+    terrainNote: 'Steep Urakami Valley ridges (Mt. Kompira 366 m) shadowed central Nagasaki harbor (~29% terrain attenuation)',
+    suggestedYieldKt: 21,
+    burstMode: 'air',
+    defaultAltitudeM: 503,
+    historicalTestName: 'Fat Man combat drop',
+    historicalYear: 1945,
+    description: 'Second wartime atomic bombing (August 9, 1945, 503m HOB)',
+    empiricalBenchmarks: [
+      { metricLabel: '5-psi Blast Radius (Valley Axis)', measuredValue: '1.78 – 1.92 km', sourceCitation: 'USSBS / RERF DS02', computeModeled: cp => `${cp.rZone3_Mod5psiKm.toFixed(2)} km` },
+      { metricLabel: 'Acute 1945 Fatalities (Terrain-Shielded)', measuredValue: '39,000 – 45,000', sourceCitation: 'USSBS Report #3', computeModeled: (_, cas) => cas.totalFatalities.toLocaleString() }
+    ]
+  },
 
-  // 2. Historical Nuclear Proving Grounds & Detonations (By Sovereign Nation)
-  // United States 🇺🇸
-  { id: 'trinity', name: 'Trinity Site (Alamogordo, NM)', country: 'United States', category: 'historical_test_site', flag: '🇺🇸', lat: 33.6753, lon: -106.4747, popDensityPerKm2: 3, suggestedYieldKt: 21, burstMode: 'surface', defaultAltitudeM: 30, historicalTestName: 'Trinity (Manhattan Project)', historicalYear: 1945, description: 'World\'s first nuclear explosion on 30m steel tower (July 16, 1945)' },
-  { id: 'crossroads_baker', name: 'Bikini Lagoon (Crossroads Baker Underwater)', country: 'United States', category: 'historical_test_site', flag: '🌊', lat: 11.5833, lon: 165.5000, popDensityPerKm2: 2, suggestedYieldKt: 23, burstMode: 'underwater', defaultAltitudeM: -27, historicalTestName: 'Operation Crossroads Baker (Underwater Lagoon)', historicalYear: 1946, description: 'World\'s first underwater nuclear test at -27m depth (2M-ton hollow water column & radioactive mist base surge)' },
-  { id: 'operation_wigwam', name: 'Pacific Ocean (Operation Wigwam Deep Underwater)', country: 'United States', category: 'historical_test_site', flag: '🌊', lat: 28.7333, lon: -126.2667, popDensityPerKm2: 1, suggestedYieldKt: 30, burstMode: 'underwater', defaultAltitudeM: -610, historicalTestName: 'Operation Wigwam (Deep Ocean Underwater)', historicalYear: 1955, description: 'Deep ocean anti-submarine nuclear test at -610m depth (pulsating supercritical steam bubble & spray dome)' },
-  { id: 'nts_sedan', name: 'Nevada Test Site (Sedan Crater, NV)', country: 'United States', category: 'historical_test_site', flag: '🇺🇸', lat: 37.1769, lon: -116.0461, popDensityPerKm2: 1, suggestedYieldKt: 104, burstMode: 'underground', defaultAltitudeM: -194, historicalTestName: 'Storax Sedan (Plowshare Subterranean)', historicalYear: 1962, description: 'Shallow subterranean cratering burst at -194m depth (104 kt, 390m crater)' },
-  { id: 'castle_bravo', name: 'Bikini Atoll (Castle Bravo, Marshall Islands)', country: 'United States', category: 'historical_test_site', flag: '🇺🇸', lat: 11.6972, lon: 165.2719, popDensityPerKm2: 1, suggestedYieldKt: 15000, burstMode: 'surface', defaultAltitudeM: 0, historicalTestName: 'Castle Bravo Thermonuclear Test', historicalYear: 1954, description: 'Largest US nuclear detonation (15 MT reef surface burst)' },
+  // 2. Historical Nuclear Proving Grounds & Detonations (With Declassified Empirical Gauge Data)
+  {
+    id: 'trinity',
+    name: 'Trinity Site (Alamogordo, NM)',
+    country: 'United States',
+    category: 'historical_test_site',
+    flag: '🇺🇸',
+    lat: 33.6753,
+    lon: -106.4747,
+    popDensityPerKm2: 1,
+    landFraction: 1.0,
+    terrainShieldingFactor: 1.0,
+    suggestedYieldKt: 21,
+    burstMode: 'surface',
+    defaultAltitudeM: 30,
+    historicalTestName: 'Trinity (Manhattan Project)',
+    historicalYear: 1945,
+    description: 'World\'s first nuclear explosion on 30m steel tower (July 16, 1945)',
+    empiricalBenchmarks: [
+      { metricLabel: 'Stabilized Cloud Top Altitude', measuredValue: '10.7 – 12.1 km', sourceCitation: 'LANL Report LA-1026 (Bainbridge)', computeModeled: cp => `${cp.hTopKm.toFixed(1)} km` },
+      { metricLabel: '5-psi Overpressure Gauge Radius', measuredValue: '1.45 – 1.62 km', sourceCitation: 'Penney / Taylor Piezo Gauges', computeModeled: cp => `${cp.rZone3_Mod5psiKm.toFixed(2)} km` }
+    ]
+  },
+  {
+    id: 'crossroads_baker',
+    name: 'Bikini Lagoon (Crossroads Baker Underwater)',
+    country: 'United States',
+    category: 'historical_test_site',
+    flag: '🌊',
+    lat: 11.5833,
+    lon: 165.5000,
+    popDensityPerKm2: 2,
+    landFraction: 0.03,
+    terrainNote: '97% Bikini Atoll lagoon water surface (55 m lagoon depth)',
+    suggestedYieldKt: 23,
+    burstMode: 'underwater',
+    defaultAltitudeM: -27,
+    historicalTestName: 'Operation Crossroads Baker (Underwater Lagoon)',
+    historicalYear: 1946,
+    description: 'World\'s first underwater nuclear test at -27m depth (2M-ton hollow water column & radioactive mist base surge)',
+    empiricalBenchmarks: [
+      { metricLabel: 'Hollow Water Column Width', measuredValue: '~0.61 km (2,000 ft)', sourceCitation: 'DNA-6032F / Glasstone § 2.66', computeModeled: cp => `${cp.waterColumnWidthKm.toFixed(2)} km` },
+      { metricLabel: 'Peak Water Plume Top', measuredValue: '2.4 – 3.0 km (8,000+ ft)', sourceCitation: 'DNA-6032F Photographic Telemetry', computeModeled: cp => `${cp.waterColumnTopKm.toFixed(2)} km` },
+      { metricLabel: 'Radioactive Base Surge Radius', measuredValue: '2.8 – 3.2 km', sourceCitation: 'Joint Task Force One Report', computeModeled: cp => `${cp.rZone4_Thermal3rdKm.toFixed(2)} km` },
+      { metricLabel: 'First Gravity Wave Crest @ 300m', measuredValue: '28.6 m (94 ft)', sourceCitation: 'Bikini Wave Gauge Array', computeModeled: cp => `${cp.tsunamiWaveHeightM} m` }
+    ]
+  },
+  {
+    id: 'operation_wigwam',
+    name: 'Pacific Ocean (Operation Wigwam Deep Underwater)',
+    country: 'United States',
+    category: 'historical_test_site',
+    flag: '🌊',
+    lat: 28.7333,
+    lon: -126.2667,
+    popDensityPerKm2: 0,
+    landFraction: 0.0,
+    terrainNote: '100% Deep abyssal Pacific Ocean (zero land exposure)',
+    suggestedYieldKt: 30,
+    burstMode: 'underwater',
+    defaultAltitudeM: -610,
+    historicalTestName: 'Operation Wigwam (Deep Ocean Underwater)',
+    historicalYear: 1955,
+    description: 'Deep ocean anti-submarine nuclear test at -610m depth (pulsating supercritical steam bubble & spray dome)',
+    empiricalBenchmarks: [
+      { metricLabel: 'Max Steam Bubble Radius (Cycle 1)', measuredValue: '114 m (376 ft)', sourceCitation: 'DTRA / ITR-1060 Hydrophone Data', computeModeled: cp => `${cp.rBubbleM} m` }
+    ]
+  },
+  {
+    id: 'nts_sedan',
+    name: 'Nevada Test Site (Sedan Crater, NV)',
+    country: 'United States',
+    category: 'historical_test_site',
+    flag: '🇺🇸',
+    lat: 37.1769,
+    lon: -116.0461,
+    popDensityPerKm2: 1,
+    landFraction: 1.0,
+    suggestedYieldKt: 104,
+    burstMode: 'underground',
+    defaultAltitudeM: -194,
+    historicalTestName: 'Storax Sedan (Plowshare Subterranean)',
+    historicalYear: 1962,
+    description: 'Shallow subterranean cratering burst at -194m depth (104 kt, 390m crater)',
+    empiricalBenchmarks: [
+      { metricLabel: 'Apparent Throwout Crater Diameter', measuredValue: '390 m (1,280 ft)', sourceCitation: 'Nordyke PNE-242F (1962)', computeModeled: cp => `${cp.rCraterM * 2} m` },
+      { metricLabel: 'Scaled Depth of Burial (SDOB)', measuredValue: '41.3 m/kt¹/³', sourceCitation: 'LLNL Plowshare Report', computeModeled: cp => `${cp.sdob.toFixed(1)} m/kt¹/³` }
+    ]
+  },
+  {
+    id: 'castle_bravo',
+    name: 'Bikini Atoll (Castle Bravo, Marshall Islands)',
+    country: 'United States',
+    category: 'historical_test_site',
+    flag: '🇺🇸',
+    lat: 11.6972,
+    lon: 165.2719,
+    popDensityPerKm2: 1,
+    landFraction: 0.04,
+    suggestedYieldKt: 15000,
+    burstMode: 'surface',
+    defaultAltitudeM: 0,
+    historicalTestName: 'Castle Bravo Thermonuclear Test',
+    historicalYear: 1954,
+    description: 'Largest US nuclear detonation (15 MT reef surface burst)',
+    empiricalBenchmarks: [
+      { metricLabel: 'Stabilized Stratospheric Cloud Top', measuredValue: '38 – 40 km (130,000 ft)', sourceCitation: 'DNA-6035F Operation Castle', computeModeled: cp => `${cp.hTopKm.toFixed(1)} km` },
+      { metricLabel: 'Maximum Fireball Diameter', measuredValue: '~7.0 km (4.5 mi)', sourceCitation: 'DTRA Optical Film Analysis', computeModeled: cp => `${(cp.rFireballKm * 2).toFixed(2)} km` }
+    ]
+  },
 
   // Soviet Union 🇷🇺
-  { id: 'semipalatinsk', name: 'Semipalatinsk Polygon (RDS-1, Kazakhstan)', country: 'Soviet Union', category: 'historical_test_site', flag: '🇷🇺', lat: 50.4375, lon: 78.4319, popDensityPerKm2: 2, suggestedYieldKt: 22, burstMode: 'surface', defaultAltitudeM: 30, historicalTestName: 'RDS-1 ("First Lightning" / Joe-1)', historicalYear: 1949, description: 'First Soviet atomic bomb detonation on 30m tower (August 29, 1949)' },
-  { id: 'novaya_zemlya', name: 'Novaya Zemlya (Tsar Bomba, Arctic)', country: 'Soviet Union', category: 'historical_test_site', flag: '🇷🇺', lat: 73.8500, lon: 54.5000, popDensityPerKm2: 1, suggestedYieldKt: 50000, burstMode: 'air', defaultAltitudeM: 4000, historicalTestName: 'Tsar Bomba / RDS-220 (50 MT)', historicalYear: 1961, description: 'Largest human-made explosion in history (50 MT airburst at 4,000m HOB)' },
+  { id: 'semipalatinsk', name: 'Semipalatinsk Polygon (RDS-1, Kazakhstan)', country: 'Soviet Union', category: 'historical_test_site', flag: '🇷🇺', lat: 50.4375, lon: 78.4319, popDensityPerKm2: 2, landFraction: 1.0, suggestedYieldKt: 22, burstMode: 'surface', defaultAltitudeM: 30, historicalTestName: 'RDS-1 ("First Lightning" / Joe-1)', historicalYear: 1949, description: 'First Soviet atomic bomb detonation on 30m tower (August 29, 1949)' },
+  {
+    id: 'novaya_zemlya',
+    name: 'Novaya Zemlya (Tsar Bomba, Arctic)',
+    country: 'Soviet Union',
+    category: 'historical_test_site',
+    flag: '🇷🇺',
+    lat: 73.8500,
+    lon: 54.5000,
+    popDensityPerKm2: 0,
+    landFraction: 0.45,
+    suggestedYieldKt: 50000,
+    burstMode: 'air',
+    defaultAltitudeM: 4000,
+    historicalTestName: 'Tsar Bomba / RDS-220 (50 MT)',
+    historicalYear: 1961,
+    description: 'Largest human-made explosion in history (50 MT airburst at 4,000m HOB)',
+    empiricalBenchmarks: [
+      { metricLabel: 'Mesospheric Mushroom Cloud Top', measuredValue: '64 – 67 km', sourceCitation: 'VNIIEF / Rosatom Telemetry', computeModeled: cp => `${cp.hTopKm.toFixed(1)} km` },
+      { metricLabel: '3rd-Degree Burn Radius', measuredValue: '58 – 64 km', sourceCitation: 'Glasstone / Soviet Test Archive', computeModeled: cp => `${cp.rZone4_Thermal3rdKm.toFixed(1)} km` }
+    ]
+  },
 
   // United Kingdom 🇬🇧
-  { id: 'montebello', name: 'Montebello Islands (Operation Hurricane, Australia)', country: 'United Kingdom', category: 'historical_test_site', flag: '🇬🇧', lat: -20.4417, lon: 115.5667, popDensityPerKm2: 1, suggestedYieldKt: 25, burstMode: 'surface', defaultAltitudeM: 0, historicalTestName: 'Operation Hurricane (HMS Plym hull)', historicalYear: 1952, description: 'First British atomic test inside warship frigate hull (25 kt)' },
-  { id: 'grapple_kiritimati', name: 'Christmas Island / Kiritimati (Grapple Y)', country: 'United Kingdom', category: 'historical_test_site', flag: '🇬🇧', lat: 1.8700, lon: -157.4300, popDensityPerKm2: 2, suggestedYieldKt: 3000, burstMode: 'air', defaultAltitudeM: 2350, historicalTestName: 'Operation Grapple Y Two-Stage H-Bomb', historicalYear: 1958, description: 'Largest successful British thermonuclear airburst (3.0 MT at 2,350m HOB)' },
+  { id: 'montebello', name: 'Montebello Islands (Operation Hurricane, Australia)', country: 'United Kingdom', category: 'historical_test_site', flag: '🇬🇧', lat: -20.4417, lon: 115.5667, popDensityPerKm2: 1, landFraction: 0.15, suggestedYieldKt: 25, burstMode: 'surface', defaultAltitudeM: 0, historicalTestName: 'Operation Hurricane (HMS Plym hull)', historicalYear: 1952, description: 'First British atomic test inside warship frigate hull (25 kt)' },
+  { id: 'grapple_kiritimati', name: 'Christmas Island / Kiritimati (Grapple Y)', country: 'United Kingdom', category: 'historical_test_site', flag: '🇬🇧', lat: 1.8700, lon: -157.4300, popDensityPerKm2: 2, landFraction: 0.12, suggestedYieldKt: 3000, burstMode: 'air', defaultAltitudeM: 2350, historicalTestName: 'Operation Grapple Y Two-Stage H-Bomb', historicalYear: 1958, description: 'Largest successful British thermonuclear airburst (3.0 MT at 2,350m HOB)' },
 
   // France 🇫🇷
-  { id: 'reggane', name: 'Reggane Proving Ground (Gerboise Bleue, Algeria)', country: 'France', category: 'historical_test_site', flag: '🇫🇷', lat: 26.3139, lon: -0.0556, popDensityPerKm2: 2, suggestedYieldKt: 70, burstMode: 'surface', defaultAltitudeM: 100, historicalTestName: 'Gerboise Bleue ("Blue Jerboa")', historicalYear: 1960, description: 'First French atomic bomb test in Sahara Desert (70 kt on 100m tower)' },
-  { id: 'canopus_fangataufa', name: 'Fangataufa Atoll (Canopus, French Polynesia)', country: 'France', category: 'historical_test_site', flag: '🇫🇷', lat: -22.2500, lon: -138.7500, popDensityPerKm2: 1, suggestedYieldKt: 2600, burstMode: 'air', defaultAltitudeM: 550, historicalTestName: 'Canopus Thermonuclear Test', historicalYear: 1968, description: 'First French two-stage thermonuclear detonation (2.6 MT at 550m balloon HOB)' },
+  { id: 'reggane', name: 'Reggane Proving Ground (Gerboise Bleue, Algeria)', country: 'France', category: 'historical_test_site', flag: '🇫🇷', lat: 26.3139, lon: -0.0556, popDensityPerKm2: 1, landFraction: 1.0, suggestedYieldKt: 70, burstMode: 'surface', defaultAltitudeM: 100, historicalTestName: 'Gerboise Bleue ("Blue Jerboa")', historicalYear: 1960, description: 'First French atomic bomb test in Sahara Desert (70 kt on 100m tower)' },
+  { id: 'canopus_fangataufa', name: 'Fangataufa Atoll (Canopus, French Polynesia)', country: 'France', category: 'historical_test_site', flag: '🇫🇷', lat: -22.2500, lon: -138.7500, popDensityPerKm2: 1, landFraction: 0.05, suggestedYieldKt: 2600, burstMode: 'air', defaultAltitudeM: 550, historicalTestName: 'Canopus Thermonuclear Test', historicalYear: 1968, description: 'First French two-stage thermonuclear detonation (2.6 MT at 550m balloon HOB)' },
 
   // China 🇨🇳
-  { id: 'lop_nur', name: 'Lop Nur Test Base (Project 596, Xinjiang)', country: 'China', category: 'historical_test_site', flag: '🇨🇳', lat: 40.8100, lon: 89.7800, popDensityPerKm2: 2, suggestedYieldKt: 22, burstMode: 'surface', defaultAltitudeM: 102, historicalTestName: 'Project 596 ("Chic-1")', historicalYear: 1964, description: 'First Chinese atomic bomb test at Lop Nur 102m tower (22 kt, Oct 16, 1964)' },
+  { id: 'lop_nur', name: 'Lop Nur Test Base (Project 596, Xinjiang)', country: 'China', category: 'historical_test_site', flag: '🇨🇳', lat: 40.8100, lon: 89.7800, popDensityPerKm2: 1, landFraction: 1.0, suggestedYieldKt: 22, burstMode: 'surface', defaultAltitudeM: 102, historicalTestName: 'Project 596 ("Chic-1")', historicalYear: 1964, description: 'First Chinese atomic bomb test at Lop Nur 102m tower (22 kt, Oct 16, 1964)' },
 
   // India 🇮🇳
-  { id: 'pokhran', name: 'Pokhran Test Range (Smiling Buddha, Rajasthan)', country: 'India', category: 'historical_test_site', flag: '🇮🇳', lat: 27.0800, lon: 71.7500, popDensityPerKm2: 8, suggestedYieldKt: 12, burstMode: 'underground', defaultAltitudeM: -107, historicalTestName: 'Operation Smiling Buddha (Pokhran-I)', historicalYear: 1974, description: 'India\'s first underground nuclear detonation in -107m shaft (12 kt, May 18, 1974)' },
+  { id: 'pokhran', name: 'Pokhran Test Range (Smiling Buddha, Rajasthan)', country: 'India', category: 'historical_test_site', flag: '🇮🇳', lat: 27.0800, lon: 71.7500, popDensityPerKm2: 8, landFraction: 1.0, suggestedYieldKt: 12, burstMode: 'underground', defaultAltitudeM: -107, historicalTestName: 'Operation Smiling Buddha (Pokhran-I)', historicalYear: 1974, description: 'India\'s first underground nuclear detonation in -107m shaft (12 kt, May 18, 1974)' },
 
   // Pakistan 🇵🇰
-  { id: 'chagai', name: 'Ras Koh Hills (Chagai-I, Balochistan)', country: 'Pakistan', category: 'historical_test_site', flag: '🇵🇰', lat: 28.7900, lon: 64.9500, popDensityPerKm2: 4, suggestedYieldKt: 40, burstMode: 'underground', defaultAltitudeM: -220, historicalTestName: 'Operation Chagai-I (Ras Koh mountain tunnel)', historicalYear: 1998, description: 'Pakistan\'s underground nuclear tests inside granite mountain tunnel (-220m DOB)' },
+  { id: 'chagai', name: 'Ras Koh Hills (Chagai-I, Balochistan)', country: 'Pakistan', category: 'historical_test_site', flag: '🇵🇰', lat: 28.7900, lon: 64.9500, popDensityPerKm2: 4, landFraction: 1.0, terrainShieldingFactor: 0.78, suggestedYieldKt: 40, burstMode: 'underground', defaultAltitudeM: -220, historicalTestName: 'Operation Chagai-I (Ras Koh mountain tunnel)', historicalYear: 1998, description: 'Pakistan\'s underground nuclear tests inside granite mountain tunnel (-220m DOB)' },
 
   // North Korea 🇰🇵
-  { id: 'punggye_ri', name: 'Punggye-ri Test Site (Mt. Mantap, North Korea)', country: 'North Korea', category: 'historical_test_site', flag: '🇰🇵', lat: 41.2800, lon: 129.0800, popDensityPerKm2: 6, suggestedYieldKt: 250, burstMode: 'underground', defaultAltitudeM: -550, historicalTestName: '2017 Thermonuclear Test (Tunnel 2)', historicalYear: 2017, description: 'Deep contained tunnel test under Mt. Mantap (-550m DOB, 250 kt, mb 6.30)' }
+  {
+    id: 'punggye_ri',
+    name: 'Punggye-ri Test Site (Mt. Mantap, North Korea)',
+    country: 'North Korea',
+    category: 'historical_test_site',
+    flag: '🇰🇵',
+    lat: 41.2800,
+    lon: 129.0800,
+    popDensityPerKm2: 6,
+    landFraction: 1.0,
+    terrainShieldingFactor: 0.76,
+    suggestedYieldKt: 250,
+    burstMode: 'underground',
+    defaultAltitudeM: -550,
+    historicalTestName: '2017 Thermonuclear Test (Tunnel 2)',
+    historicalYear: 2017,
+    description: 'Deep contained tunnel test under Mt. Mantap (-550m DOB, 250 kt, mb 6.30)',
+    empiricalBenchmarks: [
+      { metricLabel: 'Teleseismic Body-Wave Magnitude (m_b)', measuredValue: 'm_b 6.30 (USGS / CTBTO)', sourceCitation: 'USGS NEIC / NORSAR 2017', computeModeled: cp => `m_b ${cp.seismicMb}` }
+    ]
+  }
 ];
 
 export type OutriderEffectType = 'fireball' | 'radiation' | 'shockwave' | 'thermal';
@@ -559,11 +764,16 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
     });
   }, [yieldKt, burstMode, burstAltitudeM, cloudPhysics, setLiveModuleTelemetry, onBurstAltitudeChange, triggerDetonation]);
 
-  // --- OUTRIDER CASUALTY & HUMAN IMPACT CALCULATOR ---
+  // --- GROUNDED CASUALTY & HUMAN IMPACT CALCULATOR (Radial Urban Decay + Coastal Water Mask + Terrain Shadowing) ---
   const casualties = useMemo(() => {
-    const density = currentCity.popDensityPerKm2;
+    const density0 = currentCity.popDensityPerKm2;
+    const landFrac = currentCity.landFraction ?? 0.92;
+    const rUrbanKm = currentCity.urbanCoreRadiusKm ?? 12.0;
+    const terrainFactor = currentCity.terrainShieldingFactor ?? 1.0;
+
     const {
       isUnderground,
+      isUnderwater,
       isFullyContained,
       ventFraction,
       rZone1_FireballKm,
@@ -577,21 +787,31 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
     const area5psiKm2 = Math.PI * rZone3_Mod5psiKm * rZone3_Mod5psiKm;
     const areaThermalKm2 = Math.PI * rZone4_Thermal3rdKm * rZone4_Thermal3rdKm;
 
-    // Subterranean containment reduces surface thermal/prompt casualties while maintaining severe ground-shock collapse above cavity
+    // Exact closed-form integral of 2πr * ρ₀ * exp(-r / R_u) dr from r1 to r2, scaled by land fraction
+    const integrateAnnulusPopulation = (r1Km: number, r2Km: number): number => {
+      if (r2Km <= r1Km || density0 <= 0 || landFrac <= 0) return 0;
+      const u1 = r1Km / rUrbanKm;
+      const u2 = r2Km / rUrbanKm;
+      const term1 = (1 + u1) * Math.exp(-u1);
+      const term2 = (1 + u2) * Math.exp(-u2);
+      return Math.max(0, 2 * Math.PI * density0 * rUrbanKm * rUrbanKm * (term1 - term2) * landFrac);
+    };
+
     const fatRateZ2 = isUnderground ? (isFullyContained ? 0.45 : 0.85) : 0.98;
-    const fatRateZ3 = isUnderground ? (isFullyContained ? 0.15 : 0.38) : 0.50;
-    const injRateZ3 = isUnderground ? 0.45 : 0.40;
-    const fatRateZ4 = isUnderground ? 0.04 * ventFraction : 0.15;
-    const injRateZ4 = isUnderground ? (isFullyContained ? 0.18 : 0.42) : 0.55;
+    const fatRateZ3 = (isUnderground ? (isFullyContained ? 0.15 : 0.38) : 0.50) * terrainFactor;
+    const injRateZ3 = (isUnderground ? 0.45 : 0.40) * terrainFactor;
+    const fatRateZ4 = (isUnderground ? 0.04 * ventFraction : isUnderwater ? 0.06 : 0.15) * terrainFactor;
+    const injRateZ4 = (isUnderground ? (isFullyContained ? 0.18 : 0.42) : isUnderwater ? 0.32 : 0.55) * terrainFactor;
 
-    const fatZone2 = area20psiKm2 * density * fatRateZ2;
-    const annulus5psi = Math.max(0, area5psiKm2 - area20psiKm2);
-    const fatZone3 = annulus5psi * density * fatRateZ3;
-    const injZone3 = annulus5psi * density * injRateZ3;
+    const popZ2 = integrateAnnulusPopulation(0, rZone2_Heavy20psiKm);
+    const popZ3 = integrateAnnulusPopulation(rZone2_Heavy20psiKm, rZone3_Mod5psiKm);
+    const popZ4 = integrateAnnulusPopulation(rZone3_Mod5psiKm, rZone4_Thermal3rdKm);
 
-    const annulusThermal = Math.max(0, areaThermalKm2 - area5psiKm2);
-    const fatZone4 = annulusThermal * density * fatRateZ4;
-    const injZone4 = annulusThermal * density * injRateZ4;
+    const fatZone2 = popZ2 * fatRateZ2;
+    const fatZone3 = popZ3 * fatRateZ3;
+    const injZone3 = popZ3 * injRateZ3;
+    const fatZone4 = popZ4 * fatRateZ4;
+    const injZone4 = popZ4 * injRateZ4;
 
     const totalFatalities = Math.round(fatZone2 + fatZone3 + fatZone4);
     const totalInjuries = Math.round(injZone3 + injZone4);
@@ -601,6 +821,9 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
     return {
       totalFatalities,
       totalInjuries,
+      landFrac,
+      rUrbanKm,
+      terrainFactor,
       totalImpactAreaKm2,
       totalImpactAreaSqMi,
       areaFireballKm2: areaFireballKm2.toFixed(2),
@@ -3376,16 +3599,22 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
         </div>
       </div>
 
-      {/* Consequence & Impact Telemetry Summary */}
+      {/* Consequence & Impact Telemetry Summary (Grounded with Coastal Masking, Radial Decay & Terrain) */}
       <div className="panel" style={{ padding: '16px 20px', background: 'rgba(9, 14, 24, 0.65)', border: '1px solid rgba(148, 163, 184, 0.16)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
           <h4 style={{ margin: 0, color: '#e2e8f0', fontSize: '0.92rem' }}>
             Consequence &amp; Footprint Projections — {currentCity.name} ({yieldKt >= 1000 ? `${(yieldKt / 1000).toFixed(2)} MT` : `${yieldKt} kT`} {burstMode} burst)
           </h4>
-          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-            Baseline Population Density: {currentCity.popDensityPerKm2.toLocaleString()} people / km²
+          <span style={{ fontSize: '0.73rem', color: 'var(--color-text-muted)', fontFamily: 'JetBrains Mono, monospace' }}>
+            Core ρ₀: {currentCity.popDensityPerKm2.toLocaleString()}/km² (R_u = {casualties.rUrbanKm} km) • Land Mask: {Math.round(casualties.landFrac * 100)}% • Terrain: {Math.round(casualties.terrainFactor * 100)}%
           </span>
         </div>
+
+        {currentCity.terrainNote && (
+          <div style={{ fontSize: '0.73rem', color: '#94a3b8', marginBottom: '12px' }}>
+            <strong>Geospatial &amp; Topographic Grounding:</strong> {currentCity.terrainNote}
+          </div>
+        )}
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px' }}>
           <div style={{ background: 'rgba(15, 23, 42, 0.75)', padding: '12px 16px', borderRadius: '6px', borderLeft: '3px solid #94a3b8' }}>
@@ -3393,7 +3622,7 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
             <div style={{ fontSize: '1.6rem', fontWeight: 'bold', color: '#f1f5f9' }}>
               {casualties.totalFatalities.toLocaleString()}
             </div>
-            <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>Acute blast &amp; thermal mortality</div>
+            <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>Land-masked &amp; terrain-adjusted</div>
           </div>
 
           <div style={{ background: 'rgba(15, 23, 42, 0.75)', padding: '12px 16px', borderRadius: '6px', borderLeft: '3px solid #f59e0b' }}>
@@ -3424,6 +3653,48 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
             <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>{Math.round(cloudPhysics.hTopFeet).toLocaleString()} ft ASL</div>
           </div>
         </div>
+
+        {/* Declassified Empirical Field Gauge vs. Deterministic Model Validation */}
+        {currentCity.empiricalBenchmarks && currentCity.empiricalBenchmarks.length > 0 && (
+          <div
+            style={{
+              marginTop: '14px',
+              paddingTop: '12px',
+              borderTop: '1px solid rgba(148, 163, 184, 0.16)'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '6px' }}>
+              <strong style={{ fontSize: '0.78rem', color: '#38bdf8', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                ✓ Empirical Field Validation — {currentCity.historicalTestName} ({currentCity.historicalYear})
+              </strong>
+              <span style={{ fontSize: '0.70rem', color: '#94a3b8', fontFamily: 'JetBrains Mono, monospace' }}>
+                Measured Gauge Record vs. Live Model Output
+              </span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '10px' }}>
+              {currentCity.empiricalBenchmarks.map((eb, idx) => (
+                <div
+                  key={idx}
+                  style={{
+                    padding: '8px 11px',
+                    borderRadius: '6px',
+                    background: 'rgba(15, 23, 42, 0.82)',
+                    border: '1px solid rgba(148, 163, 184, 0.18)'
+                  }}
+                >
+                  <div style={{ fontSize: '0.71rem', fontWeight: 600, color: '#e2e8f0' }}>{eb.metricLabel}</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', fontSize: '0.74rem', fontFamily: 'JetBrains Mono, monospace' }}>
+                    <span style={{ color: '#94a3b8' }}>Measured: <strong style={{ color: '#f8fafc' }}>{eb.measuredValue}</strong></span>
+                    <span style={{ color: '#38bdf8' }}>Model: <strong>{eb.computeModeled(cloudPhysics, casualties)}</strong></span>
+                  </div>
+                  <div style={{ fontSize: '0.66rem', color: '#64748b', marginTop: '3px' }}>
+                    Source: {eb.sourceCitation}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

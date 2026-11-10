@@ -10,6 +10,7 @@ import { useRegulatory } from '../../../context/RegulatoryContext';
 import { AuditDossierModal } from '../../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../../services/auditDossierService';
 import VerificationBadge from '../../../components/VerificationBadge';
+import { PhysicalGroundingPanel } from '../../../components/PhysicalGroundingPanel';
 
 const parseActivityMBq = (activityStr: string) => {
   const str = activityStr.toLowerCase();
@@ -373,6 +374,20 @@ const ExternalDoseCalc: React.FC = () => {
           config={{ responsive: true, displayModeBar: false }}
         />
       </div>
+    </div>
+
+    <div className="panel" style={{ marginTop: '16px', padding: '16px 20px' }}>
+      <h4 style={{ margin: '0 0 12px 0', color: '#f1f5f9', fontSize: '0.96rem' }}>
+        🔬 Physical Matter Reality, Real Survey Meter Response &amp; NIST/ICRP Provenance
+      </h4>
+      <PhysicalGroundingPanel
+        isotope={selectedNuclide?.Symbol || 'Co-60'}
+        activityGBq={activityMBq / 1000}
+        distanceM={safeDistance}
+        shieldMaterial="Lead"
+        shieldThicknessCm={0}
+        evaluatedDoseRateMSvHr={doseRate / 1000}
+      />
     </div>
 
     <AuditDossierModal payload={dossierPayload} isOpen={isDossierOpen} onClose={() => setIsDossierOpen(false)} />

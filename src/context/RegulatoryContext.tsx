@@ -311,7 +311,7 @@ interface RegulatoryContextType {
   setLiveModuleTelemetry: (telemetry: LiveModuleTelemetry | null) => void;
   clearLiveModuleTelemetry: () => void;
   openPhysicsTutor: (promptQuestion?: string, customTelemetry?: LiveModuleTelemetry) => void;
-  openInspectorDrawer: (tab: 'source' | 'pinboard' | 'guide' | 'tutor') => void;
+  openInspectorDrawer: (tab: 'source' | 'grounding' | 'pinboard' | 'guide' | 'tutor') => void;
   projectName: string;
   setProjectName: (name: string) => void;
   exportWorkspaceProject: () => void;
@@ -446,7 +446,7 @@ export const RegulatoryProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     setTelemetryDeltaSummaryState(null);
   }, []);
 
-  const openInspectorDrawer = useCallback((tab: 'source' | 'pinboard' | 'guide' | 'tutor') => {
+  const openInspectorDrawer = useCallback((tab: 'source' | 'grounding' | 'pinboard' | 'guide' | 'tutor') => {
     window.dispatchEvent(new CustomEvent('radpro:open-inspector', { detail: { tab } }));
   }, []);
 

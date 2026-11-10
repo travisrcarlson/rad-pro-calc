@@ -11,6 +11,7 @@ import { computeSourceQuickPhysics } from './GlobalSourceAndPinboardDrawer';
 import { SmartQuantityInput } from './SmartQuantityInput';
 import { CrossModulePipelineBar } from './CrossModulePipelineBar';
 import { PhysicsTutorDrawer } from './PhysicsTutorDrawer';
+import { PhysicalGroundingPanel } from './PhysicalGroundingPanel';
 import { AuditDossierModal } from './AuditDossierModal';
 import { type CalculationDossierPayload } from '../services/auditDossierService';
 import { lazyWithRetry } from '../utils/lazyWithRetry';
@@ -20,7 +21,7 @@ const LazyModuleInfoTabPanel = lazyWithRetry(
   'ModuleInfoTabPanel'
 );
 
-export type InspectorTabId = 'source' | 'pinboard' | 'guide' | 'tutor';
+export type InspectorTabId = 'source' | 'grounding' | 'pinboard' | 'guide' | 'tutor';
 
 interface WorkspaceInspectorDrawerProps {
   isOpen: boolean;
@@ -196,6 +197,7 @@ export const WorkspaceInspectorDrawer: React.FC<WorkspaceInspectorDrawerProps> =
             {(
               [
                 { id: 'source', label: '☢️ Source' },
+                { id: 'grounding', label: '🔬 Reality' },
                 { id: 'pinboard', label: `📌 Pins (${pinnedResults.length})` },
                 { id: 'guide', label: '📖 Guide' },
                 { id: 'tutor', label: '🧠 Tutor' }
@@ -427,6 +429,29 @@ export const WorkspaceInspectorDrawer: React.FC<WorkspaceInspectorDrawerProps> =
               </button>
 
               <CrossModulePipelineBar activeModuleInfo={activeModuleInfo} />
+            </>
+          )}
+
+          {/* TAB 1B: PHYSICAL REALITY, METER RESPONSE, VALIDITY & PROVENANCE */}
+          {activeTab === 'grounding' && (
+            <>
+              <div>
+                <div style={{ fontSize: '0.80rem', fontWeight: 700, color: '#f1f5f9', marginBottom: '2px' }}>
+                  Physical Reality, Survey Meter Physics &amp; Provenance
+                </div>
+                <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                  Grounds {activeSource.isotope} ({activeSource.activityGBq} GBq @ {activeSource.distanceM} m, {activeSource.shieldThicknessCm} cm {activeSource.shieldMaterial}) in tangible pellet mass, real detector saturation, GUM uncertainty, and NIST XCOM constants.
+                </div>
+              </div>
+              <PhysicalGroundingPanel
+                isotope={activeSource.isotope}
+                activityGBq={activeSource.activityGBq}
+                distanceM={activeSource.distanceM}
+                shieldMaterial={activeSource.shieldMaterial}
+                shieldThicknessCm={activeSource.shieldThicknessCm}
+                evaluatedDoseRateMSvHr={quickPhysics.shieldedMSvPerHr}
+                compact
+              />
             </>
           )}
 

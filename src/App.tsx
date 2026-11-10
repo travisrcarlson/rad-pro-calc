@@ -1084,6 +1084,16 @@ const AppShell: React.FC<{
 
                   <button
                     type="button"
+                    className={isInspectorOpen && inspectorTab === 'grounding' ? 'active' : ''}
+                    onClick={() => toggleInspectorTab('grounding')}
+                    title="Inspect Physical Pellet Mass, Real Survey Meter Dead-Time Response, GUM ±2σ Uncertainty & NIST XCOM Provenance"
+                    style={{ padding: '4px 9px', borderRadius: '5px', fontSize: '0.73rem', fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    🔬 Reality
+                  </button>
+
+                  <button
+                    type="button"
                     className={isInspectorOpen && inspectorTab === 'pinboard' ? 'active' : ''}
                     onClick={() => toggleInspectorTab('pinboard')}
                     title="Open Calculation Pinboard, .radproj Save/Load & Multi-Module Master Dossier"
