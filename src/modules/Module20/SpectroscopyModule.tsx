@@ -5,6 +5,7 @@ import PlotComponent from 'react-plotly.js';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
 import { useRegulatory } from '../../context/RegulatoryContext';
+import { parseActivityToGBq } from '../../utils/canonicalNuclidePhysics';
 import {
   parseAnsiN42Xml,
   parseOrtecSpeOrCsv,
@@ -236,6 +237,33 @@ const SpectroscopyModule: React.FC = () => {
         energiesKeV,
         counts
       });
+      return;
+    }
+
+    const isoParam = searchParams.get('nuclide') || searchParams.get('isotope');
+    if (isoParam) {
+      const targetIso = isoParam.trim().toLowerCase();
+      const matched = ISOTOPES.find(
+        (iso) =>
+          iso.symbol.toLowerCase() === targetIso ||
+          iso.name.toLowerCase().includes(targetIso)
+      );
+      if (matched) {
+        setIngestedSpectrum(null);
+        setIsotope(matched);
+      }
+    }
+
+    const actParam = searchParams.get('activity');
+    const unitParam = searchParams.get('unit');
+    if (actParam) {
+      const parsed = parseFloat(actParam);
+      if (!isNaN(parsed) && parsed > 0) {
+        const gbq = parseActivityToGBq(parsed, unitParam || 'kBq');
+        if (gbq > 0) {
+          setActivityKBq(Math.min(10000000, Math.max(1, Math.round(gbq * 1e6))));
+        }
+      }
     }
   }, [searchParams]);
 
@@ -556,6 +584,7 @@ const SpectroscopyModule: React.FC = () => {
       regimeSummary: `${detector.name.split(' ')[0]} • ${isotope.symbol} (${primaryE.toFixed(1)} keV)`,
       parameters: {
         'Identified Nuclide': isotope.symbol,
+        'Activity (GBq)': Number((activityKBq / 1e6).toPrecision(6)),
         'Detector': detector.name.split(' (')[0],
         'Photopeak Energy (keV)': Number(primaryE.toFixed(1)),
         'FWHM @ 662 keV': `${detector.fwhmAt662keV} keV`
@@ -708,7 +737,7 @@ const SpectroscopyModule: React.FC = () => {
               return (
                 <button
                   key={iso.name}
-                  className="btn btn-primary"
+                  className={`btn ${isSelected ? 'btn-primary active' : 'btn-secondary'}`}
                   style={{
                     fontSize: '0.8rem',
                     padding: '6px 12px',

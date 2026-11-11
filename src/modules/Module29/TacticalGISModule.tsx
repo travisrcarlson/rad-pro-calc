@@ -1,7 +1,10 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import VerificationBadge from '../../components/VerificationBadge';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
+import { localizeSourceInverseSquare } from '../../utils/radiologicalPhysicsKernels';
+import { useRegulatory } from '../../context/RegulatoryContext';
 
 export type GisTab = 'tactical_map' | 'cot_export' | 'mesh_triangulation' | 'evac_corridor';
 
@@ -15,15 +18,18 @@ interface SensorNode {
   status: 'ONLINE' | 'ALARM' | 'OFFLINE';
 }
 
+// Calibrated 5-picket perimeter + drone telemetry consistent with a 13.6 TBq Co-60 source at (+450 m, +500 m) + 0.12 µSv/h background
 const INITIAL_SENSORS: SensorNode[] = [
-  { id: 'SN-01', name: 'Alpha Picket (North Gate)', xM: 0, yM: 800, measuredRate_uSvh: 14.5, batteryPct: 94, status: 'ALARM' },
-  { id: 'SN-02', name: 'Bravo Picket (East Perimeter)', xM: 750, yM: 200, measuredRate_uSvh: 28.2, batteryPct: 88, status: 'ALARM' },
-  { id: 'SN-03', name: 'Charlie Picket (South Highway)', xM: -200, yM: -900, measuredRate_uSvh: 0.18, batteryPct: 98, status: 'ONLINE' },
-  { id: 'SN-04', name: 'Delta Picket (West Ridge)', xM: -850, yM: -100, measuredRate_uSvh: 0.15, batteryPct: 91, status: 'ONLINE' },
-  { id: 'SN-05', name: 'Echo Mobile Recon (Drone-1)', xM: 400, yM: 600, measuredRate_uSvh: 42.0, batteryPct: 76, status: 'ALARM' }
+  { id: 'SN-01', name: 'Alpha Picket (North Gate)', xM: 0, yM: 800, measuredRate_uSvh: 14.46, batteryPct: 94, status: 'ALARM' },
+  { id: 'SN-02', name: 'Bravo Picket (East Perimeter)', xM: 750, yM: 200, measuredRate_uSvh: 23.43, batteryPct: 88, status: 'ALARM' },
+  { id: 'SN-03', name: 'Charlie Picket (South Highway)', xM: -200, yM: -900, measuredRate_uSvh: 1.88, batteryPct: 98, status: 'ONLINE' },
+  { id: 'SN-04', name: 'Delta Picket (West Ridge)', xM: -850, yM: -100, measuredRate_uSvh: 2.17, batteryPct: 91, status: 'ONLINE' },
+  { id: 'SN-05', name: 'Echo Mobile Recon (Drone-1)', xM: 350, yM: 620, measuredRate_uSvh: 172.07, batteryPct: 76, status: 'ALARM' }
 ];
 
 export const TacticalGISModule: React.FC = () => {
+  const [searchParams] = useSearchParams();
+  const { setLiveModuleTelemetry } = useRegulatory();
   const [activeTab, setActiveTab] = useState<GisTab>('tactical_map');
   const [centerLat, setCenterLat] = useState<number>(38.8977); // Washington DC baseline or custom
   const [centerLon, setCenterLon] = useState<number>(-77.0365);
@@ -34,6 +40,17 @@ export const TacticalGISModule: React.FC = () => {
   const [panOffset, setPanOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [isDossierOpen, setIsDossierOpen] = useState<boolean>(false);
   const [copiedCoT, setCopiedCoT] = useState<boolean>(false);
+
+  useEffect(() => {
+    const latP = searchParams.get('lat');
+    const lonP = searchParams.get('lon');
+    const windP = searchParams.get('windSpeed');
+    const dirP = searchParams.get('windDir');
+    if (latP && !isNaN(parseFloat(latP))) setCenterLat(parseFloat(latP));
+    if (lonP && !isNaN(parseFloat(lonP))) setCenterLon(parseFloat(lonP));
+    if (windP && !isNaN(parseFloat(windP))) setWindSpeedMps(Math.max(0.5, parseFloat(windP)));
+    if (dirP && !isNaN(parseFloat(dirP))) setWindDirectionDeg(((parseInt(dirP) % 360) + 360) % 360);
+  }, [searchParams]);
 
   // Active layer visibility toggles
   const [showBlastRings, setShowBlastRings] = useState<boolean>(true);
@@ -84,30 +101,50 @@ export const TacticalGISModule: React.FC = () => {
   // Base scale: 1000m = 80px * zoomLevel
   const mToPx = (m: number) => (m / 1000) * 80 * zoomLevel;
 
-  // Triangulation calculation (Inverse Square Multilateration)
+  // Nonlinear Inverse-Square Sensor Mesh Multilateration (Gauss-Newton + Multi-Start LM)
   const triangulationResult = useMemo(() => {
-    // Weighted centroid estimate based on inverse distance and measured dose rates
-    let sumWeight = 0;
-    let sumX = 0;
-    let sumY = 0;
-    sensors.forEach((s) => {
-      const w = Math.max(0, s.measuredRate_uSvh - 0.12); // subtract background
-      sumWeight += w;
-      sumX += s.xM * w;
-      sumY += s.yM * w;
-    });
+    const activeSensors = sensors
+      .filter((s) => s.status !== 'OFFLINE')
+      .map((s) => ({
+        x: s.xM,
+        y: s.yM,
+        netDoseRateUSvHr: Math.max(0, s.measuredRate_uSvh - 0.12) // subtract 0.12 µSv/h natural background
+      }));
 
-    const estX = sumWeight > 0 ? sumX / sumWeight : 0;
-    const estY = sumWeight > 0 ? sumY / sumWeight : 0;
-    const estActivityGBq = sumWeight > 0 ? (sumWeight * 0.45) : 0;
+    const sol = localizeSourceInverseSquare(activeSensors, 308.5); // Co-60 canonical Γ = 308.5 µSv·m²/(h·GBq)
+    const confidenceRadiusM =
+      activeSensors.length >= 3
+        ? Math.max(15, Math.min(450, 20 + sol.rmsLogError * 180))
+        : 350;
 
     return {
-      estX,
-      estY,
-      estActivityGBq,
-      confidenceRadiusM: Math.max(50, 400 / Math.sqrt(Math.max(1, sumWeight)))
+      estX: sol.estX,
+      estY: sol.estY,
+      estActivityGBq: sol.estActivityGBq,
+      rmsLogError: sol.rmsLogError,
+      confidenceRadiusM
     };
   }, [sensors]);
+
+  useEffect(() => {
+    setLiveModuleTelemetry({
+      moduleId: 'tactical-gis',
+      moduleTitle: 'Tactical GIS Map Engine & ATAK / CoT Mesh Hub',
+      regimeSummary: `${threatType.toUpperCase()} • Hotspot (${triangulationResult.estX.toFixed(0)}m, ${triangulationResult.estY.toFixed(0)}m) • ${(triangulationResult.estActivityGBq / 1000).toFixed(2)} TBq`,
+      parameters: {
+        'Threat Type': threatType.toUpperCase(),
+        'Ground Zero': `${centerLat.toFixed(4)}°N, ${centerLon.toFixed(4)}°E`,
+        'Surface Wind': `${windSpeedMps} m/s from ${windDirectionDeg}°`,
+        'Active Pickets': sensors.filter((s) => s.status !== 'OFFLINE').length
+      },
+      computedMetrics: {
+        'Localized X': `${triangulationResult.estX.toFixed(1)} m`,
+        'Localized Y': `${triangulationResult.estY.toFixed(1)} m`,
+        'Est. Activity': `${triangulationResult.estActivityGBq.toFixed(1)} GBq`,
+        'Confidence Radius': `±${triangulationResult.confidenceRadiusM.toFixed(1)} m`
+      }
+    });
+  }, [threatType, centerLat, centerLon, windSpeedMps, windDirectionDeg, sensors, triangulationResult, setLiveModuleTelemetry]);
 
   // Cursor-on-Target (CoT) XML Packet Generator
   const cotXmlPacket = useMemo(() => {
@@ -393,9 +430,12 @@ export const TacticalGISModule: React.FC = () => {
               {/* Downwind Plume Wedge (Rendered via mathematically exact SVG sector anchored at Ground Zero) */}
               {showPlumeWedge && (() => {
                 const downwindDeg = (windDirectionDeg + 180) % 360;
-                const plumeLengthM = threatType === 'nuclear' ? 4500 : 2500;
+                const basePlumeM = threatType === 'nuclear' ? 4500 : threatType === 'chemical' ? 3200 : 2500;
+                const windReachFactor = Math.min(2.2, Math.max(0.55, Math.sqrt(Math.max(0.5, windSpeedMps) / 5.0)));
+                const plumeLengthM = basePlumeM * windReachFactor;
                 const plumeRadiusPx = mToPx(plumeLengthM);
-                const halfAngleRad = (18 * Math.PI) / 180;
+                const spreadDeg = Math.max(11, Math.min(28, 22 - windSpeedMps * 0.7));
+                const halfAngleRad = (spreadDeg * Math.PI) / 180;
                 const downwindRad = (downwindDeg * Math.PI) / 180;
                 const theta1 = downwindRad - halfAngleRad;
                 const theta2 = downwindRad + halfAngleRad;

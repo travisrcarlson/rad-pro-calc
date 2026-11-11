@@ -1,11 +1,25 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import VerificationBadge from '../../components/VerificationBadge';
 import PlotComponent from 'react-plotly.js';
 import { BlockMath } from 'react-katex';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
+import { useRegulatory } from '../../context/RegulatoryContext';
 
 const Plot = (PlotComponent as any).default || PlotComponent;
+
+/** Deterministic van der Corput / Halton low-discrepancy sequence for jitter-free DVH integration */
+const haltonSequence = (index: number, base: number): number => {
+  let result = 0;
+  let f = 1 / base;
+  let i = index;
+  while (i > 0) {
+    result += f * (i % base);
+    i = Math.floor(i / base);
+    f /= base;
+  }
+  return result;
+};
 
 type ActiveTab = 'planner' | 'dvh' | 'physics' | 'presets';
 
@@ -230,7 +244,22 @@ const computeTG43DoseRate = (
   return doseRateCgyHr;
 };
 
+// Unified Seed Total Dose Integrator [Gy] (handles both Permanent LDR decay & Stepped HDR dwell times)
+const computeSeedTotalDoseGy = (
+  x: number,
+  y: number,
+  seed: SeedInstance,
+  model: SeedModel
+): number => {
+  const rateCgyHr = computeTG43DoseRate(x, y, seed, model);
+  const integrationHours = model.isPermanent
+    ? (1.0 / Math.LN2) * model.halfLifeDays * 24.0
+    : (seed.dwellTimeSeconds ?? 10.0) / 3600.0;
+  return (rateCgyHr * integrationHours) / 100.0;
+};
+
 const BrachytherapyModule: React.FC = () => {
+  const { setLiveModuleTelemetry } = useRegulatory();
   const [activeTab, setActiveTab] = useState<ActiveTab>('planner');
   const [selectedModelId, setSelectedModelId] = useState<string>('I-125_6711');
   const [prescribedDoseGy, setPrescribedDoseGy] = useState<number>(145);
@@ -249,6 +278,23 @@ const BrachytherapyModule: React.FC = () => {
       dwellTimeSeconds: s.dwell || 10
     }))
   );
+
+  const handleChangeModel = (newModelId: string) => {
+    const nextModel = SEED_MODELS[newModelId];
+    if (!nextModel) return;
+    const prevDefault = currentModel.defaultAirKermaStrength || 1.0;
+    setSelectedModelId(newModelId);
+    setPrescribedDoseGy(nextModel.typicalPrescribedDoseGy);
+    setSeeds((prev) =>
+      prev.map((s) => ({
+        ...s,
+        airKermaStrength: Number(
+          ((s.airKermaStrength / prevDefault) * nextModel.defaultAirKermaStrength).toPrecision(4)
+        ),
+        dwellTimeSeconds: s.dwellTimeSeconds || 12
+      }))
+    );
+  };
 
   const [targetOrgan, setTargetOrgan] = useState({ a: 2.1, b: 1.6, x: 0.0, y: 0.0 });
   const [urethra, setUrethra] = useState({ r: 0.35, x: 0.0, y: 0.2 });
@@ -271,35 +317,15 @@ const BrachytherapyModule: React.FC = () => {
     for (let i = 0; i < gridSize; i++) xVals.push(xMin + i * dx);
     for (let j = 0; j < gridSize; j++) yVals.push(yMin + j * dy);
 
-    // Cumulative integration factor: permanent vs HDR
-    // For permanent: D_total (cGy) = 1.4427 * T_half_hours * D_dot_0 (cGy/h)
-    // To get Gy: D_total (Gy) = D_total (cGy) / 100
-    const timeFactorGy = currentModel.isPermanent
-      ? (1.4427 * currentModel.halfLifeDays * 24) / 100.0
-      : 1.0 / 100.0; // for HDR, dwell is scaled
-
     for (let j = 0; j < gridSize; j++) {
       const row: number[] = [];
       const y = yVals[j];
       for (let i = 0; i < gridSize; i++) {
         const x = xVals[i];
-        let pointDoseRate = 0;
-
-        seeds.forEach((s) => {
-          const rate = computeTG43DoseRate(x, y, s, currentModel);
-          if (currentModel.isPermanent) {
-            pointDoseRate += rate;
-          } else {
-            // HDR: rate * (dwell / 3600)
-            const dwellHr = (s.dwellTimeSeconds || 10) / 3600.0;
-            pointDoseRate += rate * dwellHr * 100; // already in cGy
-          }
-        });
-
-        const totalDoseGy = currentModel.isPermanent
-          ? pointDoseRate * timeFactorGy
-          : pointDoseRate / 100.0;
-
+        let totalDoseGy = 0;
+        for (const s of seeds) {
+          totalDoseGy += computeSeedTotalDoseGy(x, y, s, currentModel);
+        }
         row.push(Number(totalDoseGy.toFixed(2)));
       }
       zDoseGy.push(row);
@@ -308,54 +334,53 @@ const BrachytherapyModule: React.FC = () => {
     return { xVals, yVals, zDoseGy };
   }, [seeds, currentModel, gridSize]);
 
-  // 2. CALCULATE DOSE-VOLUME HISTOGRAM (DVH)
+  // 2. CALCULATE DOSE-VOLUME HISTOGRAM (DVH) VIA DETERMINISTIC HALTON QUASI-MONTE CARLO
   const dvhMetrics = useMemo(() => {
     const targetDoses: number[] = [];
     const urethraDoses: number[] = [];
     const rectumDoses: number[] = [];
 
-    // Dense Monte Carlo sampling of points inside organ geometries
     const numSamples = 2000;
     for (let k = 0; k < numSamples; k++) {
-      // Sample within target bounding box
-      const rx = (Math.random() * 2 - 1) * targetOrgan.a;
-      const ry = (Math.random() * 2 - 1) * targetOrgan.b;
+      const u1 = haltonSequence(k + 1, 2);
+      const u2 = haltonSequence(k + 1, 3);
+
+      // Sample within target bounding box using low-discrepancy Halton sequence
+      const rx = (u1 * 2 - 1) * targetOrgan.a;
+      const ry = (u2 * 2 - 1) * targetOrgan.b;
       if (Math.pow(rx / targetOrgan.a, 2) + Math.pow(ry / targetOrgan.b, 2) <= 1.0) {
         const x = targetOrgan.x + rx;
         const y = targetOrgan.y + ry;
-
-        // Evaluate dose at this target voxel
-        let doseRate = 0;
-        seeds.forEach((s) => {
-          doseRate += computeTG43DoseRate(x, y, s, currentModel);
-        });
-        const timeFactor = currentModel.isPermanent
-          ? (1.4427 * currentModel.halfLifeDays * 24) / 100.0
-          : 1.0 / 100.0;
-        targetDoses.push(doseRate * timeFactor);
+        let voxelDoseGy = 0;
+        for (const s of seeds) {
+          voxelDoseGy += computeSeedTotalDoseGy(x, y, s, currentModel);
+        }
+        targetDoses.push(voxelDoseGy);
       }
 
       // Sample within urethra
-      const uAngle = Math.random() * 2 * Math.PI;
-      const uRadius = Math.sqrt(Math.random()) * urethra.r;
+      const uAngle = u1 * 2 * Math.PI;
+      const uRadius = Math.sqrt(u2) * urethra.r;
       const ux = urethra.x + uRadius * Math.cos(uAngle);
       const uy = urethra.y + uRadius * Math.sin(uAngle);
-      let uDoseRate = 0;
-      seeds.forEach((s) => {
-        uDoseRate += computeTG43DoseRate(ux, uy, s, currentModel);
-      });
-      urethraDoses.push(uDoseRate * (currentModel.isPermanent ? (1.4427 * currentModel.halfLifeDays * 24) / 100.0 : 1.0 / 100.0));
+      let uDoseGy = 0;
+      for (const s of seeds) {
+        uDoseGy += computeSeedTotalDoseGy(ux, uy, s, currentModel);
+      }
+      urethraDoses.push(uDoseGy);
 
       // Sample within rectum
-      const rAngle = Math.random() * 2 * Math.PI;
-      const rRadius = Math.sqrt(Math.random()) * rectum.r;
+      const u3 = haltonSequence(k + 1, 5);
+      const u4 = haltonSequence(k + 1, 7);
+      const rAngle = u3 * 2 * Math.PI;
+      const rRadius = Math.sqrt(u4) * rectum.r;
       const rcx = rectum.x + rRadius * Math.cos(rAngle);
       const rcy = rectum.y + rRadius * Math.sin(rAngle);
-      let rDoseRate = 0;
-      seeds.forEach((s) => {
-        rDoseRate += computeTG43DoseRate(rcx, rcy, s, currentModel);
-      });
-      rectumDoses.push(rDoseRate * (currentModel.isPermanent ? (1.4427 * currentModel.halfLifeDays * 24) / 100.0 : 1.0 / 100.0));
+      let rDoseGy = 0;
+      for (const s of seeds) {
+        rDoseGy += computeSeedTotalDoseGy(rcx, rcy, s, currentModel);
+      }
+      rectumDoses.push(rDoseGy);
     }
 
     // Sort target doses to compute V100 and D90
@@ -408,6 +433,26 @@ const BrachytherapyModule: React.FC = () => {
       rectumDvh
     };
   }, [seeds, currentModel, prescribedDoseGy, targetOrgan, urethra, rectum]);
+
+  useEffect(() => {
+    setLiveModuleTelemetry({
+      moduleId: 'brachytherapy',
+      moduleTitle: 'AAPM TG-43U1 Brachytherapy Planner',
+      regimeSummary: `${currentModel.name} (${seeds.length} seeds) • V100 = ${dvhMetrics.v100Pct.toFixed(1)}%`,
+      parameters: {
+        'Source Model': currentModel.name,
+        'Modality': currentModel.isPermanent ? 'Permanent LDR' : 'Stepped HDR',
+        'Prescribed Rx': `${prescribedDoseGy} Gy`,
+        'Active Seeds': seeds.length
+      },
+      computedMetrics: {
+        'Target V100': `${dvhMetrics.v100Pct.toFixed(1)}%`,
+        'Target D90': `${dvhMetrics.d90Gy.toFixed(2)} Gy (${dvhMetrics.d90PctRx.toFixed(1)}% Rx)`,
+        'Urethra V150': `${dvhMetrics.uV150Pct.toFixed(1)}%`,
+        'Rectum V100': `${dvhMetrics.rV100Pct.toFixed(1)}%`
+      }
+    });
+  }, [currentModel, seeds.length, prescribedDoseGy, dvhMetrics, setLiveModuleTelemetry]);
 
   // Handle Preset Selection
   const handleSelectPreset = (preset: ClinicalPreset) => {
@@ -555,7 +600,7 @@ const BrachytherapyModule: React.FC = () => {
               <select
                 className="form-control"
                 value={selectedModelId}
-                onChange={(e) => setSelectedModelId(e.target.value)}
+                onChange={(e) => handleChangeModel(e.target.value)}
               >
                 {Object.values(SEED_MODELS).map((m) => (
                   <option key={m.id} value={m.id}>

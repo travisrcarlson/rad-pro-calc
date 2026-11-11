@@ -1,9 +1,13 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import allNuclidesData from '../../data/all_nuclides.json'; // Contains Z, N, Nuclide, Half-Life, Decay Mode, etc.
 import PlotComponent from 'react-plotly.js';
 import VerificationBadge from '../../components/VerificationBadge';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
+import { getCanonicalNuclide } from '../../utils/canonicalNuclidePhysics';
+import { intersectRayAABB3D, evaluateGPBuildup } from '../../utils/xcomAndGpBuildup';
+import { useRegulatory } from '../../context/RegulatoryContext';
 
 const Plot = (PlotComponent as any).default || PlotComponent;
 
@@ -45,7 +49,19 @@ type ApertureConfig = {
    material: ShieldType;
 };
 
+const SHIELD_XCOM_KEY_MAP: Record<ShieldType, string> = {
+  'Air / Open': 'AIR',
+  'Glass Window': 'CONCRETE',
+  'Standard Drywall (Office)': 'CONCRETE',
+  'Heavy Wood Door': 'WATER',
+  'Cinder Block Wall': 'CONCRETE',
+  'Poured Concrete / Brick': 'CONCRETE',
+  'Lead Partition': 'LEAD'
+};
+
 const ReverseResponderModule: React.FC = () => {
+  const [searchParams] = useSearchParams();
+  const { setLiveModuleTelemetry } = useRegulatory();
   const [mode, setMode] = useState<'single' | 'triangulate'>('single');
   const [distance, setDistance] = useState<number>(1);
   const [reading, setReading] = useState<number>(1000);
@@ -95,17 +111,7 @@ const ReverseResponderModule: React.FC = () => {
           height: ap.height
        };
     });
-  }, [apertures, roomW, roomL]);
-
-  const walls = useMemo(() => {
-    const t = wallThickness;
-    return [
-       { id: 101, xMin: 0, xMax: roomW, yMin: 0 - t, yMax: 0, zMin: 0, zMax: roomH, material: wallMaterial },
-       { id: 102, xMin: 0, xMax: roomW, yMin: roomL, yMax: roomL + t, zMin: 0, zMax: roomH, material: wallMaterial },
-       { id: 103, xMin: 0 - t, xMax: 0, yMin: 0, yMax: roomL, zMin: 0, zMax: roomH, material: wallMaterial },
-       { id: 104, xMin: roomW, xMax: roomW + t, yMin: 0, yMax: roomL, zMin: 0, zMax: roomH, material: wallMaterial },
-    ];
-  }, [roomW, roomL, roomH, wallMaterial, wallThickness]);
+  }, [apertures, roomW, roomL, wallThickness]);
   
   const [equipment, setEquipment] = useState<Equipment>('NaI(Tl) Spectrum Analyzer');
   const [efficiency, setEfficiency] = useState<number>(10); // %
@@ -113,103 +119,19 @@ const ReverseResponderModule: React.FC = () => {
   const [detectedEnergy, setDetectedEnergy] = useState<string>('');
   const [energyUnit, setEnergyUnit] = useState<EnergyUnit>('MeV');
 
-  const triangulationResult = useMemo(() => {
-    if (mode === 'single' || triangulationReadings.length < 2) return null;
-    let bestX = 0; let bestY = 0; let bestZ = 0;
-    let minVariance = Infinity;
-    let bestEquivReading = 0;
+  useEffect(() => {
+    const distParam = searchParams.get('distance');
+    const readParam = searchParams.get('reading');
+    const unitParam = searchParams.get('unit') as Unit | null;
+    if (distParam && !isNaN(parseFloat(distParam))) setDistance(Math.max(0.05, parseFloat(distParam)));
+    if (readParam && !isNaN(parseFloat(readParam))) setReading(Math.max(0.001, parseFloat(readParam)));
+    if (unitParam && ['CPM', 'mSv/hr', 'µSv/hr', 'R/hr', 'mR/hr'].includes(unitParam)) setUnit(unitParam);
+  }, [searchParams]);
 
-    const rayMarch = (sx: number, sy: number, sz: number, rx: number, ry: number, rz: number) => {
-        const dx = rx - sx; const dy = ry - sy; const dz = rz - sz;
-        const dist = Math.max(0.1, Math.sqrt(dx*dx + dy*dy + dz*dz));
-        const steps = 15;
-        const ds = dist / steps;
-        
-        let totalMu = 0;
-        let totalBuildup = 0;
-        
-        for (let i = 0; i < steps; i++) {
-            const t = (i + 0.5) / steps;
-            const px = sx + t * dx; const py = sy + t * dy; const pz = sz + t * dz;
-            
-            let pointMu = 0;
-            let pointBuildup = 0;
-            let hit = false;
-            let currentMat: any = null;
-            
-            for (const ap of derivedApertures) {
-               if (px >= ap.xMin && px <= ap.xMax && py >= ap.yMin && py <= ap.yMax && pz >= ap.zMin && pz <= ap.zMax) {
-                   currentMat = SHIELDING_FACTORS[ap.material];
-                   hit = true; break;
-               }
-            }
-            if (!hit) {
-               for (const w of walls) {
-                   if (px >= w.xMin && px <= w.xMax && py >= w.yMin && py <= w.yMax && pz >= w.zMin && pz <= w.zMax) {
-                       currentMat = SHIELDING_FACTORS[w.material];
-                       break;
-                   }
-               }
-            }
-
-            if (currentMat) {
-               let eMu = currentMat.mu;
-               let eB = currentMat.b;
-               if (currentMat.arch === 'partial_fill') {
-                   eMu *= (currentMat.fillRatio || 1);
-                   eB *= (currentMat.fillRatio || 1);
-               } else if (currentMat.arch === 'hollow_sheet') {
-                   const effectiveFill = (currentMat.sheetThickness || 0.03) / wallThickness;
-                   eMu *= effectiveFill;
-                   eB *= effectiveFill;
-               }
-               pointMu = eMu;
-               pointBuildup = eB;
-            }
-
-            totalMu += pointMu * ds;
-            totalBuildup += pointBuildup * ds;
-        }
-        
-        // Buildup proxy factor B = 1 + ambient_scatter * travel
-        const B = 1 + (totalBuildup * dist); 
-        // A_estimated = R_measured * dist^2 * exp(mu) / B
-        return (dist * dist * Math.exp(totalMu)) / B;
-    };
-    
-    // 3D Grid Search over extended bounding area
-    const xMin = -roomW * 0.5; const xMax = roomW * 1.5;
-    const yMin = -roomL * 0.5; const yMax = roomL * 1.5;
-    const zMin = 0; const zMax = roomH;
-
-    for (let x = xMin; x <= xMax; x += 0.5) {
-        for (let y = yMin; y <= yMax; y += 0.5) {
-             for (let z = zMin; z <= zMax; z += 0.5) {
-                 const estimatedAs = [];
-                 for (const r of triangulationReadings) {
-                     const tf_modifier = rayMarch(x, y, z, r.x, r.y, r.z);
-                     estimatedAs.push(r.reading * tf_modifier);
-                 }
-                 if (estimatedAs.length === 0) continue;
-                 const meanA = estimatedAs.reduce((a,b)=>a+b,0) / estimatedAs.length;
-                 let sumSq = 0;
-                 for (const a of estimatedAs) sumSq += Math.pow((a - meanA) / meanA, 2);
-                 
-                 if (sumSq < minVariance) {
-                     minVariance = sumSq;
-                     bestX = x; bestY = y; bestZ = z;
-                     bestEquivReading = meanA;
-                 }
-             }
-        }
-    }
-    return { x: bestX, y: bestY, z: bestZ, equivReading1m: bestEquivReading };
-  }, [mode, triangulationReadings, derivedApertures, walls, roomW, roomL, roomH, wallThickness]);
-
-  // Generate perfectly cut meshes for visuals
+  // Generate perfectly cut meshes for visuals and analytical 3D AABB slab ray-intersections
   const visualMeshes = useMemo(() => {
      const t = wallThickness;
-     const meshes: any[] = [];
+     const meshes: { xMin: number; xMax: number; yMin: number; yMax: number; zMin: number; zMax: number; material: ShieldType }[] = [];
      
      const generateCutWall = (wallLimit: number, thicknessY: [number, number], isXAligned: boolean, localApertures: any[]) => {
          const sorted = [...localApertures].sort((a,b) => a.dist - b.dist);
@@ -261,7 +183,87 @@ const ReverseResponderModule: React.FC = () => {
      generateCutWall(roomL, [roomW, roomW+t], false, derivedApertures.filter(a => a.wall === 'East'));
 
      return meshes;
-  }, [roomW, roomL, roomH, wallMaterial, derivedApertures]);
+  }, [roomW, roomL, roomH, wallMaterial, derivedApertures, wallThickness]);
+
+  const triangulationResult = useMemo(() => {
+    if (mode === 'single' || triangulationReadings.length < 2) return null;
+    let bestX = 0; let bestY = 0; let bestZ = 0;
+    let minVariance = Infinity;
+    let bestEquivReading = 0;
+
+    // Exact 3D Kay-Kajiya AABB ray-slab chord integration + ANSI/ANS-6.4.3 GP buildup
+    const evaluateRayInversionFactor = (sx: number, sy: number, sz: number, rx: number, ry: number, rz: number) => {
+        const dx = rx - sx; const dy = ry - sy; const dz = rz - sz;
+        const dist = Math.max(0.1, Math.sqrt(dx * dx + dy * dy + dz * dz));
+
+        let totalMfp = 0;
+        let dominantXcomKey = 'CONCRETE';
+
+        // 1. Cut solid/hollow wall segments
+        for (const wMesh of visualMeshes) {
+          const chordM = intersectRayAABB3D(sx, sy, sz, rx, ry, rz, wMesh);
+          if (chordM > 0) {
+            const matSpec = SHIELDING_FACTORS[wMesh.material];
+            let effMuPerM = matSpec.mu;
+            if (matSpec.arch === 'partial_fill') {
+              effMuPerM *= (matSpec.fillRatio || 1);
+            } else if (matSpec.arch === 'hollow_sheet') {
+              effMuPerM *= Math.min(1, (matSpec.sheetThickness || 0.03) / Math.max(0.03, wallThickness));
+            }
+            totalMfp += effMuPerM * chordM;
+            dominantXcomKey = SHIELD_XCOM_KEY_MAP[wMesh.material] || 'CONCRETE';
+          }
+        }
+
+        // 2. Non-air apertures (e.g., Glass Windows) tightened to true wall slab bounds
+        for (const ap of derivedApertures) {
+          if (ap.material === 'Air / Open') continue;
+          const apBox = {
+            xMin: ap.wall === 'West' ? -wallThickness : ap.wall === 'East' ? roomW : ap.xMin,
+            xMax: ap.wall === 'West' ? 0 : ap.wall === 'East' ? roomW + wallThickness : ap.xMax,
+            yMin: ap.wall === 'South' ? -wallThickness : ap.wall === 'North' ? roomL : ap.yMin,
+            yMax: ap.wall === 'South' ? 0 : ap.wall === 'North' ? roomL + wallThickness : ap.yMax,
+            zMin: ap.zMin,
+            zMax: ap.zMax
+          };
+          const chordM = intersectRayAABB3D(sx, sy, sz, rx, ry, rz, apBox);
+          if (chordM > 0) {
+            totalMfp += SHIELDING_FACTORS[ap.material].mu * chordM;
+          }
+        }
+
+        const B = totalMfp > 0 ? evaluateGPBuildup(dominantXcomKey, 0.662, totalMfp).B : 1.0;
+        return (dist * dist * Math.exp(totalMfp)) / B;
+    };
+    
+    // 3D Grid Search over extended bounding area
+    const xMin = -roomW * 0.5; const xMax = roomW * 1.5;
+    const yMin = -roomL * 0.5; const yMax = roomL * 1.5;
+    const zMin = 0; const zMax = roomH;
+
+    for (let x = xMin; x <= xMax; x += 0.5) {
+        for (let y = yMin; y <= yMax; y += 0.5) {
+             for (let z = zMin; z <= zMax; z += 0.5) {
+                 const estimatedAs = [];
+                 for (const r of triangulationReadings) {
+                     const tf_modifier = evaluateRayInversionFactor(x, y, z, r.x, r.y, r.z);
+                     estimatedAs.push(r.reading * tf_modifier);
+                 }
+                 if (estimatedAs.length === 0) continue;
+                 const meanA = estimatedAs.reduce((a,b)=>a+b,0) / estimatedAs.length;
+                 let sumSq = 0;
+                 for (const a of estimatedAs) sumSq += Math.pow((a - meanA) / meanA, 2);
+                 
+                 if (sumSq < minVariance) {
+                     minVariance = sumSq;
+                     bestX = x; bestY = y; bestZ = z;
+                     bestEquivReading = meanA;
+                 }
+             }
+        }
+    }
+    return { x: bestX, y: bestY, z: bestZ, equivReading1m: bestEquivReading };
+  }, [mode, triangulationReadings, derivedApertures, visualMeshes, roomW, roomL, roomH, wallThickness]);
 
   const nuclideDict = useMemo(() => {
      const dict: Record<string, unknown> = {};
@@ -434,17 +436,40 @@ const ReverseResponderModule: React.FC = () => {
           }
       }
       else if (equipment.includes('Gamma') || equipment.includes('Spectrometer') || equipment.includes('Analyzer')) {
-          if (mode.includes('B-') || mode.includes('EC') || mode.includes('IT')) {
+          const nuclideSymbol = String(n.Nuclide || '');
+          const canon = getCanonicalNuclide(nuclideSymbol);
+          const pureBetaAlphaSet = new Set([
+            'H-3', 'C-14', 'P-32', 'P-33', 'S-35', 'Cl-36', 'Ca-45', 'Ni-63',
+            'Sr-89', 'Sr-90', 'Y-90', 'Tc-99', 'Pm-147', 'Tl-204', 'Bi-210', 'Po-210', 'Pu-238'
+          ]);
+          const isKnownPureParticle =
+            (canon !== null && canon !== undefined && canon.gammaH10_uSv_m2_h_GBq <= 0) ||
+            pureBetaAlphaSet.has(nuclideSymbol);
+
+          if (!isKnownPureParticle && (mode.includes('B-') || mode.includes('B+') || mode.includes('EC') || mode.includes('IT') || (canon && canon.gammaH10_uSv_m2_h_GBq > 0))) {
               isValidForDetector = true;
-              impliedActivityMBq = reading_mSv_hr * Math.pow(activeDistance, 2) * 3700 * (1 / effFraction);
+              const gammaConst_uSv_m2_h_GBq =
+                canon && canon.gammaH10_uSv_m2_h_GBq > 0 ? canon.gammaH10_uSv_m2_h_GBq : 120.0;
+              if (unit === 'CPM') {
+                const d_cm = activeDistance * 100;
+                const solidAngle = 18.0 / (4 * Math.PI * d_cm * d_cm); // 2"x2" crystal face
+                const photonsPerSec = (reading_cpm / 60) / (effFraction * solidAngle);
+                const approxYieldPerDecay = Math.max(0.05, gammaConst_uSv_m2_h_GBq / 150.0);
+                impliedActivityMBq = (photonsPerSec / approxYieldPerDecay) / 1e6;
+              } else {
+                // Calibrated ambient dose-equivalent rate H*(10): NEVER divide mSv/hr by counting efficiency!
+                const reading_uSv_hr = reading_mSv_hr * 1000.0;
+                const activityGBq = (reading_uSv_hr * Math.pow(activeDistance, 2)) / gammaConst_uSv_m2_h_GBq;
+                impliedActivityMBq = activityGBq * 1000.0;
+              }
           }
       }
       else if (equipment === 'Neutron Rem Meter') {
           if (mode.includes('SF') || mode.includes('N')) {
               isValidForDetector = true;
-              // Support both CPM (e.g. BF3/He-3 rem ball ~ 600 CPM per mSv/h) and direct dose rate units
-              const effectiveDoseRate_mSv_hr = unit === 'CPM' ? (reading_cpm / 600) : reading_mSv_hr;
-              impliedActivityMBq = effectiveDoseRate_mSv_hr * Math.pow(activeDistance, 2) * 1500 * (1 / effFraction);
+              // Apply counting efficiency scaling ONLY when raw CPM is entered; mSv/hr is already calibrated
+              const effectiveDoseRate_mSv_hr = unit === 'CPM' ? (reading_cpm / (600 * effFraction)) : reading_mSv_hr;
+              impliedActivityMBq = effectiveDoseRate_mSv_hr * Math.pow(activeDistance, 2) * 1500;
           }
       }
 
@@ -466,6 +491,28 @@ const ReverseResponderModule: React.FC = () => {
     return candidates.sort((a, b) => a.mbq - b.mbq).slice(0, 50);
 
   }, [distance, reading, equipment, efficiency, unit, detectedEnergy, energyUnit, mode, triangulationResult, nuclideDict]);
+
+  useEffect(() => {
+    const top = results[0];
+    setLiveModuleTelemetry({
+      moduleId: 'reverse-responder',
+      moduleTitle: 'Reverse Responder Source Attribution & 3D Triangulation',
+      regimeSummary: `${equipment} (${reading} ${unit} @ ${distance} m) • ${results.length} Viable Candidates`,
+      parameters: {
+        'Instrument': equipment,
+        'Reading': `${reading} ${unit}`,
+        'Standoff': `${distance} m`,
+        'Mode': mode === 'single' ? 'Single-Point Inversion' : '3D Architectural Triangulation'
+      },
+      computedMetrics: {
+        'Candidate Count': results.length,
+        'Top Candidate': top ? `${top.nuclide} (${formatActivity(top.mbq)})` : 'None',
+        'Triangulated Origin': triangulationResult
+          ? `(${triangulationResult.x.toFixed(1)}m, ${triangulationResult.y.toFixed(1)}m, ${triangulationResult.z.toFixed(1)}m)`
+          : 'Single-Point Mode'
+      }
+    });
+  }, [equipment, reading, unit, distance, mode, results, triangulationResult, setLiveModuleTelemetry]);
 
   const formatActivity = (mbq: number) => {
       if (mbq > 1e6) return (mbq / 1e6).toFixed(2) + ' TBq';

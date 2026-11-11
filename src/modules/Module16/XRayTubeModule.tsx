@@ -1,8 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import VerificationBadge from '../../components/VerificationBadge';
 import PlotComponent from 'react-plotly.js';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
+import { evaluateXCOMAttenuation } from '../../utils/xcomAndGpBuildup';
+import { useRegulatory } from '../../context/RegulatoryContext';
 
 const Plot = (PlotComponent as any).default || PlotComponent;
 
@@ -22,7 +24,20 @@ const ANODES: Record<string, AnodeMaterial> = {
   Rhodium: { name: 'Rhodium', symbol: 'Rh', z: 45, kEdge: 23.2, kAlpha1: 20.2, kAlpha2: 20.1, kBeta1: 22.7 }
 };
 
+const getFilterLinearMuPerMm = (matKey: 'ALUMINUM' | 'COPPER', energyKeV: number): number => {
+  const muCmInv = evaluateXCOMAttenuation(matKey, energyKeV / 1000).muLinear;
+  const sub10KeVScale = energyKeV < 10 ? Math.pow(10 / Math.max(1, energyKeV), 2.85) : 1.0;
+  return (muCmInv / 10.0) * sub10KeVScale;
+};
+
+const getAirKermaWeight = (energyKeV: number): number => {
+  const muEnAir = evaluateXCOMAttenuation('AIR', energyKeV / 1000).muEnMass;
+  const sub10KeVScale = energyKeV < 10 ? Math.pow(10 / Math.max(1, energyKeV), 2.85) : 1.0;
+  return energyKeV * muEnAir * sub10KeVScale;
+};
+
 const XRayTubeModule: React.FC = () => {
+  const { setLiveModuleTelemetry } = useRegulatory();
   const [target, setTarget] = useState<string>('Tungsten');
   const [kvp, setKvp] = useState<number>(80); // tube voltage in kV
   const [ma, setMa] = useState<number>(100); // tube current in mA
@@ -80,10 +95,9 @@ const XRayTubeModule: React.FC = () => {
       const totalRaw = bremsstrahlung + characteristic;
       rawIntensities.push(totalRaw);
 
-      // 4. Added Filtration Attenuation
-      // mu = linear attenuation coeff in mm^-1
-      const muAl = 2800 * Math.pow(Math.max(8, e), -2.95);
-      const muCu = 240000 * Math.pow(Math.max(8, e), -3.15);
+      // 4. Added Filtration Attenuation (NIST XCOM Photoelectric + Compton linear attenuation in mm^-1)
+      const muAl = getFilterLinearMuPerMm('ALUMINUM', e);
+      const muCu = getFilterLinearMuPerMm('COPPER', e);
 
       const transmission = Math.exp(-muAl * filterAl - muCu * filterCu);
       filteredIntensities.push(totalRaw * transmission);
@@ -94,43 +108,45 @@ const XRayTubeModule: React.FC = () => {
 
   // Calculations for HVL, mean energy, and exposure
   const metrics = useMemo(() => {
-    let totalRaw = 0;
     let totalFiltered = 0;
+    let totalFilteredKerma = 0;
     let energySum = 0;
 
     const deltaE = 0.5;
 
     for (let i = 0; i < spectrum.energies.length; i++) {
-      totalRaw += spectrum.rawIntensities[i] * deltaE;
-      totalFiltered += spectrum.filteredIntensities[i] * deltaE;
-      energySum += spectrum.energies[i] * spectrum.filteredIntensities[i] * deltaE;
+      const e = spectrum.energies[i];
+      const filt = spectrum.filteredIntensities[i];
+      totalFiltered += filt * deltaE;
+      totalFilteredKerma += filt * getAirKermaWeight(e) * deltaE;
+      energySum += e * filt * deltaE;
     }
 
     const meanEnergy = totalFiltered > 0 ? energySum / totalFiltered : 0;
 
-    // Calculate HVL (Half Value Layer) in mm Al
-    const getFilteredSum = (addedAl: number) => {
+    // Calculate First HVL (Half-Value Layer) in mm Al by NIST XCOM Air-Kerma attenuation (NCRP-147 / 21 CFR 1020.30)
+    const getFilteredKermaSum = (addedAl: number) => {
       let sum = 0;
       for (let i = 0; i < spectrum.energies.length; i++) {
         const e = spectrum.energies[i];
         const raw = spectrum.rawIntensities[i];
-        const muAl = 2800 * Math.pow(Math.max(8, e), -2.95);
-        const muCu = 240000 * Math.pow(Math.max(8, e), -3.15);
+        const muAl = getFilterLinearMuPerMm('ALUMINUM', e);
+        const muCu = getFilterLinearMuPerMm('COPPER', e);
         const trans = Math.exp(-muAl * (filterAl + addedAl) - muCu * filterCu);
-        sum += raw * trans * deltaE;
+        sum += raw * trans * getAirKermaWeight(e) * deltaE;
       }
       return sum;
     };
 
-    const targetHvlIntensity = totalFiltered / 2;
+    const targetHvlKerma = totalFilteredKerma / 2;
     let hvl = 0;
-    if (totalFiltered > 0) {
+    if (totalFilteredKerma > 0) {
       let low = 0;
-      let high = 15;
-      for (let step = 0; step < 15; step++) {
+      let high = 25;
+      for (let step = 0; step < 25; step++) {
         const mid = (low + high) / 2;
-        const currentSum = getFilteredSum(mid);
-        if (currentSum > targetHvlIntensity) {
+        const currentSum = getFilteredKermaSum(mid);
+        if (currentSum > targetHvlKerma) {
           low = mid;
         } else {
           high = mid;
@@ -140,9 +156,9 @@ const XRayTubeModule: React.FC = () => {
     }
 
     // Exposure at 1m in air (mGy or mR)
-    // Dynamic calibration: 100 kVp, 2.5 mm Al filter yields ~50 microGy/mAs at 1m
+    // Dynamic calibration: 100 kVp, 2.5 mm Al filter yields ~75 microGy/mAs at 1m
     const mAs = ma * time;
-    const baseOutputScale = 1.4e-6; // custom scaling to match physical values
+    const baseOutputScale = 2.0e-7; // calibrated to NCRP-147 diagnostic tungsten air kerma at 1 m
     const doseRate = totalFiltered * baseOutputScale * mAs * 1000; // in microGy at 1m
 
     return {
@@ -151,7 +167,29 @@ const XRayTubeModule: React.FC = () => {
       doseRate,
       mAs
     };
-  }, [spectrum, filterAl, filterCu, ma, time, kvp]);
+  }, [spectrum, filterAl, filterCu, ma, time]);
+
+  useEffect(() => {
+    setLiveModuleTelemetry({
+      moduleId: 'M17',
+      moduleTitle: 'Module 17 — X-Ray Tube Physics & Spectrum Generator',
+      regimeSummary: `${target} Anode @ ${kvp} kVp, ${metrics.mAs.toFixed(1)} mAs (${filterAl} mm Al + ${filterCu} mm Cu)`,
+      parameters: {
+        anodeTarget: target,
+        kvp,
+        currentMa: ma,
+        exposureTimeSec: time,
+        filterAlMm: filterAl,
+        filterCuMm: filterCu,
+        anodeAngleDeg: anodeAngle
+      },
+      computedMetrics: {
+        meanEnergyKeV: Number(metrics.meanEnergy.toFixed(2)),
+        firstHvlMmAl: Number(metrics.hvl.toFixed(3)),
+        airKermaAt1m_uGy: Number(metrics.doseRate.toFixed(2))
+      }
+    });
+  }, [target, kvp, ma, time, filterAl, filterCu, anodeAngle, metrics.meanEnergy, metrics.hvl, metrics.doseRate, metrics.mAs, setLiveModuleTelemetry]);
 
   const dossierPayload: CalculationDossierPayload = useMemo(() => ({
     reportTitle: 'Diagnostic X-Ray Tube Spectrum & Output Compliance Dossier',

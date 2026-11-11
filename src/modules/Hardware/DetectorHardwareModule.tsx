@@ -2,8 +2,11 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import VerificationBadge from '../../components/VerificationBadge';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
+import { useRegulatory } from '../../context/RegulatoryContext';
+import { computeCurrieDetectionLimits } from '../../utils/radiologicalPhysicsKernels';
 
 export const DetectorHardwareModule: React.FC = () => {
+  const { currentFramework, setLiveModuleTelemetry } = useRegulatory();
   const [isDossierOpen, setIsDossierOpen] = useState<boolean>(false);
   const [connectionMode, setConnectionMode] = useState<'audio' | 'serial' | 'simulation'>('simulation');
   const [isConnected, setIsConnected] = useState<boolean>(false);
@@ -290,11 +293,31 @@ export const DetectorHardwareModule: React.FC = () => {
   const netCounts = Math.max(0, totalCounts - (backgroundCpm / 60.0) * elapsedSeconds);
   const countingError_pct = totalCounts > 0 ? (Math.sqrt(totalCounts) / totalCounts) * 100 : 0;
 
-  // Currie Critical Level Lc = 2.33 * sqrt(B)
+  // Currie (1968) Decision Level L_C & Detection Limit L_D via canonical metrology kernel
   const expectedBgCounts = (backgroundCpm / 60.0) * Math.max(1, elapsedSeconds);
-  const currieLc = 2.33 * Math.sqrt(expectedBgCounts);
-  const currieLd = 2.71 + 4.65 * Math.sqrt(expectedBgCounts);
+  const { lcCounts: currieLc, ldCounts: currieLd } = computeCurrieDetectionLimits(expectedBgCounts, false);
   const isAboveCurrie = netCounts > currieLc;
+  const occHourlyLimitUSvHr = (currentFramework.limits.occupationalAnnualEffective_mSv * 1000) / 2000;
+
+  useEffect(() => {
+    setLiveModuleTelemetry({
+      moduleId: 'detector-hardware',
+      moduleTitle: 'Live Detector Hardware & Currie Metrology',
+      regimeSummary: `${connectionMode.toUpperCase()} (${isConnected ? 'ONLINE' : 'STANDBY'}) • ${trueCpm.toFixed(1)} CPM`,
+      parameters: {
+        'Acquisition Channel': connectionMode.toUpperCase(),
+        'Observed Rate (CPM)': cpm,
+        'Dead Time (µs)': deadTime_us,
+        'Background (CPM)': backgroundCpm
+      },
+      computedMetrics: {
+        'Dead-Time Corrected Rate': `${trueCpm.toFixed(1)} CPM`,
+        'Ambient Dose Rate': `${doseRate_uSv_h.toFixed(3)} µSv/h`,
+        'Currie L_C / L_D': `${currieLc.toFixed(2)} / ${currieLd.toFixed(2)} cts`,
+        'Currie Signal Status': isAboveCurrie ? 'SIGNAL DETECTED (> L_C)' : 'AT BACKGROUND'
+      }
+    });
+  }, [connectionMode, isConnected, cpm, deadTime_us, backgroundCpm, trueCpm, doseRate_uSv_h, currieLc, currieLd, isAboveCurrie, setLiveModuleTelemetry]);
 
   const dossierPayload: CalculationDossierPayload = useMemo(() => ({
     reportTitle: `Live Detector Hardware & Poisson Metrology Assessment`,
@@ -305,7 +328,7 @@ export const DetectorHardwareModule: React.FC = () => {
     operatorCredentials: 'CHP, RRPT',
     facility: 'Radiation Counting & Hardware Telemetry Laboratory',
     notes: `Non-paralyzable dead-time corrected pulse counting and Currie (1968) hypothesis testing via ${connectionMode.toUpperCase()} channel.`,
-    formulaDescription: 'n = \\frac{m}{1 - m\\tau}, \\quad L_C = 2.33\\sqrt{B}, \\quad L_D = 2.71 + 4.65\\sqrt{B}',
+    formulaDescription: 'n = \\frac{m}{1 - m\\tau}, \\quad L_C = 2.33\\sqrt{B}, \\quad L_D = 2.71 + 4.66\\sqrt{B}',
     inputs: [
       { label: 'Acquisition Mode', value: connectionMode.toUpperCase() },
       { label: 'Observed Count Rate (m)', value: cpm, unit: 'CPM' },
@@ -316,12 +339,12 @@ export const DetectorHardwareModule: React.FC = () => {
     ],
     outputs: [
       { label: 'Dead-Time Corrected Rate (n)', value: trueCpm.toFixed(1), unit: 'CPM', status: 'PASS' },
-      { label: 'Ambient Dose Equivalent Rate', value: doseRate_uSv_h.toFixed(3), unit: 'µSv/h', status: doseRate_uSv_h > 20 ? 'WARNING' : 'PASS' },
+      { label: 'Ambient Dose Equivalent Rate', value: doseRate_uSv_h.toFixed(3), unit: 'µSv/h', status: doseRate_uSv_h > occHourlyLimitUSvHr ? 'WARNING' : 'PASS' },
       { label: 'Currie Critical Level (L_C)', value: currieLc.toFixed(2), unit: 'counts', status: 'PASS' },
       { label: 'Currie Detection Limit (L_D)', value: currieLd.toFixed(2), unit: 'counts', status: 'PASS' },
       { label: 'Net Sample Counts (S = N - B)', value: netCounts.toFixed(1), unit: 'counts', status: isAboveCurrie ? 'WARNING' : 'PASS' }
     ]
-  }), [connectionMode, cpm, deadTime_us, calibrationFactor_cpm_per_uSv, backgroundCpm, elapsedSeconds, trueCpm, doseRate_uSv_h, currieLc, currieLd, netCounts, isAboveCurrie]);
+  }), [connectionMode, cpm, deadTime_us, calibrationFactor_cpm_per_uSv, backgroundCpm, elapsedSeconds, trueCpm, doseRate_uSv_h, occHourlyLimitUSvHr, currieLc, currieLd, netCounts, isAboveCurrie]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { getVerificationStatusById } from '../utils/vvBenchmarkSuite';
 
 export interface VerificationBadgeProps {
   testId: string;
@@ -22,6 +23,8 @@ export const VerificationBadge: React.FC<VerificationBadgeProps> = ({
 }) => {
   const targetTest = primaryTestId || (testId.includes(' ') ? testId.split(' ')[0] : testId);
   const displayStandard = standard || label || 'ISO 17025';
+  const liveStatus = getVerificationStatusById(targetTest);
+  const isVerifiedPass = liveStatus ? liveStatus.passed : true;
 
   return (
     <div style={{ display: 'inline-flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap', ...style }}>
@@ -36,14 +39,25 @@ export const VerificationBadge: React.FC<VerificationBadgeProps> = ({
           padding: '3px 9px',
           fontSize: '0.72rem',
           borderRadius: '5px',
-          background: 'rgba(15, 23, 42, 0.72)',
-          border: '1px solid rgba(148, 163, 184, 0.24)',
+          background: isVerifiedPass ? 'rgba(15, 23, 42, 0.72)' : 'rgba(127, 29, 29, 0.45)',
+          border: isVerifiedPass
+            ? '1px solid rgba(16, 185, 129, 0.35)'
+            : '1px solid rgba(239, 68, 68, 0.65)',
           color: '#cbd5e1',
           transition: 'all 0.15s ease'
         }}
-        title={title || `View scientific proof and reference benchmark for ${testId} (${displayStandard})`}
+        title={
+          title ||
+          `Live V&V status for ${testId} (${displayStandard}): ${
+            isVerifiedPass
+              ? `PASSED${liveStatus?.errorPct !== undefined ? ` (δ = ${liveStatus.errorPct.toFixed(4)}%)` : ''}`
+              : 'FAILED — click to inspect'
+          }`
+        }
       >
-        <span style={{ color: '#94a3b8', fontWeight: 700 }}>✓</span>
+        <span style={{ color: isVerifiedPass ? '#10b981' : '#ef4444', fontWeight: 700 }}>
+          {isVerifiedPass ? '✓' : '✗'}
+        </span>
         <span style={{ color: '#e2e8f0', fontWeight: 600 }}>{testId}</span>
         <span style={{ color: '#94a3b8' }}>({displayStandard})</span>
       </Link>

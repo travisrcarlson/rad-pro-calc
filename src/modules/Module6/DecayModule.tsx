@@ -10,6 +10,7 @@ import PlotComponent from 'react-plotly.js';
 const Plot = (PlotComponent as any).default || PlotComponent;
 import KarlsruheSvgChart from './KarlsruheChart';
 import allNuclides from '../../data/all_nuclides.json';
+import { parseActivityToGBq } from '../../utils/canonicalNuclidePhysics';
 import {
   REACTOR_ACTIVATION_PRESETS,
   CURATED_BRANCHING_SPLITS,
@@ -85,9 +86,9 @@ const NUCLIDE_GAMMA_METADATA: Record<string, { energyMeV: number; yieldPct: numb
   'Cs-137': { energyMeV: 0.6617, yieldPct: 85.1, gammaConst: 77.2 },
   'Ba-137m': { energyMeV: 0.6617, yieldPct: 89.9, gammaConst: 77.2 },
   'Co-60': { energyMeV: 1.252, yieldPct: 199.8, gammaConst: 308.5 },
-  'Sr-90': { energyMeV: 0.05, yieldPct: 0.1, gammaConst: 0.5 },
-  'Y-90': { energyMeV: 0.15, yieldPct: 0.5, gammaConst: 1.2 },
-  'Ir-192': { energyMeV: 0.380, yieldPct: 145.0, gammaConst: 130.0 },
+  'Sr-90': { energyMeV: 0.0, yieldPct: 0.0, gammaConst: 0.0 },
+  'Y-90': { energyMeV: 0.0, yieldPct: 0.0, gammaConst: 0.0 },
+  'Ir-192': { energyMeV: 0.380, yieldPct: 145.0, gammaConst: 116.8 },
   'Lu-177': { energyMeV: 0.2084, yieldPct: 10.4, gammaConst: 4.9 },
   'Au-198': { energyMeV: 0.4118, yieldPct: 95.6, gammaConst: 62.0 },
   'Bi-212': { energyMeV: 0.7273, yieldPct: 6.7, gammaConst: 18.0 },
@@ -1036,6 +1037,17 @@ const DecayModule: React.FC = () => {
       const match = allNuclides.find(n => n.Nuclide.toLowerCase() === isoParam.trim().toLowerCase());
       if (match) handleIsotopeClick(match);
     }
+    const actParam = searchParams.get('activity');
+    const unitParam = searchParams.get('unit');
+    if (actParam) {
+      const parsed = parseFloat(actParam);
+      if (!isNaN(parsed) && parsed > 0) {
+        const gbq = parseActivityToGBq(parsed, unitParam || 'MBq');
+        if (gbq > 0) {
+          setInitialActivity(Number((gbq * 1000).toPrecision(6)));
+        }
+      }
+    }
   }, [searchParams]);
 
   // --- Upgrade 4: Cross-Module Dispatch of Aged Parent + Daughter Mixture at t_sim ---
@@ -1576,6 +1588,7 @@ const DecayModule: React.FC = () => {
       parameters: {
         'Parent Nuclide': parentName,
         'Parent Half-Life': parentHl,
+        'Activity (GBq)': Number((initialActivity / 1000).toPrecision(6)),
         'Initial Activity': `${initialActivity} MBq`,
         'Chain Length': `${chainNodes.length} states`
       },

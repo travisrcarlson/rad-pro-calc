@@ -64,35 +64,63 @@ export const CrossModulePipelineBar: React.FC<CrossModulePipelineBarProps> = ({
   compact = false
 }) => {
   const navigate = useNavigate();
-  const { activeSource, liveModuleTelemetry } = useRegulatory();
+  const { activeSource, setActiveSource, liveModuleTelemetry, formatActivityGBq } = useRegulatory();
 
   const currentPath = activeModuleInfo?.path || '';
   const targets = (MODULE_PIPELINE_MAP[currentPath] || DEFAULT_PIPELINE_TARGETS).filter(
     t => t.targetPath !== currentPath
   );
 
+  // Extract live nuclide & activity from active module telemetry if present
+  const telemetryParams = liveModuleTelemetry?.parameters || {};
+  const liveIsoRaw =
+    telemetryParams['Isotope'] ??
+    telemetryParams['Nuclide'] ??
+    telemetryParams['Parent Nuclide'] ??
+    telemetryParams['Identified Nuclide'] ??
+    telemetryParams['Source Nuclide'];
+  const effectiveIso = liveIsoRaw ? String(liveIsoRaw).trim() : activeSource.isotope;
+
+  const liveActGBqRaw =
+    telemetryParams['Activity (GBq)'] ??
+    telemetryParams['Source Activity (GBq)'];
+  const parsedLiveAct = liveActGBqRaw !== undefined ? parseFloat(String(liveActGBqRaw)) : NaN;
+  const effectiveActivityGBq =
+    Number.isFinite(parsedLiveAct) && parsedLiveAct > 0 ? parsedLiveAct : activeSource.activityGBq;
+
+  const liveDistRaw = telemetryParams['Distance (m)'] ?? telemetryParams['Standoff (m)'];
+  const parsedLiveDist = liveDistRaw !== undefined ? parseFloat(String(liveDistRaw)) : NaN;
+  const effectiveDistanceM =
+    Number.isFinite(parsedLiveDist) && parsedLiveDist > 0 ? parsedLiveDist : activeSource.distanceM;
+
   const handleChainToModule = (target: PipelineTarget) => {
     const params = new URLSearchParams();
-    // Prefer parent nuclide from live decay/spectroscopy telemetry if present
-    const telemetryIso =
-      liveModuleTelemetry?.parameters['Parent Nuclide'] ||
-      liveModuleTelemetry?.parameters['Identified Nuclide'];
-    const iso = telemetryIso ? String(telemetryIso) : activeSource.isotope;
-
-    params.set('isotope', iso);
-    params.set('nuclide', iso);
-    params.set('search', iso);
-    params.set('activity', String(activeSource.activityGBq));
+    params.set('isotope', effectiveIso);
+    params.set('nuclide', effectiveIso);
+    params.set('search', effectiveIso);
+    params.set('activity', String(effectiveActivityGBq));
     params.set('unit', 'GBq');
-    params.set('distance', String(activeSource.distanceM));
+    params.set('distance', String(effectiveDistanceM));
     params.set('material', activeSource.shieldMaterial);
     params.set('thickness', String(activeSource.shieldThicknessCm));
 
-    if (liveModuleTelemetry?.parameters['Yield (kT)']) {
-      params.set('yieldKt', String(liveModuleTelemetry.parameters['Yield (kT)']));
+    if (telemetryParams['Energy (MeV)'] !== undefined) {
+      params.set('energyMeV', String(telemetryParams['Energy (MeV)']));
+    }
+    if (telemetryParams['Yield (kT)'] !== undefined) {
+      params.set('yieldKt', String(telemetryParams['Yield (kT)']));
     }
     if (target.extraQuery) {
       Object.entries(target.extraQuery).forEach(([k, v]) => params.set(k, v));
+    }
+
+    // Keep global activeSource aligned with chained scenario
+    if (effectiveIso !== activeSource.isotope || effectiveActivityGBq !== activeSource.activityGBq) {
+      setActiveSource({
+        isotope: effectiveIso,
+        activityGBq: effectiveActivityGBq,
+        distanceM: effectiveDistanceM
+      });
     }
 
     navigate(`${target.targetPath}?${params.toString()}`);
@@ -115,7 +143,7 @@ export const CrossModulePipelineBar: React.FC<CrossModulePipelineBarProps> = ({
           ⇄ Chain Active Scenario To Next Tool
         </span>
         <span style={{ fontSize: '0.68rem', color: '#64748b', fontFamily: 'var(--font-mono)' }}>
-          {activeSource.isotope} • {activeSource.activityGBq} GBq
+          {effectiveIso} • {formatActivityGBq(effectiveActivityGBq)}
         </span>
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>

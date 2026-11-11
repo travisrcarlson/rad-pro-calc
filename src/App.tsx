@@ -46,10 +46,14 @@ import { RegulatoryProvider, useRegulatory, type GlobalSourceContext } from './c
 import { RegulatorySelectorBar } from './components/RegulatorySelectorBar';
 import { CommandPalette } from './components/CommandPalette';
 import { MODULE_USER_GUIDES } from './data/moduleUserGuides';
-import { WorkspaceInspectorDrawer, type InspectorTabId } from './components/WorkspaceInspectorDrawer';
+import type { InspectorTabId } from './components/WorkspaceInspectorDrawer';
 import ErrorBoundary from './ErrorBoundary';
 
 const ModuleInfoTabPanel = lazyWithRetry(() => import('./components/ModuleInfoTabPanel'), 'ModuleInfoTabPanel');
+const WorkspaceInspectorDrawer = lazyWithRetry(
+  () => import('./components/WorkspaceInspectorDrawer').then(m => ({ default: m.WorkspaceInspectorDrawer })),
+  'WorkspaceInspectorDrawer'
+);
 
 const ModuleLoadingSkeleton: React.FC = () => (
   <div style={{
@@ -497,7 +501,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           <div>
             <h1 style={{ fontSize: '1.05rem', margin: 0, lineHeight: 1.2 }}>RadPro Analyst</h1>
             <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', letterSpacing: '0.5px' }}>
-              SUITE v4.5 // 60/60 V&amp;V
+              SUITE v4.6 // 68/68 V&amp;V
             </div>
           </div>
         </div>
@@ -865,7 +869,6 @@ const AppShell: React.FC<{
 
   // Track recent module visits and reset workspace tab to 'tool' on route change
   const [workspaceTab, setWorkspaceTab] = useState<'tool' | 'info'>('tool');
-  const [sourceSyncRevision, setSourceSyncRevision] = useState(0);
   const [isInspectorOpen, setIsInspectorOpen] = useState<boolean>(false);
   const [inspectorTab, setInspectorTab] = useState<InspectorTabId>('tutor');
   const [copiedShareLink, setCopiedShareLink] = useState<boolean>(false);
@@ -909,9 +912,9 @@ const AppShell: React.FC<{
     params.set('distance', String(source.distanceM));
     params.set('material', source.shieldMaterial);
     params.set('thickness', String(source.shieldThicknessCm));
+    params.set('sync', String(Date.now()));
     navigate(`${location.pathname}?${params.toString()}`, { replace: true });
     setWorkspaceTab('tool');
-    setSourceSyncRevision(prev => prev + 1);
   };
 
   const handleCopyScenarioPermalink = () => {
@@ -1139,14 +1142,13 @@ const AppShell: React.FC<{
                 <ModuleInfoTabPanel
                   moduleInfo={activeModuleInfo}
                   onReturnToTool={() => {
-                    setSourceSyncRevision(prev => prev + 1);
                     handleSelectWorkspaceTab('tool');
                   }}
                 />
               </Suspense>
             )}
 
-            <div key={sourceSyncRevision} style={{ display: workspaceTab === 'info' ? 'none' : 'block' }}>
+            <div style={{ display: workspaceTab === 'info' ? 'none' : 'block' }}>
               <ErrorBoundary>
                 <Suspense fallback={<ModuleLoadingSkeleton />}>
                   <Routes>
@@ -1193,21 +1195,25 @@ const AppShell: React.FC<{
           </div>
 
           {/* Right-Hand Docked Split Workspace Inspector Drawer */}
-          <WorkspaceInspectorDrawer
-            isOpen={isInspectorOpen}
-            activeTab={inspectorTab}
-            onSelectTab={tab => setInspectorTab(tab)}
-            onClose={() => {
-              setIsInspectorOpen(false);
-              setTimeout(() => window.dispatchEvent(new Event('resize')), 60);
-            }}
-            onOpenFullWidthGuide={() => {
-              setIsInspectorOpen(false);
-              handleSelectWorkspaceTab('info');
-            }}
-            activeModuleInfo={activeModuleInfo}
-            onApplySourceToCurrentModule={handleApplySourceToCurrentModule}
-          />
+          {isInspectorOpen && (
+            <Suspense fallback={null}>
+              <WorkspaceInspectorDrawer
+                isOpen={isInspectorOpen}
+                activeTab={inspectorTab}
+                onSelectTab={tab => setInspectorTab(tab)}
+                onClose={() => {
+                  setIsInspectorOpen(false);
+                  setTimeout(() => window.dispatchEvent(new Event('resize')), 60);
+                }}
+                onOpenFullWidthGuide={() => {
+                  setIsInspectorOpen(false);
+                  handleSelectWorkspaceTab('info');
+                }}
+                activeModuleInfo={activeModuleInfo}
+                onApplySourceToCurrentModule={handleApplySourceToCurrentModule}
+              />
+            </Suspense>
+          )}
         </div>
       </main>
     </div>
@@ -1215,16 +1221,14 @@ const AppShell: React.FC<{
 };
 
 const App: React.FC = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState<boolean>(false);
-
-  useEffect(() => {
-    // Check if they already logged in during this session
-    const authFlag = sessionStorage.getItem('radpro_auth');
-    if (authFlag === 'true') {
-      setIsAuthenticated(true);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('radpro_auth') === 'true' || sessionStorage.getItem('radpro_auth') === 'true';
+    } catch {
+      return false;
     }
-  }, []);
+  });
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState<boolean>(false);
 
   // Global Ctrl+K / Cmd+K and custom event listener
   useEffect(() => {
@@ -1245,7 +1249,12 @@ const App: React.FC = () => {
   }, []);
 
   const handleLogin = () => {
-    sessionStorage.setItem('radpro_auth', 'true');
+    try {
+      localStorage.setItem('radpro_auth', 'true');
+      sessionStorage.setItem('radpro_auth', 'true');
+    } catch {
+      // Ignore storage quota errors in private mode
+    }
     setIsAuthenticated(true);
   };
 

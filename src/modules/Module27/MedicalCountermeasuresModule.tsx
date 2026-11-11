@@ -4,6 +4,9 @@ import VerificationBadge from '../../components/VerificationBadge';
 import PlotComponent from 'react-plotly.js';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
+import { parseActivityToGBq } from '../../utils/canonicalNuclidePhysics';
+import { computeEffectiveHalfLifeDays } from '../../utils/radiologicalPhysicsKernels';
+import { useRegulatory } from '../../context/RegulatoryContext';
 
 const Plot = (PlotComponent as any).default || PlotComponent;
 
@@ -101,22 +104,24 @@ interface IsotopePreset {
   id: string;
   name: string;
   recommendedDrugId: string;
+  physicalHalfLifeDays: number;
   ingestionDoseCoeffSvBq: number; // e(50) Sv/Bq
   inhalationDoseCoeffSvBq: number;
   typicalIntakekBq: number;
 }
 
 const ISOTOPE_PRESETS: IsotopePreset[] = [
-  { id: 'cs137', name: 'Cs-137 (Cesium Chloride / RDD Dispersal)', recommendedDrugId: 'prussian_blue', ingestionDoseCoeffSvBq: 1.3e-8, inhalationDoseCoeffSvBq: 3.9e-8, typicalIntakekBq: 2500 },
-  { id: 'i131', name: 'I-131 (Reactor Release / Volatile Fission)', recommendedDrugId: 'potassium_iodide', ingestionDoseCoeffSvBq: 2.2e-8, inhalationDoseCoeffSvBq: 2.0e-8, typicalIntakekBq: 1000 },
-  { id: 'pu239', name: 'Pu-239 (Alpha Inhalation / Actinide Dust)', recommendedDrugId: 'ca_dtpa', ingestionDoseCoeffSvBq: 2.5e-7, inhalationDoseCoeffSvBq: 8.3e-6, typicalIntakekBq: 50 },
-  { id: 'am241', name: 'Am-241 (Alpha / Gamma Transuranic)', recommendedDrugId: 'ca_dtpa', ingestionDoseCoeffSvBq: 2.0e-7, inhalationDoseCoeffSvBq: 4.2e-6, typicalIntakekBq: 80 },
-  { id: 'u238', name: 'U-238 (Depleted Uranium / Heavy Metal)', recommendedDrugId: 'sodium_bicarb', ingestionDoseCoeffSvBq: 4.5e-8, inhalationDoseCoeffSvBq: 2.9e-6, typicalIntakekBq: 500 }
+  { id: 'cs137', name: 'Cs-137 (Cesium Chloride / RDD Dispersal)', recommendedDrugId: 'prussian_blue', physicalHalfLifeDays: 10983, ingestionDoseCoeffSvBq: 1.3e-8, inhalationDoseCoeffSvBq: 3.9e-8, typicalIntakekBq: 2500 },
+  { id: 'i131', name: 'I-131 (Reactor Release / Volatile Fission)', recommendedDrugId: 'potassium_iodide', physicalHalfLifeDays: 8.02, ingestionDoseCoeffSvBq: 2.2e-8, inhalationDoseCoeffSvBq: 2.0e-8, typicalIntakekBq: 1000 },
+  { id: 'pu239', name: 'Pu-239 (Alpha Inhalation / Actinide Dust)', recommendedDrugId: 'ca_dtpa', physicalHalfLifeDays: 8.80e6, ingestionDoseCoeffSvBq: 2.5e-7, inhalationDoseCoeffSvBq: 8.3e-6, typicalIntakekBq: 50 },
+  { id: 'am241', name: 'Am-241 (Alpha / Gamma Transuranic)', recommendedDrugId: 'ca_dtpa', physicalHalfLifeDays: 157860, ingestionDoseCoeffSvBq: 2.0e-7, inhalationDoseCoeffSvBq: 4.2e-6, typicalIntakekBq: 80 },
+  { id: 'u238', name: 'U-238 (Depleted Uranium / Heavy Metal)', recommendedDrugId: 'sodium_bicarb', physicalHalfLifeDays: 1.63e12, ingestionDoseCoeffSvBq: 4.5e-8, inhalationDoseCoeffSvBq: 2.9e-6, typicalIntakekBq: 500 }
 ];
 
 export const MedicalCountermeasuresModule: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { setLiveModuleTelemetry } = useRegulatory();
   const [activeTab, setActiveTab] = useState<MedTab>('protocol');
   const [selectedIsotopeId, setSelectedIsotopeId] = useState<string>('cs137');
   const [intakeActivitykBq, setIntakeActivitykBq] = useState<number>(2500);
@@ -129,7 +134,9 @@ export const MedicalCountermeasuresModule: React.FC = () => {
 
   useEffect(() => {
     const drugParam = searchParams.get('drug');
-    const isoParam = searchParams.get('isotope');
+    const isoParam = searchParams.get('nuclide') || searchParams.get('isotope');
+    const actParam = searchParams.get('activity');
+    const unitParam = searchParams.get('unit') || 'GBq';
     const sourceParam = searchParams.get('source');
 
     if (drugParam) {
@@ -144,10 +151,22 @@ export const MedicalCountermeasuresModule: React.FC = () => {
         setIntakeActivitykBq(50);
       }
     } else if (isoParam) {
-      const match = ISOTOPE_PRESETS.find(p => p.id === isoParam || p.name.toLowerCase().includes(isoParam.toLowerCase()));
+      const cleanIso = isoParam.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const match = ISOTOPE_PRESETS.find(
+        p => p.id === cleanIso || p.name.toLowerCase().replace(/[^a-z0-9]/g, '').includes(cleanIso)
+      );
       if (match) {
         setSelectedIsotopeId(match.id);
         setIntakeActivitykBq(match.typicalIntakekBq);
+      }
+    }
+
+    if (actParam) {
+      const parsedVal = parseFloat(actParam);
+      if (!isNaN(parsedVal) && parsedVal > 0) {
+        const gBq = parseActivityToGBq(parsedVal, unitParam);
+        const kBq = Math.min(5000000, Math.max(1, gBq * 1e6));
+        setIntakeActivitykBq(Number(kBq.toFixed(1)));
       }
     }
 
@@ -186,41 +205,52 @@ export const MedicalCountermeasuresModule: React.FC = () => {
     // Efficacy drops exponentially if delayed past optimal window
     let delayFactor = 1.0;
     if (activeDrug.id === 'potassium_iodide') {
-      // KI curve: 98% at <=0h, 90% at 2h, 50% at 4h, 10% at 24h
+      // KI curve (FDA / NCRP-166): ~99% at <=0h, 90% at 2h, 55% at 4h, 25% at 12h, 5% >12h
       if (timeToTreatmentHours <= 0) delayFactor = 0.99;
       else if (timeToTreatmentHours <= 2) delayFactor = 0.90;
       else if (timeToTreatmentHours <= 4) delayFactor = 0.55;
       else if (timeToTreatmentHours <= 12) delayFactor = 0.25;
       else delayFactor = 0.05;
     } else {
-      // DTPA / Prussian Blue:
+      // DTPA / Prussian Blue / Sodium Bicarbonate:
       delayFactor = Math.exp(-timeToTreatmentHours / (activeDrug.efficacyWindowHours * 1.5));
       delayFactor = Math.max(0.15, Math.min(1.0, delayFactor));
     }
 
-    // Treated biological half-life
+    // Biological vs Effective (physical + biological) half-lives
+    const tPhys = activeIsotope.physicalHalfLifeDays;
     const tBioBaseline = activeDrug.retentionHalflifeBaselineDays;
     const tBioTreated = activeDrug.retentionHalflifeTreatedDays;
-    const effectiveTreatedHalfLife = tBioBaseline - (tBioBaseline - tBioTreated) * delayFactor;
+    const tBioTreatedDelayed = tBioBaseline - (tBioBaseline - tBioTreated) * delayFactor;
 
-    // Dose reduction percentage
-    const doseReductionPct = (1.0 - effectiveTreatedHalfLife / tBioBaseline) * 100 * delayFactor;
+    const tEffBaseline = computeEffectiveHalfLifeDays(tPhys, tBioBaseline);
+    const tEffTreated = computeEffectiveHalfLifeDays(tPhys, tBioTreatedDelayed);
+    const effectiveTreatedHalfLife = activeDrug.id === 'potassium_iodide' ? tEffBaseline : tEffTreated;
+
+    // Dose reduction percentage:
+    // - KI blocks initial thyroid NIS uptake directly by delayFactor (single application, never squared)
+    // - Decorporation chelators reduce integrated organ residence time via T_eff_treated / T_eff_baseline
+    const doseReductionPct =
+      activeDrug.id === 'potassium_iodide'
+        ? delayFactor * 100
+        : Math.max(0, (1.0 - tEffTreated / tEffBaseline) * 100);
     const treatedCedSv = Math.max(0, baselineCedSv * (1.0 - doseReductionPct / 100));
     const treatedCedRem = treatedCedSv * 100;
     const doseAvertedRem = baselineCedRem - treatedCedRem;
 
-    // Retention curve generation (180 days)
+    // Retention curve generation (180 days) incorporating physical + biological clearance
     const curveDays = 180;
     const steps = 90;
     const timeline: { day: number; baselineBq: number; treatedBq: number }[] = [];
 
-    const lambdaBase = Math.LN2 / tBioBaseline;
-    const lambdaTreated = Math.LN2 / effectiveTreatedHalfLife;
+    const lambdaEffBase = Math.LN2 / Math.max(0.01, tEffBaseline);
+    const lambdaEffTreated = Math.LN2 / Math.max(0.01, effectiveTreatedHalfLife);
+    const initialUptakeMultiplier = activeDrug.id === 'potassium_iodide' ? (1.0 - delayFactor) : 1.0;
 
     for (let i = 0; i <= steps; i++) {
       const d = (i / steps) * curveDays;
-      const rBase = intakeBq * Math.exp(-lambdaBase * d);
-      const rTreat = intakeBq * Math.exp(-lambdaTreated * d);
+      const rBase = intakeBq * Math.exp(-lambdaEffBase * d);
+      const rTreat = intakeBq * initialUptakeMultiplier * Math.exp(-lambdaEffTreated * d);
       timeline.push({ day: d, baselineBq: rBase / 1000, treatedBq: rTreat / 1000 });
     }
 
@@ -236,6 +266,26 @@ export const MedicalCountermeasuresModule: React.FC = () => {
       timeline
     };
   }, [intakeActivitykBq, routeOfIntake, activeIsotope, activeDrug, timeToTreatmentHours]);
+
+  useEffect(() => {
+    setLiveModuleTelemetry({
+      moduleId: 'medical-countermeasures',
+      moduleTitle: 'Medical Countermeasures & Chelation Biokinetics',
+      regimeSummary: `${activeDrug.name} for ${activeIsotope.name} • ${kinetics.doseReductionPct.toFixed(1)}% Dose Averted`,
+      parameters: {
+        'Isotope': activeIsotope.id.toUpperCase(),
+        'Countermeasure': activeDrug.name,
+        'Intake': `${intakeActivitykBq} kBq (${routeOfIntake})`,
+        'Admin Delay': `T+${timeToTreatmentHours} h`
+      },
+      computedMetrics: {
+        'Baseline CED': `${(kinetics.baselineCedSv * 1000).toFixed(2)} mSv`,
+        'Treated CED': `${(kinetics.treatedCedSv * 1000).toFixed(2)} mSv`,
+        'Dose Reduction': `${kinetics.doseReductionPct.toFixed(1)}%`,
+        'Effective T_1/2': `${kinetics.effectiveTreatedHalfLife.toFixed(2)} d`
+      }
+    });
+  }, [activeIsotope.id, activeIsotope.name, activeDrug.name, intakeActivitykBq, routeOfIntake, timeToTreatmentHours, kinetics, setLiveModuleTelemetry]);
 
   // --- Bioassay & Excretion Prediction ---
   const bioassay = useMemo(() => {

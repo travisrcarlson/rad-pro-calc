@@ -1,6 +1,6 @@
-import { type CalculationDossierPayload } from './auditDossierService';
-import imsStationsRaw from '../data/ctbto_ims_stations.json';
-import { calculateHaversineDistanceKm } from './globalGeospatialService';
+import type { CalculationDossierPayload } from './auditDossierService.ts';
+import imsStationsRaw from '../data/ctbto_ims_stations.json' with { type: 'json' };
+import { calculateHaversineDistanceKm } from './globalGeospatialService.ts';
 
 export interface CTBTOStationRecord {
   id: string;

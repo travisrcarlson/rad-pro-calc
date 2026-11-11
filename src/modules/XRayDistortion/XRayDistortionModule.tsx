@@ -4,6 +4,7 @@ import PlotComponent from 'react-plotly.js';
 import { BlockMath, InlineMath } from 'react-katex';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
+import { useRegulatory } from '../../context/RegulatoryContext';
 
 const Plot = (PlotComponent as any).default || PlotComponent;
 
@@ -118,6 +119,7 @@ const PRESETS: RadiographicPreset[] = [
 ];
 
 const XRayDistortionModule: React.FC = () => {
+  const { setLiveModuleTelemetry } = useRegulatory();
   const [activeTab, setActiveTab] = useState<DistortionTab>('ray_tracer');
   const [selectedPresetId, setSelectedPresetId] = useState<string>('chest_pa');
 
@@ -155,10 +157,12 @@ const XRayDistortionModule: React.FC = () => {
 
   // Derived Geometric Calculations
   const calc = useMemo(() => {
-    // Singularity protection
-    const safeOid = Math.min(oid, sid - 0.5);
-    const sod = Math.max(0.5, sid - safeOid); // Source-to-Object Distance (cm)
-    const magnification = sid / sod; // M
+    // Singularity protection: ensure SID >= 2 cm, OID <= SID - 1, and SOD <= SID - 1 when OID > 0 (never <= 0)
+    const safeSid = Math.max(2, sid);
+    const safeOid = Math.max(0, Math.min(oid, safeSid - 1));
+    const rawSod = Math.max(1, safeSid - safeOid);
+    const sod = safeOid > 0 ? Math.min(rawSod, safeSid - 1) : rawSod; // Source-to-Object Distance (cm)
+    const magnification = safeSid / sod; // M
     const percentEnlargement = (magnification - 1) * 100;
 
     // Projected nominal image size of object width (cm)
@@ -183,12 +187,12 @@ const XRayDistortionModule: React.FC = () => {
     // Base/exit surface sits at safeOid above the plate
     // Top/entrance surface sits at safeOid + objectDepth above the plate
     const oidBottom = safeOid;
-    const sodBottom = Math.max(0.5, sid - oidBottom);
-    const safeTopDepth = Math.min(objectDepth, Math.max(0.1, sid - safeOid - 0.5));
-    const oidTop = safeOid + safeTopDepth;
-    const sodTop = Math.max(0.5, sid - oidTop);
-    const magTop = sid / sodTop;
-    const magBottom = sid / sodBottom;
+    const sodBottom = Math.max(1, safeSid - oidBottom);
+    const safeTopDepth = Math.min(objectDepth, Math.max(0.1, safeSid - safeOid - 1));
+    const oidTop = Math.min(safeSid - 0.5, safeOid + safeTopDepth);
+    const sodTop = Math.max(0.5, Math.min(safeSid - oidTop, safeSid - 0.5));
+    const magTop = safeSid / sodTop;
+    const magBottom = safeSid / sodBottom;
     const deltaMag = magTop - magBottom;
     const depthDistortionRatio = magTop / magBottom;
     const widthTop_projected = objectWidth * magTop;
@@ -279,6 +283,44 @@ const XRayDistortionModule: React.FC = () => {
       penumbraBottom_mm
     };
   }, [sid, oid, objectWidth, objectDepth, focalSpot, objectTilt, beamAngle, lateralOffset]);
+
+  useEffect(() => {
+    setLiveModuleTelemetry({
+      moduleId: 'M18',
+      moduleTitle: 'Module 18 — X-Ray Distortion & Geometric Optics',
+      regimeSummary: `SID ${sid} cm | OID ${oid} cm | Focal Spot ${focalSpot} mm`,
+      parameters: {
+        sidCm: sid,
+        oidCm: oid,
+        sodCm: Number(calc.sod.toFixed(2)),
+        objectWidthCm: objectWidth,
+        objectDepthCm: objectDepth,
+        focalSpotMm: focalSpot,
+        objectTiltDeg: objectTilt,
+        beamAngleDeg: beamAngle
+      },
+      computedMetrics: {
+        magnificationFactor: Number(calc.magnification.toFixed(3)),
+        geometricUnsharpnessMm: Number(calc.unsharpness_mm.toFixed(3)),
+        projectedWidthCm: Number(calc.nominalImageWidth.toFixed(2)),
+        asmeBpvcCompliant: calc.asmeCompliant ? 'PASS' : 'EXCEEDED'
+      }
+    });
+  }, [
+    sid,
+    oid,
+    objectWidth,
+    objectDepth,
+    focalSpot,
+    objectTilt,
+    beamAngle,
+    calc.sod,
+    calc.magnification,
+    calc.unsharpness_mm,
+    calc.nominalImageWidth,
+    calc.asmeCompliant,
+    setLiveModuleTelemetry
+  ]);
 
   // Render Interactive Canvas Ray-Tracer
   useEffect(() => {
@@ -372,7 +414,8 @@ const XRayDistortionModule: React.FC = () => {
 
     // Helper for ray-line intersection with detector plate y = detectorY
     const projectRayToPlate = (fx: number, fy: number, ox: number, oy: number) => {
-      const slope = (ox - fx) / (oy - fy);
+      const dy = Math.abs(oy - fy) < 1e-3 ? (oy >= fy ? 1e-3 : -1e-3) : oy - fy;
+      const slope = (ox - fx) / dy;
       return fx + slope * (detectorY - fy);
     };
 
@@ -712,6 +755,7 @@ const XRayDistortionModule: React.FC = () => {
           {PRESETS.map(preset => (
             <button
               key={preset.id}
+              className={selectedPresetId === preset.id ? 'active' : ''}
               onClick={() => handleSelectPreset(preset.id)}
               style={{
                 background: selectedPresetId === preset.id ? 'rgba(0, 229, 255, 0.25)' : 'rgba(255, 255, 255, 0.04)',
@@ -749,6 +793,7 @@ const XRayDistortionModule: React.FC = () => {
         ].map(tab => (
           <button
             key={tab.id}
+            className={activeTab === tab.id ? 'active' : ''}
             onClick={() => setActiveTab(tab.id as DistortionTab)}
             style={{
               background: activeTab === tab.id ? 'rgba(0, 229, 255, 0.15)' : 'transparent',

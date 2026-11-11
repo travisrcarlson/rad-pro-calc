@@ -1,9 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import VerificationBadge from '../../components/VerificationBadge';
 import PlotComponent from 'react-plotly.js';
 import { BlockMath, InlineMath } from 'react-katex';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
+import { useRegulatory } from '../../context/RegulatoryContext';
 
 const Plot = (PlotComponent as any).default || PlotComponent;
 
@@ -37,6 +38,7 @@ const PRESETS: Preset[] = [
 type WorkspaceTab = 'beam_map' | 'detector_saturation' | 'controls' | 'physics';
 
 const PulsedXRayModule: React.FC = () => {
+  const { unitSystem, formatDoseMSv, formatDoseRateMSvHr, setLiveModuleTelemetry } = useRegulatory();
   const [activeTab, setActiveTab] = useState<WorkspaceTab>('beam_map');
   const [selectedPresetId, setSelectedPresetId] = useState<string>('xr200');
   const [distanceMeters, setDistanceMeters] = useState<number>(1.0);
@@ -78,20 +80,22 @@ const PulsedXRayModule: React.FC = () => {
     const dist = Math.max(dist_m, 0.05);
 
     if (overrideMode === 'flash_pulsed') {
-      const doseAt30cm_uSv = customMrPerPulse * 10.0;
+      const doseAt30cm_uSv = Math.max(0, customMrPerPulse) * 10.0;
       const distanceFactor = Math.pow(0.3 / dist, 2);
       const dosePerPulseAtTarget_uSv = doseAt30cm_uSv * distanceFactor;
-      accumulatedDose_uSv = dosePerPulseAtTarget_uSv * customPulses;
-      const pulseWidthSec = customPulseWidthNs * 1e-9;
+      accumulatedDose_uSv = dosePerPulseAtTarget_uSv * Math.max(0, customPulses);
+      const safePulseWidthNs = Math.max(1e-3, customPulseWidthNs);
+      const pulseWidthSec = safePulseWidthNs * 1e-9;
       const svPerSec = (dosePerPulseAtTarget_uSv / 1_000_000) / pulseWidthSec;
       instantaneousRate_Sv_H = svPerSec * 3600;
     } else {
-      const mAs = customMa * customTime;
-      const k = 0.00005;
+      const mAs = Math.max(0, customMa) * Math.max(0, customTime);
+      // Clinical NCRP-147 / AAPM diagnostic tungsten output (~75 µSv/mAs at 100 kVp, 1 m, ~2.5 mm Al filtration)
+      const k = 0.0000075;
       const doseAt1m_mSv = k * Math.pow(customKvp, 2) * mAs;
       const doseAtTarget_mSv = doseAt1m_mSv / Math.pow(dist, 2);
       accumulatedDose_uSv = doseAtTarget_mSv * 1000;
-      const rateAt1m_mSvH = k * Math.pow(customKvp, 2) * customMa * 3600;
+      const rateAt1m_mSvH = k * Math.pow(customKvp, 2) * Math.max(0, customMa) * 3600;
       const rateAtTarget_mSvH = rateAt1m_mSvH / Math.pow(dist, 2);
       instantaneousRate_Sv_H = rateAtTarget_mSvH / 1000;
     }
@@ -100,6 +104,48 @@ const PulsedXRayModule: React.FC = () => {
 
   const results = calcDoseAtDistance(distanceMeters);
   const isSaturated = results.instantaneousRate_Sv_H > 1000;
+
+  useEffect(() => {
+    setLiveModuleTelemetry({
+      moduleId: 'M16',
+      moduleTitle: 'Module 16 — Pulsed X-Ray Systems & Detector Saturation',
+      regimeSummary: `${overrideMode === 'flash_pulsed' ? 'Flash Pulsed' : 'Diagnostic Continuous'} (${customKvp} kVp) @ ${distanceMeters.toFixed(2)} m`,
+      parameters: {
+        mode: overrideMode,
+        kvp: customKvp,
+        distanceM: distanceMeters,
+        ...(overrideMode === 'flash_pulsed'
+          ? {
+              mrPerPulseAt30cm: customMrPerPulse,
+              pulses: customPulses,
+              pulseWidthNs: Math.max(1e-3, customPulseWidthNs)
+            }
+          : {
+              tubeCurrentMa: customMa,
+              exposureTimeSec: customTime
+            })
+      },
+      computedMetrics: {
+        accumulatedDose: formatDoseMSv(results.accumulatedDose_uSv / 1000),
+        peakInstantaneousRate: formatDoseRateMSvHr(results.instantaneousRate_Sv_H * 1000),
+        detectorSaturation: isSaturated ? 'SATURATED / PARALYZED' : 'LINEAR'
+      }
+    });
+  }, [
+    overrideMode,
+    customKvp,
+    distanceMeters,
+    customMrPerPulse,
+    customPulses,
+    customPulseWidthNs,
+    customMa,
+    customTime,
+    results.accumulatedDose_uSv,
+    results.instantaneousRate_Sv_H,
+    isSaturated,
+    unitSystem,
+    setLiveModuleTelemetry
+  ]);
 
   // Generate 2D Heatmap Grid
   const { mapX, mapY, mapZ, maxMapDose } = useMemo(() => {
@@ -237,9 +283,7 @@ const PulsedXRayModule: React.FC = () => {
         <div className="hud-card">
           <span className="hud-metric-label">TOTAL ACCUMULATED DOSE</span>
           <span className="hud-metric-value" style={{ color: 'var(--color-success)' }}>
-            {results.accumulatedDose_uSv > 1000
-              ? `${(results.accumulatedDose_uSv / 1000).toFixed(2)} mSv`
-              : `${results.accumulatedDose_uSv.toFixed(2)} µSv`}
+            {formatDoseMSv(results.accumulatedDose_uSv / 1000)}
           </span>
           <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
             At Target Sensor Location ({distanceMeters}m)
@@ -256,9 +300,7 @@ const PulsedXRayModule: React.FC = () => {
             )}
           </span>
           <span style={{ fontSize: '0.75rem', color: isSaturated ? '#ff3366' : 'var(--color-text-muted)', marginTop: '4px', fontWeight: isSaturated ? 'bold' : 'normal' }}>
-            Peak Rate: {results.instantaneousRate_Sv_H > 1000
-              ? `${(results.instantaneousRate_Sv_H / 1000).toExponential(2)}k Sv/h`
-              : `${results.instantaneousRate_Sv_H.toExponential(2)} Sv/h`}
+            Peak Rate: {formatDoseRateMSvHr(results.instantaneousRate_Sv_H * 1000)}
           </span>
         </div>
       </div>
@@ -522,7 +564,7 @@ const PulsedXRayModule: React.FC = () => {
                   <div style={{ background: 'rgba(0,0,0,0.3)', padding: '12px', borderRadius: '6px', border: '1px solid #334155' }}>
                     <span style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'block' }}>Single Pulse Dose @ Target ({distanceMeters}m):</span>
                     <strong style={{ fontSize: '1.1rem', color: '#fff' }}>
-                      {((customMrPerPulse * 10 * Math.pow(0.3 / distanceMeters, 2))).toFixed(2)} µSv / pulse
+                      {formatDoseMSv((Math.max(0, customMrPerPulse) * 10 * Math.pow(0.3 / Math.max(0.05, distanceMeters), 2)) / 1000)} / pulse
                     </strong>
                   </div>
                 </div>

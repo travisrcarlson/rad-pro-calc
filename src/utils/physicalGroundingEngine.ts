@@ -414,8 +414,8 @@ export interface ValidityAndUncertaintyReport {
 const MATERIAL_TO_XCOM_KEY: Record<string, string> = {
   Lead: 'LEAD',
   Tungsten: 'TUNGSTEN',
-  'Depleted Uranium': 'URANIUM',
-  Steel: 'IRON',
+  'Depleted Uranium': 'DU',
+  Steel: 'STEEL',
   Concrete: 'CONCRETE',
   Water: 'WATER'
 };

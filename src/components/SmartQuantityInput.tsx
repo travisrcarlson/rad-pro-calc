@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useRegulatory } from '../context/RegulatoryContext';
 
 export type QuantityDimension = 'activity' | 'distance' | 'thickness' | 'dose';
 
@@ -71,8 +72,24 @@ export const SmartQuantityInput: React.FC<SmartQuantityInputProps> = ({
   maxBase = 1e12,
   placeholder
 }) => {
+  const { unitSystem } = useRegulatory();
   const spec = DIMENSION_UNITS[dimension];
-  const [selectedUnit, setSelectedUnit] = useState<string>(spec.baseUnit);
+  const preferredUnitForMode = useMemo(() => {
+    if (unitSystem === 'TRADITIONAL') {
+      if (dimension === 'activity') return 'Ci';
+      if (dimension === 'distance') return 'ft';
+      if (dimension === 'thickness') return 'in';
+      if (dimension === 'dose') return 'mrem';
+    }
+    return spec.baseUnit;
+  }, [unitSystem, dimension, spec.baseUnit]);
+
+  const [selectedUnit, setSelectedUnit] = useState<string>(preferredUnitForMode);
+
+  useEffect(() => {
+    setSelectedUnit(preferredUnitForMode);
+  }, [preferredUnitForMode]);
+
   const currentUnitSpec = useMemo(
     () => spec.units.find(u => u.unit === selectedUnit) || spec.units[0],
     [spec, selectedUnit]

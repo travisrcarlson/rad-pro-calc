@@ -29,7 +29,14 @@ const parseActivityMBq = (activityStr: string) => {
 };
 
 const ExternalDoseCalc: React.FC = () => {
-  const { currentFramework } = useRegulatory();
+  const {
+    currentFramework,
+    unitSystem,
+    formatDoseMSv,
+    formatDoseRateMSvHr,
+    formatActivityGBq,
+    setLiveModuleTelemetry
+  } = useRegulatory();
   const [searchParams] = useSearchParams();
   const [isDossierOpen, setIsDossierOpen] = useState<boolean>(false);
   const nuclides = nuclidesData as any[];
@@ -42,8 +49,10 @@ const ExternalDoseCalc: React.FC = () => {
   // Ingest URL params from Scenario Builder or external links
   useEffect(() => {
     const nuclideParam = searchParams.get('nuclide') || searchParams.get('isotope');
+    const actMBqParam = searchParams.get('activityMBq');
     const actParam = searchParams.get('activity');
     const unitParam = searchParams.get('unit');
+    const distParam = searchParams.get('distance');
 
     if (nuclideParam) {
       const match = nuclides.find((n: any) => 
@@ -54,29 +63,44 @@ const ExternalDoseCalc: React.FC = () => {
       if (match) setSelectedNuclide(match);
     }
 
-    if (actParam) {
+    if (actMBqParam !== null) {
+      const mbqVal = parseFloat(actMBqParam);
+      if (!isNaN(mbqVal) && mbqVal >= 0) {
+        setActivity(mbqVal);
+        setActivityUnit(1);
+      }
+    } else if (actParam !== null) {
       const val = parseFloat(actParam);
-      if (!isNaN(val) && val > 0) {
+      if (!isNaN(val) && val >= 0) {
         setActivity(val);
         if (unitParam) {
-          const u = unitParam.toUpperCase();
+          const u = unitParam.trim().toUpperCase();
           if (u === 'TBQ') setActivityUnit(1000000);
           else if (u === 'GBQ') setActivityUnit(1000);
           else if (u === 'MBQ') setActivityUnit(1);
           else if (u === 'KBQ') setActivityUnit(0.001);
+          else if (u === 'BQ') setActivityUnit(0.000001);
           else if (u === 'CI') setActivityUnit(37000);
           else if (u === 'MCI') setActivityUnit(37);
+          else if (u === 'UCI' || u === 'µCI' || u === 'ΜCI') setActivityUnit(0.037);
         }
       }
     }
-  }, [searchParams]);
+
+    if (distParam !== null) {
+      const dVal = parseFloat(distParam);
+      if (!isNaN(dVal) && dVal > 0) {
+        setDistance(dVal);
+      }
+    }
+  }, [searchParams, nuclides]);
 
   const handleEquipmentImport = (eqName: string) => {
     const eq: any = equipmentDataRaw.find((e: any) => e['Device Name'] === eqName);
     if (!eq) return;
 
     // Isotope
-    const isoStr = eq['Primary Isotope(s) भी'] || eq['Primary Isotope(s)'] || '';
+    const isoStr = eq['Primary Isotope(s)'] || '';
     const primaryIso = isoStr.split(';')[0].trim();
     const matchedNuc = nuclides.find((n: any) => n.Symbol === primaryIso || n.Nuclide.startsWith(primaryIso));
     if (matchedNuc) setSelectedNuclide(matchedNuc);
@@ -87,18 +111,18 @@ const ExternalDoseCalc: React.FC = () => {
     setActivityUnit(1); // set unit to MBq
   };
 
-  // Gamma is in R·cm2/mCi·h. We will convert it to µSv·m²/h·MBq
-  // 1 R = 10 mSv = 10,000 µSv
-  // 1 mCi = 37 MBq
-  // So, Γ (µSv·m²/h·MBq) = Γ (R·cm²/h·mCi) * 10,000 (µSv/R) * (1/10000 m²/cm²) / 37 (mCi/MBq)
-  // Which simplifies to: Γ_SI = Γ_old * 1 / 37
-  // OR simply: 1 R/h = 10 mSv/h. So 1 R·cm2/mCi·h -> 10000 uSv * cm2 / (37 MBq * h) -> 10000 / 10000 m2 / 37 = 1/37
-  const gammaOld = parseFloat(selectedNuclide['Γ (R·cm²/mCi·h)'] || selectedNuclide['Γ (R·cm2/mCi·h)'] || '0');
-  const gammaSI = gammaOld / 37.0;
+  // Canonical ICRP-107 / ICRU-57 ambient dose equivalent constant Γ_SI in µSv·m²/(h·GBq),
+  // divided by 1000 for mSv·m²/(h·GBq) (equiv. µSv·m²/(h·MBq)):
+  // e.g. Co-60 = 308.5 µSv·m²/(h·GBq) -> 0.3085 mSv/h at 1 GBq @ 1 m;
+  //      Cs-137 = 77.20 µSv·m²/(h·GBq) -> 0.0772 mSv/h at 1 GBq @ 1 m.
+  const gammaSI_GBq = parseFloat(String(selectedNuclide?.['Γ_SI (µSv·m²/h·GBq)'] ?? '0')) || 0;
+  const gammaSI = gammaSI_GBq / 1000.0; // mSv·m²/(h·GBq) === µSv·m²/(h·MBq)
 
   const activityMBq = activity * activityUnit;
+  const activityGBq = activityMBq / 1000.0;
   const safeDistance = Math.max(0.01, distance || 0.01); // Near-field singularity clamp (STRESS-01)
-  const doseRate = (activityMBq * gammaSI) / (safeDistance * safeDistance); // µSv/h
+  const doseRateMSvHr = (activityGBq * gammaSI) / (safeDistance * safeDistance); // mSv/h
+  const doseRate = doseRateMSvHr * 1000.0; // µSv/h
 
   const unitLabel = useMemo(() => {
     if (activityUnit === 1000000) return 'TBq';
@@ -108,8 +132,41 @@ const ExternalDoseCalc: React.FC = () => {
     if (activityUnit === 0.000001) return 'Bq';
     if (activityUnit === 37000) return 'Ci';
     if (activityUnit === 37) return 'mCi';
+    if (activityUnit === 0.037) return 'µCi';
     return 'MBq';
   }, [activityUnit]);
+
+  useEffect(() => {
+    const symbol = String(selectedNuclide?.Symbol || 'Co-60');
+    const nuclideName = String(selectedNuclide?.Nuclide || 'Cobalt-60');
+    setLiveModuleTelemetry({
+      moduleId: 'M1A_EXTERNAL_DOSE',
+      moduleTitle: 'Module 1A — Point Source External Gamma Dosimetry',
+      regimeSummary: `${nuclideName} (${symbol}) unshielded point-source H*(10) at ${safeDistance} m under ${currentFramework.shortCode} (${unitSystem})`,
+      parameters: {
+        nuclide: symbol,
+        activityGBq: Number(activityGBq.toPrecision(6)),
+        distanceM: safeDistance,
+        gammaConstant_uSv_m2_h_GBq: gammaSI_GBq
+      },
+      computedMetrics: {
+        doseRate_uSv_h: Number(doseRate.toPrecision(6)),
+        doseRate_mSv_h: Number(doseRateMSvHr.toPrecision(6)),
+        stayTimeTo1mSv_h: doseRate > 0 ? Number((1000 / doseRate).toFixed(2)) : 0
+      }
+    });
+  }, [
+    selectedNuclide,
+    activityGBq,
+    safeDistance,
+    gammaSI_GBq,
+    doseRate,
+    doseRateMSvHr,
+    currentFramework.id,
+    currentFramework.shortCode,
+    unitSystem,
+    setLiveModuleTelemetry
+  ]);
 
   const dossierPayload: CalculationDossierPayload = useMemo(() => ({
     reportTitle: `Point Source External Gamma Dosimetry — ${selectedNuclide?.Nuclide || 'Isotope'}`,
@@ -233,6 +290,7 @@ const ExternalDoseCalc: React.FC = () => {
               <option value={1}>MBq</option>
               <option value={1000}>GBq</option>
               <option value={1000000}>TBq</option>
+              <option value={0.037}>µCi</option>
               <option value={37}>mCi</option>
               <option value={37000}>Ci</option>
             </select>
@@ -247,8 +305,8 @@ const ExternalDoseCalc: React.FC = () => {
         <div style={{ marginTop: '20px' }}>
            <label className="form-label">Extracted Physical Parameter</label>
            <p style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>
-             Γ = {gammaSI.toFixed(4)} µSv·m²/(h·MBq) 
-             <br/>(Calculated from ICRP/NuDat: {gammaOld} R·cm²/(mCi·h))
+             Γ_SI = {gammaSI_GBq.toFixed(2)} µSv·m²/(h·GBq) ({gammaSI.toFixed(4)} mSv·m²/(h·GBq))
+             <br/>Evaluated Source Activity: <strong>{formatActivityGBq(activityGBq)}</strong>
            </p>
         </div>
       </div>
@@ -261,10 +319,10 @@ const ExternalDoseCalc: React.FC = () => {
         
         <div>
           <div style={{ fontSize: '2rem', color: 'var(--color-primary)', fontWeight: 'bold' }}>
-            {doseRate.toFixed(2)} µSv/h
+            {formatDoseRateMSvHr(doseRateMSvHr)}
           </div>
-          <div style={{ fontSize: '1.2rem', color: 'var(--color-text-muted)' }}>
-            {(doseRate / 1000).toFixed(4)} mSv/h
+          <div style={{ fontSize: '1.05rem', color: 'var(--color-text-muted)' }}>
+            {doseRate.toFixed(2)} µSv/h &nbsp;|&nbsp; {doseRateMSvHr.toFixed(4)} mSv/h
           </div>
         </div>
 
@@ -273,8 +331,8 @@ const ExternalDoseCalc: React.FC = () => {
           <div style={{ color: 'var(--color-text-muted)', marginBottom: '4px' }}>
             {currentFramework.shortCode} Annual Reference:
           </div>
-          <div>Occupational: <strong style={{ color: '#00e5ff' }}>{currentFramework.limits.occupationalAnnualEffective_mSv} mSv/yr</strong> (~{((currentFramework.limits.occupationalAnnualEffective_mSv * 1000) / 2000).toFixed(1)} µSv/h for 2000h work year)</div>
-          <div>Public: <strong style={{ color: '#10b981' }}>{currentFramework.limits.publicAnnualEffective_mSv} mSv/yr</strong> (~{(currentFramework.limits.publicAnnualEffective_mSv * 1000 / 8760).toFixed(2)} µSv/h continuous)</div>
+          <div>Occupational: <strong style={{ color: '#00e5ff' }}>{formatDoseMSv(currentFramework.limits.occupationalAnnualEffective_mSv, '/yr')}</strong> (~{formatDoseRateMSvHr(currentFramework.limits.occupationalAnnualEffective_mSv / 2000)} for 2000h work year)</div>
+          <div>Public: <strong style={{ color: '#10b981' }}>{formatDoseMSv(currentFramework.limits.publicAnnualEffective_mSv, '/yr')}</strong> (~{formatDoseRateMSvHr(currentFramework.limits.publicAnnualEffective_mSv / 8760)} continuous)</div>
         </div>
 
         <button

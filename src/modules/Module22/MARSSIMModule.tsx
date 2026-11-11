@@ -5,6 +5,13 @@ import { BlockMath } from 'react-katex';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
 import { parseMarssimSurveyCsv, generateSampleMarssimCsv } from '../../utils/spectrumAndSurveyParsers';
+import { useRegulatory } from '../../context/RegulatoryContext';
+import {
+  standardNormalCDF,
+  inverseStandardNormalCDF,
+  computeMARSSIMSignSampleSize,
+  computeISO11929CharacteristicLimits
+} from '../../utils/radiologicalPhysicsKernels';
 
 const Plot = (PlotComponent as any).default || PlotComponent;
 
@@ -177,38 +184,12 @@ const PRESETS: FacilityPreset[] = [
   }
 ];
 
-// Standard normal cumulative distribution approximation
-const normalCdf = (z: number): number => {
-  const t = 1.0 / (1.0 + 0.2316419 * Math.abs(z));
-  const d = 0.3989422804014327 * Math.exp(-0.5 * z * z);
-  const p = d * t * (0.31938153 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))));
-  return z > 0 ? 1.0 - p : p;
-};
-
-// Inverse normal CDF (probit) approximation
-const normalInv = (p: number): number => {
-  if (p <= 0 || p >= 1) return 0;
-  // Rational approximation for normal quantile
-  const a = [-3.969683028665376e+01, 2.209460984245205e+02, -2.759285104469687e+02, 1.383577518672690e+02, -3.066479806614716e+01, 2.506628277459239e+00];
-  const b = [-5.447609879822406e+01, 1.615858368580409e+02, -1.556989798598866e+02, 6.680131188771972e+01, -1.328068155288572e+01];
-  const c = [-7.784894002430293e-03, -3.223964580411365e-01, -2.400758277161838e+00, -2.549732539343734e+00, 4.374664141464968e+00, 2.938163982698783e+00];
-  const d = [7.784695709041462e-03, 3.224671290700398e-01, 2.445134137142996e+00, 3.754408661907416e+00];
-
-  const q = p - 0.5;
-  if (Math.abs(q) <= 0.42) {
-    const r = q * q;
-    return q * (((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5]) /
-      (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1.0);
-  } else {
-    const r = p < 0.5 ? p : 1.0 - p;
-    const s = Math.log(-Math.log(r));
-    let t = c[0] + s * (c[1] + s * (c[2] + s * (c[3] + s * (c[4] + s * c[5]))));
-    t /= 1.0 + s * (d[0] + s * (d[1] + s * (d[2] + s * d[3])));
-    return p < 0.5 ? -t : t;
-  }
-};
+// Canonical normal distribution & quantile wrappers backed by shared metrology kernels
+const normalCdf = (z: number): number => standardNormalCDF(z);
+const normalInv = (p: number): number => inverseStandardNormalCDF(p);
 
 const MARSSIMModule: React.FC = () => {
+  const { setLiveModuleTelemetry } = useRegulatory();
   const [activeTab, setActiveTab] = useState<ActiveTab>('detection_limits');
 
   // --- STATE FOR DETECTION LIMITS (TAB 1) ---
@@ -315,10 +296,8 @@ const MARSSIMModule: React.FC = () => {
     // Conversion factor w = 1 / (epsilon_i * epsilon_s * F), relative standard uncertainty u_rel(w) = 5% (0.05)
     const wFactor = 1.0 / Math.max(1e-6, totalEff);
     const uRelW = 0.05;
-    const iso11929DecisionThresholdBq = zAlpha * wFactor * Math.sqrt(rB / sampleTimeSec + rB / bgTimeSec);
-    const denomIso = Math.max(0.1, 1.0 - Math.pow(zAlpha, 2) * Math.pow(uRelW, 2));
-    const iso11929DetectionLimitBq =
-      (2.0 * iso11929DecisionThresholdBq + (Math.pow(zAlpha, 2) * wFactor) / sampleTimeSec) / denomIso;
+    const { yStar: iso11929DecisionThresholdBq, yHash: iso11929DetectionLimitBq } =
+      computeISO11929CharacteristicLimits(rB, sampleTimeSec, bgTimeSec, wFactor, uRelW, alphaRisk);
     const iso11929DetectionLimitBqCm2 = iso11929DetectionLimitBq / probeAreaCm2;
 
     return {
@@ -348,21 +327,21 @@ const MARSSIMModule: React.FC = () => {
     let rawN = 0;
     let signP = 0;
     let pr = 0;
+    let recommendedN = 10;
 
     if (testType === 'Sign') {
-      // Sign test parameter: p = Phi(Delta / sigma)
+      // NUREG-1575 Eq. 5-2 Sign test parameter: p = Phi(Delta / sigma)
       signP = normalCdf(relShift);
       const denom = 4 * Math.pow(signP - 0.5, 2);
       rawN = denom > 0 ? zSumSquared / denom : 100;
+      recommendedN = Math.max(10, computeMARSSIMSignSampleSize(typeIError, typeIIError, relShift, 1.20));
     } else {
       // WRS test parameter: Pr = Phi(Delta / (sqrt(2) * sigma))
       pr = normalCdf(relShift / Math.SQRT2);
       const denom = 3 * Math.pow(pr - 0.5, 2);
       rawN = denom > 0 ? zSumSquared / denom : 100;
+      recommendedN = Math.max(10, Math.ceil(rawN * 1.20));
     }
-
-    // MARSSIM 20% overage factor for lost / inaccessible points
-    const recommendedN = Math.max(10, Math.ceil(rawN * 1.20));
 
     // Grid Spacing L (meters)
     let gridSpacing = 0;
@@ -586,6 +565,26 @@ const MARSSIMModule: React.FC = () => {
       { label: 'Grid Node Spacing (L)', value: surveyPlanning.gridSpacing.toFixed(2), unit: 'm', status: 'PASS' }
     ]
   }), [testType, classType, surveyAreaM2, dcglW, lbgr, sigma, surveyPlanning, typeIError, typeIIError, gridShape, detectionLimits]);
+
+  React.useEffect(() => {
+    setLiveModuleTelemetry({
+      moduleId: 'marssim',
+      moduleTitle: 'MARSSIM Statistical Site Release (NUREG-1575)',
+      regimeSummary: `Class ${classType} (${surveyAreaM2} m²) • ${testType} Test (Δ/σ = ${surveyPlanning.relShift.toFixed(2)})`,
+      parameters: {
+        'Test Type': testType,
+        'Survey Class': `Class ${classType}`,
+        'DCGL_w': dcglW,
+        'Relative Shift (Δ/σ)': Number(surveyPlanning.relShift.toFixed(2))
+      },
+      computedMetrics: {
+        'Required Samples (N)': surveyPlanning.recommendedN,
+        'Grid Spacing (L)': `${surveyPlanning.gridSpacing.toFixed(2)} m`,
+        'Static MDC': `${detectionLimits.mdcDpm100cm2.toFixed(1)} dpm/100cm²`,
+        'ISO 11929 y#': `${detectionLimits.iso11929DetectionLimitBq.toFixed(3)} Bq`
+      }
+    });
+  }, [classType, surveyAreaM2, testType, dcglW, surveyPlanning, detectionLimits, setLiveModuleTelemetry]);
 
   return (
     <div className="marssim-module">

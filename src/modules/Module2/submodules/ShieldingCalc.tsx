@@ -1,12 +1,15 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { BlockMath } from 'react-katex';
 import VerificationBadge from '../../../components/VerificationBadge';
 import { AuditDossierModal } from '../../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../../services/auditDossierService';
+import { useRegulatory } from '../../../context/RegulatoryContext';
 import {
   evaluateXCOMAttenuation,
   evaluateGPBuildup,
-  solveBroadBeamThicknessCm
+  solveBroadBeamThicknessCm,
+  resolveXCOMMaterialKey
 } from '../../../utils/xcomAndGpBuildup';
 
 const TVL_MATERIALS = [
@@ -17,12 +20,24 @@ const TVL_MATERIALS = [
   { key: 'TUNGSTEN', name: 'Tungsten (W, Z=74)', density: 19.3, tvl1_1MeV: 2.2, tvle_1MeV: 2.4 },
   { key: 'DU', name: 'Depleted Uranium (U-238, Z=92)', density: 19.1, tvl1_1MeV: 1.9, tvle_1MeV: 2.1 },
   { key: 'BARITE_CONCRETE', name: 'Heavy Barite Concrete (BaSO4)', density: 3.50, tvl1_1MeV: 10.0, tvle_1MeV: 10.4 },
+  { key: 'MAGNETITE_CONCRETE', name: 'Magnetite Heavy Concrete (Fe3O4)', density: 3.80, tvl1_1MeV: 9.2, tvle_1MeV: 9.6 },
   { key: 'ALUMINUM', name: 'Aluminium (Al, Z=13)', density: 2.70, tvl1_1MeV: 12.0, tvle_1MeV: 13.0 },
+  { key: 'COPPER', name: 'Copper (Cu, Z=29)', density: 8.96, tvl1_1MeV: 4.4, tvle_1MeV: 4.6 },
+  { key: 'BISMUTH', name: 'Bismuth (Bi, Z=83)', density: 9.78, tvl1_1MeV: 4.4, tvle_1MeV: 4.6 },
   { key: 'HDPE', name: 'High-Density Polyethylene (HDPE)', density: 0.95, tvl1_1MeV: 34.5, tvle_1MeV: 36.5 },
+  { key: 'BORATED_PE', name: '5% Borated Polyethylene (BPE)', density: 1.04, tvl1_1MeV: 32.0, tvle_1MeV: 34.0 },
   { key: 'LEAD_GLASS', name: 'Lead Glass (5.2 g/cm³)', density: 5.20, tvl1_1MeV: 7.2, tvle_1MeV: 7.6 }
 ];
 
 const ShieldingCalc: React.FC = () => {
+  const {
+    currentFramework,
+    unitSystem,
+    formatDoseRateMSvHr,
+    formatDoseMSv,
+    setLiveModuleTelemetry
+  } = useRegulatory();
+  const [searchParams] = useSearchParams();
   const [h0, setH0] = useState<number>(1000); // Initial dose rate uSv/h
   const [targetH, setTargetH] = useState<number>(10); // Target dose rate uSv/h
   const [materialIdx, setMaterialIdx] = useState<number>(0);
@@ -31,6 +46,46 @@ const ShieldingCalc: React.FC = () => {
   const [thicknessInput, setThicknessInput] = useState<number>(5); // cm
   const [calcMode, setCalcMode] = useState<'thickness' | 'transmission'>('thickness');
   const [isDossierOpen, setIsDossierOpen] = useState<boolean>(false);
+
+  useEffect(() => {
+    const matParam = searchParams.get('material');
+    const eParam = searchParams.get('energyMeV');
+    const thickParam = searchParams.get('thicknessCm') ?? searchParams.get('thickness');
+    const h0Param = searchParams.get('h0');
+    const targetParam = searchParams.get('targetH');
+    const modeParam = searchParams.get('mode');
+
+    if (matParam) {
+      const resolvedKey = resolveXCOMMaterialKey(matParam);
+      const idx = TVL_MATERIALS.findIndex(m => m.key === resolvedKey);
+      if (idx >= 0) setMaterialIdx(idx);
+    }
+    if (eParam !== null) {
+      const ev = parseFloat(eParam);
+      if (!isNaN(ev) && ev >= 0.01 && ev <= 15.0) setEnergyMev(ev);
+    }
+    if (thickParam !== null) {
+      const tv = parseFloat(thickParam);
+      if (!isNaN(tv) && tv >= 0) {
+        setThicknessInput(tv);
+        if (!modeParam) setCalcMode('transmission');
+      }
+    }
+    if (h0Param !== null) {
+      const hv = parseFloat(h0Param);
+      if (!isNaN(hv) && hv > 0) setH0(hv);
+    }
+    if (targetParam !== null) {
+      const tg = parseFloat(targetParam);
+      if (!isNaN(tg) && tg > 0) setTargetH(tg);
+    }
+    if (modeParam === 'thickness' || modeParam === 'transmission') {
+      setCalcMode(modeParam);
+    }
+  }, [searchParams]);
+
+  const occHourlyLimit_uSv_h = (currentFramework.limits.occupationalAnnualEffective_mSv * 1000) / 2000;
+  const pubHourlyLimit_uSv_h = (currentFramework.limits.publicAnnualEffective_mSv * 1000) / 8760;
 
   const selectedMaterial = TVL_MATERIALS[materialIdx];
   const xcom = useMemo(
@@ -103,6 +158,45 @@ const ShieldingCalc: React.FC = () => {
       gpParams
     };
   }, [engineMode, calcMode, h0, targetH, thicknessInput, selectedMaterial, energyMev, xcom]);
+
+  useEffect(() => {
+    setLiveModuleTelemetry({
+      moduleId: 'M1B_SHIELDING_CALC',
+      moduleTitle: 'Module 1B — ANSI/ANS-6.4.3 GP & NIST XCOM Shielding Calculator',
+      regimeSummary: `${selectedMaterial.name} @ ${(energyMev * 1000).toFixed(1)} keV (${calcMode === 'thickness' ? 'Thickness Solver' : 'Broad-Beam Transmission'}) under ${currentFramework.shortCode} (${unitSystem})`,
+      parameters: {
+        material: selectedMaterial.key,
+        energyMeV: energyMev,
+        engineMode,
+        calcMode,
+        unshieldedDoseRate_uSv_h: h0,
+        targetOrThickness: calcMode === 'thickness' ? targetH : thicknessInput
+      },
+      computedMetrics: {
+        resultValue: Number(computed.result.toPrecision(6)),
+        opticalDepth_mfp: Number(computed.mfp.toFixed(4)),
+        gpBuildupFactor: Number(computed.gpBuildup.toFixed(4)),
+        muLinear_cm_inv: Number(xcom.muLinear.toFixed(5))
+      }
+    });
+  }, [
+    selectedMaterial.key,
+    selectedMaterial.name,
+    energyMev,
+    engineMode,
+    calcMode,
+    h0,
+    targetH,
+    thicknessInput,
+    computed.result,
+    computed.mfp,
+    computed.gpBuildup,
+    xcom.muLinear,
+    currentFramework.id,
+    currentFramework.shortCode,
+    unitSystem,
+    setLiveModuleTelemetry
+  ]);
 
   const dossierPayload: CalculationDossierPayload = useMemo(() => ({
     reportTitle: `Broad-Beam Shielding Assessment — ${selectedMaterial.name}`,
@@ -217,14 +311,44 @@ const ShieldingCalc: React.FC = () => {
         )}
 
         <div className="form-group">
-          <label className="form-label">Initial Dose Rate H₀ (µSv/h)</label>
+          <label className="form-label">
+            Initial Dose Rate H₀ (µSv/h) — <span style={{ color: '#38bdf8' }}>{formatDoseRateMSvHr(h0 / 1000)}</span>
+          </label>
           <input type="number" className="form-control" value={h0} onChange={e => setH0(Number(e.target.value))} />
         </div>
 
         {calcMode === 'thickness' ? (
           <div className="form-group">
-            <label className="form-label">Target Dose Rate (µSv/h)</label>
+            <label className="form-label">
+              Target Dose Rate (µSv/h) — <span style={{ color: '#10b981' }}>{formatDoseRateMSvHr(targetH / 1000)}</span>
+            </label>
             <input type="number" className="form-control" value={targetH} onChange={e => setTargetH(Number(e.target.value))} />
+            <div style={{ display: 'flex', gap: '6px', marginTop: '6px', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-primary"
+                onClick={() => setTargetH(Number(occHourlyLimit_uSv_h.toFixed(2)))}
+                title={`${currentFramework.shortCode} Occupational (${formatDoseMSv(currentFramework.limits.occupationalAnnualEffective_mSv, '/yr')} / 2000 h)`}
+              >
+                Occ Ceiling ({occHourlyLimit_uSv_h.toFixed(1)} µSv/h)
+              </button>
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-primary"
+                onClick={() => setTargetH(Number(((currentFramework.limits.publicAnnualEffective_mSv * 1000) / 2000).toFixed(2)))}
+                title={`${currentFramework.shortCode} Public 2000h Occupancy (${formatDoseMSv(currentFramework.limits.publicAnnualEffective_mSv, '/yr')})`}
+              >
+                Public 2000h ({((currentFramework.limits.publicAnnualEffective_mSv * 1000) / 2000).toFixed(2)} µSv/h)
+              </button>
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-primary"
+                onClick={() => setTargetH(Number(pubHourlyLimit_uSv_h.toFixed(3)))}
+                title={`${currentFramework.shortCode} Continuous 8760h Public Ceiling`}
+              >
+                Public 8760h ({pubHourlyLimit_uSv_h.toFixed(2)} µSv/h)
+              </button>
+            </div>
           </div>
         ) : (
           <div className="form-group">
@@ -235,8 +359,8 @@ const ShieldingCalc: React.FC = () => {
       </div>
 
       <div style={{ flex: '1 1 360px', borderLeft: '1px solid var(--color-border)', paddingLeft: '20px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-          <h3 style={{ margin: 0 }}>Results</h3>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', flexWrap: 'wrap', gap: '8px' }}>
+          <h3 style={{ margin: 0 }}>Results ({currentFramework.shortCode})</h3>
           <button
             onClick={() => setIsDossierOpen(true)}
             style={{
@@ -255,10 +379,26 @@ const ShieldingCalc: React.FC = () => {
         </div>
 
         <div style={{ fontSize: '0.95rem', color: 'var(--color-text-muted)' }}>{computed.resultLabel}</div>
-        <div style={{ fontSize: '2.4rem', color: 'var(--color-primary)', fontWeight: 'bold' }}>
-          {computed.result < 0.01 && computed.result > 0 ? computed.result.toExponential(3) : computed.result.toFixed(2)}{' '}
-          <span style={{ fontSize: '1rem', fontWeight: 'normal' }}>{calcMode === 'thickness' ? 'cm' : 'µSv/h'}</span>
-        </div>
+        {calcMode === 'thickness' ? (
+          <div style={{ fontSize: '2.4rem', color: 'var(--color-primary)', fontWeight: 'bold' }}>
+            {computed.result < 0.01 && computed.result > 0 ? computed.result.toExponential(3) : computed.result.toFixed(2)}{' '}
+            <span style={{ fontSize: '1rem', fontWeight: 'normal' }}>cm</span>
+          </div>
+        ) : (
+          <div>
+            <div style={{ fontSize: '2.2rem', color: 'var(--color-primary)', fontWeight: 'bold' }}>
+              {formatDoseRateMSvHr(computed.result / 1000)}
+            </div>
+            <div style={{ fontSize: '0.95rem', color: 'var(--color-text-muted)' }}>
+              {computed.result < 0.01 && computed.result > 0 ? computed.result.toExponential(3) : computed.result.toFixed(2)} µSv/h &nbsp;|&nbsp;{' '}
+              <span style={{ color: computed.result <= occHourlyLimit_uSv_h ? '#10b981' : '#f59e0b', fontWeight: 600 }}>
+                {computed.result <= occHourlyLimit_uSv_h
+                  ? `✓ Within ${currentFramework.shortCode} Occ. Rate (${formatDoseRateMSvHr(occHourlyLimit_uSv_h / 1000)})`
+                  : `⚠️ Above ${currentFramework.shortCode} 2000h Occ. Rate (${formatDoseRateMSvHr(occHourlyLimit_uSv_h / 1000)})`}
+              </span>
+            </div>
+          </div>
+        )}
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginTop: '12px' }}>
           <div style={{ background: 'rgba(0,0,0,0.3)', padding: '8px', borderRadius: '6px', border: '1px solid var(--color-border)' }}>

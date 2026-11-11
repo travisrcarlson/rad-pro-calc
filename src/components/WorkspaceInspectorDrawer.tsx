@@ -70,13 +70,15 @@ export const WorkspaceInspectorDrawer: React.FC<WorkspaceInspectorDrawerProps> =
     setTimeout(() => setStatusToast(null), 2600);
   };
 
+  const occLimitMSv = currentFramework.limits.occupationalAnnualEffective_mSv;
+
   const quickPhysics = useMemo(
     () =>
       computeSourceQuickPhysics(
         activeSource,
-        currentFramework.limits.occupationalAnnualEffective_mSv
+        occLimitMSv
       ),
-    [activeSource, currentFramework.limits.occupationalAnnualEffective_mSv]
+    [activeSource, occLimitMSv]
   );
 
   // Build unified Multi-Module Master Dossier Payload from all pinned calculations
@@ -117,7 +119,7 @@ export const WorkspaceInspectorDrawer: React.FC<WorkspaceInspectorDrawerProps> =
       moduleName: `Multi-Module Master Engineering Report (${pinnedResults.length} Pins)`,
       reportTitle: `${projectName} — Consolidated Radiological Evaluation`,
       statuteCitation: `${currentFramework.citation} | ISO/IEC 17025:2017 Clause 7.8`,
-      verificationTestId: 'VTEST-01..60',
+      verificationTestId: 'VTEST-01..68',
       operatorName: 'Lead Health Physicist',
       operatorCredentials: 'CHP, RRPT',
       facility: 'Radiological Engineering & QA Evaluation Center',
@@ -127,6 +129,43 @@ export const WorkspaceInspectorDrawer: React.FC<WorkspaceInspectorDrawerProps> =
       notes: pinnedResults.map((p, i) => `[#${i + 1} ${p.moduleLabel}] ${p.summary}`).join(' • ')
     };
   }, [projectName, currentFramework, activeSource, pinnedResults, quickPhysics]);
+
+  const nonIsotopicRoutes = new Set([
+    '/laser',
+    '/emr-safety',
+    '/xray',
+    '/xray-tube',
+    '/xray-distortion',
+    '/literature',
+    '/verify'
+  ]);
+  const isNonIsotopicRoute = activeModuleInfo ? nonIsotopicRoutes.has(activeModuleInfo.path) : false;
+
+  const realitySource = useMemo(() => {
+    const params = liveModuleTelemetry?.parameters || {};
+    const liveIso =
+      params['Isotope'] ??
+      params['Nuclide'] ??
+      params['Parent Nuclide'] ??
+      params['Identified Nuclide'];
+    const liveAct = params['Activity (GBq)'] ?? params['Source Activity (GBq)'];
+    const liveDist = params['Distance (m)'] ?? params['Standoff (m)'];
+    const parsedAct = liveAct !== undefined ? parseFloat(String(liveAct)) : NaN;
+    const parsedDist = liveDist !== undefined ? parseFloat(String(liveDist)) : NaN;
+
+    const merged: GlobalSourceContext = {
+      ...activeSource,
+      isotope: liveIso ? String(liveIso).trim() : activeSource.isotope,
+      activityGBq: Number.isFinite(parsedAct) && parsedAct > 0 ? parsedAct : activeSource.activityGBq,
+      distanceM: Number.isFinite(parsedDist) && parsedDist > 0 ? parsedDist : activeSource.distanceM
+    };
+    const mergedPhysics = computeSourceQuickPhysics(merged, occLimitMSv);
+    return {
+      source: merged,
+      isLiveSynced: Boolean(liveIso),
+      shieldedMSvPerHr: mergedPhysics.shieldedMSvPerHr
+    };
+  }, [liveModuleTelemetry, activeSource, occLimitMSv]);
 
   const handlePinSnapshot = () => {
     const modNum = activeModuleInfo ? activeModuleInfo.moduleNumber : 1;
@@ -138,11 +177,13 @@ export const WorkspaceInspectorDrawer: React.FC<WorkspaceInspectorDrawerProps> =
           label,
           value: String(val)
         }))
-      : [
-          { label: 'Active Source', value: `${activeSource.isotope} (${formatActivityGBq(activeSource.activityGBq)})` },
-          { label: 'Shielded H*(10)', value: formatDoseMSv(Number(quickPhysics.shieldedMSvPerHr.toPrecision(4)), '/h') },
-          { label: 'Buildup B(μx)', value: `${quickPhysics.buildupFactor.toFixed(2)} (${quickPhysics.numHvls.toFixed(1)} HVLs)` }
-        ];
+      : isNonIsotopicRoute
+        ? [{ label: 'Module', value: modLabel }, { label: 'Framework', value: currentFramework.shortCode }]
+        : [
+            { label: 'Active Source', value: `${activeSource.isotope} (${formatActivityGBq(activeSource.activityGBq)})` },
+            { label: 'Shielded H*(10)', value: formatDoseMSv(Number(quickPhysics.shieldedMSvPerHr.toPrecision(4)), '/h') },
+            { label: 'Buildup B(μx)', value: `${quickPhysics.buildupFactor.toFixed(2)} (${quickPhysics.numHvls.toFixed(1)} HVLs)` }
+          ];
 
     pinCalculation({
       moduleNumber: modNum,
@@ -150,12 +191,16 @@ export const WorkspaceInspectorDrawer: React.FC<WorkspaceInspectorDrawerProps> =
       modulePath: `${modPath}${window.location.search}`,
       title: liveModuleTelemetry
         ? `M${String(modNum).padStart(2, '0')} ${modLabel} — ${liveModuleTelemetry.regimeSummary}`
-        : `M${String(modNum).padStart(2, '0')} ${modLabel} — ${activeSource.isotope} (${formatActivityGBq(activeSource.activityGBq)})`,
+        : isNonIsotopicRoute
+          ? `M${String(modNum).padStart(2, '0')} ${modLabel}`
+          : `M${String(modNum).padStart(2, '0')} ${modLabel} — ${activeSource.isotope} (${formatActivityGBq(activeSource.activityGBq)})`,
       summary:
         pinNote.trim() ||
         (liveModuleTelemetry
           ? `${liveModuleTelemetry.regimeSummary} under ${currentFramework.shortCode}`
-          : `${activeSource.isotope} @ ${activeSource.distanceM} m behind ${activeSource.shieldThicknessCm} cm ${activeSource.shieldMaterial}`),
+          : isNonIsotopicRoute
+            ? `${modLabel} snapshot under ${currentFramework.shortCode}`
+            : `${activeSource.isotope} @ ${activeSource.distanceM} m behind ${activeSource.shieldThicknessCm} cm ${activeSource.shieldMaterial}`),
       metrics: telemetryMetrics,
       notes: pinNote.trim() || undefined
     });
@@ -167,20 +212,7 @@ export const WorkspaceInspectorDrawer: React.FC<WorkspaceInspectorDrawerProps> =
 
   return (
     <>
-      <aside
-        style={{
-          width: '430px',
-          minWidth: '370px',
-          maxWidth: '46vw',
-          height: '100%',
-          background: '#0b1220',
-          borderLeft: '1px solid rgba(148, 163, 184, 0.22)',
-          display: 'flex',
-          flexDirection: 'column',
-          flexShrink: 0,
-          overflow: 'hidden'
-        }}
-      >
+      <aside className="inspector-drawer">
         {/* Top Inspector Tab Strip */}
         <div
           style={{
@@ -413,8 +445,12 @@ export const WorkspaceInspectorDrawer: React.FC<WorkspaceInspectorDrawerProps> =
                 type="button"
                 className="active"
                 onClick={() => {
+                  if (isNonIsotopicRoute) {
+                    showToast('ℹ️ Active module uses beam/field parameters — choose a radionuclide tool below to chain');
+                    return;
+                  }
                   onApplySourceToCurrentModule(activeSource);
-                  showToast(`✓ Applied ${activeSource.isotope} (${activeSource.activityGBq} GBq) to active module`);
+                  showToast(`✓ Applied ${activeSource.isotope} (${formatActivityGBq(activeSource.activityGBq)}) to active module`);
                 }}
                 style={{
                   width: '100%',
@@ -436,20 +472,25 @@ export const WorkspaceInspectorDrawer: React.FC<WorkspaceInspectorDrawerProps> =
           {activeTab === 'grounding' && (
             <>
               <div>
-                <div style={{ fontSize: '0.80rem', fontWeight: 700, color: '#f1f5f9', marginBottom: '2px' }}>
-                  Physical Reality, Survey Meter Physics &amp; Provenance
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
+                  <span style={{ fontSize: '0.80rem', fontWeight: 700, color: '#f1f5f9' }}>
+                    Physical Reality, Survey Meter Physics &amp; Provenance
+                  </span>
+                  <span className="hud-badge hud-badge-secondary" style={{ fontSize: '0.63rem' }}>
+                    {realitySource.isLiveSynced ? 'Live Module Source' : 'Global Source'}
+                  </span>
                 </div>
                 <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
-                  Grounds {activeSource.isotope} ({activeSource.activityGBq} GBq @ {activeSource.distanceM} m, {activeSource.shieldThicknessCm} cm {activeSource.shieldMaterial}) in tangible pellet mass, real detector saturation, GUM uncertainty, and NIST XCOM constants.
+                  Grounds {realitySource.source.isotope} ({formatActivityGBq(realitySource.source.activityGBq)} @ {realitySource.source.distanceM} m, {realitySource.source.shieldThicknessCm} cm {realitySource.source.shieldMaterial}) in tangible pellet mass, real detector saturation, GUM uncertainty, and NIST XCOM constants.
                 </div>
               </div>
               <PhysicalGroundingPanel
-                isotope={activeSource.isotope}
-                activityGBq={activeSource.activityGBq}
-                distanceM={activeSource.distanceM}
-                shieldMaterial={activeSource.shieldMaterial}
-                shieldThicknessCm={activeSource.shieldThicknessCm}
-                evaluatedDoseRateMSvHr={quickPhysics.shieldedMSvPerHr}
+                isotope={realitySource.source.isotope}
+                activityGBq={realitySource.source.activityGBq}
+                distanceM={realitySource.source.distanceM}
+                shieldMaterial={realitySource.source.shieldMaterial}
+                shieldThicknessCm={realitySource.source.shieldThicknessCm}
+                evaluatedDoseRateMSvHr={realitySource.shieldedMSvPerHr}
                 compact
               />
             </>

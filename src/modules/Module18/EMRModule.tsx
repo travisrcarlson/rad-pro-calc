@@ -1,9 +1,14 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import VerificationBadge from '../../components/VerificationBadge';
 import PlotComponent from 'react-plotly.js';
 import { BlockMath } from 'react-katex';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
+import { useRegulatory } from '../../context/RegulatoryContext';
+
+// MIL-STD-464C / NAVSEA OP 3565 Peak Electric Field Thresholds (V/m)
+const HERO_SUSCEPTIBLE_PEAK_V_M = 20.0; // Susceptible / exposed electro-explosive devices (EEDs)
+const HERF_FUEL_VENT_PEAK_V_M = 200.0;  // Volatile aviation / tactical fuel handling vents
 
 const Plot = (PlotComponent as any).default || PlotComponent;
 
@@ -220,6 +225,7 @@ const CATEGORIES: PresetCategory[] = [
 type EMRTab = 'tactical' | 'density' | 'radome' | 'standards' | 'physics';
 
 const EMRModule: React.FC = () => {
+  const { setLiveModuleTelemetry } = useRegulatory();
   const [selectedCategory, setSelectedCategory] = useState<PresetCategory>('C-UAS & Counter-IED');
   const [activePreset, setActivePreset] = useState<BandPreset | null>(BAND_PRESETS[0]);
   const [activeTab, setActiveTab] = useState<EMRTab>('tactical');
@@ -381,6 +387,10 @@ const EMRModule: React.FC = () => {
     const externalRadomeW = incidentRadomeW * radomeTransmissionFraction;
     const radomeLockoutRequired = hasRadome && internalRadomePeakW > limitControlledW;
 
+    // MIL-STD-464C / NAVSEA OP 3565 Peak Electric Field Safe Standoff: E_peak(r) = sqrt(30 * EIRP_peak) / r
+    const herfSafeDistM = Math.sqrt(30 * Math.max(0, eirpPeakW)) / HERF_FUEL_VENT_PEAK_V_M;
+    const heroSafeDistM = Math.sqrt(30 * Math.max(0, eirpPeakW)) / HERO_SUSCEPTIBLE_PEAK_V_M;
+
     return {
       wavelength,
       freqHz,
@@ -402,6 +412,8 @@ const EMRModule: React.FC = () => {
       safeUncontrolledDistStaticM,
       safeControlledDistScanningM,
       safeUncontrolledDistScanningM,
+      herfSafeDistM,
+      heroSafeDistM,
       beamwidthDeg,
       apertureArea,
       standingWaveMultiplier,
@@ -415,6 +427,44 @@ const EMRModule: React.FC = () => {
 
   const activeSafeControlled = (antennaPattern === 'Directional' && isScanning) ? math.safeControlledDistScanningM : math.safeControlledDistStaticM;
   const activeSafeUncontrolled = (antennaPattern === 'Directional' && isScanning) ? math.safeUncontrolledDistScanningM : math.safeUncontrolledDistStaticM;
+
+  useEffect(() => {
+    setLiveModuleTelemetry({
+      moduleId: 'M20',
+      moduleTitle: 'Module 20 — Electronic Warfare EMR & Microwave Radiation Safety',
+      regimeSummary: `${freqMHz >= 1000 ? `${(freqMHz / 1000).toFixed(2)} GHz` : `${freqMHz} MHz`} ${signalType} (${peakPowerKW} kW, ${gainDBi} dBi)`,
+      parameters: {
+        freqMHz,
+        peakPowerKW,
+        gainDBi,
+        apertureM,
+        antennaPattern,
+        signalType,
+        standard
+      },
+      computedMetrics: {
+        herpControlledDistM: Number(activeSafeControlled.toFixed(2)),
+        herpPublicDistM: Number(activeSafeUncontrolled.toFixed(2)),
+        herfFuelStandoffM: Number(math.herfSafeDistM.toFixed(2)),
+        heroOrdnanceStandoffM: Number(math.heroSafeDistM.toFixed(2)),
+        nearFieldBoundaryM: Number(math.transitionDistM.toFixed(2))
+      }
+    });
+  }, [
+    freqMHz,
+    peakPowerKW,
+    gainDBi,
+    apertureM,
+    antennaPattern,
+    signalType,
+    standard,
+    activeSafeControlled,
+    activeSafeUncontrolled,
+    math.herfSafeDistM,
+    math.heroSafeDistM,
+    math.transitionDistM,
+    setLiveModuleTelemetry
+  ]);
 
   // Compute power density at target distance
   const scrubbedMetrics = useMemo(() => {
@@ -444,6 +494,7 @@ const EMRModule: React.FC = () => {
     const exceedsControlled = powerDensityW > math.limitControlledW;
     const exceedsUncontrolled = powerDensityW > math.limitUncontrolledW;
     const eField = Math.sqrt(powerDensityW * 377);
+    const eFieldPeak = Math.sqrt(30 * math.eirpPeakW) / Math.max(0.1, r);
 
     return {
       r,
@@ -452,6 +503,7 @@ const EMRModule: React.FC = () => {
       exceedsControlled,
       exceedsUncontrolled,
       eField,
+      eFieldPeak,
       isInsideRadome
     };
   }, [selectedDistance, math, hasRadome, radomeRadiusM, isScanning, antennaPattern]);
@@ -520,8 +572,8 @@ const EMRModule: React.FC = () => {
       { label: 'Uncontrolled / Public Boundary', value: math.safeUncontrolledDistStaticM.toFixed(2), unit: 'm', status: 'PASS' },
       { label: 'Rayleigh Near-Field Boundary (2D²/λ)', value: math.transitionDistM.toFixed(2), unit: 'm', status: 'PASS' },
       { label: 'HERP Personnel Hazard Distance', value: math.safeControlledDistStaticM.toFixed(2), unit: 'm', status: 'PASS' },
-      { label: 'HERF Fuel Hazard Distance', value: (math.safeControlledDistStaticM * 1.5).toFixed(2), unit: 'm', status: 'PASS' },
-      { label: 'HERO Ordnance Hazard Distance', value: (math.safeControlledDistStaticM * 2.2).toFixed(2), unit: 'm', status: 'PASS' },
+      { label: 'HERF Fuel Hazard Distance (200 V/m Peak)', value: math.herfSafeDistM.toFixed(2), unit: 'm', status: 'PASS' },
+      { label: 'HERO Ordnance Hazard Distance (20 V/m Peak)', value: math.heroSafeDistM.toFixed(2), unit: 'm', status: 'PASS' },
       { label: 'Wavelength (λ)', value: (math.wavelength * 100).toFixed(2), unit: 'cm', status: 'PASS' },
       { label: 'Max Near-Field Irradiance', value: (math.maxNearFieldPowerDensityW / 10).toFixed(2), unit: 'mW/cm²', status: 'PASS' }
     ]
@@ -572,6 +624,7 @@ const EMRModule: React.FC = () => {
               <button
                 key={cat}
                 type="button"
+                className={selectedCategory === cat ? 'active' : ''}
                 style={{
                   fontSize: '0.75rem',
                   padding: '3px 10px',
@@ -601,7 +654,7 @@ const EMRModule: React.FC = () => {
               <button
                 key={p.name}
                 type="button"
-                className="btn btn-primary"
+                className={`btn btn-secondary ${isSelected ? 'active' : ''}`}
                 style={{
                   fontSize: '0.78rem',
                   padding: '5px 12px',
@@ -854,18 +907,26 @@ const EMRModule: React.FC = () => {
             </div>
 
             {/* Tactical Status Badges */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px', textAlign: 'center' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '6px', textAlign: 'center' }}>
               <div style={{ padding: '8px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--color-border)', borderRadius: '4px' }}>
                 <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', display: 'block' }}>Average EIRP</span>
-                <strong style={{ fontSize: '0.9rem', color: '#fff' }}>{(math.eirpStaticAvgW / 1000).toFixed(2)} kW</strong>
+                <strong style={{ fontSize: '0.88rem', color: '#fff' }}>{(math.eirpStaticAvgW / 1000).toFixed(2)} kW</strong>
               </div>
               <div style={{ padding: '8px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--color-border)', borderRadius: '4px' }}>
                 <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', display: 'block' }}>Near-Field (2D²/λ)</span>
-                <strong style={{ fontSize: '0.9rem', color: 'var(--color-primary)' }}>{math.transitionDistM.toFixed(1)} m</strong>
+                <strong style={{ fontSize: '0.88rem', color: 'var(--color-primary)' }}>{math.transitionDistM.toFixed(1)} m</strong>
+              </div>
+              <div style={{ padding: '8px', background: 'rgba(245, 158, 11, 0.06)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: '4px' }} title="MIL-STD-464 / NAVSEA OP 3565 Aviation Fuel Vent Peak Limit (200 V/m)">
+                <span style={{ fontSize: '0.68rem', color: '#f59e0b', display: 'block' }}>HERF (200 V/m)</span>
+                <strong style={{ fontSize: '0.88rem', color: '#fff' }}>{math.herfSafeDistM.toFixed(1)} m</strong>
+              </div>
+              <div style={{ padding: '8px', background: 'rgba(239, 68, 68, 0.06)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '4px' }} title="MIL-STD-464 / NAVSEA OP 3565 Susceptible Ordnance EED Peak Limit (20 V/m)">
+                <span style={{ fontSize: '0.68rem', color: '#ef4444', display: 'block' }}>HERO (20 V/m)</span>
+                <strong style={{ fontSize: '0.88rem', color: '#fff' }}>{math.heroSafeDistM.toFixed(1)} m</strong>
               </div>
               <div style={{ padding: '8px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--color-border)', borderRadius: '4px' }}>
                 <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', display: 'block' }}>Radome LOTO</span>
-                <strong style={{ fontSize: '0.85rem', color: math.radomeLockoutRequired ? '#ef4444' : '#10b981' }}>
+                <strong style={{ fontSize: '0.82rem', color: math.radomeLockoutRequired ? '#ef4444' : '#10b981' }}>
                   {hasRadome ? (math.radomeLockoutRequired ? 'LOCKOUT REQ' : 'SECURE') : 'N/A'}
                 </strong>
               </div>
@@ -892,7 +953,7 @@ const EMRModule: React.FC = () => {
             />
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
               <span>Power Density: <strong style={{ color: '#fff' }}>{scrubbedMetrics.powerDensityMW.toExponential(2)} mW/cm²</strong></span>
-              <span>E-Field: <strong style={{ color: '#fff' }}>{scrubbedMetrics.eField.toFixed(1)} V/m</strong></span>
+              <span>Avg E: <strong style={{ color: '#fff' }}>{scrubbedMetrics.eField.toFixed(1)} V/m</strong> • Peak E: <strong style={{ color: '#f59e0b' }}>{scrubbedMetrics.eFieldPeak.toFixed(1)} V/m</strong></span>
             </div>
           </div>
         </div>

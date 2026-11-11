@@ -7,6 +7,7 @@ import { useRegulatory } from '../../context/RegulatoryContext';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
 import { TacticalCompassRose } from '../../components/TacticalCompassRose';
+import { parseActivityToGBq } from '../../utils/canonicalNuclidePhysics';
 
 const Plot = (PlotComponent as any).default || PlotComponent;
 
@@ -133,7 +134,7 @@ const ISOTOPE_LIBRARY: Record<string, IsotopeHazard> = {
   'Ir-192': {
     symbol: 'Ir-192',
     name: 'Iridium-192 (Industrial Radiography Source)',
-    gammaConstant: 130.0,
+    gammaConstant: 116.8,
     defaultActivityGBq: 3700, // 100 Ci NDT projector
     criticalOrgan: 'Skin / Extremities (Direct handling burn risk)',
     countermeasure: 'Surgical excision of localized necrotic tissue, G-CSF',
@@ -155,7 +156,7 @@ const ISOTOPE_LIBRARY: Record<string, IsotopeHazard> = {
   'I-131': {
     symbol: 'I-131',
     name: 'Iodine-131 (Reactor Fission Product / Medical Therapy)',
-    gammaConstant: 58.0,
+    gammaConstant: 52.2,
     defaultActivityGBq: 370, // 10 Ci
     criticalOrgan: 'Thyroid Gland (Severe concentrated uptake)',
     countermeasure: 'Potassium Iodide (KI) Thyroid Blockade',
@@ -308,7 +309,7 @@ const WORKER_DOSE_LIMITS: Record<EmergencyWorkerTier, { rem: number; mSv: number
 };
 
 const FirstResponderModule: React.FC = () => {
-  const { currentFramework } = useRegulatory();
+  const { currentFramework, setLiveModuleTelemetry } = useRegulatory();
   const [searchParams] = useSearchParams();
   const [isDossierOpen, setIsDossierOpen] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<ActiveTab>('cordon');
@@ -318,9 +319,43 @@ const FirstResponderModule: React.FC = () => {
   const [selectedIsotopeKey, setSelectedIsotopeKey] = useState<string>('Cs-137');
   const [customActivityGBq, setCustomActivityGBq] = useState<number>(3700); // 100 Ci
 
-  // Ingest Scenario Dispatch Parameters (e.g. from Scenario Builder)
+  // Dynamic Emergency Worker Dose Authorizations driven by active RegulatoryFramework
+  const workerDoseLimits = useMemo<Record<EmergencyWorkerTier, { rem: number; mSv: number; label: string; desc: string; condition: string }>>(() => {
+    const genMsv = currentFramework.limits.emergencyGeneralWorker_mSv;
+    const propMsv = currentFramework.limits.emergencyProperty_mSv;
+    const lifeMsv = currentFramework.limits.emergencyLifeSaving_mSv;
+    const catMsv = Math.max(500, lifeMsv * 2);
+    return {
+      public: {
+        ...WORKER_DOSE_LIMITS.public,
+        mSv: genMsv,
+        rem: Number((genMsv / 10).toFixed(1)),
+        label: `Standard Emergency Operations (${(genMsv / 10).toFixed(1)} Rem / ${genMsv} mSv)`
+      },
+      property: {
+        ...WORKER_DOSE_LIMITS.property,
+        mSv: propMsv,
+        rem: Number((propMsv / 10).toFixed(1)),
+        label: `Protection of Valuable Property (${(propMsv / 10).toFixed(1)} Rem / ${propMsv} mSv)`
+      },
+      lifesaving: {
+        ...WORKER_DOSE_LIMITS.lifesaving,
+        mSv: lifeMsv,
+        rem: Number((lifeMsv / 10).toFixed(1)),
+        label: `Life-Saving Actions & Critical Rescue (${(lifeMsv / 10).toFixed(1)} Rem / ${lifeMsv} mSv)`
+      },
+      catastrophic: {
+        ...WORKER_DOSE_LIMITS.catastrophic,
+        mSv: catMsv,
+        rem: Number((catMsv / 10).toFixed(1)),
+        label: `Extreme Life-Saving (Voluntary >${(lifeMsv / 10).toFixed(0)} Rem / Up to ${catMsv} mSv)`
+      }
+    };
+  }, [currentFramework]);
+
+  // Ingest Scenario Dispatch Parameters (e.g. from Scenario Builder or Cross-Module Pipeline)
   useEffect(() => {
-    const nuclideParam = searchParams.get('nuclide');
+    const nuclideParam = searchParams.get('nuclide') || searchParams.get('isotope');
     const activityParam = searchParams.get('activity');
     const unitParam = searchParams.get('unit');
     const ergParam = searchParams.get('erg');
@@ -329,7 +364,7 @@ const FirstResponderModule: React.FC = () => {
       if (ISOTOPE_LIBRARY[nuclideParam]) {
         setSelectedIsotopeKey(nuclideParam);
       } else {
-        const found = Object.keys(ISOTOPE_LIBRARY).find(k => k.toLowerCase() === nuclideParam.toLowerCase());
+        const found = Object.keys(ISOTOPE_LIBRARY).find(k => k.toLowerCase() === nuclideParam.trim().toLowerCase());
         if (found) setSelectedIsotopeKey(found);
       }
     }
@@ -337,15 +372,8 @@ const FirstResponderModule: React.FC = () => {
     if (activityParam) {
       const act = parseFloat(activityParam);
       if (!isNaN(act) && act > 0) {
-        if (unitParam?.toUpperCase() === 'TBQ') {
-          setCustomActivityGBq(act * 1000);
-        } else if (unitParam?.toUpperCase() === 'CI') {
-          setCustomActivityGBq(act * 37);
-        } else if (unitParam?.toUpperCase() === 'MBQ') {
-          setCustomActivityGBq(act / 1000);
-        } else {
-          setCustomActivityGBq(act);
-        }
+        const gbq = parseActivityToGBq(act, unitParam || 'GBq');
+        if (gbq > 0) setCustomActivityGBq(Number(gbq.toPrecision(6)));
       }
     }
 
@@ -436,7 +464,7 @@ const FirstResponderModule: React.FC = () => {
   }, [measuredRate_R_h]);
 
   // Stay-Time Calculation
-  const workerTierData = WORKER_DOSE_LIMITS[selectedWorkerTier];
+  const workerTierData = workerDoseLimits[selectedWorkerTier];
   const maxAllowedStayTimeMinutes = useMemo(() => {
     if (measuredRate_mSv_h <= 0.0001) return 9999;
     const hours = workerTierData.mSv / measuredRate_mSv_h;
@@ -634,7 +662,7 @@ const FirstResponderModule: React.FC = () => {
         { label: 'Threat Nuclide', value: `${isotope.name} (${isotope.symbol})` },
         { label: 'Estimated Activity', value: `${customActivityGBq} GBq (${(customActivityGBq / 37).toFixed(1)} Ci)` },
         { label: 'Measured Field Rate', value: `${measuredDoseRateValue} ${measuredUnit}` },
-        { label: 'Authorized Worker Tier', value: WORKER_DOSE_LIMITS[selectedWorkerTier].label },
+        { label: 'Authorized Worker Tier', value: workerDoseLimits[selectedWorkerTier].label },
         { label: 'Regulatory Framework', value: `${currentFramework.governingBody} (${currentFramework.name})` },
         { label: 'Lifesaving Max Authorization', value: currentFramework.limits.emergencyLifeSaving_mSv, unit: 'mSv' },
         { label: 'Property Protection Max Authorization', value: currentFramework.limits.emergencyProperty_mSv, unit: 'mSv' },
@@ -650,7 +678,27 @@ const FirstResponderModule: React.FC = () => {
         { label: 'Recommended Countermeasure', value: `${isotope.countermeasure} (${isotope.countermeasureDose})` }
       ]
     };
-  }, [incidentTitle, isotope, customActivityGBq, measuredDoseRateValue, measuredUnit, selectedWorkerTier, currentFramework, selectedGuideNumber, cordonRadii, turnBackStatus, maxAllowedStayTimeMinutes]);
+  }, [incidentTitle, isotope, customActivityGBq, measuredDoseRateValue, measuredUnit, selectedWorkerTier, workerDoseLimits, currentFramework, selectedGuideNumber, cordonRadii, turnBackStatus, maxAllowedStayTimeMinutes]);
+
+  useEffect(() => {
+    setLiveModuleTelemetry({
+      moduleId: 'first-responder',
+      moduleTitle: 'Tactical First Responder & CBRN Command',
+      regimeSummary: `${isotope.symbol} (${customActivityGBq} GBq) • ${turnBackStatus.level}`,
+      parameters: {
+        'Nuclide': isotope.symbol,
+        'Activity (GBq)': customActivityGBq,
+        'Field Rate': `${measuredDoseRateValue} ${measuredUnit}`,
+        'Worker Tier': workerTierData.label
+      },
+      computedMetrics: {
+        'Hot Zone (10 mR/h)': `${cordonRadii.rHot.toFixed(1)} m`,
+        'Cold Zone (1 mR/h)': `${cordonRadii.rCold.toFixed(1)} m`,
+        'Authorized Stay-Time': maxAllowedStayTimeMinutes >= 9000 ? 'Indefinite' : `${maxAllowedStayTimeMinutes.toFixed(1)} min`,
+        'Status': turnBackStatus.level
+      }
+    });
+  }, [isotope, customActivityGBq, measuredDoseRateValue, measuredUnit, workerTierData, cordonRadii, maxAllowedStayTimeMinutes, turnBackStatus, setLiveModuleTelemetry]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: '14px', overflowY: 'auto' }}>
@@ -1068,9 +1116,9 @@ const FirstResponderModule: React.FC = () => {
                 value={selectedWorkerTier}
                 onChange={(e) => setSelectedWorkerTier(e.target.value as EmergencyWorkerTier)}
               >
-                {Object.keys(WORKER_DOSE_LIMITS).map((tierKey) => (
+                {Object.keys(workerDoseLimits).map((tierKey) => (
                   <option key={tierKey} value={tierKey}>
-                    {WORKER_DOSE_LIMITS[tierKey as EmergencyWorkerTier].label}
+                    {workerDoseLimits[tierKey as EmergencyWorkerTier].label}
                   </option>
                 ))}
               </select>

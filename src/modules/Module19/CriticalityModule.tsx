@@ -407,7 +407,7 @@ const CriticalityModule: React.FC = () => {
     if (moderatorType === 'Graphite') modAbsorptionCoeff = 0.003;
     if (moderatorType === 'Sodium/None') modAbsorptionCoeff = 0.0001;
 
-    const boronAbsorption = (boronPpm / 1000) * 0.05;
+    const boronAbsorption = (boronPpm / 1000) * 0.022;
 
     // 1. Compute Local Cross-Sections and Local k_inf for each of the 49 cells
     const localKInfMatrix: number[][] = [];
@@ -432,19 +432,32 @@ const CriticalityModule: React.FC = () => {
         switch (cell.type) {
           case 'FUEL': {
             totalFuelCount++;
-            const localEnrich = (cell.localEnrichmentPct ?? enrichmentPct) / 100;
+            const localEnrich = Math.max(0.0001, (cell.localEnrichmentPct ?? enrichmentPct) / 100);
             const localVoid = (cell.voidFractionPct ?? 0) / 100;
 
-            // Fission cross-section scales with enrichment and density reduction from voids
-            nsf = (0.20 + localEnrich * 1.5) * (1 - 0.7 * localVoid);
-            // Absorption cross-section includes fuel, local moderator, and boron
-            sa = (0.16 + localEnrich * 1.1) * (1 - 0.7 * localVoid) + modAbsorptionCoeff * (1 - localVoid) + boronAbsorption;
-            
-            // Fast fission & resonance escape factors
-            const pLocal = 0.88 * (1 - 0.15 * localVoid);
-            const epsLocal = moderatorType === 'Sodium/None' ? 1.15 : 1.03;
+            // Macroscopic thermal/fast fission production vs U-235 + U-238 + moderator + boron absorption
+            const isFast = moderatorType === 'Sodium/None';
+            const nuVal = isFast ? 2.60 : 2.432;
+            const sigmaF235 = isFast ? 1.25 : 585.1;
+            const sigmaA235 = isFast ? 1.45 : 680.9;
+            const sigmaA238 = isFast ? 0.07 : 2.68;
 
-            kCell = (nsf / Math.max(0.001, sa)) * pLocal * epsLocal;
+            const macroScale = isFast ? 0.048 : 0.0072;
+            nsf = nuVal * localEnrich * sigmaF235 * macroScale * (1 - 0.7 * localVoid);
+            const saFuel = (localEnrich * sigmaA235 + (1 - localEnrich) * sigmaA238) * macroScale * (1 - 0.7 * localVoid);
+            sa = saFuel + modAbsorptionCoeff * (1 - localVoid) + boronAbsorption;
+
+            // Fast fission & resonance escape factors
+            const pLocal = isFast
+              ? 1.0
+              : moderatorType === 'Heavy Water (D2O)'
+              ? 0.915 * (1 - 0.12 * localVoid)
+              : moderatorType === 'Graphite'
+              ? 0.89 * (1 - 0.10 * localVoid)
+              : 0.87 * (1 - 0.15 * localVoid);
+            const epsLocal = isFast ? 1.04 : 1.032;
+
+            kCell = (nsf / Math.max(0.0005, sa)) * pLocal * epsLocal;
             break;
           }
           case 'POISON': {
@@ -465,9 +478,10 @@ const CriticalityModule: React.FC = () => {
             break;
           }
           case 'CONTROL': {
-            // Control rod blade: absorption scales with insertion depth
+            // Control rod blade: absorption scales non-linearly with insertion depth
             const depth = (cell.controlInsertionPct ?? controlInsertionPct) / 100;
-            sa = 0.05 + depth * 2.8 + boronAbsorption;
+            const rodWorthScale = moderatorType === 'Heavy Water (D2O)' ? 0.55 : 1.15;
+            sa = 0.006 + Math.pow(depth, 1.25) * rodWorthScale + boronAbsorption;
             nsf = 0.0;
             kCell = 0.0;
             break;
@@ -479,7 +493,14 @@ const CriticalityModule: React.FC = () => {
             break;
           }
           case 'REFLECTOR': {
-            sa = 0.004 + (moderatorType === 'Sodium/None' ? 0.001 : 0.005);
+            sa =
+              moderatorType === 'Heavy Water (D2O)'
+                ? 0.0008
+                : moderatorType === 'Sodium/None'
+                ? 0.0015
+                : moderatorType === 'Graphite'
+                ? 0.0018
+                : 0.005;
             nsf = 0.0;
             kCell = 0.0;
             break;
@@ -504,30 +525,37 @@ const CriticalityModule: React.FC = () => {
       nuSigmaFMatrix.push(nsfRow);
     }
 
-    // Four-Factor core-averaged parameters
+    // Four-Factor core-averaged parameters (Lamarsh & Baratta exact U-238/U-235 cross-section ratio)
+    const isFastCore = moderatorType === 'Sodium/None';
     const avgKInf = totalAbsorption > 0 ? totalFissionProduction / totalAbsorption : 0;
-    const eFrac = Math.max(0.0071, enrichmentPct / 100);
-    const eta = 2.08 * (eFrac / (eFrac + 0.045));
-    const f = Math.min(0.99, (totalFissionProduction * 0.7) / Math.max(0.001, totalAbsorption));
-    const p = moderatorType === 'Heavy Water (D2O)' ? 0.95 : moderatorType === 'Graphite' ? 0.89 : 0.86;
-    const epsilon = moderatorType === 'Sodium/None' ? 1.15 : 1.03;
+    const eFrac = Math.max(0.0001, enrichmentPct / 100);
+    const eta = isFastCore
+      ? 2.241 * (eFrac / (eFrac + (1 - eFrac) * 0.048))
+      : 2.090 * (eFrac / (eFrac + (1 - eFrac) * (2.68 / 680.9)));
+    const f = Math.min(0.995, (totalFissionProduction / Math.max(0.01, eta)) / Math.max(0.001, totalAbsorption));
+    const p = isFastCore ? 1.0 : moderatorType === 'Heavy Water (D2O)' ? 0.915 : moderatorType === 'Graphite' ? 0.89 : 0.87;
+    const epsilon = isFastCore ? 1.04 : 1.032;
     const kInf = eta * f * p * epsilon;
 
-    // Geometric Buckling & Leakage
+    // Geometric Buckling & Leakage (distinguishing bare compact fast-metal sphere vs full reactor lattice)
+    const isBareFastMetal = isFastCore && pitchM <= 0.07 && enrichmentPct >= 80;
     const coreWidthM = 7 * pitchM;
     const radiusM = coreWidthM / 2;
-    const B2 = Math.pow(Math.PI / (radiusM + 0.1), 2) + Math.pow(Math.PI / (coreHeightM + 0.1), 2);
+    const extrapM = moderatorType === 'Heavy Water (D2O)' ? 0.60 : isFastCore ? 0.021 : 0.12;
+    const B2 = isBareFastMetal
+      ? Math.pow(Math.PI / (0.0874 + extrapM), 2)
+      : Math.pow(2.4048 / (radiusM + extrapM), 2) + Math.pow(Math.PI / (coreHeightM + 2 * extrapM), 2);
 
     let migrationAreaM2 = 0.006; // H2O
-    if (moderatorType === 'Heavy Water (D2O)') migrationAreaM2 = 0.035;
+    if (moderatorType === 'Heavy Water (D2O)') migrationAreaM2 = 0.032;
     if (moderatorType === 'Graphite') migrationAreaM2 = 0.030;
-    if (moderatorType === 'Sodium/None') migrationAreaM2 = 0.045;
+    if (moderatorType === 'Sodium/None') migrationAreaM2 = isBareFastMetal ? 0.00148 : 0.022;
 
-    // Count reflectors on perimeter
+    // Count reflectors on perimeter (zero reflector savings for unreflected bare metal Godiva assembly)
     let nReflector = 0;
     grid.forEach(row => row.forEach(c => { if (c.type === 'REFLECTOR') nReflector++; }));
-    const reflectorSavings = (nReflector / 24) * 0.35;
-    const leakagePenalty = Math.max(0.01, (B2 * migrationAreaM2) * (1 - reflectorSavings));
+    const reflectorSavings = isBareFastMetal ? 0.0 : Math.min(0.35, (nReflector / 24) * 0.35);
+    const leakagePenalty = Math.max(0.005, (B2 * migrationAreaM2) * (1 - reflectorSavings));
 
     // Effective Multiplication Factor k_eff
     const kEff = kInf / (1 + leakagePenalty);

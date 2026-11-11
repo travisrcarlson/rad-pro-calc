@@ -1,21 +1,30 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import PlotComponent from 'react-plotly.js';
 import { BlockMath, InlineMath } from 'react-katex';
 import { useRegulatory } from '../../context/RegulatoryContext';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
 import VerificationBadge from '../../components/VerificationBadge';
+import { getCanonicalNuclide, parseActivityToGBq } from '../../utils/canonicalNuclidePhysics';
+import {
+  evaluateXCOMAttenuation,
+  evaluateGPBuildup,
+  intersectRayAABB3D
+} from '../../utils/xcomAndGpBuildup';
 
 const Plot = (PlotComponent as any).default || PlotComponent;
 
 interface Source3D {
   id: number;
   name: string;
+  nuclide?: string;
+  energyMeV?: number;
   x: number;
   y: number;
   z: number;
   activity_MBq: number;
-  gamma_uSv: number; // µSv·cm²/MBq·h
+  gamma_uSv: number; // µSv·cm²/MBq·h (= 10 × Γ_SI[µSv·m²/(GBq·h)])
 }
 
 type Posture = 'Standing' | 'Crouching' | 'Prone';
@@ -50,7 +59,8 @@ const SHIELD_PRESETS: Record<string, { name: string; tvl_cm: number }> = {
 type WorkspaceTab = '3d_room' | 'alara_chart' | 'workers' | 'sources_shields' | 'physics';
 
 const WorkerDosimetryModule: React.FC = () => {
-  const { currentFramework } = useRegulatory();
+  const [searchParams] = useSearchParams();
+  const { currentFramework, setLiveModuleTelemetry } = useRegulatory();
   const [isDossierOpen, setIsDossierOpen] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<WorkspaceTab>('3d_room');
 
@@ -62,9 +72,36 @@ const WorkerDosimetryModule: React.FC = () => {
   const [displayMin] = useState<number>(10);
   const [displayMax, setDisplayMax] = useState<number>(2000);
 
+  // Co-60 canonical Γ_SI = 308.5 µSv·m²/(GBq·h) = 3,085 µSv·cm²/(MBq·h)
   const [sources, setSources] = useState<Source3D[]>([
-    { id: 1, name: 'Floor Contamination Hotspot', x: 5, y: 5, z: 0.1, activity_MBq: 100000, gamma_uSv: 300 }
+    { id: 1, name: 'Co-60 Floor Hotspot', nuclide: 'Co-60', energyMeV: 1.25, x: 5, y: 5, z: 0.1, activity_MBq: 10000, gamma_uSv: 3085 }
   ]);
+
+  useEffect(() => {
+    const nucParam = searchParams.get('nuclide') || searchParams.get('isotope');
+    const actParam = searchParams.get('activity');
+    const unitParam = searchParams.get('unit');
+    if (nucParam) {
+      const spec = getCanonicalNuclide(nucParam);
+      if (spec) {
+        const actMBq = actParam ? parseActivityToGBq(parseFloat(actParam) || 10, unitParam || 'GBq') * 1000 : 10000;
+        setSources((prev) => {
+          const next = [...prev];
+          if (next.length > 0) {
+            next[0] = {
+              ...next[0],
+              name: `${spec.symbol} Hotspot`,
+              nuclide: spec.symbol,
+              energyMeV: spec.principalPhotonMeV || 1.25,
+              activity_MBq: Math.max(0.1, actMBq),
+              gamma_uSv: spec.gammaH10_uSv_m2_h_GBq * 10.0
+            };
+          }
+          return next;
+        });
+      }
+    }
+  }, [searchParams]);
 
   const [workers, setWorkers] = useState<Worker[]>([
     { id: 1, name: 'Primary Technician (Tech-1)', x: 4.5, y: 5, posture: 'Standing', rotationOffset: 0, taskDurationHours: 2 },
@@ -75,35 +112,48 @@ const WorkerDosimetryModule: React.FC = () => {
     { id: 1, name: 'Concrete Partition Wall', x: 5, y: 4.5, z: 1.5, w: 3, l: 0.5, h: 3, material: 'CONCRETE', tvl_cm: 14.7 }
   ]);
 
-  const computeAABBIntersectionFraction = (sx: number, sy: number, sz: number, px: number, py: number, pz: number, sld: ShieldBlock) => {
-    const dx = px - sx; const dy = py - sy; const dz = pz - sz;
-    let tmin = 0.0; let tmax = 1.0;
-
-    const bMinX = sld.x - sld.w / 2; const bMaxX = sld.x + sld.w / 2;
-    if (dx !== 0) {
-      const tx1 = (bMinX - sx) / dx; const tx2 = (bMaxX - sx) / dx;
-      tmin = Math.max(tmin, Math.min(tx1, tx2)); tmax = Math.min(tmax, Math.max(tx1, tx2));
-    } else if (sx < bMinX || sx > bMaxX) return 0;
-
-    const bMinY = sld.y - sld.l / 2; const bMaxY = sld.y + sld.l / 2;
-    if (dy !== 0) {
-      const ty1 = (bMinY - sy) / dy; const ty2 = (bMaxY - sy) / dy;
-      tmin = Math.max(tmin, Math.min(ty1, ty2)); tmax = Math.min(tmax, Math.max(ty1, ty2));
-    } else if (sy < bMinY || sy > bMaxY) return 0;
-
-    const bMinZ = sld.z - sld.h / 2; const bMaxZ = sld.z + sld.h / 2;
-    if (dz !== 0) {
-      const tz1 = (bMinZ - sz) / dz; const tz2 = (bMaxZ - sz) / dz;
-      tmin = Math.max(tmin, Math.min(tz1, tz2)); tmax = Math.min(tmax, Math.max(tz1, tz2));
-    } else if (sz < bMinZ || sz > bMaxZ) return 0;
-
-    return (tmax >= tmin) ? (tmax - tmin) : 0;
+  // Exact 3D Ray-AABB chord + NIST XCOM linear attenuation + ANSI/ANS-6.4.3 GP buildup transmission
+  const computeBroadBeamTransmission3D = (
+    sx: number,
+    sy: number,
+    sz: number,
+    px: number,
+    py: number,
+    pz: number,
+    energyMeV: number
+  ): number => {
+    let trans = 1.0;
+    const eMeV = Math.max(0.02, energyMeV || 1.0);
+    for (let sh = 0; sh < shields.length; sh++) {
+      const sld = shields[sh];
+      const chordM = intersectRayAABB3D(sx, sy, sz, px, py, pz, {
+        xMin: sld.x - sld.w / 2,
+        xMax: sld.x + sld.w / 2,
+        yMin: sld.y - sld.l / 2,
+        yMax: sld.y + sld.l / 2,
+        zMin: sld.z - sld.h / 2,
+        zMax: sld.z + sld.h / 2
+      });
+      if (chordM > 0) {
+        const chordCm = chordM * 100.0;
+        if (sld.material !== 'CUSTOM') {
+          const xcom = evaluateXCOMAttenuation(sld.material, eMeV);
+          const mfp = xcom.muLinear * chordCm;
+          const gp = evaluateGPBuildup(sld.material, eMeV, mfp);
+          trans *= gp.B * Math.exp(-mfp);
+        } else {
+          const decades = chordCm / Math.max(0.1, sld.tvl_cm);
+          trans *= Math.pow(10, -decades);
+        }
+      }
+    }
+    return trans;
   };
 
   // Compute 3D Volume Array
   const { volX, volY, volZ, volV } = useMemo(() => {
-    const resolutionXY = 22;
-    const resolutionZ = 10;
+    const resolutionXY = 20;
+    const resolutionZ = 9;
 
     const stepX = dimX / resolutionXY;
     const stepY = dimY / resolutionXY;
@@ -123,19 +173,17 @@ const WorkerDosimetryModule: React.FC = () => {
             const dx = px - src.x;
             const dy = py - src.y;
             const dz = pz - src.z;
-            const dist_cm = Math.max(1, Math.sqrt(dx * dx + dy * dy + dz * dz) * 100);
-
-            let attenuationFactor = 1;
-            for (let sh = 0; sh < shields.length; sh++) {
-              const fract = computeAABBIntersectionFraction(src.x, src.y, src.z, px, py, pz, shields[sh]);
-              if (fract > 0) {
-                const distInside_cm = fract * dist_cm;
-                const decades = distInside_cm / shields[sh].tvl_cm;
-                attenuationFactor *= Math.pow(10, decades);
-              }
-            }
-
-            d += ((src.activity_MBq * src.gamma_uSv) / (dist_cm * dist_cm)) / attenuationFactor;
+            const dist_cm = Math.max(10, Math.sqrt(dx * dx + dy * dy + dz * dz) * 100);
+            const trans = computeBroadBeamTransmission3D(
+              src.x,
+              src.y,
+              src.z,
+              px,
+              py,
+              pz,
+              src.energyMeV ?? 1.0
+            );
+            d += ((src.activity_MBq * src.gamma_uSv) / (dist_cm * dist_cm)) * trans;
           }
           X.push(px); Y.push(py); Z.push(pz); V.push(d);
         }
@@ -149,19 +197,17 @@ const WorkerDosimetryModule: React.FC = () => {
     let d = 0;
     sources.forEach(src => {
       const dx = px - src.x; const dy = py - src.y; const dz = pz - src.z;
-      const dist_cm = Math.max(1, Math.sqrt(dx * dx + dy * dy + dz * dz) * 100);
-
-      let attenuationFactor = 1;
-      for (let sh = 0; sh < shields.length; sh++) {
-        const fract = computeAABBIntersectionFraction(src.x, src.y, src.z, px, py, pz, shields[sh]);
-        if (fract > 0) {
-          const distInside_cm = fract * dist_cm;
-          const decades = distInside_cm / shields[sh].tvl_cm;
-          attenuationFactor *= Math.pow(10, decades);
-        }
-      }
-
-      d += ((src.activity_MBq * src.gamma_uSv) / (dist_cm * dist_cm)) / attenuationFactor;
+      const dist_cm = Math.max(10, Math.sqrt(dx * dx + dy * dy + dz * dz) * 100);
+      const trans = computeBroadBeamTransmission3D(
+        src.x,
+        src.y,
+        src.z,
+        px,
+        py,
+        pz,
+        src.energyMeV ?? 1.0
+      );
+      d += ((src.activity_MBq * src.gamma_uSv) / (dist_cm * dist_cm)) * trans;
     });
     return d;
   };
@@ -325,13 +371,38 @@ const WorkerDosimetryModule: React.FC = () => {
       });
     });
 
+    const annualLimitUSv = currentFramework.limits.occupationalAnnualEffective_mSv * 1000;
+    const lensLimitUSv = currentFramework.limits.lensOfEyeAnnual_mSv * 1000;
     let shiftStatus: 'SAFE' | 'ALARA_I' | 'ALARA_II' | 'EXCEEDED' = 'SAFE';
-    if (worstAccumulation > 1000) shiftStatus = 'EXCEEDED';
+    if (worstAccumulation > Math.min(1000, annualLimitUSv) || highestOrganDose * 2 > lensLimitUSv) shiftStatus = 'EXCEEDED';
     else if (worstAccumulation > 300) shiftStatus = 'ALARA_II';
     else if (worstAccumulation > 100) shiftStatus = 'ALARA_I';
 
     return { peakRate, peakWorker, highestOrgan, highestOrganDose, worstAccumulation, shiftStatus };
-  }, [workers, sources, shields]);
+  }, [workers, sources, shields, currentFramework]);
+
+  useEffect(() => {
+    const primaryIso = sources[0]?.nuclide || 'Co-60';
+    const totalGBq = sources.reduce((s, src) => s + src.activity_MBq / 1000.0, 0);
+    setLiveModuleTelemetry({
+      moduleId: 'worker-dosimetry',
+      moduleTitle: 'M02 3D Worker Dosimetry & ALARA',
+      regimeSummary: `${primaryIso} (${totalGBq.toFixed(2)} GBq) • ${workerAnalytics.shiftStatus} (${workerAnalytics.peakRate.toFixed(1)} µSv/h)`,
+      parameters: {
+        'Nuclide': primaryIso,
+        'Activity (GBq)': Number(totalGBq.toPrecision(6)),
+        'Tracked Operators': workers.length,
+        'Shield Barriers': shields.length
+      },
+      computedMetrics: {
+        'Peak Worker': workerAnalytics.peakWorker || 'N/A',
+        'Peak Dose Rate': `${workerAnalytics.peakRate.toFixed(1)} µSv/h`,
+        'Shift Cumulative Dose': `${(workerAnalytics.worstAccumulation / 1000.0).toFixed(3)} mSv`,
+        'Shift Status': workerAnalytics.shiftStatus,
+        'Eye Lens Limit': `${currentFramework.limits.lensOfEyeAnnual_mSv} mSv/yr`
+      }
+    });
+  }, [sources, workers.length, shields.length, workerAnalytics, currentFramework, setLiveModuleTelemetry]);
 
   const dossierPayload: CalculationDossierPayload = useMemo(() => ({
     reportTitle: '3D Worker Dosimetry & ALARA Shift Analysis',
@@ -799,10 +870,10 @@ const WorkerDosimetryModule: React.FC = () => {
                 <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--color-primary)' }}>1. Radiation Point Sources</h3>
                 <button
                   className="btn btn-sm btn-primary"
-                  onClick={() => setSources([
-                    ...sources,
-                    { id: Date.now(), name: `Source-${sources.length + 1}`, x: dimX / 2, y: dimY / 2, z: 0.1, activity_MBq: 10000, gamma_uSv: 300 }
-                  ])}
+                    onClick={() => setSources([
+                      ...sources,
+                      { id: Date.now(), name: `Co-60 Source-${sources.length + 1}`, nuclide: 'Co-60', energyMeV: 1.25, x: dimX / 2, y: dimY / 2, z: 0.1, activity_MBq: 10000, gamma_uSv: 3085 }
+                    ])}
                 >
                   + Add Source
                 </button>

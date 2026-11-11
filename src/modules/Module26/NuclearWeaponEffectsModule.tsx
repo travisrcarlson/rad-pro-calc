@@ -5,6 +5,8 @@ import PlotComponent from 'react-plotly.js';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
 import { VisualDetonationSimulator } from './VisualDetonationSimulator';
+import { useRegulatory } from '../../context/RegulatoryContext';
+import { computeWeaponPromptThermalFluenceCalCm2 } from '../../utils/radiologicalPhysicsKernels';
 import {
   fetchAndComputeTerrainShadowing,
   REFERENCE_MET_SITES,
@@ -44,6 +46,7 @@ const WEAPON_PRESETS: WeaponPreset[] = [
 export const NuclearWeaponEffectsModule: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { setLiveModuleTelemetry } = useRegulatory();
   const [activeTab, setActiveTab] = useState<NukeTab>('visual_detonation');
   const [selectedPresetId, setSelectedPresetId] = useState<string>('hiroshima_15kt');
   const [customYieldKt, setCustomYieldKt] = useState<number>(15.0);
@@ -122,6 +125,18 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
     const burstParam = searchParams.get('burstMode');
     const hobParam = searchParams.get('hob');
     const nameParam = searchParams.get('name');
+    const distKmParam = searchParams.get('distanceKm');
+    const distMParam = searchParams.get('distance');
+
+    if (distKmParam) {
+      const dKm = parseFloat(distKmParam);
+      if (!isNaN(dKm) && dKm > 0) setTargetDistanceKm(dKm);
+    } else if (distMParam) {
+      const dRaw = parseFloat(distMParam);
+      if (!isNaN(dRaw) && dRaw >= 50) {
+        setTargetDistanceKm(Number((dRaw / 1000).toFixed(3)));
+      }
+    }
 
     if (yieldParam) {
       const y = parseFloat(yieldParam);
@@ -273,20 +288,15 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
     const undergroundThermalEscape = dobM > 0 ? (sdob < 28 ? Math.exp(-Math.pow(sdob / 10.0, 2)) : 0.0) : 1.0;
     const scaledYieldFactor = Math.pow(y * undergroundThermalEscape, 0.41);
 
-    // Thermal radiant fluence at target distance:
+    // Thermal radiant fluence at target distance via shared Glasstone & Dolan kernel:
     // Q = (eta_th * Y_joules) / (4 * pi * R^2) * tau_atm
-    // eta_th ~ 0.35 (35% of total yield emitted as thermal)
-    // 1 kT TNT = 4.184e12 Joules
     const etaTh = 0.35 * undergroundThermalEscape;
-    const yJoules = y * 4.184e12;
     const rTargetM = Math.max(10, targetDistanceKm * 1000);
     const slantDistanceM = Math.sqrt(rTargetM * rTargetM + burstAltitudeM * burstAltitudeM);
 
     // Atmospheric transmittance tau_atm ~ exp(-slantDistance / (2 * visibility))
     const tauAtm = Math.exp(-slantDistanceM / (2.0 * atmosphericVisibilityKm * 1000));
-    const fluenceJouleM2 = (etaTh * yJoules / (4 * Math.PI * slantDistanceM * slantDistanceM)) * tauAtm;
-    // 1 cal/cm^2 = 41,840 J/m^2 = 4.184 J/cm^2
-    const fluenceCalCm2 = fluenceJouleM2 / 41840.0;
+    const fluenceCalCm2 = computeWeaponPromptThermalFluenceCalCm2(y, slantDistanceM, etaTh, tauAtm);
 
     // Threshold Radii for burns (Glasstone & Dolan empirical scaling):
     // 3rd degree burn (blistering/necrosis, Q >= 10 cal/cm^2)
@@ -313,7 +323,7 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
       const r = (i / steps) * maxR;
       const sM = Math.sqrt((r * 1000) * (r * 1000) + burstAltitudeM * burstAltitudeM);
       const tau = Math.exp(-sM / (2.0 * atmosphericVisibilityKm * 1000));
-      const fl = (etaTh * yJoules / (4 * Math.PI * sM * sM)) * tau / 41840.0;
+      const fl = computeWeaponPromptThermalFluenceCalCm2(y, sM, etaTh, tau);
       curvePoints.push({ rKm: r, fluenceCal: Math.min(100, fl) });
     }
 
@@ -335,24 +345,42 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
   const promptRadCalculations = useMemo(() => {
     const y = Math.max(0.001, yieldKt);
     const dobM = burstAltitudeM < 0 ? Math.abs(burstAltitudeM) : 0;
-    // Earth/rock overburden attenuates prompt neutrons & gammas with relaxation length ~0.25m (10x every ~0.6m of rock)
+    // Earth/rock overburden attenuates prompt neutrons & gammas strongly
     const rockShieldingFactor = dobM > 0 ? Math.exp(-dobM / 2.2) : 1.0;
 
-    const rTargetM = Math.max(10, targetDistanceKm * 1000);
-    const slantDistanceM = Math.sqrt(rTargetM * rTargetM + burstAltitudeM * burstAltitudeM);
+    // Scale composite air relaxation length with mean ICAO barometric density along slant ray
+    const meanAltM = 0.5 * Math.max(0, burstAltitudeM);
+    const rhoRatio = Math.exp(-meanAltM / 8400.0);
+    const lambdaAirM = 300.0 / Math.max(0.02, rhoRatio);
+    const refDoseAt1km = 15.0 * y * rockShieldingFactor; // Gy at 1 km sea-level reference slant range
 
-    // Initial prompt radiation (neutrons + prompt gammas within first 60 seconds):
-    // D(R) ~ (D0 * Y) / R^2 * exp(-R / lambda_air)
-    const lambdaAirM = 300.0; // composite relaxation length
-    const refDoseAt1km = 15.0 * y * rockShieldingFactor; // Gy at 1 km unattenuated geometry
-    const rRatio = 1000.0 / slantDistanceM;
-    const promptDoseGy = refDoseAt1km * (rRatio * rRatio) * Math.exp(-(slantDistanceM - 1000.0) / lambdaAirM);
+    const evalPromptDoseAtGroundKm = (rGroundKm: number): number => {
+      const rM = Math.max(1.0, rGroundKm * 1000.0);
+      const sM = Math.sqrt(rM * rM + burstAltitudeM * burstAltitudeM);
+      const rRatio = 1000.0 / sM;
+      return refDoseAt1km * (rRatio * rRatio) * Math.exp(-(sM - 1000.0) / lambdaAirM);
+    };
 
-    // Lethal thresholds
-    const effRadYield = y * rockShieldingFactor;
-    const rLd50_km = effRadYield > 1e-5 ? 0.55 * Math.pow(effRadYield, 0.28) : 0;
-    const rLd100_km = effRadYield > 1e-5 ? 0.42 * Math.pow(effRadYield, 0.28) : 0;
-    const rCns_km = effRadYield > 1e-5 ? 0.28 * Math.pow(effRadYield, 0.28) : 0;
+    // Exact bisection solver so threshold ground radii satisfy D(r_thresh) === thresholdGy
+    const findPromptRadiusKm = (thresholdGy: number): number => {
+      if (evalPromptDoseAtGroundKm(0) < thresholdGy) return 0;
+      let low = 0.0;
+      let high = 100.0;
+      for (let i = 0; i < 45; i++) {
+        const mid = 0.5 * (low + high);
+        if (evalPromptDoseAtGroundKm(mid) > thresholdGy) {
+          low = mid;
+        } else {
+          high = mid;
+        }
+      }
+      return low;
+    };
+
+    const promptDoseGy = evalPromptDoseAtGroundKm(targetDistanceKm);
+    const rLd50_km = findPromptRadiusKm(4.0);
+    const rLd100_km = findPromptRadiusKm(8.0);
+    const rCns_km = findPromptRadiusKm(30.0);
 
     return {
       targetPromptDoseGy: Math.max(0.0, promptDoseGy),
@@ -492,6 +520,26 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
       ]
     };
   }, [yieldKt, burstMode, burstAltitudeM, targetDistanceKm, atmosphericVisibilityKm, fireballRadiusM, blastCalculations, thermalCalculations, promptRadCalculations]);
+
+  useEffect(() => {
+    setLiveModuleTelemetry({
+      moduleId: 'nuclear-weapons-effects',
+      moduleTitle: 'Nuclear Weapon Prompt Effects & Blast Simulator',
+      regimeSummary: `${yieldKt} kT (${burstMode.toUpperCase()} @ ${burstAltitudeM} m) • R = ${targetDistanceKm.toFixed(2)} km`,
+      parameters: {
+        'Yield (kT)': yieldKt,
+        'Burst Mode': burstMode,
+        'Burst Altitude / HOB (m)': burstAltitudeM,
+        'Distance (m)': Math.round(targetDistanceKm * 1000)
+      },
+      computedMetrics: {
+        'Peak Overpressure': `${blastCalculations.targetOverpressurePsi.toFixed(2)} psi`,
+        'Thermal Fluence': `${thermalCalculations.targetFluenceCalCm2.toFixed(2)} cal/cm²`,
+        'Prompt Radiation': `${promptRadCalculations.targetPromptDoseGy.toFixed(3)} Gy`,
+        'LD50/60 Prompt Radius': `${promptRadCalculations.rLd50_km.toFixed(2)} km`
+      }
+    });
+  }, [yieldKt, burstMode, burstAltitudeM, targetDistanceKm, blastCalculations, thermalCalculations, promptRadCalculations, setLiveModuleTelemetry]);
 
   return (
     <div className="nuclear-weapon-effects-module" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>

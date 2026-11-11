@@ -1,4 +1,4 @@
-import { type CalculationDossierPayload } from './auditDossierService';
+import type { CalculationDossierPayload } from './auditDossierService.ts';
 
 export interface EPZZoneConfig {
   pazRadiusKm: number;    // Precautionary Action Zone (~3-5 km)

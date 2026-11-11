@@ -4,12 +4,20 @@ import VerificationBadge from '../../components/VerificationBadge';
 import { BlockMath } from 'react-katex';
 import PlotComponent from 'react-plotly.js';
 const Plot = (PlotComponent as any).default || PlotComponent;
-import nuclidesData from '../../data/nuclides.json'; // Contains generic Gamma constants
+import nuclidesData from '../../data/nuclides.json';
 import equipmentDataRaw from '../../data/equipment_database.json';
-import { jsPDF } from 'jspdf';
-import html2canvas from 'html2canvas';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
+import {
+  getCanonicalNuclide,
+  parseActivityToGBq,
+  evaluateNuclideBroadBeamShielding
+} from '../../utils/canonicalNuclidePhysics';
+import {
+  classifySSR6TransportPackage,
+  computeSSR6MixtureEffectiveLimitTBq
+} from '../../utils/radiologicalPhysicsKernels';
+import { useRegulatory } from '../../context/RegulatoryContext';
 
 const parseActivityMBq = (activityStr: string) => {
   const str = activityStr.toLowerCase();
@@ -28,18 +36,18 @@ const parseActivityMBq = (activityStr: string) => {
 };
 
 const MATERIALS = [
-  { name: 'Lead (Pb)', density: 11.34, tvl: 3.8 }, // cm for ~1 MeV
-  { name: 'Tungsten (W)', density: 19.3, tvl: 2.2 },
-  { name: 'Depleted Uranium (DU)', density: 19.1, tvl: 2.3 },
-  { name: 'Steel (Fe)', density: 7.87, tvl: 5.0 },
-  { name: 'Concrete', density: 2.35, tvl: 14.7 },
-  { name: 'Aluminum (Al)', density: 2.70, tvl: 16.5 },
-  { name: 'Lead Glass', density: 5.20, tvl: 7.5 },
-  { name: 'Water', density: 1.00, tvl: 33.0 },
-  { name: 'Plexiglass (Acrylic/PMMA)', density: 1.18, tvl: 30.0 }, // Industry standard low-Z beta shield
-  { name: 'Polyethylene (HDPE)', density: 0.95, tvl: 34.0 }, // (What you likely meant by "pyrene", standard poly) 
-  { name: 'Packed Soil / Dirt', density: 1.60, tvl: 21.0 },
-  { name: 'Air/Void', density: 0.001, tvl: 100000.0 } // Transparent
+  { name: 'Lead (Pb)', xcomKey: 'LEAD', density: 11.34, tvl: 3.8 },
+  { name: 'Tungsten (W)', xcomKey: 'TUNGSTEN', density: 19.3, tvl: 2.2 },
+  { name: 'Depleted Uranium (DU)', xcomKey: 'DU', density: 19.1, tvl: 2.3 },
+  { name: 'Steel (Fe)', xcomKey: 'STEEL', density: 7.87, tvl: 5.0 },
+  { name: 'Concrete', xcomKey: 'CONCRETE', density: 2.35, tvl: 14.7 },
+  { name: 'Aluminum (Al)', xcomKey: 'ALUMINUM', density: 2.70, tvl: 16.5 },
+  { name: 'Lead Glass', xcomKey: 'LEAD_GLASS', density: 5.20, tvl: 7.5 },
+  { name: 'Water', xcomKey: 'WATER', density: 1.00, tvl: 33.0 },
+  { name: 'Plexiglass (Acrylic/PMMA)', xcomKey: 'ACRYLIC', density: 1.18, tvl: 30.0 },
+  { name: 'Polyethylene (HDPE)', xcomKey: 'POLYETHYLENE', density: 0.95, tvl: 34.0 },
+  { name: 'Packed Soil / Dirt', xcomKey: 'SOIL', density: 1.60, tvl: 21.0 },
+  { name: 'Air/Void', xcomKey: 'AIR', density: 0.001205, tvl: 100000.0 }
 ];
 
 // IAEA SSR-6 (2018 Rev. 1) Table 2 Activity Limits for Type A Packages (TBq)
@@ -66,6 +74,7 @@ const A_BOUNDS: Record<string, { A1: number, A2: number }> = {
 
 const TransportModule: React.FC = () => {
   const [searchParams] = useSearchParams();
+  const { setLiveModuleTelemetry } = useRegulatory();
   const [selectedElement, setSelectedElement] = useState('Cs');
   const [selectedMass, setSelectedMass] = useState('137');
   const nuclideSym = `${selectedElement}-${selectedMass}`;
@@ -90,70 +99,8 @@ const TransportModule: React.FC = () => {
   const [newMixActTBq, setNewMixActTBq] = useState<number>(0.15);
   const [newMixForm, setNewMixForm] = useState<'special' | 'normal'>('special');
 
-  // Ingest URL params from Nuclide Table or external links
-  useEffect(() => {
-    const nuclideParam = searchParams.get('nuclide');
-    const actParam = searchParams.get('activity');
-    if (nuclideParam) {
-      const parts = nuclideParam.split('-');
-      if (parts.length === 2 && elementsMap[parts[0]]) {
-        setSelectedElement(parts[0]);
-        if (elementsMap[parts[0]].masses.includes(parts[1])) {
-          setSelectedMass(parts[1]);
-        }
-      }
-    }
-    if (actParam) {
-      const parsedAct = parseFloat(actParam);
-      if (!isNaN(parsedAct) && parsedAct > 0) {
-        setActivity(parsedAct);
-      }
-    }
-  }, [searchParams]);
-
-  const handleEquipmentImport = (eqName: string) => {
-    const eq: any = equipmentDataRaw.find((e: any) => e['Device Name'] === eqName);
-    if (!eq) return;
-
-    // Isotope
-    const isoStr = eq['Primary Isotope(s) भी'] || eq['Primary Isotope(s)'] || '';
-    const primaryIso = isoStr.split(';')[0].trim();
-    // Element & Mass
-    const [sym, mass] = primaryIso.split('-');
-    if (sym && mass && elementsMap[sym]) {
-      setSelectedElement(sym);
-      if (elementsMap[sym].masses.includes(mass)) {
-        setSelectedMass(mass);
-      }
-    }
-    
-    // Activity
-    const mbq = parseActivityMBq(eq['Activity (Typical)'] || '');
-    setActivity(mbq);
-    setActivityUnit(1e-6); // set unit to MBq
-  };
-
-  const [pdfGenerating, setPdfGenerating] = useState(false);
-  const handleExportPDF = async () => {
-    const reportElem = document.getElementById('transport-report');
-    if (!reportElem) return;
-    setPdfGenerating(true);
-    try {
-        const canvas = await html2canvas(reportElem, { backgroundColor: '#1a1a1a', scale: 2 });
-        const imgData = canvas.toDataURL('image/jpeg', 0.95);
-        const pdf = new jsPDF('p', 'mm', 'a4');
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
-        pdf.save(`Transport_Manifest_${nuclideSym}.pdf`);
-    } catch (err) {
-        console.error("PDF generation failed", err);
-    }
-    setPdfGenerating(false);
-  };
-
   // Derived unique elements
-  const elementsMap = React.useMemo(() => {
+  const elementsMap = useMemo(() => {
     const map: Record<string, {name: string, masses: string[]}> = {};
     nuclidesData.forEach(n => {
        const [sym, mass] = n.Symbol.split('-');
@@ -166,46 +113,132 @@ const TransportModule: React.FC = () => {
     return map;
   }, []);
 
-  // Derived properties
-  const nucData = nuclidesData.find(n => n.Symbol === nuclideSym) || nuclidesData[0];
+  // Ingest URL params from Nuclide Table / CrossModulePipelineBar (including explicit unit!)
+  useEffect(() => {
+    const nuclideParam = searchParams.get('nuclide');
+    const actParam = searchParams.get('activity');
+    const unitParam = searchParams.get('unit');
+    if (nuclideParam) {
+      const parts = nuclideParam.split('-');
+      if (parts.length === 2 && elementsMap[parts[0]]) {
+        setSelectedElement(parts[0]);
+        if (elementsMap[parts[0]].masses.includes(parts[1])) {
+          setSelectedMass(parts[1]);
+        }
+      }
+    }
+    if (actParam) {
+      const parsedAct = parseFloat(actParam);
+      if (!isNaN(parsedAct) && parsedAct > 0) {
+        if (unitParam) {
+          const u = unitParam.trim();
+          const uLower = u.toLowerCase();
+          if (uLower === 'tbq') { setActivity(parsedAct); setActivityUnit(1); }
+          else if (uLower === 'gbq') { setActivity(parsedAct); setActivityUnit(1e-3); }
+          else if (uLower === 'mbq') { setActivity(parsedAct); setActivityUnit(1e-6); }
+          else if (uLower === 'ci') { setActivity(parsedAct); setActivityUnit(0.037); }
+          else {
+            const gbq = parseActivityToGBq(parsedAct, u);
+            setActivity(gbq);
+            setActivityUnit(1e-3);
+          }
+        } else {
+          setActivity(parsedAct);
+        }
+      }
+    }
+  }, [searchParams, elementsMap]);
+
+  const handleEquipmentImport = (eqName: string) => {
+    const eq: any = equipmentDataRaw.find((e: any) => e['Device Name'] === eqName);
+    if (!eq) return;
+
+    const isoStr = eq['Primary Isotope(s) भी'] || eq['Primary Isotope(s)'] || '';
+    const primaryIso = isoStr.split(';')[0].trim();
+    const [sym, mass] = primaryIso.split('-');
+    if (sym && mass && elementsMap[sym]) {
+      setSelectedElement(sym);
+      if (elementsMap[sym].masses.includes(mass)) {
+        setSelectedMass(mass);
+      }
+    }
+
+    const mbq = parseActivityMBq(eq['Activity (Typical)'] || '');
+    setActivity(mbq);
+    setActivityUnit(1e-6); // set unit to MBq
+  };
+
+  const [pdfGenerating, setPdfGenerating] = useState(false);
+  const handleExportPDF = async () => {
+    const reportElem = document.getElementById('transport-report');
+    if (!reportElem) return;
+    setPdfGenerating(true);
+    try {
+      const [{ jsPDF }, html2canvasMod] = await Promise.all([
+        import('jspdf'),
+        import('html2canvas')
+      ]);
+      const html2canvasFn = html2canvasMod.default || (html2canvasMod as any);
+      const canvas = await html2canvasFn(reportElem, { backgroundColor: '#1a1a1a', scale: 2 });
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`Transport_Manifest_${nuclideSym}.pdf`);
+    } catch (err) {
+      console.error('PDF generation failed', err);
+    }
+    setPdfGenerating(false);
+  };
+
+  // Canonical nuclide gamma + NIST XCOM + Kalos multi-layer GP broad-beam transport shielding
+  const canonicalSpec = useMemo(() => getCanonicalNuclide(nuclideSym), [nuclideSym]);
   const actTBq = activity * activityUnit;
+  const actGBq = actTBq * 1000.0;
   const actMBq = actTBq * 1000000;
-  
-  // Parse Gamma: standard unit is (R·cm²/mCi·h)
-  // 1 R = 10 mSv approximately (simplification)
-  // If no gamma, we use a default proxy of 0 for pure beta like Sr-90 (unless Bremsstrahlung, which is complex)
-  let gammaConstantVal = 0;
-  if (nucData && nucData['Γ (R·cm²/mCi·h)'] !== '—' && nucData['Γ (R·cm²/mCi·h)'] !== undefined) {
-    gammaConstantVal = Number(nucData['Γ (R·cm²/mCi·h)']);
-  }
-  // Convert Gamma from (R·cm²/mCi·h) to (µSv·cm²/MBq·h)
-  // 1 mCi = 37 MBq. 1 R = 10,000 µSv.
-  // G_uSv = G_R * (10000 / 37)
-  const gamma_uSv = gammaConstantVal * 270.27;
+  const gammaH10 = canonicalSpec?.gammaH10_uSv_m2_h_GBq ?? 77.2;
+  const gamma_uSv = gammaH10 * 10.0; // µSv·cm²/(MBq·h)
 
-  // Total shielding
   const totalThickness = layers.reduce((sum, l) => sum + l.thickness, 0);
-  const distSurf_cm = innerRadius + totalThickness;
+  const distSurf_cm = Math.max(0.5, innerRadius + totalThickness);
   const dist1m_cm = distSurf_cm + 100;
-
-  let totalDecades = 0;
-  layers.forEach(l => {
-    const mat = MATERIALS[l.matIdx];
-    totalDecades += l.thickness / mat.tvl;
-  });
-  const attenuationFactor = Math.pow(10, totalDecades);
-
-  // Unshielded Dose Rates (uSv/h)
-  const unshieldedSurf = (gamma_uSv * actMBq) / Math.max(1, (distSurf_cm * distSurf_cm));
-  const unshielded1m = (gamma_uSv * actMBq) / Math.max(1, (dist1m_cm * dist1m_cm));
-
-  // Shielded
-  const doseSurf = unshieldedSurf / attenuationFactor;
-  const dose1m = unshielded1m / attenuationFactor;
   const distCab2m_cm = distSurf_cm + 200;
-  const doseCab2m = ((gamma_uSv * actMBq) / Math.max(1, distCab2m_cm * distCab2m_cm)) / attenuationFactor;
 
-  const TI = dose1m / 10;
+  const activeXcomLayers = useMemo(
+    () =>
+      layers
+        .filter((l) => l.thickness > 0 && MATERIALS[l.matIdx])
+        .map((l) => ({
+          material: MATERIALS[l.matIdx].xcomKey,
+          thicknessCm: l.thickness
+        })),
+    [layers]
+  );
+
+  const surfEval = useMemo(
+    () => evaluateNuclideBroadBeamShielding(nuclideSym, actGBq, distSurf_cm / 100.0, activeXcomLayers, 'GP_ANS643'),
+    [nuclideSym, actGBq, distSurf_cm, activeXcomLayers]
+  );
+  const oneMeterEval = useMemo(
+    () => evaluateNuclideBroadBeamShielding(nuclideSym, actGBq, dist1m_cm / 100.0, activeXcomLayers, 'GP_ANS643'),
+    [nuclideSym, actGBq, dist1m_cm, activeXcomLayers]
+  );
+  const cab2mEval = useMemo(
+    () => evaluateNuclideBroadBeamShielding(nuclideSym, actGBq, distCab2m_cm / 100.0, activeXcomLayers, 'GP_ANS643'),
+    [nuclideSym, actGBq, distCab2m_cm, activeXcomLayers]
+  );
+
+  const doseSurf = surfEval.shieldedBroadBeamMSvHr * 1000.0; // µSv/h
+  const dose1m = oneMeterEval.shieldedBroadBeamMSvHr * 1000.0; // µSv/h
+  const doseCab2m = cab2mEval.shieldedBroadBeamMSvHr * 1000.0; // µSv/h
+  const unshielded1m = oneMeterEval.unshieldedMSvHr * 1000.0; // µSv/h
+  const broadBeamTransmission = Math.max(1e-30, surfEval.transmissionBroadBeam);
+  const attenuationFactor = 1.0 / broadBeamTransmission;
+  const totalDecades = Math.max(0, Math.log10(attenuationFactor));
+
+  const ssr6Pkg = useMemo(() => classifySSR6TransportPackage(doseSurf / 1000.0, dose1m), [doseSurf, dose1m]);
+  const TI = ssr6Pkg.roundedTI;
 
   // Radial Distance Dose Rate Profile from Package Surface (0 m offset) -> 1m (TI) -> 2m (Vehicle Cab) -> 3m
   const radialProfile = useMemo(() => {
@@ -214,14 +247,14 @@ const TransportModule: React.FC = () => {
     const unshieldedRates: number[] = [];
     for (let i = 0; i <= 60; i++) {
       const offsetCm = i * 5; // 0 to 300 cm from surface
-      const rCm = Math.max(1, distSurf_cm + offsetCm);
-      const unsh = (gamma_uSv * actMBq) / (rCm * rCm);
+      const rM = Math.max(0.01, (distSurf_cm + offsetCm) / 100.0);
+      const unsh = (gammaH10 * actGBq) / (rM * rM);
       offsetsM.push(offsetCm / 100);
       unshieldedRates.push(Math.max(1e-4, unsh));
-      shieldedRates.push(Math.max(1e-4, unsh / attenuationFactor));
+      shieldedRates.push(Math.max(1e-4, unsh * broadBeamTransmission));
     }
     return { offsetsM, shieldedRates, unshieldedRates };
-  }, [distSurf_cm, gamma_uSv, actMBq, attenuationFactor]);
+  }, [distSurf_cm, gammaH10, actGBq, broadBeamTransmission]);
 
   // IAEA SSR-6 Para. 405 Multi-Radionuclide Sum-of-Fractions Unity Rule
   const mixtureSumOfFractions = useMemo(() => {
@@ -231,8 +264,16 @@ const TransportModule: React.FC = () => {
       const frac = limit > 0 ? item.activityTBq / limit : 0;
       return { ...item, limit, frac };
     });
-    const totalFraction = rows.reduce((s, r) => s + r.frac, 0);
-    return { rows, totalFraction, qualifiesTypeA: totalFraction <= 1.0 };
+    const totalAct = rows.reduce((s, r) => s + r.activityTBq, 0);
+    const sumOfFractions = rows.reduce((s, r) => s + r.frac, 0);
+    const effectiveLimitTBq = computeSSR6MixtureEffectiveLimitTBq(
+      rows.map(r => ({
+        activityFraction: totalAct > 0 ? r.activityTBq / totalAct : 0,
+        limitTBq: r.limit
+      }))
+    );
+    const qualifiesTypeA = totalAct <= effectiveLimitTBq + 1e-12;
+    return { rows, totalFraction: sumOfFractions, effectiveLimitTBq, totalAct, qualifiesTypeA };
   }, [mixtureItems]);
 
   // Determine Package Classification
@@ -252,17 +293,34 @@ const TransportModule: React.FC = () => {
     }
   }
 
-  // Transportation Category Matrix
-  let activeCatId = 'I-WHITE';
-  if (doseSurf > 10000) {
-    activeCatId = 'OVER-LIMIT';
-  } else if ((doseSurf > 2000) || (TI > 10)) {
-    activeCatId = 'EXCLUSIVE';
-  } else if ((doseSurf > 500 && doseSurf <= 2000) || (TI > 1 && TI <= 10)) {
-    activeCatId = 'III-YELLOW';
-  } else if ((doseSurf > 5 && doseSurf <= 500) || (TI > 0 && TI <= 1)) {
-    activeCatId = 'II-YELLOW';
-  }
+  // Transportation Category Matrix (IAEA SSR-6 Table 8 — includes TI <= 0.05 -> 0 I-WHITE rule)
+  const activeCatId =
+    ssr6Pkg.category === 'III-YELLOW (EXCLUSIVE USE)'
+      ? 'EXCLUSIVE'
+      : ssr6Pkg.category === 'OVER LIMIT'
+      ? 'OVER-LIMIT'
+      : ssr6Pkg.category;
+
+  useEffect(() => {
+    setLiveModuleTelemetry({
+      moduleId: 'transport',
+      moduleTitle: 'M15 Transport Packaging (IAEA SSR-6)',
+      regimeSummary: `${nuclideSym} (${actTBq.toFixed(3)} TBq) • ${pkgType} • ${activeCatId} (TI = ${TI.toFixed(1)})`,
+      parameters: {
+        'Nuclide': nuclideSym,
+        'Activity (GBq)': Number(actGBq.toPrecision(6)),
+        'Package Form': form,
+        'Shield Thickness (cm)': Number(totalThickness.toFixed(2))
+      },
+      computedMetrics: {
+        'Package Type': pkgType,
+        'Label Category': activeCatId,
+        'Transport Index': TI.toFixed(1),
+        'Surface Rate': `${doseSurf.toFixed(2)} µSv/h`,
+        'Cab 2m Rate': `${doseCab2m.toFixed(2)} µSv/h`
+      }
+    });
+  }, [nuclideSym, actTBq, actGBq, form, totalThickness, pkgType, activeCatId, TI, doseSurf, doseCab2m, setLiveModuleTelemetry]);
 
   const transportCategories = [
     { id: 'I-WHITE', name: 'WHITE I', bg: '#fff', text: '#000', reqs: ['No external placards', 'General commercial logistics', 'Permitted on Passenger Aircraft'] },

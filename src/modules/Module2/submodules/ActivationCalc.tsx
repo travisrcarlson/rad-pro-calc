@@ -1,9 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Plot from 'react-plotly.js';
 import { BlockMath } from 'react-katex';
 import VerificationBadge from '../../../components/VerificationBadge';
 import { AuditDossierModal } from '../../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../../services/auditDossierService';
+import { useRegulatory } from '../../../context/RegulatoryContext';
 
 // Standard thermal, epithermal resonance integral (I_0), and fast neutron activation targets
 const TARGETS = [
@@ -25,6 +26,13 @@ const getActivationUnitLabel = (unitSec: number) => {
 };
 
 const ActivationCalc: React.FC = () => {
+  const {
+    currentFramework,
+    unitSystem,
+    formatActivityGBq,
+    formatDoseRateMSvHr,
+    setLiveModuleTelemetry
+  } = useRegulatory();
   const [targetIdx, setTargetIdx] = useState<number>(1);
   const [flux, setFlux] = useState<number>(1e13); // Thermal flux n/cm2/s
   const [epiToThermalRatio, setEpiToThermalRatio] = useState<number>(0.0); // Phi_epi / Phi_th (0 = pure thermal)
@@ -63,6 +71,45 @@ const ActivationCalc: React.FC = () => {
   const activity_eob_Bq = saturation_activity * buildup_factor;
   const activity_Bq = activity_eob_Bq * decay_factor;
   const activity_MBq = activity_Bq / 1000000;
+  const activity_GBq = activity_Bq / 1e9;
+  const estDoseRate1m_uSv_h = activity_MBq * selectedTarget.gamma_uSv;
+
+  useEffect(() => {
+    setLiveModuleTelemetry({
+      moduleId: 'M1D_ACTIVATION_CALC',
+      moduleTitle: 'Module 1D — Thermal & Epithermal Neutron Activation Kinetics',
+      regimeSummary: `${selectedTarget.name} → ${selectedTarget.product} (Φ_th = ${flux.toExponential(2)} n·cm⁻²·s⁻¹) under ${currentFramework.shortCode} (${unitSystem})`,
+      parameters: {
+        target: selectedTarget.name,
+        product: selectedTarget.product,
+        mass_g: mass,
+        thermalFlux_n_cm2_s: flux,
+        epiToThermalRatio,
+        irradiationSeconds: t_irr,
+        coolingSeconds: t_cool
+      },
+      computedMetrics: {
+        inducedActivity_MBq: Number(activity_MBq.toPrecision(6)),
+        saturationFractionPct: Number((buildup_factor * 100).toFixed(2)),
+        estDoseRate1m_uSv_h: Number(estDoseRate1m_uSv_h.toPrecision(5))
+      }
+    });
+  }, [
+    selectedTarget.name,
+    selectedTarget.product,
+    mass,
+    flux,
+    epiToThermalRatio,
+    t_irr,
+    t_cool,
+    activity_MBq,
+    buildup_factor,
+    estDoseRate1m_uSv_h,
+    currentFramework.id,
+    currentFramework.shortCode,
+    unitSystem,
+    setLiveModuleTelemetry
+  ]);
 
   // Generate Two-Phase Irradiation Buildup (0 -> t_irr) + Cooling (t_irr -> t_irr + t_cool) Curve
   const kineticsSeries = useMemo(() => {
@@ -102,7 +149,7 @@ const ActivationCalc: React.FC = () => {
     reportTitle: `Neutron Activation Analysis — ${selectedTarget.name} → ${selectedTarget.product}`,
     moduleName: 'Module 1D: Thermal & Epithermal Neutron Activation Kinetics',
     statuteCitation: 'IAEA TRS No. 273 / Knoll Radiation Detection and Measurement',
-    verificationTestId: 'VTEST-17 (Neutron Activation Saturation)',
+    verificationTestId: 'VTEST-20 (Neutron Activation)',
     operatorName: 'Reactor Health Physicist',
     operatorCredentials: 'CHP, PE',
     facility: 'Neutron Activation & Reactor Dosimetry Laboratory',
@@ -150,7 +197,7 @@ const ActivationCalc: React.FC = () => {
         <div style={{ flex: '1 1 340px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', flexWrap: 'wrap', gap: '8px' }}>
             <h3 style={{ margin: 0 }}>1D. Thermal & Epithermal Neutron Activation Kinetics</h3>
-            <VerificationBadge testId="VTEST-17" label="Neutron Activation" />
+            <VerificationBadge testId="VTEST-20" label="Neutron Activation" />
           </div>
 
           <div className="form-group">
@@ -273,16 +320,19 @@ const ActivationCalc: React.FC = () => {
             </button>
           </div>
 
-          <div style={{ fontSize: '2.5rem', color: 'var(--color-primary)', fontWeight: 'bold' }}>
-            {activity_MBq > 1 ? activity_MBq.toExponential(2) : activity_Bq.toExponential(2)} {activity_MBq > 1 ? 'MBq' : 'Bq'}
+          <div style={{ fontSize: '2.2rem', color: 'var(--color-primary)', fontWeight: 'bold' }}>
+            {formatActivityGBq(activity_GBq)}
           </div>
           <div style={{ fontSize: '0.9rem', color: '#94a3b8' }}>
-            {(activity_Bq / 3.7e7).toExponential(2)} mCi &nbsp;|&nbsp; Saturation Fraction: <strong style={{ color: '#38bdf8' }}>{(buildup_factor * 100).toFixed(2)}%</strong>
+            {activity_MBq > 1 ? `${activity_MBq.toExponential(2)} MBq` : `${activity_Bq.toExponential(2)} Bq`} &nbsp;|&nbsp; {(activity_Bq / 3.7e7).toExponential(2)} mCi &nbsp;|&nbsp; Saturation Fraction: <strong style={{ color: '#38bdf8' }}>{(buildup_factor * 100).toFixed(2)}%</strong>
           </div>
 
           {selectedTarget.gamma_uSv > 0 && (
-            <div style={{ marginTop: '10px', fontSize: '1.15rem', color: 'var(--color-accent)', fontWeight: 700 }}>
-              Est. Unshielded Dose Rate at 1 m: {(activity_MBq * selectedTarget.gamma_uSv).toExponential(2)} µSv/h
+            <div style={{ marginTop: '10px', fontSize: '1.1rem', color: 'var(--color-accent)', fontWeight: 700 }}>
+              Est. Unshielded Dose Rate at 1 m: {formatDoseRateMSvHr(estDoseRate1m_uSv_h / 1000)}{' '}
+              <span style={{ fontSize: '0.85rem', color: '#94a3b8', fontWeight: 500 }}>
+                ({estDoseRate1m_uSv_h.toExponential(2)} µSv/h)
+              </span>
             </div>
           )}
 

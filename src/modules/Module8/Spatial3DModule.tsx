@@ -1,20 +1,30 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import PlotComponent from 'react-plotly.js';
 import { BlockMath, InlineMath } from 'react-katex';
 import VerificationBadge from '../../components/VerificationBadge';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
+import { useRegulatory } from '../../context/RegulatoryContext';
+import { getCanonicalNuclide, parseActivityToGBq } from '../../utils/canonicalNuclidePhysics';
+import {
+  evaluateXCOMAttenuation,
+  evaluateGPBuildup,
+  intersectRayAABB3D
+} from '../../utils/xcomAndGpBuildup';
 
 const Plot = (PlotComponent as any).default || PlotComponent;
 
 interface Source3D {
   id: number;
   name: string;
+  nuclide?: string;
+  energyMeV?: number;
   x: number;
   y: number;
   z: number;
   activity_MBq: number;
-  gamma_uSv: number; // µSv·cm²/MBq·h
+  gamma_uSv: number; // µSv·cm²/MBq·h (= 10 × Γ_SI[µSv·m²/(GBq·h)])
 }
 
 interface Target3D {
@@ -34,20 +44,22 @@ interface ShieldBlock {
   tvl_cm: number; // Tenth Value Layer equivalent Shielding
 }
 
-const SHIELDING_MATERIALS: Record<string, { name: string; tvl_cm: number }> = {
-  LEAD: { name: 'Lead', tvl_cm: 3.8 },
-  TUNGSTEN: { name: 'Tungsten', tvl_cm: 1.3 },
-  IRON: { name: 'Iron / Steel', tvl_cm: 4.5 },
-  CONCRETE: { name: 'Concrete', tvl_cm: 14.7 },
-  BRICK: { name: 'Brick', tvl_cm: 18.0 },
-  ALUMINUM: { name: 'Aluminum', tvl_cm: 16.5 },
-  WATER: { name: 'Water', tvl_cm: 35.8 },
+const SHIELDING_MATERIALS: Record<string, { name: string; xcomKey?: string; tvl_cm: number }> = {
+  LEAD: { name: 'Lead', xcomKey: 'LEAD', tvl_cm: 3.8 },
+  TUNGSTEN: { name: 'Tungsten', xcomKey: 'TUNGSTEN', tvl_cm: 1.3 },
+  IRON: { name: 'Iron / Steel', xcomKey: 'STEEL', tvl_cm: 4.5 },
+  CONCRETE: { name: 'Concrete', xcomKey: 'CONCRETE', tvl_cm: 14.7 },
+  BRICK: { name: 'Brick / Soil Masonry', xcomKey: 'SOIL', tvl_cm: 18.0 },
+  ALUMINUM: { name: 'Aluminum', xcomKey: 'ALUMINUM', tvl_cm: 16.5 },
+  WATER: { name: 'Water', xcomKey: 'WATER', tvl_cm: 35.8 },
   CUSTOM: { name: 'Custom Material', tvl_cm: 10.0 }
 };
 
 type WorkspaceTab = '3d_cloud' | 'sensor_network' | 'sources' | 'shields' | 'physics';
 
 const Spatial3DModule: React.FC = () => {
+  const [searchParams] = useSearchParams();
+  const { setLiveModuleTelemetry } = useRegulatory();
   const [activeTab, setActiveTab] = useState<WorkspaceTab>('3d_cloud');
 
   // Room dimensions (meters)
@@ -60,10 +72,36 @@ const Spatial3DModule: React.FC = () => {
   const [displayMax, setDisplayMax] = useState<number>(2000); // uSv/h
   const [isDossierOpen, setIsDossierOpen] = useState<boolean>(false);
 
-  // State
+  // Cs-137 canonical Γ_SI = 77.20 µSv·m²/(GBq·h) = 772.0 µSv·cm²/(MBq·h)
   const [sources, setSources] = useState<Source3D[]>([
-    { id: 1, name: 'Cs-137 Calibrator', x: 5, y: 5, z: 1.5, activity_MBq: 37000, gamma_uSv: 890 }
+    { id: 1, name: 'Cs-137 Calibrator', nuclide: 'Cs-137', energyMeV: 0.6617, x: 5, y: 5, z: 1.5, activity_MBq: 37000, gamma_uSv: 772 }
   ]);
+
+  useEffect(() => {
+    const nucParam = searchParams.get('nuclide') || searchParams.get('isotope');
+    const actParam = searchParams.get('activity');
+    const unitParam = searchParams.get('unit');
+    if (nucParam) {
+      const spec = getCanonicalNuclide(nucParam);
+      if (spec) {
+        const actMBq = actParam ? parseActivityToGBq(parseFloat(actParam) || 37, unitParam || 'GBq') * 1000 : 37000;
+        setSources((prev) => {
+          const next = [...prev];
+          if (next.length > 0) {
+            next[0] = {
+              ...next[0],
+              name: `${spec.symbol} Point Source`,
+              nuclide: spec.symbol,
+              energyMeV: spec.principalPhotonMeV || 0.6617,
+              activity_MBq: Math.max(0.1, actMBq),
+              gamma_uSv: spec.gammaH10_uSv_m2_h_GBq * 10.0
+            };
+          }
+          return next;
+        });
+      }
+    }
+  }, [searchParams]);
 
   const [targets, setTargets] = useState<Target3D[]>([
     { id: 1, name: 'Operator Console Alpha', x: 6, y: 5, z: 1.5 },
@@ -74,36 +112,48 @@ const Spatial3DModule: React.FC = () => {
     { id: 1, name: 'Concrete Shield Wall', x: 5, y: 6.5, z: 1.5, w: 4, l: 0.5, h: 3, material: 'CONCRETE', tvl_cm: 14.7 }
   ]);
 
-  // Fast math intersection for Ray-AABB volumetric slices
-  const computeAABBIntersectionFraction = (sx: number, sy: number, sz: number, px: number, py: number, pz: number, sld: ShieldBlock) => {
-    const dx = px - sx; const dy = py - sy; const dz = pz - sz;
-    let tmin = 0.0; let tmax = 1.0;
-
-    const bMinX = sld.x - sld.w / 2; const bMaxX = sld.x + sld.w / 2;
-    if (dx !== 0) {
-      const tx1 = (bMinX - sx) / dx; const tx2 = (bMaxX - sx) / dx;
-      tmin = Math.max(tmin, Math.min(tx1, tx2)); tmax = Math.min(tmax, Math.max(tx1, tx2));
-    } else if (sx < bMinX || sx > bMaxX) return 0;
-
-    const bMinY = sld.y - sld.l / 2; const bMaxY = sld.y + sld.l / 2;
-    if (dy !== 0) {
-      const ty1 = (bMinY - sy) / dy; const ty2 = (bMaxY - sy) / dy;
-      tmin = Math.max(tmin, Math.min(ty1, ty2)); tmax = Math.min(tmax, Math.max(ty1, ty2));
-    } else if (sy < bMinY || sy > bMaxY) return 0;
-
-    const bMinZ = sld.z - sld.h / 2; const bMaxZ = sld.z + sld.h / 2;
-    if (dz !== 0) {
-      const tz1 = (bMinZ - sz) / dz; const tz2 = (bMaxZ - sz) / dz;
-      tmin = Math.max(tmin, Math.min(tz1, tz2)); tmax = Math.min(tmax, Math.max(tz1, tz2));
-    } else if (sz < bMinZ || sz > bMaxZ) return 0;
-
-    return (tmax >= tmin) ? (tmax - tmin) : 0;
+  const computeBroadBeamTransmission3D = (
+    sx: number,
+    sy: number,
+    sz: number,
+    px: number,
+    py: number,
+    pz: number,
+    energyMeV: number
+  ): number => {
+    let trans = 1.0;
+    const eMeV = Math.max(0.02, energyMeV || 0.6617);
+    for (let sh = 0; sh < shields.length; sh++) {
+      const sld = shields[sh];
+      const chordM = intersectRayAABB3D(sx, sy, sz, px, py, pz, {
+        xMin: sld.x - sld.w / 2,
+        xMax: sld.x + sld.w / 2,
+        yMin: sld.y - sld.l / 2,
+        yMax: sld.y + sld.l / 2,
+        zMin: sld.z - sld.h / 2,
+        zMax: sld.z + sld.h / 2
+      });
+      if (chordM > 0) {
+        const chordCm = chordM * 100.0;
+        const matSpec = SHIELDING_MATERIALS[sld.material];
+        if (matSpec?.xcomKey) {
+          const xcom = evaluateXCOMAttenuation(matSpec.xcomKey, eMeV);
+          const mfp = xcom.muLinear * chordCm;
+          const gp = evaluateGPBuildup(matSpec.xcomKey, eMeV, mfp);
+          trans *= gp.B * Math.exp(-mfp);
+        } else {
+          const decades = chordCm / Math.max(0.1, sld.tvl_cm);
+          trans *= Math.pow(10, -decades);
+        }
+      }
+    }
+    return trans;
   };
 
   // Compute 3D Voxel Engine Matrix
   const { volX, volY, volZ, volV } = useMemo(() => {
-    const resolutionXY = 22;
-    const resolutionZ = 10;
+    const resolutionXY = 20;
+    const resolutionZ = 9;
 
     const stepX = dimX / resolutionXY;
     const stepY = dimY / resolutionXY;
@@ -126,19 +176,17 @@ const Spatial3DModule: React.FC = () => {
             const dx = px - src.x;
             const dy = py - src.y;
             const dz = pz - src.z;
-            const dist_cm = Math.max(1, Math.sqrt(dx * dx + dy * dy + dz * dz) * 100);
-
-            let attenuationFactor = 1;
-            for (let sh = 0; sh < shields.length; sh++) {
-              const fract = computeAABBIntersectionFraction(src.x, src.y, src.z, px, py, pz, shields[sh]);
-              if (fract > 0) {
-                const distInside_cm = fract * dist_cm;
-                const decades = distInside_cm / shields[sh].tvl_cm;
-                attenuationFactor *= Math.pow(10, decades);
-              }
-            }
-
-            d += ((src.activity_MBq * src.gamma_uSv) / (dist_cm * dist_cm)) / attenuationFactor;
+            const dist_cm = Math.max(10, Math.sqrt(dx * dx + dy * dy + dz * dz) * 100);
+            const trans = computeBroadBeamTransmission3D(
+              src.x,
+              src.y,
+              src.z,
+              px,
+              py,
+              pz,
+              src.energyMeV ?? 0.6617
+            );
+            d += ((src.activity_MBq * src.gamma_uSv) / (dist_cm * dist_cm)) * trans;
           }
 
           X.push(px);
@@ -158,19 +206,17 @@ const Spatial3DModule: React.FC = () => {
       const dx = t.x - src.x;
       const dy = t.y - src.y;
       const dz = t.z - src.z;
-      const dist_cm = Math.max(1, Math.sqrt(dx * dx + dy * dy + dz * dz) * 100);
-
-      let attenuationFactor = 1;
-      for (let sh = 0; sh < shields.length; sh++) {
-        const fract = computeAABBIntersectionFraction(src.x, src.y, src.z, t.x, t.y, t.z, shields[sh]);
-        if (fract > 0) {
-          const distInside_cm = fract * dist_cm;
-          const decades = distInside_cm / shields[sh].tvl_cm;
-          attenuationFactor *= Math.pow(10, decades);
-        }
-      }
-
-      d += ((src.activity_MBq * src.gamma_uSv) / (dist_cm * dist_cm)) / attenuationFactor;
+      const dist_cm = Math.max(10, Math.sqrt(dx * dx + dy * dy + dz * dz) * 100);
+      const trans = computeBroadBeamTransmission3D(
+        src.x,
+        src.y,
+        src.z,
+        t.x,
+        t.y,
+        t.z,
+        src.energyMeV ?? 0.6617
+      );
+      d += ((src.activity_MBq * src.gamma_uSv) / (dist_cm * dist_cm)) * trans;
     });
     return d;
   };
@@ -215,6 +261,25 @@ const Spatial3DModule: React.FC = () => {
       totalShields: shields.length
     };
   }, [sources, targets, shields]);
+
+  useEffect(() => {
+    const primaryIso = sources[0]?.nuclide || 'Cs-137';
+    setLiveModuleTelemetry({
+      moduleId: 'spatial-3d',
+      moduleTitle: 'M04 3D Volumetric Shielding Workspace',
+      regimeSummary: `${primaryIso} (${(analytics.totalMBq / 1000.0).toFixed(2)} GBq) • Peak Sensor: ${analytics.maxSensorDose.toFixed(2)} µSv/h`,
+      parameters: {
+        'Nuclide': primaryIso,
+        'Activity (GBq)': Number((analytics.totalMBq / 1000.0).toPrecision(6)),
+        'Room Volume': `${dimX}×${dimY}×${dimZ} m`,
+        'Shield Blocks': analytics.totalShields
+      },
+      computedMetrics: {
+        'Critical Sensor': analytics.worstSensor,
+        'Peak Sensor Dose Rate': `${analytics.maxSensorDose.toFixed(2)} µSv/h`
+      }
+    });
+  }, [sources, analytics, dimX, dimY, dimZ, setLiveModuleTelemetry]);
 
   const dossierPayload: CalculationDossierPayload = useMemo(() => ({
     reportTitle: '3D Volumetric Shielding & Sensor Network Dossier',

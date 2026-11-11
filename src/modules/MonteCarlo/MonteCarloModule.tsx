@@ -1,9 +1,11 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { runMonteCarloSimulation, type MonteCarloConfig, type MonteCarloResult } from '../../workers/monteCarloWorker';
 import { useRegulatory } from '../../context/RegulatoryContext';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
 import VerificationBadge from '../../components/VerificationBadge';
+import { getCanonicalNuclide } from '../../utils/canonicalNuclidePhysics';
 
 interface PresetSource {
   name: string;
@@ -21,38 +23,117 @@ const PRESET_SOURCES: PresetSource[] = [
 ];
 
 export const MonteCarloModule: React.FC = () => {
-  const { currentFramework } = useRegulatory();
+  const [searchParams] = useSearchParams();
+  const { currentFramework, setLiveModuleTelemetry } = useRegulatory();
   const [isDossierOpen, setIsDossierOpen] = useState<boolean>(false);
   const [materialId, setMaterialId] = useState<MonteCarloConfig['materialId']>('lead');
   const [thickness_cm, setThickness_cm] = useState<number>(5.0);
-  const [energy_MeV, setEnergy_MeV] = useState<number>(0.6617);
+  const [energy_MeV, setEnergy_MeV] = useState<number>(() => {
+    const eParam = searchParams.get('energyMeV');
+    if (eParam && !isNaN(parseFloat(eParam)) && parseFloat(eParam) > 0) {
+      return Math.max(0.05, Math.min(10.0, parseFloat(eParam)));
+    }
+    const nuc = searchParams.get('nuclide') || searchParams.get('isotope');
+    const spec = nuc ? getCanonicalNuclide(nuc) : null;
+    return spec && spec.principalPhotonMeV > 0 ? Math.max(0.05, spec.principalPhotonMeV) : 0.6617;
+  });
   const [histories, setHistories] = useState<number>(50000);
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [result, setResult] = useState<MonteCarloResult | null>(null);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const workerRef = useRef<Worker | null>(null);
+
+  useEffect(() => {
+    const eParam = searchParams.get('energyMeV');
+    if (eParam && !isNaN(parseFloat(eParam)) && parseFloat(eParam) > 0) {
+      setEnergy_MeV(Math.max(0.05, Math.min(10.0, parseFloat(eParam))));
+      return;
+    }
+    const nuc = searchParams.get('nuclide') || searchParams.get('isotope');
+    if (nuc) {
+      const spec = getCanonicalNuclide(nuc);
+      if (spec && spec.principalPhotonMeV > 0) {
+        setEnergy_MeV(Math.max(0.05, Math.min(3.0, spec.principalPhotonMeV)));
+      }
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    return () => {
+      if (workerRef.current) {
+        workerRef.current.terminate();
+        workerRef.current = null;
+      }
+    };
+  }, []);
+
+  const executeSimulation = useCallback(() => {
+    setIsRunning(true);
+    const config: MonteCarloConfig = {
+      materialId,
+      thickness_cm,
+      initialEnergy_MeV: energy_MeV,
+      histories,
+      sampleTracksCount: 120
+    };
+
+    try {
+      if (typeof Worker !== 'undefined') {
+        if (!workerRef.current) {
+          workerRef.current = new Worker(
+            new URL('../../workers/monteCarloWorker.ts', import.meta.url),
+            { type: 'module' }
+          );
+        }
+        workerRef.current.onmessage = (ev: MessageEvent<MonteCarloResult>) => {
+          setResult(ev.data);
+          setIsRunning(false);
+        };
+        workerRef.current.onerror = () => {
+          const fallback = runMonteCarloSimulation(config);
+          setResult(fallback);
+          setIsRunning(false);
+        };
+        workerRef.current.postMessage(config);
+        return;
+      }
+    } catch {
+      // Fall back cleanly if Worker instantiation is restricted
+    }
+
+    setTimeout(() => {
+      const res = runMonteCarloSimulation(config);
+      setResult(res);
+      setIsRunning(false);
+    }, 16);
+  }, [materialId, thickness_cm, energy_MeV, histories]);
 
   // Run initial simulation on mount
   useEffect(() => {
     executeSimulation();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const executeSimulation = () => {
-    setIsRunning(true);
-    // Use setTimeout so the UI renders the loader immediately
-    setTimeout(() => {
-      const config: MonteCarloConfig = {
-        materialId,
-        thickness_cm,
-        initialEnergy_MeV: energy_MeV,
-        histories,
-        sampleTracksCount: 120
-      };
-      const res = runMonteCarloSimulation(config);
-      setResult(res);
-      setIsRunning(false);
-    }, 20);
-  };
+  useEffect(() => {
+    if (!result) return;
+    setLiveModuleTelemetry({
+      moduleId: 'monte-carlo',
+      moduleTitle: 'M23 Monte Carlo Photon Transport',
+      regimeSummary: `${materialId.toUpperCase()} (${thickness_cm.toFixed(1)} cm) • E₀ = ${energy_MeV.toFixed(3)} MeV • N = ${histories.toLocaleString()}`,
+      parameters: {
+        'Shield Material': materialId.toUpperCase(),
+        'Slab Thickness (cm)': thickness_cm,
+        'Energy (MeV)': Number(energy_MeV.toFixed(4)),
+        'Histories': histories
+      },
+      computedMetrics: {
+        'Buildup Factor B': result.buildupFactor.toFixed(3),
+        'Transmission': `${(result.transmissionFraction * 100).toFixed(3)}%`,
+        'Backscatter Albedo': `${(result.backscatterFraction * 100).toFixed(2)}%`
+      }
+    });
+  }, [result, materialId, thickness_cm, energy_MeV, histories, setLiveModuleTelemetry]);
 
   // Draw 2D photon tracks on canvas whenever results update
   useEffect(() => {

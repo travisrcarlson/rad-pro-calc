@@ -89,16 +89,39 @@ export const TacticalCompassRose: React.FC<TacticalCompassRoseProps> = ({
     return `M ${center} ${center} L ${pStart.x.toFixed(1)} ${pStart.y.toFixed(1)} A ${radius - 2} ${radius - 2} 0 ${largeArcFlag} 1 ${pEnd.x.toFixed(1)} ${pEnd.y.toFixed(1)} Z`;
   };
 
-  // Needle Coordinates
-  // Wind Origin Needle (Points from outer perimeter inward toward center)
-  const originTip = polarToXY(radius - 6, normalizedOrigin);
-  const originBaseL = polarToXY(radius - 18, (normalizedOrigin - 10 + 360) % 360);
-  const originBaseR = polarToXY(radius - 18, (normalizedOrigin + 10 + 360) % 360);
+  // Unit vector along any compass bearing (0° = North / -Y, 90° = East / +X)
+  const bearingUnitVec = (deg: number) => {
+    const rad = ((deg - 90) * Math.PI) / 180;
+    return { ux: Math.cos(rad), uy: Math.sin(rad) };
+  };
 
-  // Downwind Plume Needle (Points from center outward toward downwind bearing)
-  const downwindTip = polarToXY(radius - 4, downwindBearing);
-  const downwindBaseL = polarToXY(16, (downwindBearing - 90 + 360) % 360);
-  const downwindBaseR = polarToXY(16, (downwindBearing + 90 + 360) % 360);
+  // Helper to place a point at (along-ray distance r, perpendicular offset p)
+  const rayPoint = (deg: number, r: number, perpOffset = 0) => {
+    const { ux, uy } = bearingUnitVec(deg);
+    // Perpendicular unit vector (+90° clockwise)
+    const px = -uy;
+    const py = ux;
+    return {
+      x: center + ux * r + px * perpOffset,
+      y: center + uy * r + py * perpOffset
+    };
+  };
+
+  // Wind Origin Vector (Cyan — enters at outer perimeter and points INWARD toward center hub)
+  const originStart = rayPoint(normalizedOrigin, radius - 3, 0);
+  const originShaftEnd = rayPoint(normalizedOrigin, 15, 0);
+  const originTip = rayPoint(normalizedOrigin, 9.5, 0);
+  const originWingL = rayPoint(normalizedOrigin, 18.5, -4.0);
+  const originWingR = rayPoint(normalizedOrigin, 18.5, 4.0);
+  const originNotch = rayPoint(normalizedOrigin, 16.0, 0);
+
+  // Downwind Plume Vector (Red/Coral — slim shaft from center hub OUTWARD to swept pointer tip)
+  const downwindShaftStart = rayPoint(downwindBearing, 7.5, 0);
+  const downwindShaftEnd = rayPoint(downwindBearing, radius - 11.5, 0);
+  const downwindTip = rayPoint(downwindBearing, radius - 4.0, 0);
+  const downwindWingL = rayPoint(downwindBearing, radius - 14.0, -4.6);
+  const downwindNotch = rayPoint(downwindBearing, radius - 11.2, 0);
+  const downwindWingR = rayPoint(downwindBearing, radius - 14.0, 4.6);
 
   // Compass Sector Code for current downwind
   const sectorNames16 = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
@@ -173,36 +196,45 @@ export const TacticalCompassRose: React.FC<TacticalCompassRoseProps> = ({
             );
           })}
 
-          {/* Center Hub */}
-          <circle cx={center} cy={center} r="6" fill="#00e5ff" opacity="0.6" />
-          <circle cx={center} cy={center} r="2.5" fill="#fff" />
-
-          {/* Downwind Plume Arrow (Orange / Red - Outward) */}
-          <polygon
-            points={`${downwindTip.x},${downwindTip.y} ${downwindBaseL.x},${downwindBaseL.y} ${downwindBaseR.x},${downwindBaseR.y}`}
-            fill="#ef4444"
-            stroke="#f87171"
-            strokeWidth="1"
-          />
-
-          {/* Wind Origin Arrow (Cyan - Inward Pointer from Perimeter) */}
-          <polygon
-            points={`${originTip.x},${originTip.y} ${originBaseL.x},${originBaseL.y} ${originBaseR.x},${originBaseR.y}`}
-            fill="#38bdf8"
-            stroke="#00e5ff"
-            strokeWidth="1"
-          />
-
-          {/* Downwind Centerline Ray */}
+          {/* Upwind Origin Vector (Cyan — perimeter pip, dashed inflow shaft, inward swept chevron) */}
+          <circle cx={originStart.x} cy={originStart.y} r="2.2" fill="#38bdf8" />
           <line
-            x1={center}
-            y1={center}
-            x2={downwindTip.x}
-            y2={downwindTip.y}
-            stroke="#ef4444"
+            x1={originStart.x}
+            y1={originStart.y}
+            x2={originShaftEnd.x}
+            y2={originShaftEnd.y}
+            stroke="#38bdf8"
             strokeWidth="1.5"
-            strokeDasharray="2,2"
+            strokeDasharray="3,2.5"
+            opacity="0.85"
           />
+          <polygon
+            points={`${originTip.x.toFixed(1)},${originTip.y.toFixed(1)} ${originWingL.x.toFixed(1)},${originWingL.y.toFixed(1)} ${originNotch.x.toFixed(1)},${originNotch.y.toFixed(1)} ${originWingR.x.toFixed(1)},${originWingR.y.toFixed(1)}`}
+            fill="#38bdf8"
+            stroke="#0284c7"
+            strokeWidth="0.7"
+          />
+
+          {/* Downwind Plume Vector (Slim solid shaft + sleek swept pointer tip — never obscures bezel labels) */}
+          <line
+            x1={downwindShaftStart.x}
+            y1={downwindShaftStart.y}
+            x2={downwindShaftEnd.x}
+            y2={downwindShaftEnd.y}
+            stroke="#ef4444"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+          />
+          <polygon
+            points={`${downwindTip.x.toFixed(1)},${downwindTip.y.toFixed(1)} ${downwindWingL.x.toFixed(1)},${downwindWingL.y.toFixed(1)} ${downwindNotch.x.toFixed(1)},${downwindNotch.y.toFixed(1)} ${downwindWingR.x.toFixed(1)},${downwindWingR.y.toFixed(1)}`}
+            fill="#ef4444"
+            stroke="#fca5a5"
+            strokeWidth="0.8"
+          />
+
+          {/* Machined Center Hub (rendered on top of vector shafts) */}
+          <circle cx={center} cy={center} r="5.5" fill="#09111f" stroke="#38bdf8" strokeWidth="1.4" />
+          <circle cx={center} cy={center} r="2.2" fill="#f8fafc" />
         </svg>
       </div>
 
@@ -225,7 +257,7 @@ export const TacticalCompassRose: React.FC<TacticalCompassRoseProps> = ({
             <button
               key={c.label}
               type="button"
-              className="btn btn-secondary"
+              className={`btn btn-secondary ${normalizedOrigin === c.deg ? 'active' : ''}`}
               onClick={() => onChange(c.deg)}
               style={{
                 fontSize: '0.66rem',

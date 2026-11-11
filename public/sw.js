@@ -1,5 +1,5 @@
 // RadPro Analyst Progressive Web App (PWA) Service Worker — Offline Field Edition
-const CACHE_NAME = 'radpro-cache-v3';
+const CACHE_NAME = 'radpro-cache-v4';
 const TILE_CACHE_NAME = 'radpro-map-tiles-v1';
 const MAX_CACHED_TILES = 350;
 
@@ -10,6 +10,33 @@ const STATIC_ASSETS = [
   '/favicon.svg'
 ];
 
+async function warmLazyChunksInBackground(cache) {
+  try {
+    const res = await fetch('/precache-manifest.json', { cache: 'no-cache' });
+    if (!res.ok) return;
+    const manifest = await res.json();
+    if (!manifest || !Array.isArray(manifest.assets)) return;
+    // Warm lazy JS/CSS module chunks sequentially in small batches so offline vaults never hit ChunkLoadError
+    const batchSize = 6;
+    for (let i = 0; i < manifest.assets.length; i += batchSize) {
+      const batch = manifest.assets.slice(i, i + batchSize);
+      await Promise.allSettled(
+        batch.map(async (assetUrl) => {
+          const existing = await cache.match(assetUrl);
+          if (!existing) {
+            const net = await fetch(assetUrl);
+            if (net && net.status === 200) {
+              await cache.put(assetUrl, net);
+            }
+          }
+        })
+      );
+    }
+  } catch {
+    // Offline or dev server (no precache-manifest.json) — gracefully skip
+  }
+}
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
@@ -19,18 +46,22 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(
+    (async () => {
+      const keys = await caches.keys();
+      await Promise.all(
         keys.map((key) => {
           if (key !== CACHE_NAME && key !== TILE_CACHE_NAME) {
             return caches.delete(key);
           }
           return undefined;
         })
-      )
-    )
+      );
+      await self.clients.claim();
+      const cache = await caches.open(CACHE_NAME);
+      // Kick off non-blocking background precache of all lazy-loaded module chunks
+      warmLazyChunksInBackground(cache);
+    })()
   );
-  self.clients.claim();
 });
 
 self.addEventListener('message', (event) => {
@@ -47,7 +78,7 @@ self.addEventListener('fetch', (event) => {
   // Bypass caching for external live AI / weather APIs so offline errors fail fast & cleanly
   if (
     url.hostname.includes('generativelanguage.googleapis.com') ||
-    url.hostname.includes('localhost') && url.port === '11434' ||
+    (url.hostname.includes('localhost') && url.port === '11434') ||
     url.hostname.includes('open-meteo.com')
   ) {
     return;

@@ -1,7 +1,7 @@
-import reactorsDataRaw from '../data/global_reactors_database.json';
-import detonationsDataRaw from '../data/nuclear_detonations_database.json';
-import incidentsDataRaw from '../data/historical_incidents_database.json';
-import { type CalculationDossierPayload } from './auditDossierService';
+import reactorsDataRaw from '../data/global_reactors_database.json' with { type: 'json' };
+import detonationsDataRaw from '../data/nuclear_detonations_database.json' with { type: 'json' };
+import incidentsDataRaw from '../data/historical_incidents_database.json' with { type: 'json' };
+import type { CalculationDossierPayload } from './auditDossierService.ts';
 
 export interface ReactorUnit {
   unitName: string;
@@ -76,7 +76,7 @@ export interface NuclearDetonationRecord {
   operationSeries?: string | null;
 }
 
-import { CTBTO_STATIONS, type CTBTOStationRecord } from './seismicYieldInversionService';
+import { CTBTO_STATIONS, type CTBTOStationRecord } from './seismicYieldInversionService.ts';
 
 export type GeospatialCategory = 'reactor' | 'detonation' | 'incident' | 'ctbto';
 

@@ -5,6 +5,8 @@ import { BlockMath } from 'react-katex';
 import VerificationBadge from '../../components/VerificationBadge';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
+import { getCanonicalNuclide, parseActivityToGBq } from '../../utils/canonicalNuclidePhysics';
+import { useRegulatory } from '../../context/RegulatoryContext';
 
 const Plot = (PlotComponent as any).default || PlotComponent;
 
@@ -132,6 +134,7 @@ const BODY_SILHOUETTE_PATH =
 
 const InternalDosimetryModule: React.FC = () => {
   const [searchParams] = useSearchParams();
+  const { currentFramework, setLiveModuleTelemetry } = useRegulatory();
   const [nuclideKey, setNuclideKey] = useState<string>('Iodine-131');
   const [route, setRoute] = useState<'Inhalation' | 'Ingestion' | 'Injection'>('Inhalation');
   const [intakeActivity, setIntakeActivity] = useState<number>(100); // in kBq
@@ -147,20 +150,23 @@ const InternalDosimetryModule: React.FC = () => {
   const [radonVentilationACH, setRadonVentilationACH] = useState<number>(0.50); // Air changes per hour
 
   useEffect(() => {
-    const iso = searchParams.get('isotope');
-    const actGBq = searchParams.get('activity');
+    const iso = searchParams.get('nuclide') || searchParams.get('isotope');
+    const actRaw = searchParams.get('activity');
+    const unitRaw = searchParams.get('unit') || 'GBq';
     if (iso) {
-      if (iso.includes('131')) setNuclideKey('Iodine-131');
-      else if (iso.includes('137')) setNuclideKey('Cesium-137');
-      else if (iso.includes('90')) setNuclideKey('Strontium-90');
-      else if (iso.includes('239') || iso.includes('241')) setNuclideKey('Plutonium-239');
-      else if (iso.includes('3')) setNuclideKey('Tritium (H-3)');
+      const norm = iso.toUpperCase();
+      if (norm.includes('131')) setNuclideKey('Iodine-131');
+      else if (norm.includes('137')) setNuclideKey('Cesium-137');
+      else if (norm.includes('90')) setNuclideKey('Strontium-90');
+      else if (norm.includes('239') || norm.includes('241')) setNuclideKey('Plutonium-239');
+      else if (norm.includes('H-3') || norm === 'H3' || norm.includes('TRITIUM')) setNuclideKey('Tritium (H-3)');
     }
-    if (actGBq) {
-      const gBq = parseFloat(actGBq);
-      if (!isNaN(gBq) && gBq > 0) {
+    if (actRaw) {
+      const parsedVal = parseFloat(actRaw);
+      if (!isNaN(parsedVal) && parsedVal > 0) {
+        const gBq = parseActivityToGBq(parsedVal, unitRaw);
         // Convert GBq to kBq (clamped to practical internal intake range)
-        const kBq = Math.min(100000, Math.max(1, gBq * 1e6));
+        const kBq = Math.min(100000, Math.max(0.1, gBq * 1e6));
         setIntakeActivity(Number(kBq.toFixed(1)));
       }
     }
@@ -209,6 +215,17 @@ const InternalDosimetryModule: React.FC = () => {
 
   const nuclide = useMemo(() => RADIONUCLIDES[nuclideKey], [nuclideKey]);
 
+  const effectiveDoseCoeffSvBq = useMemo(() => {
+    const canon = getCanonicalNuclide(nuclide.symbol);
+    if (route === 'Inhalation') {
+      return canon?.e50InhalByClass_Sv_Bq[absorptionClass] ?? nuclide.inhalationDoseCoeff;
+    }
+    if (route === 'Injection') {
+      return canon?.e50Injection_Sv_Bq ?? nuclide.ingestionDoseCoeff;
+    }
+    return canon?.e50Ingest_Sv_Bq ?? nuclide.ingestionDoseCoeff;
+  }, [nuclide, route, absorptionClass]);
+
   // Runge-Kutta/Euler Numerical Simulator for Compartment Kinetics
   const simulation = useMemo(() => {
     const activityBq = intakeActivity * 1000;
@@ -252,7 +269,7 @@ const InternalDosimetryModule: React.FC = () => {
     let organ = 0;
     let excreted = 0;
 
-    const doseCoeff = route === 'Inhalation' ? nuclide.inhalationDoseCoeff : nuclide.ingestionDoseCoeff;
+    const doseCoeff = effectiveDoseCoeffSvBq;
 
     for (let step = 0; step <= stepsCount; step++) {
       const t = step * dt;
@@ -287,7 +304,7 @@ const InternalDosimetryModule: React.FC = () => {
     }
 
     return { time, intakeArr, bloodArr, organArr, excretionArr, doseArr };
-  }, [nuclide, route, intakeActivity, absorptionClass, timespan]);
+  }, [nuclide, route, intakeActivity, absorptionClass, timespan, effectiveDoseCoeffSvBq]);
 
   // Find simulated values at the currently selected day
   const scrubbedValues = useMemo(() => {
@@ -308,15 +325,36 @@ const InternalDosimetryModule: React.FC = () => {
 
   // Max dose commits at infinite time
   const maxCommittedDose = useMemo(() => {
-    const doseCoeff = route === 'Inhalation' ? nuclide.inhalationDoseCoeff : nuclide.ingestionDoseCoeff;
-    const doseSv = intakeActivity * 1000 * doseCoeff;
+    const doseSv = intakeActivity * 1000 * effectiveDoseCoeffSvBq;
     return doseSv * 1000; // to mSv
-  }, [nuclide, route, intakeActivity]);
+  }, [intakeActivity, effectiveDoseCoeffSvBq]);
+
+  const annualLimitMSv = currentFramework.limits.occupationalAnnualEffective_mSv;
+
+  useEffect(() => {
+    setLiveModuleTelemetry({
+      moduleId: 'internal-dosimetry',
+      moduleTitle: 'Internal Dosimetry & Biokinetic Clearance',
+      regimeSummary: `${nuclide.symbol} (${route}${route === 'Inhalation' ? ` Type ${absorptionClass}` : ''}) • E(50) = ${maxCommittedDose.toFixed(3)} mSv`,
+      parameters: {
+        'Nuclide': nuclide.symbol,
+        'Pathway': route,
+        'Solubility Class': route === 'Inhalation' ? `Type ${absorptionClass}` : 'Systemic / GI',
+        'Intake Activity': `${intakeActivity} kBq`
+      },
+      computedMetrics: {
+        'Committed E(50)': `${maxCommittedDose.toFixed(4)} mSv`,
+        'Dose Coeff e(50)': `${effectiveDoseCoeffSvBq.toExponential(2)} Sv/Bq`,
+        'Organ Burden': `${scrubbedValues.organ.toFixed(3)} kBq`,
+        'Annual Limit': `${annualLimitMSv} mSv`
+      }
+    });
+  }, [nuclide.symbol, route, absorptionClass, intakeActivity, maxCommittedDose, effectiveDoseCoeffSvBq, scrubbedValues.organ, annualLimitMSv, setLiveModuleTelemetry]);
 
   const dossierPayload: CalculationDossierPayload = useMemo(() => ({
     reportTitle: 'Internal Dosimetry & Biokinetic Intake Assessment Dossier',
     moduleName: 'Module 3: Internal Dosimetry & ICRP Biokinetic Clearance Model',
-    statuteCitation: 'ICRP Publication 68 / ICRP Publication 30 / 10 CFR 20 Subpart C',
+    statuteCitation: 'ICRP Publication 68 / ICRP Publication 119 / 10 CFR 20 Subpart C',
     verificationTestId: 'VTEST-22',
     operatorName: 'Internal Dosimetrist / Health Physicist',
     operatorCredentials: 'Certified Health Physicist (CHP) / Medical Bioassay Specialist',
@@ -332,13 +370,13 @@ const InternalDosimetryModule: React.FC = () => {
       { label: 'Evaluation Day', value: selectedDay, unit: 'days' }
     ],
     outputs: [
-      { label: '50-Year Committed Effective Dose', value: maxCommittedDose.toFixed(3), unit: 'mSv', status: maxCommittedDose > 20 ? 'WARNING' : 'PASS' },
+      { label: '50-Year Committed Effective Dose', value: maxCommittedDose.toFixed(3), unit: 'mSv', status: maxCommittedDose > annualLimitMSv ? 'WARNING' : 'PASS' },
       { label: 'Current Accumulated Dose', value: scrubbedValues.dose.toFixed(4), unit: 'mSv', status: 'PASS' },
       { label: 'Critical Organ Burden', value: scrubbedValues.organ.toFixed(2), unit: 'kBq', status: 'PASS' },
       { label: 'Whole Body Retention', value: (scrubbedValues.intake + scrubbedValues.blood + scrubbedValues.organ).toFixed(2), unit: 'kBq', status: 'PASS' },
       { label: 'Total Excreted Activity', value: scrubbedValues.excretion.toFixed(2), unit: 'kBq', status: 'PASS' }
     ]
-  }), [nuclide, route, intakeActivity, absorptionClass, selectedDay, maxCommittedDose, scrubbedValues]);
+  }), [nuclide, route, intakeActivity, absorptionClass, selectedDay, maxCommittedDose, scrubbedValues, annualLimitMSv]);
 
   return (
     <div className="internal-dosimetry-module">

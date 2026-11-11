@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import Plot from 'react-plotly.js';
 import nuclidesData from '../../../data/nuclides.json';
 import { BlockMath } from 'react-katex';
@@ -6,10 +7,11 @@ import { useRegulatory } from '../../../context/RegulatoryContext';
 import VerificationBadge from '../../../components/VerificationBadge';
 import { AuditDossierModal } from '../../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../../services/auditDossierService';
+import { getCanonicalNuclide } from '../../../utils/canonicalNuclidePhysics';
 
-const getAliInhal = (n: any) => n?.['ALI Inhal. (μCi)'] ?? n?.['ALI Inhal. (µCi)'];
-const getAliIngest = (n: any) => n?.['ALI Ingest. (μCi)'] ?? n?.['ALI Ingest. (µCi)'];
-const getDac = (n: any) => n?.['DAC (μCi/mL)'] ?? n?.['DAC (µCi/mL)'];
+const getAliInhal = (n: any) => n?.['ALI Inhal. (µCi)'] ?? n?.['ALI Inhal. (μCi)'];
+const getAliIngest = (n: any) => n?.['ALI Ingest. (µCi)'] ?? n?.['ALI Ingest. (μCi)'];
+const getDac = (n: any) => n?.['DAC (µCi/mL)'] ?? n?.['DAC (μCi/mL)'];
 
 type LungAbsorptionType = 'F' | 'M' | 'S';
 
@@ -66,20 +68,65 @@ const RESPIRATOR_APF_OPTIONS = [
 ];
 
 const InternalDoseCalc: React.FC = () => {
-  const { currentFramework } = useRegulatory();
+  const {
+    currentFramework,
+    unitSystem,
+    formatDoseMSv,
+    setLiveModuleTelemetry
+  } = useRegulatory();
+  const [searchParams] = useSearchParams();
   const [isDossierOpen, setIsDossierOpen] = useState<boolean>(false);
   const nuclides = nuclidesData as any[];
-  const validNuclides = nuclides.filter(n => {
+  const validNuclides = useMemo(() => nuclides.filter(n => {
     const inhal = parseFloat(String(getAliInhal(n) ?? '0'));
     const ingest = parseFloat(String(getAliIngest(n) ?? '0'));
-    return inhal > 0 || ingest > 0;
-  });
+    const hasCanon = getCanonicalNuclide(n?.Symbol || '') !== null;
+    return inhal > 0 || ingest > 0 || hasCanon;
+  }), [nuclides]);
 
   const [selectedNuclide, setSelectedNuclide] = useState(validNuclides[0] || nuclides[0]);
   const [intake, setIntake] = useState<number>(1000);
   const [intakeUnit, setIntakeUnit] = useState<number>(1); // 1 = Bq, 1000 = kBq, etc.
   const [pathway, setPathway] = useState<'inhalation' | 'ingestion'>('inhalation');
   const [lungType, setLungType] = useState<LungAbsorptionType>('M');
+
+  useEffect(() => {
+    const nucParam = searchParams.get('nuclide') || searchParams.get('isotope');
+    const pathParam = searchParams.get('pathway')?.toLowerCase();
+    const lungParam = searchParams.get('lungType')?.toUpperCase();
+    const intakeParam = searchParams.get('intake') || searchParams.get('activity');
+    const unitParam = searchParams.get('unit')?.toUpperCase();
+
+    if (nucParam) {
+      const match = validNuclides.find(
+        n =>
+          n.Symbol?.toLowerCase() === nucParam.toLowerCase() ||
+          n.Nuclide?.toLowerCase() === nucParam.toLowerCase() ||
+          n.Nuclide?.toLowerCase().includes(nucParam.toLowerCase())
+      );
+      if (match) setSelectedNuclide(match);
+    }
+    if (pathParam === 'inhalation' || pathParam === 'ingestion') {
+      setPathway(pathParam);
+    }
+    if (lungParam === 'F' || lungParam === 'M' || lungParam === 'S') {
+      setLungType(lungParam);
+    }
+    if (intakeParam !== null) {
+      const iv = parseFloat(intakeParam);
+      if (!isNaN(iv) && iv >= 0) {
+        setIntake(iv);
+        if (unitParam) {
+          if (unitParam === 'BQ') setIntakeUnit(1);
+          else if (unitParam === 'KBQ') setIntakeUnit(1000);
+          else if (unitParam === 'MBQ') setIntakeUnit(1000000);
+          else if (unitParam === 'GBQ') setIntakeUnit(1000000000);
+          else if (unitParam === 'UCI' || unitParam === 'µCI' || unitParam === 'ΜCI') setIntakeUnit(37000);
+          else if (unitParam === 'MCI') setIntakeUnit(37000000);
+        }
+      }
+    }
+  }, [searchParams, validNuclides]);
 
   // Airborne DAC Stay-Time & Respirator APF Calculator State
   const [airborneDacMultiple, setAirborneDacMultiple] = useState<number>(2.5);
@@ -95,11 +142,31 @@ const InternalDoseCalc: React.FC = () => {
   // 1 uCi = 37,000 Bq
   const aliBq = ali_uCi * 37000;
 
-  // Committed Effective Dose Coefficient e(50)
-  // US 10 CFR Part 20 Appendix B defines the stochastic ALI based on 5 rem = 50 mSv = 0.05 Sv
-  const lungMod = pathway === 'inhalation' ? LUNG_ABSORPTION_TYPES[lungType].doseModifier : 1.0;
-  const e50_base = aliBq > 0 ? 0.05 / aliBq : 0;
-  const e50 = e50_base * lungMod;
+  // Committed Effective Dose Coefficient e(50) in Sv/Bq (ICRP Publication 119 / 130 primary, nuclide table / 10 CFR 20 ALI fallback)
+  const canonicalNuclide = getCanonicalNuclide(selectedNuclide?.Symbol || selectedNuclide?.Nuclide || '');
+  const e50 = useMemo(() => {
+    if (pathway === 'inhalation') {
+      const canonInhal = canonicalNuclide?.e50InhalByClass_Sv_Bq?.[lungType];
+      if (typeof canonInhal === 'number' && canonInhal > 0) {
+        return canonInhal;
+      }
+      const rawInhal = parseFloat(String(selectedNuclide?.['e(50) Inhal. (Sv/Bq)'] ?? '0'));
+      if (rawInhal > 0) {
+        return rawInhal * LUNG_ABSORPTION_TYPES[lungType].doseModifier;
+      }
+      return aliBq > 0 ? (0.05 / aliBq) * LUNG_ABSORPTION_TYPES[lungType].doseModifier : 0;
+    } else {
+      const canonIngest = canonicalNuclide?.e50Ingest_Sv_Bq;
+      if (typeof canonIngest === 'number' && canonIngest > 0) {
+        return canonIngest;
+      }
+      const rawIngest = parseFloat(String(selectedNuclide?.['e(50) Ingest. (Sv/Bq)'] ?? '0'));
+      if (rawIngest > 0) {
+        return rawIngest;
+      }
+      return aliBq > 0 ? 0.05 / aliBq : 0;
+    }
+  }, [pathway, lungType, canonicalNuclide, selectedNuclide, aliBq]);
 
   // E(50) = I * e(50) = intakeBq * e50 (result in Sv, convert to mSv)
   const doseSv = intakeBq * e50;
@@ -110,10 +177,47 @@ const InternalDoseCalc: React.FC = () => {
   const dac_uCi_ml = parseFloat(String(getDac(selectedNuclide) ?? '0')) || 0;
   const dac_Bq_m3 = dac_uCi_ml * 37000 * 1000000; // 1 mL = 1e-6 m3
 
-  // Physical half-life in days (fallback to 365 days if not present)
-  const halfLifeSec = parseFloat(String(selectedNuclide?.HalfLifeSeconds ?? selectedNuclide?.['Half-life (s)'] ?? '31536000')) || 31536000;
+  // Physical half-life in days (fallback to 365 days only if absent)
+  const halfLifeSec = parseFloat(String(selectedNuclide?.['Half-Life (s)'] ?? selectedNuclide?.HalfLifeSeconds ?? selectedNuclide?.['Half-life (s)'] ?? '31536000')) || 31536000;
   const halfLifeDays = Math.max(halfLifeSec / 86400, 1e-4);
   const lambdaPhysDay = Math.LN2 / halfLifeDays;
+
+  useEffect(() => {
+    const symbol = String(selectedNuclide?.Symbol || '');
+    const nuclideName = String(selectedNuclide?.Nuclide || '');
+    setLiveModuleTelemetry({
+      moduleId: 'M1C_INTERNAL_DOSE',
+      moduleTitle: 'Module 1C — Internal Dosimetry E(50) & Bioassay Retention',
+      regimeSummary: `${nuclideName} (${symbol}) ${pathway === 'inhalation' ? `Inhalation Type ${lungType}` : 'Ingestion'} under ${currentFramework.shortCode} (${unitSystem})`,
+      parameters: {
+        nuclide: symbol,
+        pathway,
+        lungType: pathway === 'inhalation' ? lungType : 'HAT',
+        intakeBq,
+        e50_Sv_Bq: e50,
+        halfLifeSec
+      },
+      computedMetrics: {
+        committedEffectiveDose_mSv: Number(dose_mSv.toPrecision(6)),
+        dac_Bq_m3: Number(dac_Bq_m3.toPrecision(5)),
+        occupationalUtilizationPct: Number(((dose_mSv / occLimit_mSv) * 100).toFixed(2))
+      }
+    });
+  }, [
+    selectedNuclide,
+    pathway,
+    lungType,
+    intakeBq,
+    e50,
+    halfLifeSec,
+    dose_mSv,
+    dac_Bq_m3,
+    occLimit_mSv,
+    currentFramework.id,
+    currentFramework.shortCode,
+    unitSystem,
+    setLiveModuleTelemetry
+  ]);
 
   // Airborne DAC-Hour & Stay-Time Calculations (ICRP 66 Reference Worker B = 1.2 m³/h)
   const breathingRate_m3_h = 1.2;
@@ -347,15 +451,17 @@ const InternalDoseCalc: React.FC = () => {
           <div>
             <h3 style={{ marginBottom: '12px' }}>Committed Effective Dose, E(50)</h3>
 
-            <div style={{ fontSize: '2.5rem', color: 'var(--color-primary)', fontWeight: 'bold' }}>
-              {dose_mSv < 0.001 && dose_mSv > 0 ? dose_mSv.toExponential(2) : dose_mSv.toFixed(4)} mSv
+            <div style={{ fontSize: '2.3rem', color: 'var(--color-primary)', fontWeight: 'bold' }}>
+              {formatDoseMSv(dose_mSv)}
             </div>
-            <div style={{ fontSize: '1rem', color: 'var(--color-text-muted)' }}>
-              {(dose_mSv * 1000).toFixed(2)} µSv &nbsp;|&nbsp; {(dose_mSv * 100).toFixed(3)} mrem
+            <div style={{ fontSize: '0.95rem', color: 'var(--color-text-muted)' }}>
+              {dose_mSv < 0.001 && dose_mSv > 0 ? dose_mSv.toExponential(3) : dose_mSv.toFixed(4)} mSv &nbsp;|&nbsp; {(dose_mSv * 1000).toFixed(2)} µSv &nbsp;|&nbsp; {(dose_mSv * 100).toFixed(3)} mrem
             </div>
 
             <div style={{ marginTop: '12px', color: dose_mSv > occLimit_mSv ? 'var(--color-danger)' : 'var(--color-success)', fontWeight: 'bold' }}>
-              {dose_mSv > occLimit_mSv ? `⚠️ EXCEEDS ${occLimit_mSv} mSv OCCUPATIONAL LIMIT` : `✓ Within ${occLimit_mSv} mSv Occupational Limit (${currentFramework?.shortCode || 'Statutory'})`}
+              {dose_mSv > occLimit_mSv
+                ? `⚠️ EXCEEDS ${formatDoseMSv(occLimit_mSv)} OCCUPATIONAL LIMIT`
+                : `✓ Within ${formatDoseMSv(occLimit_mSv)} Occupational Limit (${currentFramework?.shortCode || 'Statutory'})`}
             </div>
 
             {/* Predicted Whole-Body Counter (WBC) Bioassay Checkpoints */}

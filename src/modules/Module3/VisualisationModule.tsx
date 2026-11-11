@@ -1,8 +1,12 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import PlotComponent from 'react-plotly.js';
 import VerificationBadge from '../../components/VerificationBadge';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
+import { useRegulatory } from '../../context/RegulatoryContext';
+import { getCanonicalNuclide, parseActivityToGBq } from '../../utils/canonicalNuclidePhysics';
+import { evaluateXCOMAttenuation, evaluateGPBuildup } from '../../utils/xcomAndGpBuildup';
 
 const Plot = (PlotComponent as any).default || PlotComponent;
 
@@ -14,7 +18,8 @@ interface RadSource {
   xM: number;
   yM: number;
   activityMBq: number;
-  gammaSI: number; // µSv·m²/MBq·h
+  gammaSI: number; // µSv·m²/(MBq·h) (= Γ_SI[µSv·m²/(GBq·h)] / 1000)
+  energyMeV?: number;
   isotopeName: string;
 }
 
@@ -54,7 +59,7 @@ const FACILITY_PRESETS: FacilityPreset[] = [
     description: 'Ir-192 gamma camera with concrete maze entrance wall preventing line-of-sight scatter to the operator console.',
     roomSizeM: 10,
     sources: [
-      { id: 's1', name: 'Ir-192 Radiography Projector', xM: 7.0, yM: 7.0, activityMBq: 1850000, gammaSI: 0.13, isotopeName: 'Ir-192 (50 Ci)' }
+      { id: 's1', name: 'Ir-192 Radiography Projector', xM: 7.0, yM: 7.0, activityMBq: 1850000, gammaSI: 0.1168, energyMeV: 0.38, isotopeName: 'Ir-192 (50 Ci)' }
     ],
     shields: [
       { id: 'b1', name: 'Primary Concrete Maze Wall', x1: 5.0, y1: 2.0, x2: 5.0, y2: 8.5, thicknessCm: 25.0, material: 'CONCRETE', tvlCm: 14.7, color: '#cbd5e1' },
@@ -67,8 +72,8 @@ const FACILITY_PRESETS: FacilityPreset[] = [
     description: 'Lead brick shielding castle in radiopharmacy dispensing cleanroom.',
     roomSizeM: 8,
     sources: [
-      { id: 's1', name: 'Tc-99m Generator Vial', xM: 4.0, yM: 4.0, activityMBq: 37000, gammaSI: 0.02, isotopeName: 'Tc-99m (1 Ci)' },
-      { id: 's2', name: 'I-131 Therapy Dose', xM: 4.5, yM: 4.2, activityMBq: 7400, gammaSI: 0.06, isotopeName: 'I-131 (200 mCi)' }
+      { id: 's1', name: 'Tc-99m Generator Vial', xM: 4.0, yM: 4.0, activityMBq: 37000, gammaSI: 0.0195, energyMeV: 0.1405, isotopeName: 'Tc-99m (1 Ci)' },
+      { id: 's2', name: 'I-131 Therapy Dose', xM: 4.5, yM: 4.2, activityMBq: 7400, gammaSI: 0.0522, energyMeV: 0.3645, isotopeName: 'I-131 (200 mCi)' }
     ],
     shields: [
       { id: 'b1', name: 'Lead Brick Castle (North)', x1: 3.2, y1: 4.8, x2: 5.2, y2: 4.8, thicknessCm: 5.0, material: 'LEAD', tvlCm: 3.8, color: '#94a3b8' },
@@ -82,7 +87,7 @@ const FACILITY_PRESETS: FacilityPreset[] = [
     description: 'High-activity Cs-137 source in heavy storage room with thick partition barrier.',
     roomSizeM: 12,
     sources: [
-      { id: 's1', name: 'Cs-137 Panoramic Rod', xM: 8.5, yM: 8.5, activityMBq: 37000000, gammaSI: 0.081, isotopeName: 'Cs-137 (1,000 Ci)' }
+      { id: 's1', name: 'Cs-137 Panoramic Rod', xM: 8.5, yM: 8.5, activityMBq: 37000000, gammaSI: 0.0772, energyMeV: 0.6617, isotopeName: 'Cs-137 (1,000 Ci)' }
     ],
     shields: [
       { id: 'b1', name: 'Heavy Barite Concrete Wall', x1: 6.0, y1: 2.0, x2: 6.0, y2: 10.0, thicknessCm: 45.0, material: 'CONCRETE', tvlCm: 14.7, color: '#cbd5e1' }
@@ -90,21 +95,39 @@ const FACILITY_PRESETS: FacilityPreset[] = [
   }
 ];
 
-// Line-segment intersection test for 2D ray tracing
-const rayIntersectsSegment = (
+/**
+ * Exact 2D ray-slab intersection & oblique chord length [cm] through finite wall segment (q1 -> q2)
+ * of normal thickness `thicknessCm`: x_slant = thicknessCm / |cos(theta_inc)|.
+ */
+const computeObliqueSlabChordCm = (
   p1x: number, p1y: number, p2x: number, p2y: number,
-  q1x: number, q1y: number, q2x: number, q2y: number
-): boolean => {
-  const ccw = (ax: number, ay: number, bx: number, by: number, cx: number, cy: number) => {
-    return (cy - ay) * (bx - ax) > (by - ay) * (cx - ax);
-  };
-  return (
+  q1x: number, q1y: number, q2x: number, q2y: number,
+  thicknessCm: number
+): number => {
+  const ccw = (ax: number, ay: number, bx: number, by: number, cx: number, cy: number) =>
+    (cy - ay) * (bx - ax) > (by - ay) * (cx - ax);
+  const hit =
     ccw(p1x, p1y, q1x, q1y, q2x, q2y) !== ccw(p2x, p2y, q1x, q1y, q2x, q2y) &&
-    ccw(p1x, p1y, p2x, p2y, q1x, q1y) !== ccw(p1x, p1y, p2x, p2y, q2x, q2y)
-  );
+    ccw(p1x, p1y, p2x, p2y, q1x, q1y) !== ccw(p1x, p1y, p2x, p2y, q2x, q2y);
+  if (!hit) return 0;
+
+  const rdx = p2x - p1x;
+  const rdy = p2y - p1y;
+  const rLen = Math.hypot(rdx, rdy);
+  const wdx = q2x - q1x;
+  const wdy = q2y - q1y;
+  const wLen = Math.hypot(wdx, wdy);
+  if (rLen < 1e-9 || wLen < 1e-9) return thicknessCm;
+
+  // Wall unit normal n = (-wdy, wdx) / wLen; cos(theta_inc) = |r_hat · n|
+  const cosInc = Math.abs((rdx * -wdy + rdy * wdx) / (rLen * wLen));
+  const maxSlantCap = Math.min(wLen * 100.0, thicknessCm * 6.0);
+  return Math.min(maxSlantCap, thicknessCm / Math.max(0.15, cosInc));
 };
 
 export const VisualisationModule: React.FC = () => {
+  const [searchParams] = useSearchParams();
+  const { setLiveModuleTelemetry } = useRegulatory();
   const [activeTab, setActiveTab] = useState<VisTab>('field_map');
   const [selectedPresetId, setSelectedPresetId] = useState<string>('rad_bunker');
   const [roomSizeM, setRoomSizeM] = useState<number>(10);
@@ -114,6 +137,32 @@ export const VisualisationModule: React.FC = () => {
 
   const [sources, setSources] = useState<RadSource[]>(FACILITY_PRESETS[0].sources);
   const [shields, setShields] = useState<ShieldObstacle[]>(FACILITY_PRESETS[0].shields);
+
+  useEffect(() => {
+    const nucParam = searchParams.get('nuclide') || searchParams.get('isotope');
+    const actParam = searchParams.get('activity');
+    const unitParam = searchParams.get('unit');
+    if (nucParam) {
+      const spec = getCanonicalNuclide(nucParam);
+      if (spec) {
+        const actGBq = actParam ? parseActivityToGBq(parseFloat(actParam) || 100, unitParam || 'GBq') : 100;
+        setSources((prev) => {
+          const next = [...prev];
+          if (next.length > 0) {
+            next[0] = {
+              ...next[0],
+              name: `${spec.symbol} Point Source`,
+              isotopeName: `${spec.symbol} (${actGBq.toFixed(1)} GBq)`,
+              activityMBq: Math.max(0.1, actGBq * 1000),
+              gammaSI: spec.gammaH10_uSv_m2_h_GBq / 1000.0,
+              energyMeV: spec.principalPhotonMeV || 0.6617
+            };
+          }
+          return next;
+        });
+      }
+    }
+  }, [searchParams]);
 
   const handleApplyPreset = (presetId: string) => {
     setSelectedPresetId(presetId);
@@ -126,7 +175,7 @@ export const VisualisationModule: React.FC = () => {
     }
   };
 
-  // 2D Grid Field Computation with Ray-Cast Shadowing
+  // 2D Grid Field Computation with Oblique Ray-Slab Chord + NIST XCOM + ANSI/ANS-6.4.3 GP Buildup
   const { gridX, gridY, gridZ, peakDoseRate, avgDoseRate, unrestrictedFraction } = useMemo(() => {
     const resolution = 45;
     const step = roomSizeM / resolution;
@@ -155,18 +204,21 @@ export const VisualisationModule: React.FC = () => {
           const dx = px - src.xM;
           const dy = py - src.yM;
           const distM = Math.max(0.15, Math.sqrt(dx * dx + dy * dy));
+          const eMeV = Math.max(0.02, src.energyMeV ?? 0.6617);
 
-          // Base unshielded inverse-square dose rate: D = (A * Gamma) / d^2 [µSv/h]
           let doseFromSrc = (src.activityMBq * src.gammaSI) / (distM * distM);
 
-          // Ray-trace against all active shielding obstacles
           shields.forEach(sh => {
-            const hit = rayIntersectsSegment(src.xM, src.yM, px, py, sh.x1, sh.y1, sh.x2, sh.y2);
-            if (hit) {
-              // Apply transmission: T = 10^(-thickness / TVL)
-              const decades = sh.thicknessCm / Math.max(0.1, sh.tvlCm);
-              const transFactor = Math.pow(10, -decades);
-              doseFromSrc *= transFactor;
+            const chordCm = computeObliqueSlabChordCm(
+              src.xM, src.yM, px, py,
+              sh.x1, sh.y1, sh.x2, sh.y2,
+              sh.thicknessCm
+            );
+            if (chordCm > 0) {
+              const xcom = evaluateXCOMAttenuation(sh.material, eMeV);
+              const mfp = xcom.muLinear * chordCm;
+              const gp = evaluateGPBuildup(sh.material, eMeV, mfp);
+              doseFromSrc *= gp.B * Math.exp(-mfp);
             }
           });
 
@@ -204,16 +256,23 @@ export const VisualisationModule: React.FC = () => {
       const dx = probePos.x - src.xM;
       const dy = probePos.y - src.yM;
       const distM = Math.max(0.15, Math.sqrt(dx * dx + dy * dy));
+      const eMeV = Math.max(0.02, src.energyMeV ?? 0.6617);
       const unshieldedRate = (src.activityMBq * src.gammaSI) / (distM * distM);
       let attenuatedRate = unshieldedRate;
       let inShadow = false;
 
       shields.forEach(sh => {
-        const hit = rayIntersectsSegment(src.xM, src.yM, probePos.x, probePos.y, sh.x1, sh.y1, sh.x2, sh.y2);
-        if (hit) {
+        const chordCm = computeObliqueSlabChordCm(
+          src.xM, src.yM, probePos.x, probePos.y,
+          sh.x1, sh.y1, sh.x2, sh.y2,
+          sh.thicknessCm
+        );
+        if (chordCm > 0) {
           inShadow = true;
-          const decades = sh.thicknessCm / Math.max(0.1, sh.tvlCm);
-          attenuatedRate *= Math.pow(10, -decades);
+          const xcom = evaluateXCOMAttenuation(sh.material, eMeV);
+          const mfp = xcom.muLinear * chordCm;
+          const gp = evaluateGPBuildup(sh.material, eMeV, mfp);
+          attenuatedRate *= gp.B * Math.exp(-mfp);
         }
       });
 
@@ -228,6 +287,26 @@ export const VisualisationModule: React.FC = () => {
 
     return { doseRate, sourceContributions };
   }, [probePos, sources, shields]);
+
+  useEffect(() => {
+    const totalGBq = sources.reduce((s, src) => s + src.activityMBq / 1000.0, 0);
+    setLiveModuleTelemetry({
+      moduleId: 'visualisation',
+      moduleTitle: 'M05 2D Radiation Field Visualisation',
+      regimeSummary: `${sources.length} Sources (${totalGBq.toFixed(1)} GBq) • Probe: ${probeData.doseRate.toFixed(2)} µSv/h`,
+      parameters: {
+        'Active Sources': sources.length,
+        'Activity (GBq)': Number(totalGBq.toFixed(3)),
+        'Room Size (m)': roomSizeM,
+        'Shield Walls': shields.length
+      },
+      computedMetrics: {
+        'Probe Rate': `${probeData.doseRate.toFixed(2)} µSv/h`,
+        'Peak Field': `${peakDoseRate.toFixed(1)} µSv/h`,
+        'Unrestricted Area': `${unrestrictedFraction.toFixed(1)}%`
+      }
+    });
+  }, [probeData.doseRate, sources, roomSizeM, shields.length, peakDoseRate, unrestrictedFraction, setLiveModuleTelemetry]);
 
   // Plotly Shapes for Shielding Walls
   const plotShapes = useMemo(() => {

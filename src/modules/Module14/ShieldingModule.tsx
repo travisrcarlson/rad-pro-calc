@@ -5,16 +5,19 @@ import PlotComponent from 'react-plotly.js';
 import { BlockMath } from 'react-katex';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
+import { useRegulatory } from '../../context/RegulatoryContext';
 import {
   XCOM_GP_MATERIALS,
   evaluateXCOMAttenuation,
   evaluateGPBuildup,
   evaluateMultiLayerBuildup,
   solveBroadBeamThicknessCm,
+  resolveXCOMMaterialKey,
   getMaterialNeutronRemoval,
   evaluateNeutronRemovalStack,
   type BuildupModelType
 } from '../../utils/xcomAndGpBuildup';
+import { getCanonicalNuclide, parseActivityToGBq } from '../../utils/canonicalNuclidePhysics';
 
 const Plot = (PlotComponent as any).default || PlotComponent;
 
@@ -48,6 +51,14 @@ interface ShieldLayer {
 }
 
 export const ShieldingModule: React.FC = () => {
+  const {
+    currentFramework,
+    unitSystem,
+    formatDoseRateMSvHr,
+    formatActivityGBq,
+    formatDoseMSv,
+    setLiveModuleTelemetry
+  } = useRegulatory();
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<ShieldTab>('layers');
   const [selectedPresetId, setSelectedPresetId] = useState<string>('cs137');
@@ -92,11 +103,12 @@ export const ShieldingModule: React.FC = () => {
   useEffect(() => {
     const eParam = searchParams.get('energyMeV');
     const actParam = searchParams.get('activityMBq');
-    const isoParam = searchParams.get('isotope');
+    const isoParam = searchParams.get('isotope') || searchParams.get('nuclide');
     const actGBqParam = searchParams.get('activity');
+    const unitParam = searchParams.get('unit');
     const distParam = searchParams.get('distance');
     const matParam = searchParams.get('material');
-    const thickParam = searchParams.get('thickness');
+    const thickParam = searchParams.get('thickness') ?? searchParams.get('thicknessCm');
 
     if (eParam) {
       const val = parseFloat(eParam);
@@ -117,13 +129,20 @@ export const ShieldingModule: React.FC = () => {
       if (matched) {
         setSelectedPresetId(matched.id);
         setPhotonEnergyMev(matched.energyMev);
+      } else {
+        const canon = getCanonicalNuclide(isoParam);
+        if (canon && canon.principalPhotonMeV > 0) {
+          setSelectedPresetId('custom');
+          setPhotonEnergyMev(canon.principalPhotonMeV);
+        }
       }
     }
     if (actGBqParam) {
-      const gBq = parseFloat(actGBqParam);
+      const rawAct = parseFloat(actGBqParam);
       const r = distParam ? Math.max(0.1, parseFloat(distParam)) : 1.0;
-      if (!isNaN(gBq) && gBq > 0) {
-        // Estimate incident dose rate in uSv/h at distance r
+      if (!isNaN(rawAct) && rawAct > 0) {
+        const gBq = unitParam ? parseActivityToGBq(rawAct, unitParam) : rawAct;
+        const canon = isoParam ? getCanonicalNuclide(isoParam) : null;
         const gammaMap: Record<string, number> = {
           'Co-60': 308.5,
           'Cs-137': 77.2,
@@ -133,22 +152,47 @@ export const ShieldingModule: React.FC = () => {
           'Tc-99m': 14.1,
           'Am-241': 3.1
         };
-        const gConst = (isoParam && gammaMap[isoParam]) || 120.0;
+        const gConst = (canon && canon.gammaH10_uSv_m2_h_GBq > 0 ? canon.gammaH10_uSv_m2_h_GBq : undefined)
+          ?? (isoParam ? gammaMap[isoParam] : undefined)
+          ?? 120.0;
         const rateUSvH = (gConst * gBq) / (r * r);
-        setIncidentDoseRate(Math.max(0.1, Number(rateUSvH.toFixed(1))));
+        setIncidentDoseRate(Math.max(0.1, Number(rateUSvH.toFixed(2))));
       }
     }
-    if (matParam && thickParam) {
-      const tVal = parseFloat(thickParam);
-      const matUpper = matParam.toUpperCase();
-      const validKey =
-        matUpper.includes('LEAD') ? 'LEAD' :
-        matUpper.includes('CONCRETE') ? 'CONCRETE' :
-        matUpper.includes('STEEL') || matUpper.includes('IRON') ? 'IRON' :
-        matUpper.includes('TUNGSTEN') ? 'TUNGSTEN' :
-        matUpper.includes('WATER') ? 'WATER' : 'LEAD';
-      if (!isNaN(tVal) && tVal > 0) {
-        setLayers([{ id: 'l_sync_1', materialKey: validKey, thicknessCm: tVal }]);
+    if (matParam) {
+      const matUpper = matParam.trim().toUpperCase().replace(/[\s-]+/g, '_');
+      let validKey = 'LEAD';
+      if (
+        matUpper === 'URANIUM' ||
+        matUpper === 'DU' ||
+        matUpper === 'DEPLETED_URANIUM' ||
+        matUpper.includes('URANIUM')
+      ) {
+        validKey = 'DU';
+      } else if (
+        matUpper === 'STEEL' ||
+        matUpper === 'IRON' ||
+        matUpper === 'FE' ||
+        matUpper.includes('STEEL') ||
+        matUpper.includes('IRON')
+      ) {
+        validKey = 'STEEL';
+      } else {
+        const resolved = resolveXCOMMaterialKey(matParam);
+        validKey = resolved in XCOM_GP_MATERIALS ? resolved : 'LEAD';
+      }
+      setInspectMaterialKey(validKey);
+      if (thickParam !== null) {
+        const tVal = parseFloat(thickParam);
+        if (!isNaN(tVal) && tVal >= 0) {
+          setLayers([{ id: 'l_sync_1', materialKey: validKey, thicknessCm: Math.max(0.01, tVal) }]);
+        }
+      } else {
+        setLayers(prev =>
+          prev.length > 0
+            ? [{ ...prev[0], materialKey: validKey }, ...prev.slice(1)]
+            : [{ id: 'l_sync_1', materialKey: validKey, thicknessCm: 5.0 }]
+        );
       }
     }
   }, [searchParams]);
@@ -274,6 +318,48 @@ export const ShieldingModule: React.FC = () => {
       combinedGammaNeutronExitRate: finalDoseRate + (enableNeutronField ? neutronEval.transmittedNeutronDoseRate : 0)
     };
   }, [layers, photonEnergyMev, incidentDoseRate, buildupModel, enableNeutronField, incidentNeutronRate]);
+
+  const occHourlyLimitUSvH = (currentFramework.limits.occupationalAnnualEffective_mSv * 1000) / 2000;
+  const pubHourlyLimitUSvH = (currentFramework.limits.publicAnnualEffective_mSv * 1000) / 2000;
+  const layersSummaryKey = layers.map(l => `${l.materialKey}:${l.thicknessCm}`).join('|');
+
+  useEffect(() => {
+    setLiveModuleTelemetry({
+      moduleId: 'M14_MULTILAYER_SHIELDING',
+      moduleTitle: 'Module 14 — Multilayer Broad-Beam Shielding & Kalos Stratification',
+      regimeSummary: `${layers.length}-layer barrier (${layersSummaryKey}) @ ${(photonEnergyMev * 1000).toFixed(1)} keV [${buildupModel}] under ${currentFramework.shortCode} (${unitSystem})`,
+      parameters: {
+        photonEnergyMeV: photonEnergyMev,
+        incidentDoseRate_uSv_h: incidentDoseRate,
+        targetDoseLimit_uSv_h: targetDoseLimit,
+        buildupModel,
+        layers: layersSummaryKey
+      },
+      computedMetrics: {
+        broadBeamExitRate_uSv_h: Number(stackAnalytics.finalDoseRate.toPrecision(6)),
+        narrowBeamExitRate_uSv_h: Number(stackAnalytics.narrowBeamDoseRate.toPrecision(6)),
+        cumulativeBuildup: Number(stackAnalytics.cumulativeBuildup.toFixed(4)),
+        totalOpticalMfp: Number(stackAnalytics.accumulatedOpticalThickness.toFixed(4)),
+        structuralLoad_kg_m2: Number(stackAnalytics.structuralLoadKgM2.toFixed(1))
+      }
+    });
+  }, [
+    layers.length,
+    layersSummaryKey,
+    photonEnergyMev,
+    incidentDoseRate,
+    targetDoseLimit,
+    buildupModel,
+    stackAnalytics.finalDoseRate,
+    stackAnalytics.narrowBeamDoseRate,
+    stackAnalytics.cumulativeBuildup,
+    stackAnalytics.accumulatedOpticalThickness,
+    stackAnalytics.structuralLoadKgM2,
+    currentFramework.id,
+    currentFramework.shortCode,
+    unitSystem,
+    setLiveModuleTelemetry
+  ]);
 
   // Continuous penetration curve (Broad-Beam vs Narrow-Beam + Fast Neutron Removal + Layer Boundary Regions)
   const depthProfile = useMemo(() => {
@@ -720,19 +806,17 @@ export const ShieldingModule: React.FC = () => {
         <div className="hud-card">
           <span className="hud-metric-label">INCIDENT FIELD RATE</span>
           <span className="hud-metric-value" style={{ color: '#ef4444' }}>
-            {incidentDoseRate >= 1000 ? `${(incidentDoseRate / 1000).toFixed(2)} mSv/h` : `${incidentDoseRate.toFixed(1)} µSv/h`}
+            {formatDoseRateMSvHr(incidentDoseRate / 1000)}
           </span>
           <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
-            Energy: {(photonEnergyMev * 1000).toFixed(2)} keV ({photonEnergyMev.toFixed(4)} MeV)
+            {incidentDoseRate.toFixed(1)} µSv/h · E = {(photonEnergyMev * 1000).toFixed(2)} keV ({photonEnergyMev.toFixed(4)} MeV)
           </span>
         </div>
 
         <div className="hud-card">
           <span className="hud-metric-label">BROAD-BEAM EXIT RATE</span>
           <span className="hud-metric-value" style={{ color: stackAnalytics.finalDoseRate <= targetDoseLimit ? '#10b981' : '#f59e0b' }}>
-            {stackAnalytics.finalDoseRate >= 1000
-              ? `${(stackAnalytics.finalDoseRate / 1000).toFixed(2)} mSv/h`
-              : `${stackAnalytics.finalDoseRate < 0.01 ? stackAnalytics.finalDoseRate.toExponential(2) : stackAnalytics.finalDoseRate.toFixed(2)} µSv/h`}
+            {formatDoseRateMSvHr(stackAnalytics.finalDoseRate / 1000)}
           </span>
           <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
             Narrow-Beam: {stackAnalytics.narrowBeamDoseRate < 0.01 ? stackAnalytics.narrowBeamDoseRate.toExponential(2) : stackAnalytics.narrowBeamDoseRate.toFixed(2)} µSv/h | B = {stackAnalytics.cumulativeBuildup.toFixed(2)}×
@@ -835,7 +919,9 @@ export const ShieldingModule: React.FC = () => {
           </div>
 
           <div>
-            <label className="form-label" style={{ fontSize: '0.78rem' }}>ALARA Target Rate Limit (µSv/h):</label>
+            <label className="form-label" style={{ fontSize: '0.78rem' }}>
+              ALARA Target Rate Limit (µSv/h) — <span style={{ color: '#10b981' }}>{formatDoseRateMSvHr(targetDoseLimit / 1000)}</span>:
+            </label>
             <input
               type="number"
               step="0.5"
@@ -845,6 +931,26 @@ export const ShieldingModule: React.FC = () => {
               onChange={e => setTargetDoseLimit(Math.max(0.01, parseFloat(e.target.value) || 2.5))}
               style={{ width: '100%', fontSize: '0.85rem' }}
             />
+            <div style={{ display: 'flex', gap: '6px', marginTop: '5px', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-primary"
+                style={{ fontSize: '0.68rem', padding: '2px 6px' }}
+                onClick={() => setTargetDoseLimit(Number(occHourlyLimitUSvH.toFixed(2)))}
+                title={`${currentFramework.shortCode} Occupational (${formatDoseMSv(currentFramework.limits.occupationalAnnualEffective_mSv, '/yr')} / 2000h)`}
+              >
+                Occ ({occHourlyLimitUSvH.toFixed(1)} µSv/h)
+              </button>
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-primary"
+                style={{ fontSize: '0.68rem', padding: '2px 6px' }}
+                onClick={() => setTargetDoseLimit(Number(pubHourlyLimitUSvH.toFixed(2)))}
+                title={`${currentFramework.shortCode} Public (${formatDoseMSv(currentFramework.limits.publicAnnualEffective_mSv, '/yr')} / 2000h)`}
+              >
+                Public ({pubHourlyLimitUSvH.toFixed(2)} µSv/h)
+              </button>
+            </div>
           </div>
 
           <div>
@@ -1000,7 +1106,7 @@ export const ShieldingModule: React.FC = () => {
                     <div>
                       <label className="form-label" style={{ fontSize: '0.75rem' }}>Cumulative Exit Rate (B={l.cumulativeBuildupAtExit.toFixed(2)}×):</label>
                       <div style={{ padding: '6px 10px', background: 'rgba(0,0,0,0.3)', borderRadius: '4px', fontSize: '0.85rem', color: '#10b981', fontWeight: 'bold' }}>
-                        {l.exitDose >= 1000 ? `${(l.exitDose / 1000).toFixed(2)} mSv/h` : `${l.exitDose.toFixed(2)} µSv/h`}
+                        {formatDoseRateMSvHr(l.exitDose / 1000)}
                       </div>
                     </div>
                   </div>
@@ -1439,7 +1545,9 @@ export const ShieldingModule: React.FC = () => {
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', marginBottom: '12px' }}>
                 <div>
-                  <label className="form-label" style={{ fontSize: '0.76rem' }}>Administered F-18 Activity A₀ (MBq):</label>
+                  <label className="form-label" style={{ fontSize: '0.76rem' }}>
+                    Administered F-18 Activity A₀ (MBq) [{formatActivityGBq(petActivityMBq / 1000)}]:
+                  </label>
                   <input
                     type="number"
                     className="form-control"

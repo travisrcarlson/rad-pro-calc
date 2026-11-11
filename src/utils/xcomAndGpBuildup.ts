@@ -565,7 +565,7 @@ export const XCOM_GP_MATERIALS: Record<string, XCOMMaterialSpec> = {
       { energyMev: 0.200, b: 3.260, c: 1.790, a: -0.082, Xk: 13.6, d: 0.036 },
       { energyMev: 0.500, b: 2.520, c: 1.460, a: -0.048, Xk: 13.7, d: 0.018 },
       { energyMev: 0.662, b: 2.310, c: 1.360, a: -0.036, Xk: 13.7, d: 0.012 },
-      { energyMev: 1.000, b: 2.130, c: 1.250, a: -0.022, Xk: 13.7, d: 0.006 },
+      { energyMev: 1.000, b: 2.130, c: 1.150, a: 0.044, Xk: 13.7, d: -0.025 },
       { energyMev: 1.250, b: 2.030, c: 1.200, a: -0.015, Xk: 13.7, d: 0.003 },
       { energyMev: 2.000, b: 1.840, c: 1.110, a: -0.002, Xk: 13.6, d: -0.002 },
       { energyMev: 4.000, b: 1.630, c: 1.020, a: 0.010, Xk: 13.5, d: -0.007 },
@@ -1023,8 +1023,137 @@ export const XCOM_GP_MATERIALS: Record<string, XCOMMaterialSpec> = {
     sigmaRMass: 0.0361,
     sigmaRLinear: 0.065,
     neutronCaptureNote: 'Expedient trench/bunker earth overburden (HVL ≈ 9.2 cm for Co-60, Σ_R ≈ 0.065 cm⁻¹).'
+  },
+
+  AIR: {
+    key: 'AIR',
+    name: 'Dry Air at Sea Level (NIST XCOM, 0.001205 g/cm³)',
+    symbol: 'Air',
+    effectiveZ: 7.6,
+    density: 0.001205,
+    edges: [],
+    segments: [
+      {
+        minEnergyMev: 0.010,
+        maxEnergyMev: 15.0,
+        points: [
+          [0.010, 5.120, 4.74],
+          [0.015, 1.614, 1.33],
+          [0.020, 0.7779, 0.539],
+          [0.030, 0.3538, 0.154],
+          [0.050, 0.2080, 0.0410],
+          [0.080, 0.1662, 0.0241],
+          [0.100, 0.1541, 0.0233],
+          [0.200, 0.1233, 0.0267],
+          [0.500, 0.08712, 0.0297],
+          [0.6617, 0.0771, 0.0293],
+          [1.000, 0.06358, 0.0279],
+          [1.250, 0.05687, 0.0267],
+          [2.000, 0.04447, 0.0235],
+          [4.000, 0.03079, 0.0187],
+          [6.000, 0.02522, 0.0165],
+          [10.00, 0.02045, 0.0145],
+          [15.00, 0.01810, 0.0134]
+        ]
+      }
+    ],
+    gpTable: [
+      { energyMev: 0.050, b: 3.320, c: 1.880, a: -0.088, Xk: 13.5, d: 0.040 },
+      { energyMev: 0.100, b: 3.690, c: 1.980, a: -0.098, Xk: 13.5, d: 0.046 },
+      { energyMev: 0.200, b: 3.210, c: 1.770, a: -0.080, Xk: 13.6, d: 0.035 },
+      { energyMev: 0.500, b: 2.490, c: 1.450, a: -0.047, Xk: 13.7, d: 0.017 },
+      { energyMev: 0.662, b: 2.290, c: 1.350, a: -0.035, Xk: 13.7, d: 0.011 },
+      { energyMev: 1.000, b: 2.110, c: 1.150, a: 0.042, Xk: 13.7, d: -0.024 },
+      { energyMev: 1.250, b: 2.010, c: 1.190, a: -0.014, Xk: 13.7, d: 0.002 },
+      { energyMev: 2.000, b: 1.830, c: 1.105, a: -0.002, Xk: 13.6, d: -0.002 },
+      { energyMev: 6.000, b: 1.510, c: 0.985, a: 0.015, Xk: 13.4, d: -0.009 },
+      { energyMev: 10.00, b: 1.380, c: 0.950, a: 0.018, Xk: 13.3, d: -0.011 }
+    ],
+    bergerA: 1.33,
+    bergerB: 0.055,
+    sigmaRMass: 0.046,
+    sigmaRLinear: 0.000055,
+    neutronCaptureNote: 'N-14(n,p)C-14 & N-14(n,γ)N-15 (10.8 MeV capture gamma in air skyshine).'
   }
 };
+
+const XCOM_MATERIAL_ALIASES: Record<string, string> = {
+  LEAD: 'LEAD',
+  PB: 'LEAD',
+  TUNGSTEN: 'TUNGSTEN',
+  W: 'TUNGSTEN',
+  DU: 'DU',
+  URANIUM: 'DU',
+  'DEPLETED URANIUM': 'DU',
+  DEPLETED_URANIUM: 'DU',
+  'U-238': 'DU',
+  U238: 'DU',
+  STEEL: 'STEEL',
+  IRON: 'STEEL',
+  FE: 'STEEL',
+  'CARBON STEEL': 'STEEL',
+  'STAINLESS STEEL': 'STEEL',
+  STAINLESS_STEEL: 'STEEL',
+  CONCRETE: 'CONCRETE',
+  'ORDINARY CONCRETE': 'CONCRETE',
+  DRYWALL: 'CONCRETE',
+  BRICK: 'CONCRETE',
+  BARITE_CONCRETE: 'BARITE_CONCRETE',
+  BARITE: 'BARITE_CONCRETE',
+  'BARITE CONCRETE': 'BARITE_CONCRETE',
+  'HEAVY CONCRETE': 'BARITE_CONCRETE',
+  ALUMINUM: 'ALUMINUM',
+  ALUMINIUM: 'ALUMINUM',
+  AL: 'ALUMINUM',
+  WATER: 'WATER',
+  H2O: 'WATER',
+  HDPE: 'HDPE',
+  POLYETHYLENE: 'HDPE',
+  ACRYLIC: 'HDPE',
+  PMMA: 'HDPE',
+  LUCITE: 'HDPE',
+  LEAD_GLASS: 'LEAD_GLASS',
+  'LEAD GLASS': 'LEAD_GLASS',
+  'LEADED GLASS': 'LEAD_GLASS',
+  BORATED_PE: 'BORATED_PE',
+  'BORATED PE': 'BORATED_PE',
+  'BORATED POLYETHYLENE': 'BORATED_PE',
+  MAGNETITE_CONCRETE: 'MAGNETITE_CONCRETE',
+  'MAGNETITE CONCRETE': 'MAGNETITE_CONCRETE',
+  BISMUTH: 'BISMUTH',
+  BI: 'BISMUTH',
+  COPPER: 'COPPER',
+  CU: 'COPPER',
+  ICRU_TISSUE: 'ICRU_TISSUE',
+  TISSUE: 'ICRU_TISSUE',
+  'SOFT TISSUE': 'ICRU_TISSUE',
+  SOIL_EARTH: 'SOIL_EARTH',
+  SOIL: 'SOIL_EARTH',
+  EARTH: 'SOIL_EARTH',
+  SAND: 'SOIL_EARTH',
+  AIR: 'AIR'
+};
+
+/**
+ * Strictly resolves human-readable or code material identifiers to canonical XCOM_GP_MATERIALS keys.
+ * Throws an explicit error on unknown material names rather than silently substituting Lead.
+ */
+export function resolveXCOMMaterialKey(materialInput: string): string {
+  const normalized = String(materialInput || '').trim().toUpperCase().replace(/\s+/g, ' ');
+  if (XCOM_GP_MATERIALS[normalized]) return normalized;
+  const alias = XCOM_MATERIAL_ALIASES[normalized];
+  if (alias && XCOM_GP_MATERIALS[alias]) return alias;
+  // Handle compound UI labels such as "Lead (Pb)" or "Steel (Fe)"
+  for (const [k, target] of Object.entries(XCOM_MATERIAL_ALIASES)) {
+    if (k.length >= 4 && normalized.includes(k)) return target;
+  }
+  throw new Error(`Unknown XCOM shielding material key: "${materialInput}"`);
+}
+
+function getXCOMMaterialStrict(materialInput: string): XCOMMaterialSpec {
+  const key = resolveXCOMMaterialKey(materialInput);
+  return XCOM_GP_MATERIALS[key];
+}
 
 /**
  * Evaluates NIST XCOM mass attenuation (mu/rho) and mass energy-absorption (mu_en/rho)
@@ -1041,7 +1170,7 @@ export function evaluateXCOMAttenuation(
   effectiveZ: number;
   activeEdgeNote: string | null;
 } {
-  const mat = XCOM_GP_MATERIALS[materialKey] || XCOM_GP_MATERIALS.LEAD;
+  const mat = getXCOMMaterialStrict(materialKey);
   const e = Math.max(0.010, Math.min(15.0, energyMev));
 
   // Locate segment containing energy e (if exactly on an edge, take the upper-shell branch)
@@ -1096,7 +1225,7 @@ export function evaluateXCOMAttenuation(
  * at arbitrary photon energy E (MeV).
  */
 export function getGPParameters(materialKey: string, energyMev: number): GPParameterRow {
-  const mat = XCOM_GP_MATERIALS[materialKey] || XCOM_GP_MATERIALS.LEAD;
+  const mat = getXCOMMaterialStrict(materialKey);
   const table = mat.gpTable;
   const e = Math.max(table[0].energyMev, Math.min(table[table.length - 1].energyMev, energyMev));
 
@@ -1182,7 +1311,7 @@ export function evaluateBuildupByModel(
     return evaluateGPBuildup(materialKey, energyMev, mfp).B;
   }
 
-  const mat = XCOM_GP_MATERIALS[materialKey] || XCOM_GP_MATERIALS.LEAD;
+  const mat = getXCOMMaterialStrict(materialKey);
   const gp = getGPParameters(materialKey, energyMev);
 
   if (model === 'BERGER') {
@@ -1248,8 +1377,8 @@ export function evaluateMultiLayerBuildup(
     }
 
     const bCurrAtPrev = evaluateBuildupByModel(materialKey, energyMev, tauPrev, model);
-    const zPrev = (XCOM_GP_MATERIALS[layers[i - 1].materialKey] || XCOM_GP_MATERIALS.CONCRETE).effectiveZ;
-    const zCurr = (XCOM_GP_MATERIALS[materialKey] || XCOM_GP_MATERIALS.LEAD).effectiveZ;
+    const zPrev = getXCOMMaterialStrict(layers[i - 1].materialKey).effectiveZ;
+    const zCurr = getXCOMMaterialStrict(materialKey).effectiveZ;
 
     // Kalos interface transmission factor for upstream scattered spectrum entering layer i
     let kalosAttenuation = 1.0;
@@ -1363,8 +1492,9 @@ export function getMaterialNeutronRemoval(materialKey: string): {
   tvlNeutronCm: number;
   captureNote: string;
 } {
-  const mat = XCOM_GP_MATERIALS[materialKey] || XCOM_GP_MATERIALS.CONCRETE;
-  const spec = NEUTRON_REMOVAL_CATALOG[materialKey] || {
+  const resolvedKey = resolveXCOMMaterialKey(materialKey);
+  const mat = XCOM_GP_MATERIALS[resolvedKey];
+  const spec = NEUTRON_REMOVAL_CATALOG[resolvedKey] || {
     sigmaRMass: mat.sigmaRMass || 0.035,
     sigmaRLinear: mat.sigmaRLinear || 0.090,
     captureNote: mat.neutronCaptureNote || 'Standard macroscopic removal cross-section.'
@@ -1399,13 +1529,14 @@ export function evaluateNeutronRemovalStack(
   let hasBoronAbsorber = false;
 
   for (const l of layers) {
-    const nSpec = getMaterialNeutronRemoval(l.materialKey);
-    const rx = nSpec.sigmaRLinear * l.thicknessCm;
+    const resolvedKey = resolveXCOMMaterialKey(l.materialKey);
+    const nSpec = getMaterialNeutronRemoval(resolvedKey);
+    const rx = nSpec.sigmaRLinear * Math.max(0, l.thicknessCm);
     totalSigmaRx += rx;
-    if (['WATER', 'HDPE', 'BORATED_PE', 'CONCRETE', 'BARITE_CONCRETE', 'MAGNETITE_CONCRETE', 'ICRU_TISSUE'].includes(l.materialKey)) {
+    if (['WATER', 'HDPE', 'BORATED_PE', 'CONCRETE', 'BARITE_CONCRETE', 'MAGNETITE_CONCRETE', 'ICRU_TISSUE'].includes(resolvedKey)) {
       hydrogenousRelaxation += rx;
     }
-    if (l.materialKey === 'BORATED_PE') {
+    if (resolvedKey === 'BORATED_PE') {
       hasBoronAbsorber = true;
     }
   }
@@ -1433,4 +1564,149 @@ export function evaluateNeutronRemovalStack(
     hasBoronAbsorber,
     advisory
   };
+}
+
+
+/**
+ * Evaluates full NIST XCOM + ANSI/ANS-6.4.3 GP broad-beam point-source shielding
+ * across one or more material layers (including inverse-square geometry).
+ */
+export function evaluateBroadBeamPointShielding(
+  energyMev: number,
+  unshieldedAt1m_uSv_h: number,
+  distanceM: number,
+  layers: { material: string; thicknessCm: number }[],
+  model: BuildupModelType = 'GP_ANS643'
+): {
+  unshieldedDoseRate_uSv_h: number;
+  narrowBeamDoseRate_uSv_h: number;
+  broadBeamDoseRate_uSv_h: number;
+  totalOpticalMfp: number;
+  buildupFactor: number;
+  transmissionBroadBeam: number;
+  transmissionNarrowBeam: number;
+  effectiveHvlCm: number;
+  effectiveTvlCm: number;
+} {
+  const safeDistM = Math.max(0.01, distanceM);
+  const unshieldedDoseRate_uSv_h = Math.max(0, unshieldedAt1m_uSv_h) / (safeDistM * safeDistM);
+
+  if (energyMev <= 0 || unshieldedDoseRate_uSv_h <= 0) {
+    return {
+      unshieldedDoseRate_uSv_h: 0,
+      narrowBeamDoseRate_uSv_h: 0,
+      broadBeamDoseRate_uSv_h: 0,
+      totalOpticalMfp: 0,
+      buildupFactor: 1.0,
+      transmissionBroadBeam: 1.0,
+      transmissionNarrowBeam: 1.0,
+      effectiveHvlCm: 0,
+      effectiveTvlCm: 0
+    };
+  }
+
+  const resolvedLayers: { materialKey: string; mfp: number }[] = [];
+  let totalOpticalMfp = 0;
+  let primaryMuLinear = 0;
+
+  for (const layer of layers) {
+    const tCm = Math.max(0, layer.thicknessCm);
+    if (tCm <= 0) continue;
+    const matKey = resolveXCOMMaterialKey(layer.material);
+    const { muLinear } = evaluateXCOMAttenuation(matKey, energyMev);
+    if (primaryMuLinear <= 0) primaryMuLinear = muLinear;
+    const mfp = muLinear * tCm;
+    totalOpticalMfp += mfp;
+    resolvedLayers.push({ materialKey: matKey, mfp });
+  }
+
+  if (primaryMuLinear <= 0 && layers.length > 0) {
+    primaryMuLinear = evaluateXCOMAttenuation(resolveXCOMMaterialKey(layers[0].material), energyMev).muLinear;
+  }
+
+  const transmissionNarrowBeam = totalOpticalMfp > 0 ? Math.exp(-totalOpticalMfp) : 1.0;
+  const buildupFactor =
+    resolvedLayers.length > 0
+      ? evaluateMultiLayerBuildup(resolvedLayers, energyMev, model).totalBuildup
+      : 1.0;
+  const transmissionBroadBeam = Math.min(1.0, buildupFactor * transmissionNarrowBeam);
+
+  return {
+    unshieldedDoseRate_uSv_h,
+    narrowBeamDoseRate_uSv_h: unshieldedDoseRate_uSv_h * transmissionNarrowBeam,
+    broadBeamDoseRate_uSv_h: unshieldedDoseRate_uSv_h * transmissionBroadBeam,
+    totalOpticalMfp,
+    buildupFactor,
+    transmissionBroadBeam,
+    transmissionNarrowBeam,
+    effectiveHvlCm: primaryMuLinear > 0 ? Math.LN2 / primaryMuLinear : 0,
+    effectiveTvlCm: primaryMuLinear > 0 ? Math.LN10 / primaryMuLinear : 0
+  };
+}
+
+/**
+ * Exact 3D Kay & Kajiya (1986) Ray-Segment vs Axis-Aligned Bounding Box (AABB) chord intersection length.
+ * Naturally captures oblique slant-path thickness (t / cos θ) and never tunnels through thin walls.
+ */
+export function intersectRayAABB3D(
+  sx: number,
+  sy: number,
+  sz: number,
+  rx: number,
+  ry: number,
+  rz: number,
+  box: { xMin: number; xMax: number; yMin: number; yMax: number; zMin: number; zMax: number }
+): number {
+  const dx = rx - sx;
+  const dy = ry - sy;
+  const dz = rz - sz;
+  const rayLength = Math.sqrt(dx * dx + dy * dy + dz * dz);
+  if (rayLength <= 1e-9) return 0;
+
+  let tMin = 0.0;
+  let tMax = 1.0;
+
+  const axes: [number, number, number, number][] = [
+    [sx, dx, box.xMin, box.xMax],
+    [sy, dy, box.yMin, box.yMax],
+    [sz, dz, box.zMin, box.zMax]
+  ];
+
+  for (const [origin, dir, bMin, bMax] of axes) {
+    if (Math.abs(dir) < 1e-12) {
+      if (origin < bMin || origin > bMax) return 0;
+    } else {
+      const invD = 1.0 / dir;
+      let t1 = (bMin - origin) * invD;
+      let t2 = (bMax - origin) * invD;
+      if (t1 > t2) {
+        const tmp = t1;
+        t1 = t2;
+        t2 = tmp;
+      }
+      tMin = Math.max(tMin, t1);
+      tMax = Math.min(tMax, t2);
+      if (tMin > tMax) return 0;
+    }
+  }
+
+  return Math.max(0, tMax - tMin) * rayLength;
+}
+
+/**
+ * Exact 2D Ray-Segment vs Oriented or Axis-Aligned Shield Slab intersection length (meters or cm).
+ * Captures exact oblique path length x / cos(θ) across arbitrary ray incidence angles.
+ */
+export function intersectRayAABB2D(
+  sx: number,
+  sy: number,
+  rx: number,
+  ry: number,
+  box: { xMin: number; xMax: number; yMin: number; yMax: number }
+): number {
+  return intersectRayAABB3D(sx, sy, 0, rx, ry, 0, {
+    ...box,
+    zMin: -1,
+    zMax: 1
+  });
 }

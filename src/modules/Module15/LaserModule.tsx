@@ -1,9 +1,12 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import VerificationBadge from '../../components/VerificationBadge';
 import PlotComponent from 'react-plotly.js';
 import { BlockMath } from 'react-katex';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
+import { useRegulatory } from '../../context/RegulatoryContext';
+
+const OCULAR_PUPIL_AREA_CM2 = Math.PI * 0.35 * 0.35; // 7 mm limiting pupil aperture (0.384845 cm²) per ANSI Z136.1
 
 const Plot = (PlotComponent as any).default || PlotComponent;
 
@@ -82,6 +85,7 @@ const wavelengthToColor = (nm: number): { hex: string; isVisible: boolean; name:
 type LaserTab = 'schematic' | 'decay' | 'eyewear' | 'physics';
 
 const LaserModule: React.FC = () => {
+  const { setLiveModuleTelemetry } = useRegulatory();
   const [wavelength, setWavelength] = useState<number>(532);
   const [power, setPower] = useState<number>(5); // in mW
   const [powerUnit, setPowerUnit] = useState<'mW' | 'W'>('mW');
@@ -117,43 +121,64 @@ const LaserModule: React.FC = () => {
 
   // ANSI Z136.1 Calculations Engine
   const calculations = useMemo(() => {
-    // 1. Calculate Ocular Maximum Permissible Exposure (MPE) in mW/cm^2
+    const t = Math.max(1e-9, exposureDuration);
+    const tThermal = Math.max(18e-6, t);
+
+    // 1. Calculate Ocular Maximum Permissible Exposure (MPE) in mW/cm^2 per ANSI Z136.1
     let mpe = 1.0;
 
     if (wavelength >= 400 && wavelength <= 700) {
-      if (exposureDuration <= 0.25) {
-        mpe = 2.5; // mW/cm^2 (standard eye blink reflex limit)
-      } else if (exposureDuration <= 10) {
-        mpe = 1.0;
-      } else {
-        mpe = 1.0;
+      // Continuous ANSI Z136.1 retinal thermal MPE (1.8 * t^-0.25 mW/cm² for 18 µs <= t <= 10 s; 2.546 mW/cm² at 0.25 s)
+      const thermalMpe =
+        t < 18e-6
+          ? 0.0005 / t
+          : t <= 10
+            ? 1.8 * Math.pow(tThermal, -0.25)
+            : 1.0;
+      mpe = thermalMpe;
+
+      // ANSI Z136.1 retinal blue-light photochemical cap (400–600 nm, C_B = 1 for 400–450 nm: C_B * 100 mJ/cm² / t for t > 10 s)
+      if (t > 10 && wavelength <= 600) {
+        const cb = wavelength <= 450 ? 1.0 : Math.pow(10, 0.02 * (wavelength - 450));
+        const photoMpe = (cb * 100.0) / t;
+        mpe = Math.min(thermalMpe, photoMpe);
       }
     } else if (wavelength >= 315 && wavelength < 400) {
       mpe = 1.0;
     } else if (wavelength >= 180 && wavelength < 315) {
       mpe = 0.003;
     } else if (wavelength > 700 && wavelength <= 1400) {
-      let ca = 1.0;
-      if (wavelength < 1050) {
-        ca = Math.pow(10, 0.002 * (wavelength - 700));
-      } else {
-        ca = 5.0;
-      }
-      mpe = 1.6 * ca;
+      const ca = wavelength < 1050 ? Math.pow(10, 0.002 * (wavelength - 700)) : 5.0;
+      const cc =
+        wavelength <= 1150
+          ? 1.0
+          : wavelength < 1200
+            ? Math.pow(10, 0.018 * (wavelength - 1150))
+            : 8.0;
+      mpe =
+        t < 18e-6
+          ? (ca * cc * 0.0005) / t
+          : t <= 10
+            ? ca * cc * 1.8 * Math.pow(tThermal, -0.25)
+            : ca * cc * 1.0;
     } else if (wavelength > 1400) {
       mpe = 100.0;
     }
 
-    // 2. Physical Unit Conversions
+    // 2. Physical Unit Conversions & ANSI Z136.1 7 mm Limiting Pupil Aperture (400–1400 nm)
     const powerW = actualPowerMW / 1000;
     const mpeWcm2 = mpe / 1000;
     const diamCm = diameter / 10;
     const divRad = divergence / 1000;
+    const isRetinalHazardRegion = wavelength >= 400 && wavelength <= 1400;
 
-    // Aperture Area (cm^2)
+    // Physical Beam Area & Limiting Aperture Averaging Area (cm^2)
     const apertureArea = (Math.PI * Math.pow(diamCm, 2)) / 4;
-    // Irradiance at Aperture (W/cm^2)
-    const irradianceAperture = powerW / apertureArea;
+    const effectiveApertureArea = isRetinalHazardRegion
+      ? Math.max(apertureArea, OCULAR_PUPIL_AREA_CM2)
+      : apertureArea;
+    // Ocular-Averaged Irradiance at Aperture (W/cm^2)
+    const irradianceAperture = powerW / effectiveApertureArea;
 
     // 3. Nominal Ocular Hazard Distance (NOHD) in meters
     let nohdMeters = 0;
@@ -247,9 +272,45 @@ const LaserModule: React.FC = () => {
       diamCm,
       powerW,
       rayleighRangeM,
-      waistRadiusCm
+      waistRadiusCm,
+      isRetinalHazardRegion
     };
   }, [wavelength, actualPowerMW, diameter, divergence, exposureDuration]);
+
+  useEffect(() => {
+    setLiveModuleTelemetry({
+      moduleId: 'M19',
+      moduleTitle: 'Module 19 — Laser Radiation Safety & NOHD Analyzer',
+      regimeSummary: `${wavelength} nm (${beamColor.name}) • ${actualPowerMW} mW • ${calculations.laserClass}`,
+      parameters: {
+        wavelengthNm: wavelength,
+        opticalPowerMW: actualPowerMW,
+        apertureDiameterMm: diameter,
+        divergenceMrad: divergence,
+        exposureDurationSec: exposureDuration
+      },
+      computedMetrics: {
+        laserClass: calculations.laserClass,
+        ocularMpe_mW_cm2: Number(calculations.mpe.toFixed(4)),
+        apertureIrradiance_mW_cm2: Number((calculations.irradianceAperture * 1000).toFixed(4)),
+        nohdMeters: Number(calculations.nohdMeters.toFixed(2)),
+        requiredOd: Number(calculations.odRequired.toFixed(2))
+      }
+    });
+  }, [
+    wavelength,
+    beamColor.name,
+    actualPowerMW,
+    diameter,
+    divergence,
+    exposureDuration,
+    calculations.laserClass,
+    calculations.mpe,
+    calculations.irradianceAperture,
+    calculations.nohdMeters,
+    calculations.odRequired,
+    setLiveModuleTelemetry
+  ]);
 
   // Generates dynamic data for the Plotly Irradiance Chart & OD Table
   const distanceData = useMemo(() => {
@@ -261,7 +322,10 @@ const LaserModule: React.FC = () => {
       const rCm = rMeters * 100;
       const beamDiamCm = calculations.diamCm + calculations.divRad * rCm;
       const beamArea = (Math.PI * Math.pow(beamDiamCm, 2)) / 4;
-      const irrWcm2 = calculations.powerW / beamArea;
+      const effectiveBeamArea = calculations.isRetinalHazardRegion
+        ? Math.max(beamArea, OCULAR_PUPIL_AREA_CM2)
+        : beamArea;
+      const irrWcm2 = calculations.powerW / effectiveBeamArea;
       const irrMW = irrWcm2 * 1000;
       
       const od = irrMW > calculations.mpe
@@ -366,12 +430,12 @@ const LaserModule: React.FC = () => {
         </div>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           {PRESETS.map((p) => {
-            const isSelected = wavelength === p.wavelength && actualPowerMW === p.power;
+            const isSelected = wavelength === p.wavelength && Math.abs(actualPowerMW - p.power) < 1e-6 && diameter === p.diameter;
             const pColor = wavelengthToColor(p.wavelength);
             return (
               <button
                 key={p.name}
-                className="btn btn-primary"
+                className={`btn btn-secondary ${isSelected ? 'active' : ''}`}
                 style={{
                   fontSize: '0.78rem',
                   padding: '5px 12px',

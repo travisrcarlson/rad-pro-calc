@@ -286,8 +286,8 @@ export const ISOTOPE_QUICK_REF: Record<string, { gammaConst_mSv_m2_h_GBq: number
   'I-131':   { gammaConst_mSv_m2_h_GBq: 0.0522, hvlLeadCm: 0.30, hvlConcreteCm: 3.1, halfLifeStr: '8.02 d' },
   'Tc-99m':  { gammaConst_mSv_m2_h_GBq: 0.0141, hvlLeadCm: 0.03, hvlConcreteCm: 2.1, halfLifeStr: '6.01 h' },
   'Am-241':  { gammaConst_mSv_m2_h_GBq: 0.0031, hvlLeadCm: 0.015, hvlConcreteCm: 1.2, halfLifeStr: '432.2 yr' },
-  'Ra-226':  { gammaConst_mSv_m2_h_GBq: 0.2230, hvlLeadCm: 1.30, hvlConcreteCm: 6.5, halfLifeStr: '1600 yr' },
-  'Na-24':   { gammaConst_mSv_m2_h_GBq: 0.4460, hvlLeadCm: 1.50, hvlConcreteCm: 7.2, halfLifeStr: '14.96 h' }
+  'Ra-226':  { gammaConst_mSv_m2_h_GBq: 0.1950, hvlLeadCm: 1.30, hvlConcreteCm: 6.5, halfLifeStr: '1600 yr' },
+  'Na-24':   { gammaConst_mSv_m2_h_GBq: 0.4450, hvlLeadCm: 1.50, hvlConcreteCm: 7.2, halfLifeStr: '14.96 h' }
 };
 
 interface RegulatoryContextType {
@@ -298,6 +298,7 @@ interface RegulatoryContextType {
   unitSystem: UnitSystemMode;
   setUnitSystem: (mode: UnitSystemMode) => void;
   formatDoseMSv: (mSv: number, suffix?: string) => string;
+  formatDoseRateMSvHr: (mSvHr: number) => string;
   formatActivityGBq: (gBq: number) => string;
   activeSource: GlobalSourceContext;
   setActiveSource: (partial: Partial<GlobalSourceContext>) => void;
@@ -533,21 +534,66 @@ export const RegulatoryProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const formatDoseMSv = (mSv: number, suffix = ''): string => {
+    if (!Number.isFinite(mSv)) return `0 mSv${suffix}`;
+    const absMSv = Math.abs(mSv);
+    const siStr =
+      absMSv === 0
+        ? `0 mSv${suffix}`
+        : absMSv >= 1000
+          ? `${+(mSv / 1000).toPrecision(4)} Sv${suffix}`
+          : absMSv >= 0.1
+            ? `${+mSv.toPrecision(4)} mSv${suffix}`
+            : absMSv >= 1e-4
+              ? `${+(mSv * 1000).toPrecision(4)} µSv${suffix}`
+              : `${(mSv * 1000).toExponential(2)} µSv${suffix}`;
+
     const rem = mSv / 10.0;
     const mrem = mSv * 100.0;
-    const tradStr = mSv >= 10 ? `${+rem.toFixed(2)} rem${suffix}` : `${+mrem.toFixed(0)} mrem${suffix}`;
-    const siStr = `${mSv} mSv${suffix}`;
+    const absMrem = Math.abs(mrem);
+    const tradCore =
+      absMrem === 0
+        ? '0 mrem'
+        : Math.abs(rem) >= 1.0
+          ? `${+rem.toPrecision(4)} rem`
+          : absMrem >= 0.01
+            ? `${+mrem.toPrecision(4)} mrem`
+            : `${mrem.toExponential(2)} mrem`;
+    const tradStr = `${tradCore}${suffix}`;
+
     if (unitSystem === 'SI') return siStr;
     if (unitSystem === 'TRADITIONAL') return tradStr;
-    const tradShort = mSv >= 10 ? `${+rem.toFixed(1)} rem` : `${+mrem.toFixed(0)} mrem`;
-    return `${siStr} (${tradShort})`;
+    return `${siStr} (${tradStr})`;
   };
 
+  const formatDoseRateMSvHr = (mSvHr: number): string => formatDoseMSv(mSvHr, '/h');
+
   const formatActivityGBq = (gBq: number): string => {
+    if (!Number.isFinite(gBq)) return '0 GBq';
+    const absGBq = Math.abs(gBq);
+    const siStr =
+      absGBq === 0
+        ? '0 Bq'
+        : absGBq >= 1000
+          ? `${+(gBq / 1000).toPrecision(4)} TBq`
+          : absGBq >= 1
+            ? `${+gBq.toPrecision(4)} GBq`
+            : absGBq >= 1e-3
+              ? `${+(gBq * 1e3).toPrecision(4)} MBq`
+              : absGBq >= 1e-6
+                ? `${+(gBq * 1e6).toPrecision(4)} kBq`
+                : `${+(gBq * 1e9).toPrecision(4)} Bq`;
+
     const ci = gBq / 37.0;
-    const mCi = ci * 1000.0;
-    const tradStr = ci >= 0.1 ? `${+ci.toFixed(2)} Ci` : `${+mCi.toFixed(1)} mCi`;
-    const siStr = `${+gBq.toFixed(2)} GBq`;
+    const absCi = Math.abs(ci);
+    const tradStr =
+      absCi === 0
+        ? '0 Ci'
+        : absCi >= 0.1
+          ? `${+ci.toPrecision(4)} Ci`
+          : absCi >= 1e-4
+            ? `${+(ci * 1e3).toPrecision(4)} mCi`
+            : `${+(ci * 1e6).toPrecision(4)} µCi`;
+
     if (unitSystem === 'SI') return siStr;
     if (unitSystem === 'TRADITIONAL') return tradStr;
     return `${siStr} (${tradStr})`;
@@ -566,6 +612,7 @@ export const RegulatoryProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         unitSystem,
         setUnitSystem,
         formatDoseMSv,
+        formatDoseRateMSvHr,
         formatActivityGBq,
         activeSource,
         setActiveSource,

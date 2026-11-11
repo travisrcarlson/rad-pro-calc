@@ -1,8 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import VerificationBadge from '../../components/VerificationBadge';
 import PlotComponent from 'react-plotly.js';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
+import { computeGodivaPromptBurstFwhmUs, computeCAASMaxDetectionRadiusM } from '../../utils/radiologicalPhysicsKernels';
+import { useRegulatory } from '../../context/RegulatoryContext';
 
 const Plot = (PlotComponent as any).default || PlotComponent;
 
@@ -57,6 +59,7 @@ const CRITICALITY_PRESETS: CriticalityPreset[] = [
 ];
 
 export const CAASCriticalityModule: React.FC = () => {
+  const { setLiveModuleTelemetry } = useRegulatory();
   const [activeTab, setActiveTab] = useState<CaasTab>('excursion');
   const [selectedPresetId, setSelectedPresetId] = useState<string>('godiva_prompt');
   const [customFissionsLog, setCustomFissionsLog] = useState<number>(16.08); // log10(1.2e16)
@@ -85,21 +88,27 @@ export const CAASCriticalityModule: React.FC = () => {
 
   // --- TAB 1: Prompt-Critical Excursion Kinetics (Nordheim-Fuchs) ---
   const excursionKinetics = useMemo(() => {
-    const betaEff = 0.0065; // standard delayed neutron fraction
+    const betaEff = activePreset.id === 'plutonium_scrap' ? 0.0021 : 0.0065;
     const promptDollar = activePreset.reactivityStepDollars;
     const promptDeltaK = promptDollar * betaEff;
     const lPrompt = activePreset.promptGenerationTimeS;
 
-    // Initial inverse reactor period alpha_0 = delta_k_p / l
+    // Initial Rossi inverse reactor period alpha_0 = delta_k_p / l
     const alpha0 = promptDeltaK / lPrompt; // s^-1
 
-    // FWHM pulse width ~ 3.52 / alpha_0
-    const fwhmSeconds = 3.52 / Math.max(1, alpha0);
-    const fwhmMs = fwhmSeconds * 1000;
+    // FWHM pulse width via canonical Nordheim-Fuchs solver
+    const fwhmUs = computeGodivaPromptBurstFwhmUs(promptDollar, betaEff, lPrompt);
+    const fwhmMs = fwhmUs / 1000.0;
 
-    // Energy per fission ~ 200 MeV = 3.204e-11 Joules
-    const totalEnergyJ = totalFissions * 3.204e-11;
-    const peakPowerWatts = (totalEnergyJ * alpha0) / 2.0;
+    // Analytical Nordheim-Fuchs first-spike energy E_spike = 2 * delta_k_$ / alpha_T_($/J)
+    const energyPerFissionJ = 3.204e-11;
+    const nordheimFirstSpikeEnergyJ = (2.0 * promptDollar) / Math.max(1e-9, activePreset.tempFeedbackCoeff);
+    const nordheimFirstSpikeFissions = nordheimFirstSpikeEnergyJ / energyPerFissionJ;
+
+    // Total excursion energy & adiabatic core temperature rise ΔT = E_total / C_p
+    const totalEnergyJ = totalFissions * energyPerFissionJ;
+    const adiabaticTempRiseC = totalEnergyJ / Math.max(1, activePreset.heatCapacityJPerC);
+    const peakPowerWatts = ( Math.min(totalEnergyJ, Math.max(nordheimFirstSpikeEnergyJ, totalEnergyJ * 0.25)) * alpha0 ) / 2.0;
 
     // Plot simulation points
     const points: { tMs: number; powerMW: number; energyMJ: number }[] = [];
@@ -126,6 +135,8 @@ export const CAASCriticalityModule: React.FC = () => {
     return {
       alpha0,
       fwhmMs,
+      nordheimFirstSpikeFissions,
+      adiabaticTempRiseC,
       totalEnergyJ,
       totalEnergyMJ: totalEnergyJ / 1e6,
       peakPowerWatts,
@@ -134,13 +145,21 @@ export const CAASCriticalityModule: React.FC = () => {
     };
   }, [activePreset, totalFissions]);
 
+  // Archetype-specific free-in-air prompt neutron vs gamma kerma coefficients [Gy·m²/fission]:
+  // Bare metal (Godiva): fast neutron dominated (Dn/Dg ~ 8:1); Moderated solution (Tokaimura): H(n,g)D 2.22 MeV capture gamma rich (Dn/Dg ~ 0.76:1)
+  const kermaCoeffs = useMemo(() => {
+    if (activePreset.id === 'godiva_prompt') {
+      return { gammaCoeff: 0.45e-15, neutronCoeff: 3.60e-15 };
+    }
+    if (activePreset.id === 'plutonium_scrap') {
+      return { gammaCoeff: 1.85e-15, neutronCoeff: 2.10e-15 };
+    }
+    return { gammaCoeff: 2.15e-15, neutronCoeff: 1.65e-15 };
+  }, [activePreset.id]);
+
   // --- TAB 2 & 3: Prompt Flash Doses & ANSI/ANS-8.3 CAAS Coverage ---
   const caasCalculations = useMemo(() => {
-    // Prompt fission yield:
-    // Prompt gammas: ~2.0e-15 Gy*m^2 per fission in air
-    // Prompt neutrons: ~2.5e-15 Gy*m^2 per fission in air
-    const gammaCoeff = 2.0e-15;
-    const neutronCoeff = 2.5e-15;
+    const { gammaCoeff, neutronCoeff } = kermaCoeffs;
 
     // Concrete attenuation:
     // HVL gamma ~ 11 cm, HVL neutron ~ 15 cm
@@ -157,19 +176,22 @@ export const CAASCriticalityModule: React.FC = () => {
     const totalDoseDetRad = totalDoseDetGy * 100;
 
     // Dose Rate during peak burst (Gy/min)
-    // burst duration in minutes:
     const burstDurationMin = Math.max(0.0001 / 60, (excursionKinetics.fwhmMs / 1000) / 60);
     const doseRateDetGyMin = totalDoseDetGy / burstDurationMin;
     const doseRateDetRadMin = doseRateDetGyMin * 100;
 
-    // ANSI/ANS-8.3 requirement: Alarm must trip at >= 0.20 Gy/min (20 rad/min) at 2.0 meters
-    const caasCompliant = doseRateDetGyMin >= 0.20;
+    // ANSI/ANS-8.3-1997 (R2020) Sec 4.2.1 Minimum Accident of Concern:
+    // Detector must trip its setpoint (detectorSetpointRadHr) for a minimum accident delivering 20 rad/min (0.20 Gy/min) at 2.0 m unshielded!
+    const unshieldedMaxRadiusM = computeCAASMaxDetectionRadiusM(20.0, 2.0, Math.max(0.1, detectorSetpointRadHr));
+    const shieldTransEffective = 0.5 * (transGamma + transNeutron);
+    const maxCompliantRadiusM = unshieldedMaxRadiusM * Math.sqrt(shieldTransEffective);
+    const caasCompliant = rDet <= maxCompliantRadiusM && (doseRateDetRadMin * 60.0) >= detectorSetpointRadHr;
 
     // Dose at Personnel Distance (Gy / Rem)
     const rPers = Math.max(1, personnelDistanceM);
     const doseGammaPersGy = (totalFissions * gammaCoeff / (4 * Math.PI * rPers * rPers)) * transGamma;
     const doseNeutronPersGy = (totalFissions * neutronCoeff / (4 * Math.PI * rPers * rPers)) * transNeutron;
-    // Fast neutron radiation weighting factor w_R = 10
+    // Fast neutron radiation weighting factor w_R = 10 (criticality RBE ~2 for deterministic acute effects, 10 for protection eq. dose)
     const doseEqPersSv = doseGammaPersGy * 1.0 + doseNeutronPersGy * 10.0;
     const doseEqPersRem = doseEqPersSv * 100;
 
@@ -192,6 +214,7 @@ export const CAASCriticalityModule: React.FC = () => {
       totalDoseDetRad,
       doseRateDetGyMin,
       doseRateDetRadMin,
+      maxCompliantRadiusM,
       caasCompliant,
       doseGammaPersGy,
       doseNeutronPersGy,
@@ -200,21 +223,16 @@ export const CAASCriticalityModule: React.FC = () => {
       clinicalTriage,
       triageColor
     };
-  }, [totalFissions, concreteShieldThicknessCm, detectorDistanceM, personnelDistanceM, excursionKinetics]);
+  }, [totalFissions, concreteShieldThicknessCm, detectorDistanceM, personnelDistanceM, detectorSetpointRadHr, excursionKinetics, kermaCoeffs]);
 
   // --- TAB 2B: ANSI/ANS-8.3 2D Facility 2oo3 Coincidence Detector Coverage & Blind-Zone Grid Solver ---
   const caasGridCoverage = useMemo(() => {
-    // ANSI/ANS-8.3-1997 (R2020) Sec 4.2.1 Minimum Accident of Concern:
-    // 0.20 Gy/min = 20 rad/min = 1200 rad/h at r_ref = 2.0 m in free air
-    const rRefM = 2.0;
-    const minAccidentRateRadHrAt2m = 1200.0;
     const hvlEffectiveCm = 12.5;
     const wallTrans = Math.pow(0.5, Math.max(0, interiorWallCm) / hvlEffectiveCm);
     const dTrip = Math.max(0.1, detectorSetpointRadHr);
 
-    // Maximum detection radius per detector channel (m):
-    // R_max = r_ref * sqrt((1200 * T_wall) / D_trip)
-    const rMaxM = rRefM * Math.sqrt((minAccidentRateRadHrAt2m * wallTrans) / dTrip);
+    // Maximum detection radius per detector channel (m) via canonical ANSI/ANS-8.3 kernel:
+    const rMaxM = computeCAASMaxDetectionRadiusM(20.0, 2.0, dTrip) * Math.sqrt(wallTrans);
 
     const detectors =
       arrayLayoutPreset === 'triangle'
@@ -280,8 +298,7 @@ export const CAASCriticalityModule: React.FC = () => {
 
   // --- TAB 3B: Radial Prompt Neutron & Gamma Flash Profile (1m - 100m) ---
   const radialFlashProfile = useMemo(() => {
-    const gammaCoeff = 2.0e-15;
-    const neutronCoeff = 2.5e-15;
+    const { gammaCoeff, neutronCoeff } = kermaCoeffs;
     const transGamma = Math.pow(0.5, concreteShieldThicknessCm / 11.0);
     const transNeutron = Math.pow(0.5, concreteShieldThicknessCm / 15.0);
 
@@ -314,7 +331,27 @@ export const CAASCriticalityModule: React.FC = () => {
       rLd50M,
       r250mSvM
     };
-  }, [totalFissions, concreteShieldThicknessCm]);
+  }, [totalFissions, concreteShieldThicknessCm, kermaCoeffs]);
+
+  useEffect(() => {
+    setLiveModuleTelemetry({
+      moduleId: 'caas-criticality',
+      moduleTitle: 'CAAS & Criticality Accident Excursion Kinetics',
+      regimeSummary: `${activePreset.name} • ${totalFissions.toExponential(2)} fissions • CAAS ${caasCalculations.caasCompliant ? 'COMPLIANT' : 'OUT OF RANGE'}`,
+      parameters: {
+        'Archetype': activePreset.category,
+        'Fission Yield': `${totalFissions.toExponential(2)} fissions`,
+        'Concrete Shield': `${concreteShieldThicknessCm} cm`,
+        'CAAS Distance': `${detectorDistanceM} m (Max: ${caasCalculations.maxCompliantRadiusM.toFixed(1)} m)`
+      },
+      computedMetrics: {
+        'Burst Energy': `${excursionKinetics.totalEnergyMJ.toFixed(2)} MJ (ΔT +${excursionKinetics.adiabaticTempRiseC.toFixed(1)} °C)`,
+        'Pulse FWHM': `${excursionKinetics.fwhmMs.toFixed(3)} ms`,
+        'Personnel Dose': `${caasCalculations.doseEqPersSv.toFixed(2)} Sv (${caasCalculations.doseEqPersRem.toFixed(0)} rem)`,
+        '2oo3 Coverage': `${caasGridCoverage.pct2oo3.toFixed(1)}%`
+      }
+    });
+  }, [activePreset, totalFissions, concreteShieldThicknessCm, detectorDistanceM, excursionKinetics, caasCalculations, caasGridCoverage.pct2oo3, setLiveModuleTelemetry]);
 
   // --- Cryptographic Dossier Payload ---
   const dossierPayload: CalculationDossierPayload = useMemo(() => {

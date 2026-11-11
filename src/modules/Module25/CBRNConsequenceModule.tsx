@@ -1,9 +1,13 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import VerificationBadge from '../../components/VerificationBadge';
 import PlotComponent from 'react-plotly.js';
 import { BlockMath, InlineMath } from 'react-katex';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
+import { useRegulatory } from '../../context/RegulatoryContext';
+import { computeWayWignerShelterDose } from '../../utils/radiologicalPhysicsKernels';
+import { evaluateBroadBeamPointShielding } from '../../utils/xcomAndGpBuildup';
 
 const Plot = (PlotComponent as any).default || PlotComponent;
 
@@ -154,6 +158,8 @@ const CHEMICAL_DATABASE: ToxicChemical[] = [
 ];
 
 export const CBRNConsequenceModule: React.FC = () => {
+  const [searchParams] = useSearchParams();
+  const { setLiveModuleTelemetry } = useRegulatory();
   const [activeTab, setActiveTab] = useState<CBRNTab>('fallout');
   const [isDossierOpen, setIsDossierOpen] = useState(false);
 
@@ -164,6 +170,21 @@ export const CBRNConsequenceModule: React.FC = () => {
   const [evaluationDuration, setEvaluationDuration] = useState<number>(48); // hours
   const [selectedShelterId, setSelectedShelterId] = useState<string>('basement_sub');
   const [isLogPlot, setIsLogPlot] = useState<boolean>(true);
+
+  useEffect(() => {
+    const yieldParam = searchParams.get('yieldKt');
+    const r1Param = searchParams.get('r1');
+    if (r1Param) {
+      const r1Val = parseFloat(r1Param);
+      if (!isNaN(r1Val) && r1Val > 0) setR1Rate(r1Val);
+    } else if (yieldParam) {
+      const y = parseFloat(yieldParam);
+      if (!isNaN(y) && y > 0) {
+        // Scale 1-hour fallout reference rate relative to 10 kT surface burst baseline (300 R/h)
+        setR1Rate(Math.round(Math.min(10000, Math.max(10, 300 * Math.pow(y / 10.0, 0.65)))));
+      }
+    }
+  }, [searchParams]);
 
   // Update scenario presets
   const handleScenarioChange = (presetId: string) => {
@@ -183,14 +204,12 @@ export const CBRNConsequenceModule: React.FC = () => {
     return SHELTER_TYPES.find((s) => s.id === selectedShelterId) || SHELTER_TYPES[4];
   }, [selectedShelterId]);
 
-  // Way-Wigner integration formula: D(t1, t2) = (R1 / (PF * -0.2)) * [ t2^(-0.2) - t1^(-0.2) ]
-  // or equivalently: D(t1, t2) = (5 * R1 / PF) * [ t1^(-0.2) - t2^(-0.2) ]
+  // Way-Wigner integration formula via canonical kernel: D(t1, t2) = (5 * R1 / PF) * [ t1^(-0.2) - t2^(-0.2) ]
   const calculateIntegratedDose = (t1: number, t2: number, pf: number, r1: number): number => {
     if (t2 <= t1) return 0;
     const safeT1 = Math.max(0.1, t1);
     const safeT2 = Math.max(safeT1 + 0.01, t2);
-    const integralVal = 5 * r1 * (Math.pow(safeT1, -0.2) - Math.pow(safeT2, -0.2));
-    return integralVal / pf;
+    return computeWayWignerShelterDose(r1, safeT1, safeT2, pf);
   };
 
   // Time arrays and curve points
@@ -234,27 +253,36 @@ export const CBRNConsequenceModule: React.FC = () => {
     { material: 'Earth/Soil', thicknessCm: 30 }
   ]);
 
-  const MATERIAL_HVL: Record<string, { hvlCm: number; densityGcm3: number; name: string }> = {
-    'Concrete': { hvlCm: 6.4, densityGcm3: 2.35, name: 'Normal Density Concrete' },
-    'Earth/Soil': { hvlCm: 9.4, densityGcm3: 1.60, name: 'Compacted Earth / Soil' },
-    'Brick': { hvlCm: 7.9, densityGcm3: 1.90, name: 'Common Red Clay Brick' },
-    'Steel': { hvlCm: 1.8, densityGcm3: 7.85, name: 'Structural Carbon Steel' },
-    'Wood': { hvlCm: 25.0, densityGcm3: 0.60, name: 'Construction Lumber / Plywood' },
-    'Lead': { hvlCm: 1.1, densityGcm3: 11.34, name: 'Chemical Lead Sheeting' }
+  const MATERIAL_HVL: Record<string, { hvlCm: number; densityGcm3: number; xcomKey: string; xcomBaseDensity: number; name: string }> = {
+    'Concrete': { hvlCm: 6.4, densityGcm3: 2.35, xcomKey: 'CONCRETE', xcomBaseDensity: 2.35, name: 'Normal Density Concrete' },
+    'Earth/Soil': { hvlCm: 9.4, densityGcm3: 1.60, xcomKey: 'SOIL_EARTH', xcomBaseDensity: 1.80, name: 'Compacted Earth / Soil' },
+    'Brick': { hvlCm: 7.9, densityGcm3: 1.90, xcomKey: 'CONCRETE', xcomBaseDensity: 2.35, name: 'Common Red Clay Brick' },
+    'Steel': { hvlCm: 1.8, densityGcm3: 7.85, xcomKey: 'STEEL', xcomBaseDensity: 7.86, name: 'Structural Carbon Steel' },
+    'Wood': { hvlCm: 25.0, densityGcm3: 0.60, xcomKey: 'WATER', xcomBaseDensity: 1.00, name: 'Construction Lumber / Plywood' },
+    'Lead': { hvlCm: 1.1, densityGcm3: 11.34, xcomKey: 'LEAD', xcomBaseDensity: 11.34, name: 'Chemical Lead Sheeting' }
   };
 
   const customShieldingMetrics = useMemo(() => {
-    let totalHvlFractions = 0;
     let totalMassAreal = 0; // g/cm^2
+    const xcomLayers: { material: string; thicknessCm: number }[] = [];
 
     layers.forEach((l) => {
       const mat = MATERIAL_HVL[l.material] || MATERIAL_HVL['Concrete'];
-      totalHvlFractions += l.thicknessCm / mat.hvlCm;
-      totalMassAreal += l.thicknessCm * mat.densityGcm3;
+      const tCm = Math.max(0, l.thicknessCm);
+      totalMassAreal += tCm * mat.densityGcm3;
+      if (tCm > 0) {
+        xcomLayers.push({
+          material: mat.xcomKey,
+          thicknessCm: tCm * (mat.densityGcm3 / mat.xcomBaseDensity)
+        });
+      }
     });
 
-    const attenuationFactor = Math.pow(2, totalHvlFractions);
+    // Evaluate broad-beam 0.70 MeV fission-product fallout transmission with ANSI/ANS-6.4.3 GP buildup
+    const broadBeam = evaluateBroadBeamPointShielding(0.70, 1000.0, 1.0, xcomLayers, 'GP_ANS643');
+    const attenuationFactor = 1.0 / Math.max(1e-12, broadBeam.transmissionBroadBeam);
     const calculatedPf = Math.max(1.0, attenuationFactor);
+    const totalHvlFractions = Math.log2(calculatedPf);
     const massArealLbFt2 = totalMassAreal * 2.04816; // 1 g/cm^2 = 2.048 lb/ft^2
 
     return {
@@ -493,6 +521,26 @@ export const CBRNConsequenceModule: React.FC = () => {
       ]
     };
   }, [r1Rate, falloutArrival, evaluationDuration, activeShelter, egressInitialPf, destPf, totalDoseOutside, totalDoseShelter, doseAvoidedPct, egressOptimization, customShieldingMetrics, activeChemical, outdoorConcPpm, airChangesPerHour, chemicalSimulation, scoredCells, observedDicentrics, currentAlc, baselineAlc, cytogeneticDose]);
+
+  useEffect(() => {
+    setLiveModuleTelemetry({
+      moduleId: 'cbrn-consequence',
+      moduleTitle: 'CBRN Fallout, Shelter PF & Egress Optimizer',
+      regimeSummary: `R₁ = ${r1Rate} R/h • ${activeShelter.name} (PF = ${activeShelter.pf})`,
+      parameters: {
+        '1-Hr Fallout Rate R₁ (R/h)': r1Rate,
+        'Arrival Time (h)': falloutArrival,
+        'Shelter Type': activeShelter.name,
+        'Protection Factor (PF)': activeShelter.pf
+      },
+      computedMetrics: {
+        '48h Unshielded Dose': `${totalDoseOutside.toFixed(1)} R`,
+        '48h In-Shelter Dose': `${totalDoseShelter.toFixed(1)} R`,
+        'Custom Multilayer Broad-Beam PF': customShieldingMetrics.calculatedPf.toFixed(1),
+        'Optimal Egress Window': `T+${egressOptimization.bestTime.toFixed(1)} h`
+      }
+    });
+  }, [r1Rate, falloutArrival, activeShelter, totalDoseOutside, totalDoseShelter, customShieldingMetrics, egressOptimization, setLiveModuleTelemetry]);
 
   return (
     <div className="cbrn-consequence-module">

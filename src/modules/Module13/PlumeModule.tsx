@@ -6,6 +6,8 @@ import { BlockMath, InlineMath } from 'react-katex';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
 import { useRegulatory } from '../../context/RegulatoryContext';
+import { computeBriggsRuralDispersionMeters } from '../../utils/radiologicalPhysicsKernels';
+import { parseActivityToGBq } from '../../utils/canonicalNuclidePhysics';
 import {
   fetchLiveSiteMeteorology,
   REFERENCE_MET_SITES,
@@ -26,42 +28,12 @@ const STABILITY_INFO: Record<string, { label: string; desc: string }> = {
   F: { label: 'Class F — Moderately Stable', desc: 'Clear nighttime, low winds. Strong temperature inversion with trapped plume.' }
 };
 
-// Simplified Briggs dispersion parameters for open country
+// Briggs (1973) open-country rural dispersion parameters delegated to canonical kernel
 const getDispersionCoefficients = (x: number, stability: string) => {
   const xSafe = Math.max(x, 1);
-  let sy = 0;
-  let sz = 0;
-
-  switch (stability) {
-    case 'A':
-      sy = 0.22 * xSafe * Math.pow(1 + 0.0001 * xSafe, -0.5);
-      sz = 0.20 * xSafe;
-      break;
-    case 'B':
-      sy = 0.16 * xSafe * Math.pow(1 + 0.0001 * xSafe, -0.5);
-      sz = 0.12 * xSafe;
-      break;
-    case 'C':
-      sy = 0.11 * xSafe * Math.pow(1 + 0.0001 * xSafe, -0.5);
-      sz = 0.08 * xSafe * Math.pow(1 + 0.0002 * xSafe, -0.5);
-      break;
-    case 'D':
-      sy = 0.08 * xSafe * Math.pow(1 + 0.0001 * xSafe, -0.5);
-      sz = 0.06 * xSafe * Math.pow(1 + 0.0015 * xSafe, -0.5);
-      break;
-    case 'E':
-      sy = 0.06 * xSafe * Math.pow(1 + 0.0001 * xSafe, -0.5);
-      sz = 0.03 * xSafe * Math.pow(1 + 0.0003 * xSafe, -1);
-      break;
-    case 'F':
-      sy = 0.04 * xSafe * Math.pow(1 + 0.0001 * xSafe, -0.5);
-      sz = 0.016 * xSafe * Math.pow(1 + 0.0003 * xSafe, -1);
-      break;
-    default:
-      sy = 0.08 * xSafe * Math.pow(1 + 0.0001 * xSafe, -0.5);
-      sz = 0.06 * xSafe * Math.pow(1 + 0.0015 * xSafe, -0.5);
-  }
-  return { sy, sz };
+  const validClass = (STABILITY_CLASSES.includes(stability) ? stability : 'D') as 'A' | 'B' | 'C' | 'D' | 'E' | 'F';
+  const { sigmaYM, sigmaZM } = computeBriggsRuralDispersionMeters(xSafe, validClass);
+  return { sy: sigmaYM, sz: sigmaZM };
 };
 
 type WorkspaceTab = 'footprint' | 'centerline' | 'controls' | 'physics';
@@ -116,13 +88,17 @@ const PlumeModule: React.FC = () => {
     if (actParam) {
       const parsed = parseFloat(actParam);
       if (!isNaN(parsed) && parsed > 0) {
-        if (unitParam?.toUpperCase() === 'TBQ') {
-          setReleaseRate(parseFloat((parsed * 27 * 0.001).toFixed(3)) || 1.0);
-        } else if (unitParam?.toUpperCase() === 'CI') {
-          // If total curies released over 1 hour (3600s)
-          setReleaseRate(parseFloat((parsed / 3600).toFixed(3)) || 1.0);
+        const upUnit = unitParam?.toUpperCase() || '';
+        if (upUnit === 'CI/S') {
+          setReleaseRate(Number(parsed.toFixed(4)) || 1.0);
+        } else if (upUnit === 'TBQ') {
+          // 1 TBq = 27.027 Ci; acute 1000-s release window
+          setReleaseRate(parseFloat(((parsed * 27.027) / 1000).toFixed(4)) || 0.027);
         } else {
-          setReleaseRate(parseFloat((parsed * 0.01).toFixed(3)) || 1.0);
+          // Convert total inventory (GBq, MBq, Ci, Bq) over 1-hour (3600 s) release
+          const totalGBq = parseActivityToGBq(parsed, unitParam || 'GBq');
+          const totalCi = totalGBq / 37.0;
+          setReleaseRate(Number(Math.max(0.001, totalCi / 3600).toFixed(4)));
         }
       }
     }
@@ -388,17 +364,22 @@ const PlumeModule: React.FC = () => {
   const { setLiveModuleTelemetry, openPhysicsTutor } = useRegulatory();
 
   useEffect(() => {
+    const isoParam = searchParams.get('nuclide') || searchParams.get('isotope');
     setLiveModuleTelemetry({
       moduleId: 'plume',
       moduleTitle: 'Atmospheric Gaussian Plume Model',
       regimeSummary: `Pasquill Class ${stability} • u = ${windSpeed} m/s • H = ${releaseHeight} m`,
       parameters: {
+        ...(isoParam ? { Nuclide: isoParam } : {}),
         'Stability Class': stability,
         'Wind Speed (m/s)': windSpeed,
         'Release Height (m)': releaseHeight,
-        'Release Rate': `${releaseRate} Ci/s`
+        'Release Rate': `${releaseRate} Ci/s`,
+        'Activity (GBq)': Number((releaseRate * 37.0 * 3600.0).toFixed(2))
       },
       computedMetrics: {
+        'Peak Ground Conc': `${centerlineData.peakC.toExponential(2)} Ci/m³`,
+        'Peak Touchdown': `${centerlineData.peakX.toFixed(0)} m`,
         'Inversion Lid': `${mixingHeightM} m`,
         'Rain Washout': `${rainRateMmHr} mm/h`
       },
