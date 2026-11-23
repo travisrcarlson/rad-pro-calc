@@ -10,9 +10,15 @@ import { type CalculationDossierPayload } from '../../../services/auditDossierSe
 import { getCanonicalNuclide } from '../../../utils/canonicalNuclidePhysics';
 import { computeCommittedEffectiveDoseMSv } from '../../../utils/radiologicalPhysicsKernels';
 
-const getAliInhal = (n: any) => n?.['ALI Inhal. (µCi)'] ?? n?.['ALI Inhal. (μCi)'];
-const getAliIngest = (n: any) => n?.['ALI Ingest. (µCi)'] ?? n?.['ALI Ingest. (μCi)'];
-const getDac = (n: any) => n?.['DAC (µCi/mL)'] ?? n?.['DAC (μCi/mL)'];
+type InternalNuclideRow = {
+  Nuclide?: string;
+  Symbol?: string;
+  [key: string]: string | number | undefined;
+};
+
+const getAliInhal = (n: InternalNuclideRow | undefined) => n?.['ALI Inhal. (µCi)'] ?? n?.['ALI Inhal. (μCi)'];
+const getAliIngest = (n: InternalNuclideRow | undefined) => n?.['ALI Ingest. (µCi)'] ?? n?.['ALI Ingest. (μCi)'];
+const getDac = (n: InternalNuclideRow | undefined) => n?.['DAC (µCi/mL)'] ?? n?.['DAC (μCi/mL)'];
 
 type LungAbsorptionType = 'F' | 'M' | 'S';
 
@@ -77,7 +83,7 @@ const InternalDoseCalc: React.FC = () => {
   } = useRegulatory();
   const [searchParams] = useSearchParams();
   const [isDossierOpen, setIsDossierOpen] = useState<boolean>(false);
-  const nuclides = nuclidesData as any[];
+  const nuclides = nuclidesData as InternalNuclideRow[];
   const validNuclides = useMemo(() => nuclides.filter(n => {
     const inhal = parseFloat(String(getAliInhal(n) ?? '0'));
     const ingest = parseFloat(String(getAliIngest(n) ?? '0'));
@@ -91,7 +97,10 @@ const InternalDoseCalc: React.FC = () => {
   const [pathway, setPathway] = useState<'inhalation' | 'ingestion'>('inhalation');
   const [lungType, setLungType] = useState<LungAbsorptionType>('M');
 
-  useEffect(() => {
+  const searchKey = searchParams.toString();
+  const [prevSearchKey, setPrevSearchKey] = useState<string | null>(null);
+  if (searchKey !== prevSearchKey) {
+    setPrevSearchKey(searchKey);
     const nucParam = searchParams.get('nuclide') || searchParams.get('isotope');
     const pathParam = searchParams.get('pathway')?.toLowerCase();
     const lungParam = searchParams.get('lungType')?.toUpperCase();
@@ -127,7 +136,7 @@ const InternalDoseCalc: React.FC = () => {
         }
       }
     }
-  }, [searchParams, validNuclides]);
+  }
 
   // Airborne DAC Stay-Time & Respirator APF Calculator State
   const [airborneDacMultiple, setAirborneDacMultiple] = useState<number>(2.5);
@@ -321,7 +330,7 @@ const InternalDoseCalc: React.FC = () => {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
             <div className="form-group">
               <label className="form-label">Pathway</label>
-              <select className="form-control" value={pathway} onChange={e => setPathway(e.target.value as any)}>
+              <select className="form-control" value={pathway} onChange={e => setPathway(e.target.value as 'inhalation' | 'ingestion')}>
                 <option value="inhalation">Inhalation (HRTM)</option>
                 <option value="ingestion">Ingestion (HAT)</option>
               </select>

@@ -51,7 +51,10 @@ const ShieldingCalc: React.FC = () => {
   const [calcMode, setCalcMode] = useState<'thickness' | 'transmission'>('thickness');
   const [isDossierOpen, setIsDossierOpen] = useState<boolean>(false);
 
-  useEffect(() => {
+  const searchKey = searchParams.toString();
+  const [prevSearchKey, setPrevSearchKey] = useState<string | null>(null);
+  if (searchKey !== prevSearchKey) {
+    setPrevSearchKey(searchKey);
     const matParam = searchParams.get('material');
     const eParam = searchParams.get('energyMeV');
     const thickParam = searchParams.get('thicknessCm') ?? searchParams.get('thickness');
@@ -86,7 +89,7 @@ const ShieldingCalc: React.FC = () => {
     if (modeParam === 'thickness' || modeParam === 'transmission') {
       setCalcMode(modeParam);
     }
-  }, [searchParams]);
+  }
 
   const occHourlyLimit_uSv_h = (currentFramework.limits.occupationalAnnualEffective_mSv * 1000) / 2000;
   const pubHourlyLimit_uSv_h = (currentFramework.limits.publicAnnualEffective_mSv * 1000) / 8760;

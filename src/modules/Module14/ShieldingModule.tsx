@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import VerificationBadge from '../../components/VerificationBadge';
-import PlotComponent from 'react-plotly.js';
+import Plot from 'react-plotly.js';
 import { BlockMath } from 'react-katex';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
@@ -23,8 +23,6 @@ import {
   computeArcherBroadBeamTransmission,
   computeCossairtMazeDoorDoseRateUSvHr
 } from '../../utils/radiologicalPhysicsKernels';
-
-const Plot = (PlotComponent as any).default || PlotComponent;
 
 export type ShieldTab = 'layers' | 'buildup' | 'solver' | 'pet_tg108' | 'labyrinth_skyshine' | 'physics';
 
@@ -106,7 +104,10 @@ export const ShieldingModule: React.FC = () => {
   const [skyHorizontalDistM, setSkyHorizontalDistM] = useState<number>(30.0);
   const [mazeBeamMv, setMazeBeamMv] = useState<number>(6); // Nominal Linac MV (photoneutrons > 10 MV)
 
-  useEffect(() => {
+  const searchKey = searchParams.toString();
+  const [prevSearchKey, setPrevSearchKey] = useState<string | null>(null);
+  if (searchKey !== prevSearchKey) {
+    setPrevSearchKey(searchKey);
     const eParam = searchParams.get('energyMeV');
     const actParam = searchParams.get('activityMBq');
     const isoParam = searchParams.get('isotope') || searchParams.get('nuclide');
@@ -201,7 +202,7 @@ export const ShieldingModule: React.FC = () => {
         );
       }
     }
-  }, [searchParams]);
+  }
 
   // Solver target limit
   const [targetDoseLimit, setTargetDoseLimit] = useState<number>(2.5); // µSv/h
@@ -220,10 +221,6 @@ export const ShieldingModule: React.FC = () => {
 
   // Stack Calculations with ANSI/ANS-6.4.3 GP + Kalos/Broder Multi-Layer Stratification
   const stackAnalytics = useMemo(() => {
-    let accumulatedOpticalThickness = 0;
-    let totalMassArealGcm2 = 0;
-    let totalThicknessCm = 0;
-
     const rawLayers = layers.map(l => {
       const xcom = evaluateXCOMAttenuation(l.materialKey, photonEnergyMev);
       const mfp = xcom.muLinear * l.thicknessCm;
@@ -233,6 +230,10 @@ export const ShieldingModule: React.FC = () => {
         mfp
       };
     });
+
+    const accumulatedOpticalThickness = rawLayers.reduce((sum, r) => sum + r.mfp, 0);
+    const totalMassArealGcm2 = rawLayers.reduce((sum, r) => sum + r.density * r.thicknessCm, 0);
+    const totalThicknessCm = rawLayers.reduce((sum, r) => sum + r.thicknessCm, 0);
 
     const multiBuildup = evaluateMultiLayerBuildup(
       rawLayers.map(r => ({ materialKey: r.materialKey, mfp: r.mfp })),
@@ -249,11 +250,7 @@ export const ShieldingModule: React.FC = () => {
     );
 
     const layerDetails = rawLayers.map((r, idx) => {
-      accumulatedOpticalThickness += r.mfp;
       const layerArealDensity = r.density * r.thicknessCm;
-      totalMassArealGcm2 += layerArealDensity;
-      totalThicknessCm += r.thicknessCm;
-
       const cumMfp = multiBuildup.cumulativeMfpByLayer[idx];
       const cumB = multiBuildup.effectiveBuildupAtLayerExit[idx];
       const exitDose = incidentDoseRate * cumB * Math.exp(-cumMfp);
@@ -717,8 +714,13 @@ export const ShieldingModule: React.FC = () => {
     setLayers(layers.filter(l => l.id !== id));
   };
 
-  const handleUpdateLayer = (id: string, field: 'materialKey' | 'thicknessCm', val: any) => {
-    setLayers(layers.map(l => (l.id === id ? { ...l, [field]: val } : l)));
+  const handleUpdateLayer = (id: string, field: 'materialKey' | 'thicknessCm', val: string | number) => {
+    setLayers(layers.map(l => {
+      if (l.id !== id) return l;
+      return field === 'materialKey'
+        ? { ...l, materialKey: String(val) }
+        : { ...l, thicknessCm: Number(val) };
+    }));
   };
 
   const dossierPayload: CalculationDossierPayload = useMemo(
@@ -1242,10 +1244,10 @@ export const ShieldingModule: React.FC = () => {
                         {
                           x: depthProfile.points.map(p => p.depthCm),
                           y: depthProfile.points.map(p => p.neutronDoseRate),
-                          type: 'scatter',
-                          mode: 'lines+markers',
+                          type: 'scatter' as const,
+                          mode: 'lines+markers' as const,
                           name: 'Fast Neutron Removal (B_n·e^-Σ_Rx)',
-                          line: { color: '#c084fc', dash: 'dashdot', width: 2.3 },
+                          line: { color: '#c084fc', dash: 'dashdot' as const, width: 2.3 },
                           marker: { size: 3 },
                           hovertemplate: 'Depth: %{x:.2f} cm<br>Fast Neutron: %{y:.2f} µSv/h<extra></extra>'
                         }
@@ -1266,8 +1268,8 @@ export const ShieldingModule: React.FC = () => {
                   paper_bgcolor: 'transparent',
                   plot_bgcolor: 'transparent',
                   font: { color: '#E0E1DD' },
-                  xaxis: { title: 'Cumulative Shield Depth z (cm)', gridcolor: '#1e293b' },
-                  yaxis: { title: 'Dose Rate Ḋ(z) (µSv/h)', type: 'log', gridcolor: '#1e293b' },
+                  xaxis: { title: { text: 'Cumulative Shield Depth z (cm)' }, gridcolor: '#1e293b' },
+                  yaxis: { title: { text: 'Dose Rate Ḋ(z) (µSv/h)' }, type: 'log', gridcolor: '#1e293b' },
                   shapes: depthProfile.layerZones.map(z => ({
                     type: 'rect' as const,
                     xref: 'x' as const,
@@ -1359,8 +1361,8 @@ export const ShieldingModule: React.FC = () => {
                     paper_bgcolor: 'transparent',
                     plot_bgcolor: 'transparent',
                     font: { color: '#E0E1DD', size: 11 },
-                    xaxis: { title: 'Photon Energy E (keV, Log Scale)', type: 'log', gridcolor: '#1e293b' },
-                    yaxis: { title: 'Mass Coefficient (cm²/g, Log Scale)', type: 'log', gridcolor: '#1e293b' },
+                    xaxis: { title: { text: 'Photon Energy E (keV, Log Scale)' }, type: 'log', gridcolor: '#1e293b' },
+                    yaxis: { title: { text: 'Mass Coefficient (cm²/g, Log Scale)' }, type: 'log', gridcolor: '#1e293b' },
                     legend: { orientation: 'h', y: -0.22 }
                   }}
                   useResizeHandler={true}
@@ -1513,8 +1515,8 @@ export const ShieldingModule: React.FC = () => {
                   plot_bgcolor: 'transparent',
                   font: { color: '#E0E1DD', size: 11 },
                   xaxis: { gridcolor: '#1e293b' },
-                  yaxis: { title: 'Required Thickness (cm)', titlefont: { color: '#00e5ff' }, tickfont: { color: '#00e5ff' }, gridcolor: '#1e293b' },
-                  yaxis2: { title: 'Floor Load (kg/m²)', titlefont: { color: '#f59e0b' }, tickfont: { color: '#f59e0b' }, overlaying: 'y', side: 'right', showgrid: false },
+                  yaxis: { title: { text: 'Required Thickness (cm)', font: { color: '#00e5ff' } }, tickfont: { color: '#00e5ff' }, gridcolor: '#1e293b' },
+                  yaxis2: { title: { text: 'Floor Load (kg/m²)', font: { color: '#f59e0b' } }, tickfont: { color: '#f59e0b' }, overlaying: 'y', side: 'right', showgrid: false },
                   legend: { orientation: 'h', y: 1.15, x: 0 }
                 }}
                 useResizeHandler={true}
@@ -1757,8 +1759,8 @@ export const ShieldingModule: React.FC = () => {
                   margin: { t: 24, r: 20, b: 42, l: 55 },
                   height: 250,
                   font: { color: '#cbd5e1', size: 11 },
-                  xaxis: { title: `${petTg108Analytics.materialLabel} Thickness x (cm)`, gridcolor: 'rgba(255,255,255,0.06)' },
-                  yaxis: { title: 'Weekly Dose (µSv/wk)', type: 'log', gridcolor: 'rgba(255,255,255,0.06)' },
+                  xaxis: { title: { text: `${petTg108Analytics.materialLabel} Thickness x (cm)` }, gridcolor: 'rgba(255,255,255,0.06)' },
+                  yaxis: { title: { text: 'Weekly Dose (µSv/wk)' }, type: 'log', gridcolor: 'rgba(255,255,255,0.06)' },
                   legend: { orientation: 'h', y: 1.14 }
                 }}
                 config={{ displayModeBar: false, responsive: true }}
@@ -1958,8 +1960,8 @@ export const ShieldingModule: React.FC = () => {
                   margin: { t: 24, r: 20, b: 42, l: 55 },
                   height: 240,
                   font: { color: '#cbd5e1', size: 11 },
-                  xaxis: { title: 'Maze Leg 2 Distance d₂ (m)', gridcolor: 'rgba(255,255,255,0.06)' },
-                  yaxis: { title: 'Unshielded Maze Dose (µSv/h)', type: 'log', gridcolor: 'rgba(255,255,255,0.06)' },
+                  xaxis: { title: { text: 'Maze Leg 2 Distance d₂ (m)' }, gridcolor: 'rgba(255,255,255,0.06)' },
+                  yaxis: { title: { text: 'Unshielded Maze Dose (µSv/h)' }, type: 'log', gridcolor: 'rgba(255,255,255,0.06)' },
                   legend: { orientation: 'h', y: 1.14 }
                 }}
                 config={{ displayModeBar: false, responsive: true }}

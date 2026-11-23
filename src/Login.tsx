@@ -1,16 +1,20 @@
 import React, { useState } from 'react';
+import { sha256Hex } from './utils/cryptoHash';
 
 interface LoginProps {
   onLogin: () => void;
 }
 
+const AUTHORIZED_PASSPHRASE_SHA256 = '88D21BA4C7AE623F17B4C53F2F1A060AD58FA38CFDA381D34799AC1AB8801225';
+
 const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === 'Freya2026') {
+    const digest = await sha256Hex(password);
+    if (digest === AUTHORIZED_PASSPHRASE_SHA256) {
       onLogin();
     } else {
       setError(true);

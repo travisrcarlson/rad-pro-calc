@@ -18,12 +18,15 @@ const DoseCalculatorModule: React.FC = () => {
     return 'external';
   });
 
-  useEffect(() => {
+  const searchKey = searchParams.toString();
+  const [prevSearchKey, setPrevSearchKey] = useState<string>(() => searchParams.toString());
+  if (searchKey !== prevSearchKey) {
+    setPrevSearchKey(searchKey);
     const tab = searchParams.get('tab')?.toLowerCase();
     if (tab === 'shielding' || tab === 'internal' || tab === 'activation' || tab === 'external') {
       setActiveTab(tab);
     }
-  }, [searchParams]);
+  }
 
   // Clear telemetry when leaving Module 1 completely; active submodule publishes live telemetry
   useEffect(() => {

@@ -1,13 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import VerificationBadge from '../../components/VerificationBadge';
-import PlotComponent from 'react-plotly.js';
+import Plot from 'react-plotly.js';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
 import { evaluateXCOMAttenuation } from '../../utils/xcomAndGpBuildup';
 import { computeDuaneHuntMinWavelengthNm } from '../../utils/radiologicalPhysicsKernels';
 import { useRegulatory } from '../../context/RegulatoryContext';
-
-const Plot = (PlotComponent as any).default || PlotComponent;
 
 interface AnodeMaterial {
   name: string;
@@ -499,14 +497,14 @@ const XRayTubeModule: React.FC = () => {
                 {
                   x: spectrum.energies,
                   y: spectrum.filteredIntensities,
-                  type: 'scatter',
-                  mode: 'lines',
+                  type: 'scatter' as const,
+                  mode: 'lines' as const,
                   name: 'Filtered output (Hardened)',
                   line: { color: 'var(--color-primary)', width: 3 },
-                  fill: 'tozeroy',
+                  fill: 'tozeroy' as const,
                   fillcolor: 'rgba(0, 229, 255, 0.15)'
                 }
-              ] as any}
+              ]}
               layout={{
                 autosize: true,
                 xaxis: { title: { text: 'Photon Energy (keV)' }, color: '#94A3B8', gridcolor: 'rgba(255,255,255,0.05)' },

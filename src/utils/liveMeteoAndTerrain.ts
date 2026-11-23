@@ -288,7 +288,7 @@ export async function fetchAndComputeTerrainShadowing(
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     if (Array.isArray(data.elevation) && data.elevation.length === distsKm.length) {
-      elevationsM = data.elevation.map((v: any) => Number(v) || 0);
+      elevationsM = (data.elevation as unknown[]).map((v) => Number(v) || 0);
     } else {
       throw new Error('Invalid elevation array');
     }

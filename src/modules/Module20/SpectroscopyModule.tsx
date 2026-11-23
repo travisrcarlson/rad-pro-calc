@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import VerificationBadge from '../../components/VerificationBadge';
-import PlotComponent from 'react-plotly.js';
+import Plot from 'react-plotly.js';
+import type { Data } from 'plotly.js';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
 import { useRegulatory } from '../../context/RegulatoryContext';
@@ -17,8 +18,6 @@ import {
   generateSampleAnsiN42Xml,
   type IngestedSpectrum
 } from '../../utils/spectrumAndSurveyParsers';
-
-const Plot = (PlotComponent as any).default || PlotComponent;
 
 export interface DetectorSpec {
   name: string;
@@ -167,6 +166,42 @@ const ISOTOPES: IsotopeSpec[] = [
   }
 ];
 
+function downloadAnsiN42SpectrumXml(params: {
+  a0: number;
+  a1: number;
+  instrumentModel: string;
+  realTimeSec: number;
+  liveTimeSec: number;
+  finalCounts: number[];
+  fileStem: string;
+}): void {
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<RadInstrumentData xmlns="http://physics.nist.gov/N42/2006/N42" n42DocUUID="radpro-export-${Date.now()}">
+  <RadInstrumentInformation id="RIID-1">
+    <RadInstrumentManufacturerName>RadPro Analyst MCA Engine</RadInstrumentManufacturerName>
+    <RadInstrumentModelName>${params.instrumentModel}</RadInstrumentModelName>
+  </RadInstrumentInformation>
+  <RadMeasurement id="MEAS-01">
+    <MeasurementClassCode>Foreground</MeasurementClassCode>
+    <RealTimeDuration>PT${params.realTimeSec.toFixed(1)}S</RealTimeDuration>
+    <Spectrum id="SPEC-01">
+      <LiveTimeDuration>PT${params.liveTimeSec.toFixed(1)}S</LiveTimeDuration>
+      <EnergyCalibration id="ECAL-01">
+        <CoefficientValues>${params.a0.toFixed(4)} ${params.a1.toFixed(4)} 0.0000</CoefficientValues>
+      </EnergyCalibration>
+      <ChannelData>${params.finalCounts.join(' ')}</ChannelData>
+    </Spectrum>
+  </RadMeasurement>
+</RadInstrumentData>`;
+  const blob = new Blob([xml], { type: 'application/xml' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `RadPro_${params.fileStem}.n42`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 const SpectroscopyModule: React.FC = () => {
   const [searchParams] = useSearchParams();
   const [detector, setDetector] = useState<DetectorSpec>(DETECTORS[0]);
@@ -190,7 +225,10 @@ const SpectroscopyModule: React.FC = () => {
   const [isDossierOpen, setIsDossierOpen] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  useEffect(() => {
+  const searchKey = searchParams.toString();
+  const [prevSearchKey, setPrevSearchKey] = useState<string | null>(null);
+  if (searchKey !== prevSearchKey) {
+    setPrevSearchKey(searchKey);
     const agedChain = searchParams.get('agedChain');
     const elapsed = searchParams.get('elapsed') || '';
     const agedPeaks = searchParams.get('agedPeaks');
@@ -241,40 +279,44 @@ const SpectroscopyModule: React.FC = () => {
         energiesKeV,
         counts
       });
-      return;
-    }
-
-    const isoParam = searchParams.get('nuclide') || searchParams.get('isotope');
-    if (isoParam) {
-      const targetIso = isoParam.trim().toLowerCase();
-      const matched = ISOTOPES.find(
-        (iso) =>
-          iso.symbol.toLowerCase() === targetIso ||
-          iso.name.toLowerCase().includes(targetIso)
-      );
-      if (matched) {
-        setIngestedSpectrum(null);
-        setIsotope(matched);
+    } else {
+      const isoParam = searchParams.get('nuclide') || searchParams.get('isotope');
+      if (isoParam) {
+        const targetIso = isoParam.trim().toLowerCase();
+        const matched = ISOTOPES.find(
+          (iso) =>
+            iso.symbol.toLowerCase() === targetIso ||
+            iso.name.toLowerCase().includes(targetIso)
+        );
+        if (matched) {
+          setIngestedSpectrum(null);
+          setIsotope(matched);
+        }
       }
-    }
 
-    const actParam = searchParams.get('activity');
-    const unitParam = searchParams.get('unit');
-    if (actParam) {
-      const parsed = parseFloat(actParam);
-      if (!isNaN(parsed) && parsed > 0) {
-        const gbq = parseActivityToGBq(parsed, unitParam || 'kBq');
-        if (gbq > 0) {
-          setActivityKBq(Math.min(10000000, Math.max(1, Math.round(gbq * 1e6))));
+      const actParam = searchParams.get('activity');
+      const unitParam = searchParams.get('unit');
+      if (actParam) {
+        const parsed = parseFloat(actParam);
+        if (!isNaN(parsed) && parsed > 0) {
+          const gbq = parseActivityToGBq(parsed, unitParam || 'kBq');
+          if (gbq > 0) {
+            setActivityKBq(Math.min(10000000, Math.max(1, Math.round(gbq * 1e6))));
+          }
         }
       }
     }
-  }, [searchParams]);
+  }
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setIngestError(null);
+    if (file.size > 25 * 1024 * 1024) {
+      setIngestError('Spectrum file exceeds the 25 MB upload limit.');
+      e.target.value = '';
+      return;
+    }
 
     const reader = new FileReader();
     reader.onload = ev => {
@@ -288,11 +330,12 @@ const SpectroscopyModule: React.FC = () => {
           parsed = parseOrtecSpeOrCsv(text, file.name);
         }
         setIngestedSpectrum(parsed);
-      } catch (err: any) {
-        setIngestError(err?.message || 'Failed to parse spectrum file.');
+      } catch (err: unknown) {
+        setIngestError(err instanceof Error ? err.message : 'Failed to parse spectrum file.');
       }
     };
     reader.readAsText(file);
+    e.target.value = '';
   };
 
   const handleLoadReferenceN42 = () => {
@@ -300,36 +343,6 @@ const SpectroscopyModule: React.FC = () => {
     const xml = generateSampleAnsiN42Xml();
     const parsed = parseAnsiN42Xml(xml, 'ORTEC_DetectiveX_Field_SNM_Mix.n42');
     setIngestedSpectrum(parsed);
-  };
-
-  const handleExportCurrentN42 = () => {
-    const a0 = spectrumData.energies[0] || 0;
-    const a1 = spectrumData.keVPerChannel;
-    const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<RadInstrumentData xmlns="http://physics.nist.gov/N42/2006/N42" n42DocUUID="radpro-export-${Date.now()}">
-  <RadInstrumentInformation id="RIID-1">
-    <RadInstrumentManufacturerName>RadPro Analyst MCA Engine</RadInstrumentManufacturerName>
-    <RadInstrumentModelName>${ingestedSpectrum ? ingestedSpectrum.instrumentModel : detector.name}</RadInstrumentModelName>
-  </RadInstrumentInformation>
-  <RadMeasurement id="MEAS-01">
-    <MeasurementClassCode>Foreground</MeasurementClassCode>
-    <RealTimeDuration>PT${(ingestedSpectrum ? ingestedSpectrum.realTimeSec : liveTimeSec).toFixed(1)}S</RealTimeDuration>
-    <Spectrum id="SPEC-01">
-      <LiveTimeDuration>PT${(ingestedSpectrum ? ingestedSpectrum.liveTimeSec : liveTimeSec).toFixed(1)}S</LiveTimeDuration>
-      <EnergyCalibration id="ECAL-01">
-        <CoefficientValues>${a0.toFixed(4)} ${a1.toFixed(4)} 0.0000</CoefficientValues>
-      </EnergyCalibration>
-      <ChannelData>${spectrumData.finalCounts.join(' ')}</ChannelData>
-    </Spectrum>
-  </RadMeasurement>
-</RadInstrumentData>`;
-    const blob = new Blob([xml], { type: 'application/xml' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `RadPro_${ingestedSpectrum ? ingestedSpectrum.fileName.replace(/\.[^.]+$/, '') : isotope.symbol}.n42`;
-    link.click();
-    URL.revokeObjectURL(url);
   };
 
   // Generate 2048-Channel MCA Spectrum Data or use Ingested Spectrum
@@ -426,6 +439,18 @@ const SpectroscopyModule: React.FC = () => {
 
     return { numChannels, keVPerChannel, channels, energies, finalCounts };
   }, [ingestedSpectrum, detector, isotope, activityKBq, liveTimeSec, hasShielding, addPoissonNoise]);
+
+  const handleExportCurrentN42 = () => {
+    downloadAnsiN42SpectrumXml({
+      a0: spectrumData.energies[0] || 0,
+      a1: spectrumData.keVPerChannel,
+      instrumentModel: ingestedSpectrum ? ingestedSpectrum.instrumentModel : detector.name,
+      realTimeSec: ingestedSpectrum ? ingestedSpectrum.realTimeSec : liveTimeSec,
+      liveTimeSec: ingestedSpectrum ? ingestedSpectrum.liveTimeSec : liveTimeSec,
+      finalCounts: spectrumData.finalCounts,
+      fileStem: ingestedSpectrum ? ingestedSpectrum.fileName.replace(/\.[^.]+$/, '') : isotope.symbol
+    });
+  };
 
   // Mariscotti Generalized Second-Difference Peak Search & Trapezoidal Net-Area Solver
   const mariscottiAnalysis = useMemo(() => {
@@ -587,7 +612,7 @@ const SpectroscopyModule: React.FC = () => {
       { label: 'Primary Energy Centroid', value: identifiedPeaks[0] ? `${identifiedPeaks[0].energyKeV.toFixed(2)} keV` : 'N/A', status: 'PASS' },
       { label: 'Primary Net Peak Area', value: identifiedPeaks[0] ? `${identifiedPeaks[0].netAreaCounts.toLocaleString()} ± ${identifiedPeaks[0].netAreaUncertainty} cts` : 'N/A', status: 'PASS' }
     ]
-  }), [ingestedSpectrum, detector, isotope, activityKBq, liveTimeSec, mariscottiZThreshold, idToleranceKeV, identifiedPeaks]);
+  }), [ingestedSpectrum, detector, isotope, activityKBq, liveTimeSec, mariscottiZThreshold, idToleranceKeV, identifiedPeaks, activeRoiDetails]);
 
   const { setLiveModuleTelemetry, openPhysicsTutor } = useRegulatory();
 
@@ -992,7 +1017,7 @@ const SpectroscopyModule: React.FC = () => {
                 line: { color: '#EF4444', width: 1.5, dash: 'dash' },
                 showlegend: false
               }))
-            ] as any}
+            ] as Data[]}
             layout={{
               autosize: true,
               xaxis: {
@@ -1101,8 +1126,8 @@ const SpectroscopyModule: React.FC = () => {
                   paper_bgcolor: 'transparent',
                   plot_bgcolor: 'rgba(0,0,0,0.25)',
                   font: { color: '#cbd5e1', size: 10 },
-                  xaxis: { title: 'Energy (keV)', gridcolor: '#1e293b' },
-                  yaxis: { title: 'Counts', gridcolor: '#1e293b' },
+                  xaxis: { title: { text: 'Energy (keV)' }, gridcolor: '#1e293b' },
+                  yaxis: { title: { text: 'Counts' }, gridcolor: '#1e293b' },
                   legend: { orientation: 'h', y: 1.18, x: 0 }
                 }}
                 useResizeHandler={true}

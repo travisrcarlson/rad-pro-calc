@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import VerificationBadge from '../../components/VerificationBadge';
-import PlotComponent from 'react-plotly.js';
+import Plot from 'react-plotly.js';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
 import { VisualDetonationSimulator } from './VisualDetonationSimulator';
@@ -12,8 +12,6 @@ import {
   REFERENCE_MET_SITES,
   type TerrainShadowTransectResult
 } from '../../utils/liveMeteoAndTerrain';
-
-const Plot = (PlotComponent as any).default || PlotComponent;
 
 export type NukeTab = 'visual_detonation' | 'blast' | 'thermal' | 'prompt_rad' | 'terrain_shadow' | 'hemp' | 'cordon_summary';
 
@@ -452,26 +450,26 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
 
   // --- Consolidated Tactical Polar Cordon Traces ---
   const cordonMap = useMemo(() => {
-    const makeCircle = (radiusKm: number, label: string, color: string, dashStyle: string = 'solid') => {
+    const makeCircle = (radiusKm: number, label: string, color: string, dashStyle: 'solid' | 'dot' | 'dash' | 'longdash' | 'dashdot' = 'solid') => {
       const points = 72;
-      const rArr: number[] = [];
       const thetaArr: number[] = [];
+      const rArr: number[] = [];
       for (let i = 0; i <= points; i++) {
         thetaArr.push((i / points) * 360);
         rArr.push(radiusKm);
       }
       return {
-        type: 'scatterpolar',
-        mode: 'lines',
+        type: 'scatterpolar' as const,
+        mode: 'lines' as const,
         name: label,
         r: rArr,
         theta: thetaArr,
         line: { color, width: 2, dash: dashStyle },
-        hoverinfo: 'name'
+        hoverinfo: 'name' as const
       };
     };
 
-    const traces: any[] = [
+    const traces = [
       makeCircle(blastCalculations.r20psi_km, `20 psi Heavy Demolition (${blastCalculations.r20psi_km.toFixed(2)} km)`, '#a78bfa'),
       makeCircle(blastCalculations.r10psi_km, `10 psi Factory Collapse (${blastCalculations.r10psi_km.toFixed(2)} km)`, '#6366f1', 'dash'),
       makeCircle(blastCalculations.r5psi_km, `5 psi Residential Flattening (${blastCalculations.r5psi_km.toFixed(2)} km)`, '#38bdf8'),
@@ -480,22 +478,22 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
       makeCircle(thermalCalculations.r1stBurn_km, `1st Degree Burn Perimeter (${thermalCalculations.r1stBurn_km.toFixed(2)} km)`, '#facc15', 'dot'),
       makeCircle(promptRadCalculations.rLd50_km, `Prompt Lethal Radiation LD50 (${promptRadCalculations.rLd50_km.toFixed(2)} km)`, '#00e5ff', 'dashdot'),
       {
-        type: 'scatterpolar',
-        mode: 'markers',
+        type: 'scatterpolar' as const,
+        mode: 'markers' as const,
         name: 'Ground Zero (Detonation Epicenter)',
         r: [0],
         theta: [0],
         marker: { color: '#ffffff', size: 14, symbol: 'star' },
-        hoverinfo: 'name'
+        hoverinfo: 'name' as const
       },
       {
-        type: 'scatterpolar',
-        mode: 'markers',
+        type: 'scatterpolar' as const,
+        mode: 'markers' as const,
         name: `Target Location (${targetDistanceKm} km)`,
         r: [targetDistanceKm],
         theta: [45],
         marker: { color: '#10b981', size: 10, symbol: 'diamond' },
-        hoverinfo: 'name'
+        hoverinfo: 'name' as const
       }
     ];
 
@@ -1119,8 +1117,8 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
                 paper_bgcolor: 'transparent',
                 plot_bgcolor: 'transparent',
                 font: { color: 'var(--color-text-muted)', size: 11 },
-                xaxis: { title: 'Ground Distance (Kilometers)', gridcolor: 'rgba(255,255,255,0.06)' },
-                yaxis: { title: 'Pressure (psi)', type: 'log', gridcolor: 'rgba(255,255,255,0.06)' },
+                xaxis: { title: { text: 'Ground Distance (Kilometers)' }, gridcolor: 'rgba(255,255,255,0.06)' },
+                yaxis: { title: { text: 'Pressure (psi)' }, type: 'log', gridcolor: 'rgba(255,255,255,0.06)' },
                 legend: { orientation: 'h', y: -0.2 }
               }}
               style={{ width: '100%' }}
@@ -1192,8 +1190,8 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
                 paper_bgcolor: 'transparent',
                 plot_bgcolor: 'transparent',
                 font: { color: 'var(--color-text-muted)', size: 11 },
-                xaxis: { title: 'Ground Distance (Kilometers)', gridcolor: 'rgba(255,255,255,0.06)' },
-                yaxis: { title: 'Radiant Fluence (cal/cm²)', type: 'log', gridcolor: 'rgba(255,255,255,0.06)' },
+                xaxis: { title: { text: 'Ground Distance (Kilometers)' }, gridcolor: 'rgba(255,255,255,0.06)' },
+                yaxis: { title: { text: 'Radiant Fluence (cal/cm²)' }, type: 'log', gridcolor: 'rgba(255,255,255,0.06)' },
                 legend: { orientation: 'h', y: -0.2 }
               }}
               style={{ width: '100%' }}
@@ -1377,8 +1375,8 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
                     paper_bgcolor: 'transparent',
                     plot_bgcolor: 'transparent',
                     font: { color: 'var(--color-text-muted)', size: 11 },
-                    xaxis: { title: `Radial Distance Along Bearing ${terrainBearingDeg}° (km)`, gridcolor: 'rgba(255,255,255,0.06)' },
-                    yaxis: { title: 'Elevation (Meters above Sea Level)', gridcolor: 'rgba(255,255,255,0.06)' },
+                    xaxis: { title: { text: `Radial Distance Along Bearing ${terrainBearingDeg}° (km)` }, gridcolor: 'rgba(255,255,255,0.06)' },
+                    yaxis: { title: { text: 'Elevation (Meters above Sea Level)' }, gridcolor: 'rgba(255,255,255,0.06)' },
                     legend: { orientation: 'h', y: -0.22 }
                   }}
                   style={{ width: '100%' }}

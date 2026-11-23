@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import PlotComponent from 'react-plotly.js';
+import Plot from 'react-plotly.js';
+import type { Data } from 'plotly.js';
 import { BlockMath } from 'react-katex';
 import VerificationBadge from '../../components/VerificationBadge';
 import { useRegulatory } from '../../context/RegulatoryContext';
@@ -8,8 +9,6 @@ import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
 import { TacticalCompassRose } from '../../components/TacticalCompassRose';
 import { parseActivityToGBq } from '../../utils/canonicalNuclidePhysics';
-
-const Plot = (PlotComponent as any).default || PlotComponent;
 
 export interface ThreatPreset {
   id: string;
@@ -353,8 +352,27 @@ const FirstResponderModule: React.FC = () => {
     };
   }, [currentFramework]);
 
+  const [explosiveYieldKgTNT, setExplosiveYieldKgTNT] = useState<number>(5.0); // 5 kg TNT RDD
+  const [windSpeedMps, setWindSpeedMps] = useState<number>(3.5);
+  const [windDirectionDeg, setWindDirectionDeg] = useState<number>(225); // blowing toward northeast
+
+  // Tactical Survey Measurement
+  const [measuredDoseRateValue, setMeasuredDoseRateValue] = useState<number>(150); // mR/h or uSv/h
+  const [measuredUnit, setMeasuredUnit] = useState<'mR/h' | 'uSv/h' | 'mSv/h' | 'R/h'>('mR/h');
+  const [selectedWorkerTier, setSelectedWorkerTier] = useState<EmergencyWorkerTier>('lifesaving');
+
+  // Stay-Time Timer State
+  const [timerRunning, setTimerRunning] = useState<boolean>(false);
+  const [elapsedSeconds, setElapsedSeconds] = useState<number>(0);
+
+  // ERG Selector
+  const [selectedGuideNumber, setSelectedGuideNumber] = useState<number>(163);
+
   // Ingest Scenario Dispatch Parameters (e.g. from Scenario Builder or Cross-Module Pipeline)
-  useEffect(() => {
+  const searchKey = searchParams.toString();
+  const [prevSearchKey, setPrevSearchKey] = useState<string | null>(null);
+  if (searchKey !== prevSearchKey) {
+    setPrevSearchKey(searchKey);
     const nuclideParam = searchParams.get('nuclide') || searchParams.get('isotope');
     const activityParam = searchParams.get('activity');
     const unitParam = searchParams.get('unit');
@@ -383,22 +401,7 @@ const FirstResponderModule: React.FC = () => {
         setSelectedGuideNumber(gNum);
       }
     }
-  }, [searchParams]);
-  const [explosiveYieldKgTNT, setExplosiveYieldKgTNT] = useState<number>(5.0); // 5 kg TNT RDD
-  const [windSpeedMps, setWindSpeedMps] = useState<number>(3.5);
-  const [windDirectionDeg, setWindDirectionDeg] = useState<number>(225); // blowing toward northeast
-
-  // Tactical Survey Measurement
-  const [measuredDoseRateValue, setMeasuredDoseRateValue] = useState<number>(150); // mR/h or uSv/h
-  const [measuredUnit, setMeasuredUnit] = useState<'mR/h' | 'uSv/h' | 'mSv/h' | 'R/h'>('mR/h');
-  const [selectedWorkerTier, setSelectedWorkerTier] = useState<EmergencyWorkerTier>('lifesaving');
-
-  // Stay-Time Timer State
-  const [timerRunning, setTimerRunning] = useState<boolean>(false);
-  const [elapsedSeconds, setElapsedSeconds] = useState<number>(0);
-
-  // ERG Selector
-  const [selectedGuideNumber, setSelectedGuideNumber] = useState<number>(163);
+  }
 
   // Medical Triage State
   const [victimEmesisTimeMinutes, setVictimEmesisTimeMinutes] = useState<number>(45);
@@ -473,15 +476,15 @@ const FirstResponderModule: React.FC = () => {
 
   // Stay-Time Timer Effect
   useEffect(() => {
-    let interval: any = null;
+    let interval: ReturnType<typeof setInterval> | null = null;
     if (timerRunning) {
       interval = setInterval(() => {
         setElapsedSeconds((prev) => prev + 1);
       }, 1000);
-    } else {
-      clearInterval(interval);
     }
-    return () => clearInterval(interval);
+    return () => {
+      if (interval) clearInterval(interval);
+    };
   }, [timerRunning]);
 
   const remainingSeconds = Math.max(0, Math.round(maxAllowedStayTimeMinutes * 60 - elapsedSeconds));
@@ -525,7 +528,12 @@ const FirstResponderModule: React.FC = () => {
     const maxR = Math.max(150, cordonRadii.recommendedOuterCordonM * 1.3);
 
     // Circle generator
-    const makeCircle = (radius: number, name: string, color: string, dash = 'solid') => {
+    const makeCircle = (
+      radius: number,
+      name: string,
+      color: string,
+      dash: 'solid' | 'dot' | 'dash' | 'longdash' | 'dashdot' = 'solid'
+    ): Data => {
       const theta: number[] = [];
       const r: number[] = [];
       for (let deg = 0; deg <= 360; deg += 5) {
@@ -539,7 +547,7 @@ const FirstResponderModule: React.FC = () => {
         r,
         theta,
         line: { color, width: 2, dash },
-        hoverinfo: 'name+r'
+        hoverinfo: 'name'
       };
     };
 
@@ -558,7 +566,7 @@ const FirstResponderModule: React.FC = () => {
     downwindTheta.push(centerDeg);
     downwindR.push(0);
 
-    const plumeSector = {
+    const plumeSector: Data = {
       type: 'scatterpolar',
       mode: 'lines',
       name: 'Downwind Hazard Corridor (EPA PAG Evacuation)',
@@ -570,7 +578,7 @@ const FirstResponderModule: React.FC = () => {
       hoverinfo: 'name'
     };
 
-    const traces: any[] = [
+    const traces: Data[] = [
       makeCircle(cordonRadii.recommendedOuterCordonM, `Cold Zone / Outer Cordon (${cordonRadii.recommendedOuterCordonM}m - 1 mR/h)`, '#10b981'),
       makeCircle(cordonRadii.recommendedHotZoneM, `Hot Zone (Exclusion) Boundary (${cordonRadii.recommendedHotZoneM}m - 10 mR/h)`, '#00e5ff'),
       makeCircle(cordonRadii.rBlastGlass, `Blast Shrapnel / Glass Hazard (${cordonRadii.rBlastGlass.toFixed(0)}m)`, '#f59e0b', 'dash'),
@@ -1099,7 +1107,7 @@ const FirstResponderModule: React.FC = () => {
                 <select
                   className="form-control"
                   value={measuredUnit}
-                  onChange={(e) => setMeasuredUnit(e.target.value as any)}
+                  onChange={(e) => setMeasuredUnit(e.target.value as 'mR/h' | 'uSv/h' | 'mSv/h' | 'R/h')}
                 >
                   <option value="mR/h">mR/h</option>
                   <option value="uSv/h">µSv/h</option>

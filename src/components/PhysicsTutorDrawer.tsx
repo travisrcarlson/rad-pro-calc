@@ -3,10 +3,13 @@ import { BlockMath, InlineMath } from 'react-katex';
 import {
   useRegulatory,
   ISOTOPE_QUICK_REF,
+  type GlobalSourceContext,
   type LiveModuleTelemetry
 } from '../context/RegulatoryContext';
 import { type ActiveModuleBreadcrumbInfo } from './RegulatorySelectorBar';
 import { MODULE_USER_GUIDES } from '../data/moduleUserGuides';
+import { evaluateXCOMAttenuation, evaluateGPBuildup } from '../utils/xcomAndGpBuildup';
+import { getCanonicalNuclide } from '../utils/canonicalNuclidePhysics';
 
 export type AudienceDepthMode = 'intuitive' | 'engineering' | 'responder';
 
@@ -30,10 +33,64 @@ interface PhysicsTutorDrawerProps {
   activeModuleInfo: ActiveModuleBreadcrumbInfo | null;
   /** When true, renders embedded inside the right-hand WorkspaceInspectorDrawer without outer collapsible chrome */
   embeddedInInspector?: boolean;
-  onApplySourceToCurrentModule?: () => void;
+  onApplySourceToCurrentModule?: (overrideSource?: GlobalSourceContext) => void;
 }
 
 type TutorBackendMode = 'deterministic' | 'gemini' | 'ollama';
+
+const TUTOR_MATERIAL_TO_XCOM: Record<string, string> = {
+  lead: 'LEAD',
+  pb: 'LEAD',
+  tungsten: 'TUNGSTEN',
+  w: 'TUNGSTEN',
+  'depleted uranium': 'DU',
+  du: 'DU',
+  steel: 'STEEL',
+  iron: 'STEEL',
+  concrete: 'CONCRETE',
+  water: 'WATER',
+  aluminum: 'ALUMINUM',
+  al: 'ALUMINUM',
+  polyethylene: 'BORATED_PE',
+  'borated polyethylene': 'BORATED_PE',
+  brick: 'BRICK',
+  drywall: 'DRYWALL',
+  pmma: 'PMMA',
+  acrylic: 'PMMA',
+  air: 'AIR'
+};
+
+function resolveTutorShieldPhysics(isotope: string, shieldMaterial: string, thicknessCm: number) {
+  const matKey = TUTOR_MATERIAL_TO_XCOM[shieldMaterial.trim().toLowerCase()] || 'LEAD';
+  const canon = getCanonicalNuclide(isotope);
+  const isoRef = ISOTOPE_QUICK_REF[isotope] || ISOTOPE_QUICK_REF['Co-60'];
+  const gammaConstMSv = canon ? canon.gammaH10_uSv_m2_h_GBq / 1000 : isoRef.gammaConst_mSv_m2_h_GBq;
+  const energyMeV = canon && canon.principalPhotonMeV > 0 ? canon.principalPhotonMeV : 1.25;
+  const xcom = evaluateXCOMAttenuation(matKey, energyMeV);
+  const muLinear = Math.max(1e-5, xcom.muLinear);
+  const hvlCm = Math.LN2 / muLinear;
+  const tvlCm = Math.LN10 / muLinear;
+  const mfp = muLinear * Math.max(0, thicknessCm);
+  const buildup = mfp > 0 ? evaluateGPBuildup(matKey, energyMeV, mfp).B : 1.0;
+  const narrowTrans = Math.exp(-mfp);
+  return { matKey, gammaConstMSv, energyMeV, hvlCm, tvlCm, mfp, buildup, narrowTrans };
+}
+
+function safeStorageGet(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function safeStorageSet(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // Ignore storage quota/security errors
+  }
+}
 
 /** Renders text containing inline $...$ LaTeX segments cleanly via react-katex InlineMath */
 const MathText: React.FC<{ text: string }> = ({ text }) => {
@@ -446,34 +503,40 @@ function buildDeterministicPhysicsExplanation(
   }
 
   // --- DEFAULT CASE: DOSE, INVERSE-SQUARE & BROAD-BEAM SHIELDING ---
+  const shieldPhysics = resolveTutorShieldPhysics(
+    activeSource.isotope,
+    activeSource.shieldMaterial,
+    activeSource.shieldThicknessCm
+  );
   const unshieldedDoseMSvH =
-    (isoRef.gammaConst_mSv_m2_h_GBq * activeSource.activityGBq) /
+    (shieldPhysics.gammaConstMSv * activeSource.activityGBq) /
     Math.pow(Math.max(0.1, activeSource.distanceM), 2);
-  const hvlCount = activeSource.shieldThicknessCm / Math.max(0.01, isoRef.hvlLeadCm);
-  const narrowTrans = Math.pow(0.5, hvlCount);
-  const approxBuildup = 1 + 0.85 * hvlCount * Math.pow(Math.max(0.2, hvlCount), 0.25);
-  const shieldedDoseMSvH = unshieldedDoseMSvH * narrowTrans * approxBuildup;
+  const shieldedDoseMSvH =
+    unshieldedDoseMSvH * shieldPhysics.narrowTrans * shieldPhysics.buildup;
+  const tvlStr = shieldPhysics.tvlCm >= 100
+    ? `${(shieldPhysics.tvlCm / 100).toFixed(2)} m`
+    : `${shieldPhysics.tvlCm.toFixed(2)} cm`;
 
   return {
     question,
     deltaContext: deltaSummary,
     headline: `Inverse-Square Divergence & Compton Scatter Buildup (${activeSource.isotope}, ${activeSource.activityGBq} GBq)`,
     regimeBadge: `🛡️ M${String(modNum).padStart(2, '0')} • ${activeSource.isotope} @ ${activeSource.distanceM} m • ${activeSource.shieldThicknessCm} cm ${activeSource.shieldMaterial}`,
-    intuitiveTakeaway: `Stepping twice as far from ${activeSource.isotope} spreads its gamma rays over $4\\times$ the spherical surface area ($1/r^2$). Placing ${activeSource.shieldThicknessCm} cm of ${activeSource.shieldMaterial} in between blocks most direct photons, **but** many gamma rays ricochet off electrons inside the shield (Compton scatter) and still emerge forward—meaning real-world "broad-beam" dose is $${approxBuildup.toFixed(1)}\\times$ higher than naive textbook exponential decay predicts!`,
+    intuitiveTakeaway: `Stepping twice as far from ${activeSource.isotope} spreads its gamma rays over $4\\times$ the spherical surface area ($1/r^2$). Placing ${activeSource.shieldThicknessCm} cm of ${activeSource.shieldMaterial} in between blocks most direct photons, **but** many gamma rays ricochet off electrons inside the shield (Compton scatter) and still emerge forward—meaning real-world "broad-beam" dose is $${shieldPhysics.buildup.toFixed(2)}\\times$ higher than naive textbook exponential decay predicts!`,
     physicalMechanism: [
       `1. Geometric Inverse-Square Law ($1/r^2$): At $r = ${activeSource.distanceM}\\text{ m}$, isotropic $4\\pi r^2$ divergence yields an unshielded rate of $${unshieldedDoseMSvH.toFixed(3)}\\text{ mSv/h}$.`,
-      `2. Broad-Beam Compton Buildup ($B(\\mu x) \\approx ${approxBuildup.toFixed(2)}$): Multiple-scattered degraded photons penetrate forward through thick barriers alongside uncollided photons ($e^{-\\mu x}$), raising true dose rate from $${(unshieldedDoseMSvH * narrowTrans).toFixed(4)}$ to $${shieldedDoseMSvH.toFixed(4)}\\text{ mSv/h}$.`,
+      `2. Broad-Beam Compton Buildup ($B(\\mu x) = ${shieldPhysics.buildup.toFixed(2)}$ in ${activeSource.shieldMaterial}, $\\mu x = ${shieldPhysics.mfp.toFixed(2)}\\text{ mfp}$): Multiple-scattered degraded photons penetrate forward through thick barriers alongside uncollided photons ($e^{-\\mu x}$), raising true dose rate from $${(unshieldedDoseMSvH * shieldPhysics.narrowTrans).toPrecision(4)}$ to $${shieldedDoseMSvH.toPrecision(4)}\\text{ mSv/h}$.`,
       `3. High-$Z$ Photoelectric vs. Beta Bremsstrahlung: High-$Z$ shields ($\tau \\propto Z^4/E^3$) stop gammas efficiently, whereas pure $\\beta^-$ emitters require low-$Z$ plastic inner linings first to avoid radiative Bremsstrahlung ($f_{\\text{brem}} \\propto Z \\cdot E_\\beta$).`
     ],
     governingEquations: [
       {
         label: 'Broad-Beam Shielded Point-Source Dose Rate',
         latex: '\\dot{H}^*(10) = \\frac{\\Gamma \\cdot A}{r^2} \\, B(\\mu x, E) \\, e^{-\\mu(E) \\, x}, \\qquad \\text{TVL} = \\frac{\\ln(10)}{\\ln(2)}\\,\\text{HVL} \\approx 3.322\\,\\text{HVL}',
-        meaning: `Γ = ${isoRef.gammaConst_mSv_m2_h_GBq} mSv·m²/(h·GBq) for ${activeSource.isotope}; 1 Pb TVL ≈ ${(isoRef.hvlLeadCm * 3.322).toFixed(2)} cm.`
+        meaning: `Γ = ${shieldPhysics.gammaConstMSv.toFixed(4)} mSv·m²/(h·GBq) for ${activeSource.isotope}; 1 ${activeSource.shieldMaterial} HVL = ${shieldPhysics.hvlCm.toFixed(2)} cm, TVL = ${tvlStr} @ ${(shieldPhysics.energyMeV * 1000).toFixed(0)} keV.`
       }
     ],
     liveSensitivityAnalysis: [
-      `Adding $+1\\text{ TVL}$ ($+${(isoRef.hvlLeadCm * 3.322).toFixed(2)}\\text{ cm}$ Pb-eq): Cuts uncollided flux $10\\times$, though Compton buildup softens total reduction to $\\sim 6\\text{–}8\\times$.`,
+      `Adding $+1\\text{ TVL}$ in ${activeSource.shieldMaterial} ($+${tvlStr}$): Cuts uncollided flux $10\\times$, though Compton buildup softens total reduction to $\\sim 6\\text{–}8\\times$.`,
       activeModuleInfo && MODULE_USER_GUIDES[activeModuleInfo.moduleNumber]
         ? `Active Tool (${activeModuleInfo.label}): ${MODULE_USER_GUIDES[activeModuleInfo.moduleNumber].whatItDoes}`
         : `Doubling Standoff Distance ($${activeSource.distanceM}\\text{ m} \\to ${(activeSource.distanceM * 2).toFixed(1)}\\text{ m}$): Cuts dose rate by exactly $75\\%$ with zero added shield weight.`
@@ -505,18 +568,18 @@ export const PhysicsTutorDrawer: React.FC<PhysicsTutorDrawerProps> = ({
   const [showSettings, setShowSettings] = useState(false);
 
   const [backendMode, setBackendMode] = useState<TutorBackendMode>(() => {
-    const saved = localStorage.getItem('radpro_tutor_backend');
+    const saved = safeStorageGet('radpro_tutor_backend');
     if (saved === 'gemini' || saved === 'ollama') return saved;
     return 'deterministic';
   });
   const [geminiApiKey, setGeminiApiKey] = useState<string>(() => {
-    return localStorage.getItem('radpro_gemini_api_key') || '';
+    return safeStorageGet('radpro_gemini_api_key') || '';
   });
   const [ollamaUrl, setOllamaUrl] = useState<string>(() => {
-    return localStorage.getItem('radpro_ollama_url') || 'http://localhost:11434';
+    return safeStorageGet('radpro_ollama_url') || 'http://localhost:11434';
   });
   const [ollamaModel, setOllamaModel] = useState<string>(() => {
-    return localStorage.getItem('radpro_ollama_model') || 'llama3.2';
+    return safeStorageGet('radpro_ollama_model') || 'llama3.2';
   });
 
   const [messages, setMessages] = useState<PhysicsTutorMessage[]>([]);
@@ -576,33 +639,45 @@ export const PhysicsTutorDrawer: React.FC<PhysicsTutorDrawerProps> = ({
     if (liveModuleTelemetry?.whatIfActions && liveModuleTelemetry.whatIfActions.length > 0) {
       return liveModuleTelemetry.whatIfActions;
     }
-    const isoRef = ISOTOPE_QUICK_REF[activeSource.isotope] || ISOTOPE_QUICK_REF['Co-60'];
-    const tvlCm = Number((isoRef.hvlLeadCm * 3.322).toFixed(2));
+    const { tvlCm } = resolveTutorShieldPhysics(
+      activeSource.isotope,
+      activeSource.shieldMaterial,
+      activeSource.shieldThicknessCm
+    );
+    const tvlCmRounded = Number(tvlCm.toFixed(2));
     return [
       {
         label: `▶ Double Distance (${activeSource.distanceM} → ${(activeSource.distanceM * 2).toFixed(1)} m)`,
         description: 'Test 1/r² inverse-square 4× flux reduction',
         run: () => {
-          setActiveSource({ distanceM: Number((activeSource.distanceM * 2).toFixed(2)) });
-          if (onApplySourceToCurrentModule) setTimeout(onApplySourceToCurrentModule, 30);
+          const nextSource: GlobalSourceContext = {
+            ...activeSource,
+            distanceM: Number((activeSource.distanceM * 2).toFixed(2))
+          };
+          setActiveSource({ distanceM: nextSource.distanceM });
+          onApplySourceToCurrentModule?.(nextSource);
         }
       },
       {
-        label: `▶ Add +1 TVL Shield (+${tvlCm} cm)`,
+        label: `▶ Add +1 TVL ${activeSource.shieldMaterial} (+${tvlCmRounded} cm)`,
         description: 'Add one Tenth-Value Layer and observe Compton buildup B(μx)',
         run: () => {
-          setActiveSource({
-            shieldThicknessCm: Number((activeSource.shieldThicknessCm + tvlCm).toFixed(2))
-          });
-          if (onApplySourceToCurrentModule) setTimeout(onApplySourceToCurrentModule, 30);
+          const nextSource: GlobalSourceContext = {
+            ...activeSource,
+            shieldThicknessCm: Number((activeSource.shieldThicknessCm + tvlCmRounded).toFixed(2))
+          };
+          setActiveSource({ shieldThicknessCm: nextSource.shieldThicknessCm });
+          onApplySourceToCurrentModule?.(nextSource);
         }
       },
       {
         label: activeSource.isotope === 'Co-60' ? '▶ Switch Source → Cs-137' : '▶ Switch Source → Co-60',
         description: 'Compare 662 keV (Cs-137) vs 1.17/1.33 MeV (Co-60) penetration',
         run: () => {
-          setActiveSource({ isotope: activeSource.isotope === 'Co-60' ? 'Cs-137' : 'Co-60' });
-          if (onApplySourceToCurrentModule) setTimeout(onApplySourceToCurrentModule, 30);
+          const nextIso = activeSource.isotope === 'Co-60' ? 'Cs-137' : 'Co-60';
+          const nextSource: GlobalSourceContext = { ...activeSource, isotope: nextIso };
+          setActiveSource({ isotope: nextIso });
+          onApplySourceToCurrentModule?.(nextSource);
         }
       }
     ];
@@ -664,10 +739,13 @@ export const PhysicsTutorDrawer: React.FC<PhysicsTutorDrawerProps> = ({
 
       if (backendMode === 'gemini' && geminiApiKey.trim()) {
         const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(geminiApiKey.trim())}`,
+          'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',
           {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              'x-goog-api-key': geminiApiKey.trim()
+            },
             body: JSON.stringify({
               systemInstruction: { parts: [{ text: systemPrompt }] },
               contents: [{ role: 'user', parts: [{ text: q }] }],
@@ -698,7 +776,36 @@ export const PhysicsTutorDrawer: React.FC<PhysicsTutorDrawerProps> = ({
           }
         }
       } else if (backendMode === 'ollama') {
-        const res = await fetch(`${ollamaUrl.replace(/\/$/, '')}/api/generate`, {
+        let validLocalEndpoint: string | null = null;
+        try {
+          const parsed = new URL(ollamaUrl);
+          if (
+            ['http:', 'https:'].includes(parsed.protocol) &&
+            ['localhost', '127.0.0.1', '[::1]'].includes(parsed.hostname)
+          ) {
+            validLocalEndpoint = parsed.origin;
+          }
+        } catch {
+          validLocalEndpoint = null;
+        }
+        if (!validLocalEndpoint) {
+          setMessages(prev =>
+            [
+              {
+                id: `tutor-${Date.now()}`,
+                role: 'tutor' as const,
+                timestamp: nowStr,
+                ...deterministicBase,
+                regulatoryAndOperationalNote:
+                  `${deterministicBase.regulatoryAndOperationalNote} [Security: Ollama requests are restricted to localhost / 127.0.0.1.]`
+              },
+              ...prev
+            ].slice(0, 12)
+          );
+          setIsGenerating(false);
+          return;
+        }
+        const res = await fetch(`${validLocalEndpoint}/api/generate`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ model: ollamaModel, system: systemPrompt, prompt: q, stream: false })
@@ -757,9 +864,12 @@ export const PhysicsTutorDrawer: React.FC<PhysicsTutorDrawerProps> = ({
 
   // Auto-generate explanation when opened or when switching modules while open
   useEffect(() => {
-    if ((isOpen || embeddedInInspector) && messages.length === 0) {
-      askTutorQuestion(suggestedQuestions[0]);
-    }
+    if (!(isOpen || embeddedInInspector) || messages.length > 0) return;
+    const initialQuestion = suggestedQuestions[0];
+    const timer = window.setTimeout(() => {
+      void askTutorQuestion(initialQuestion);
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [isOpen, embeddedInInspector]);
 
   const currentExplanation = messages[0] || null;
@@ -830,7 +940,7 @@ export const PhysicsTutorDrawer: React.FC<PhysicsTutorDrawerProps> = ({
                 className={backendMode === opt.id ? 'active' : ''}
                 onClick={() => {
                   setBackendMode(opt.id);
-                  localStorage.setItem('radpro_tutor_backend', opt.id);
+                  safeStorageSet('radpro_tutor_backend', opt.id);
                 }}
                 style={{ padding: '3px 8px', borderRadius: '4px', fontSize: '0.70rem', cursor: 'pointer' }}
               >
@@ -846,7 +956,7 @@ export const PhysicsTutorDrawer: React.FC<PhysicsTutorDrawerProps> = ({
               value={geminiApiKey}
               onChange={e => {
                 setGeminiApiKey(e.target.value);
-                localStorage.setItem('radpro_gemini_api_key', e.target.value);
+                safeStorageSet('radpro_gemini_api_key', e.target.value);
               }}
               style={{ fontSize: '0.74rem', padding: '4px 8px' }}
             />
@@ -859,7 +969,7 @@ export const PhysicsTutorDrawer: React.FC<PhysicsTutorDrawerProps> = ({
                 value={ollamaUrl}
                 onChange={e => {
                   setOllamaUrl(e.target.value);
-                  localStorage.setItem('radpro_ollama_url', e.target.value);
+                  safeStorageSet('radpro_ollama_url', e.target.value);
                 }}
                 style={{ fontSize: '0.73rem', padding: '4px 6px', flex: 1 }}
               />
@@ -869,7 +979,7 @@ export const PhysicsTutorDrawer: React.FC<PhysicsTutorDrawerProps> = ({
                 value={ollamaModel}
                 onChange={e => {
                   setOllamaModel(e.target.value);
-                  localStorage.setItem('radpro_ollama_model', e.target.value);
+                  safeStorageSet('radpro_ollama_model', e.target.value);
                 }}
                 style={{ fontSize: '0.73rem', padding: '4px 6px', width: '95px' }}
               />

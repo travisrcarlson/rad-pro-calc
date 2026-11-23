@@ -41,7 +41,10 @@ export const TacticalGISModule: React.FC = () => {
   const [isDossierOpen, setIsDossierOpen] = useState<boolean>(false);
   const [copiedCoT, setCopiedCoT] = useState<boolean>(false);
 
-  useEffect(() => {
+  const searchKey = searchParams.toString();
+  const [prevSearchKey, setPrevSearchKey] = useState<string | null>(null);
+  if (searchKey !== prevSearchKey) {
+    setPrevSearchKey(searchKey);
     const latP = searchParams.get('lat');
     const lonP = searchParams.get('lon');
     const windP = searchParams.get('windSpeed');
@@ -50,7 +53,7 @@ export const TacticalGISModule: React.FC = () => {
     if (lonP && !isNaN(parseFloat(lonP))) setCenterLon(parseFloat(lonP));
     if (windP && !isNaN(parseFloat(windP))) setWindSpeedMps(Math.max(0.5, parseFloat(windP)));
     if (dirP && !isNaN(parseFloat(dirP))) setWindDirectionDeg(((parseInt(dirP) % 360) + 360) % 360);
-  }, [searchParams]);
+  }
 
   // Active layer visibility toggles
   const [showBlastRings, setShowBlastRings] = useState<boolean>(true);
@@ -78,10 +81,12 @@ export const TacticalGISModule: React.FC = () => {
 
   // Canvas / SVG dragging logic
   const isDragging = useRef<boolean>(false);
+  const [isDraggingMap, setIsDraggingMap] = useState<boolean>(false);
   const dragStart = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
   const handleMouseDown = (e: React.MouseEvent) => {
     isDragging.current = true;
+    setIsDraggingMap(true);
     dragStart.current = { x: e.clientX - panOffset.x, y: e.clientY - panOffset.y };
   };
 
@@ -95,6 +100,7 @@ export const TacticalGISModule: React.FC = () => {
 
   const handleMouseUp = () => {
     isDragging.current = false;
+    setIsDraggingMap(false);
   };
 
   // Convert meters to canvas pixels
@@ -247,7 +253,7 @@ export const TacticalGISModule: React.FC = () => {
             <select
               className="form-control"
               value={threatType}
-              onChange={(e) => setThreatType(e.target.value as any)}
+              onChange={(e) => setThreatType(e.target.value as 'nuclear' | 'rdd' | 'chemical')}
               style={{ width: '100%', fontSize: '0.85rem' }}
             >
               <option value="nuclear">Nuclear Detonation (Prompt &amp; Fallout)</option>
@@ -399,7 +405,7 @@ export const TacticalGISModule: React.FC = () => {
               width: '100%',
               height: '520px',
               background: '#090d16',
-              cursor: isDragging.current ? 'grabbing' : 'grab',
+              cursor: isDraggingMap ? 'grabbing' : 'grab',
               userSelect: 'none'
             }}
           >

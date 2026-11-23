@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import VerificationBadge from '../../components/VerificationBadge';
-import PlotComponent from 'react-plotly.js';
+import Plot from 'react-plotly.js';
 import { BlockMath, InlineMath } from 'react-katex';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
@@ -10,8 +10,6 @@ import {
   computeSynchrotronCriticalEnergyKeV,
   computeRelativisticLorentzGamma
 } from '../../utils/radiologicalPhysicsKernels';
-
-const Plot = (PlotComponent as any).default || PlotComponent;
 
 type GeneratorMode = 'medical_continuous' | 'flash_pulsed';
 
@@ -385,7 +383,7 @@ const PulsedXRayModule: React.FC = () => {
                   },
                   {
                     x: [0], y: [distanceMeters],
-                    mode: 'markers+text', type: 'scatter', name: 'Target',
+                    mode: 'text+markers', type: 'scatter', name: 'Target',
                     marker: { symbol: 'cross', color: '#10b981', size: 14, line: { width: 3, color: '#ffffff' } },
                     text: [`[TARGET] ${distanceMeters.toFixed(1)}m`],
                     textposition: 'top right',
@@ -394,7 +392,7 @@ const PulsedXRayModule: React.FC = () => {
                   },
                   {
                     x: [0], y: [0],
-                    mode: 'markers+text', type: 'scatter', name: 'Tube',
+                    mode: 'text+markers', type: 'scatter', name: 'Tube',
                     marker: { symbol: 'square', color: '#ff3366', size: 10, line: { width: 2, color: '#ffffff' } },
                     text: ['[X-RAY TUBE APERTURE]'],
                     textposition: 'bottom center',
@@ -469,8 +467,8 @@ const PulsedXRayModule: React.FC = () => {
                   autosize: true, margin: { l: 70, r: 20, t: 30, b: 50 },
                   title: { text: 'Instantaneous Exposure Rate vs. Distance (Log Scale)', font: { color: '#E0E1DD', size: 14 } },
                   paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', font: { color: '#E0E1DD' },
-                  xaxis: { title: 'Distance from Focal Spot (meters)', gridcolor: '#1e293b' },
-                  yaxis: { title: 'Peak Instant Rate (Sv/h)', type: 'log', gridcolor: '#1e293b' },
+                  xaxis: { title: { text: 'Distance from Focal Spot (meters)' }, gridcolor: '#1e293b' },
+                  yaxis: { title: { text: 'Peak Instant Rate (Sv/h)' }, type: 'log', gridcolor: '#1e293b' },
                   showlegend: true, legend: { orientation: 'h', y: -0.25 }
                 }}
                 useResizeHandler={true} style={{ width: '100%', height: '100%' }}
@@ -529,7 +527,7 @@ const PulsedXRayModule: React.FC = () => {
 
               <div className="form-group">
                 <label className="form-label">Generation Mode</label>
-                <select className="form-control" value={overrideMode} onChange={e => { setOverrideMode(e.target.value as any); setSelectedPresetId('custom'); }}>
+                <select className="form-control" value={overrideMode} onChange={e => { setOverrideMode(e.target.value as GeneratorMode); setSelectedPresetId('custom'); }}>
                   <option value="flash_pulsed">Flash Radiography (Pulsed ns, High Flux)</option>
                   <option value="medical_continuous">Medical / Industrial (Continuous mA)</option>
                 </select>

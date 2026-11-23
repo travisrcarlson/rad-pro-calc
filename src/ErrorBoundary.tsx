@@ -27,11 +27,16 @@ class ErrorBoundary extends Component<Props, State> {
 
   private handleHardReload = async () => {
     try {
-      if ('caches' in window) {
+      const isOnline = typeof navigator === 'undefined' || navigator.onLine !== false;
+      if (isOnline && 'caches' in window) {
         const keys = await caches.keys();
         await Promise.all(keys.map(k => caches.delete(k)));
       }
-      sessionStorage.clear();
+      try {
+        sessionStorage.clear();
+      } catch {
+        // Ignore storage errors
+      }
     } catch (e) {
       console.warn('Cache clear error:', e);
     }

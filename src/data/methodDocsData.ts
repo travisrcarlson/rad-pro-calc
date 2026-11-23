@@ -498,7 +498,7 @@ export const METHOD_DOCS: MethodDoc[] = [
     ],
     primaryFormula: '\\vec{r}_{\\text{source}} = \\frac{\\sum_{i=1}^M w_i \\vec{r}_i}{\\sum_{i=1}^M w_i}, \\quad w_i = \\max(0, \\, \\dot{D}_i - B_0)',
     secondaryFormulas: [
-      { label: 'DoD Cursor-on-Target (CoT) Event Element', formula: '<\\text{event version}=\"2.0\" \\, \\text{uid}=\"RADPRO-...\" \\, \\text{type}=\"a-f-G-U-C-R\" \\, \\text{how}=\"m-g\">' },
+      { label: 'DoD Cursor-on-Target (CoT) Event Element', formula: '<\\text{event version}="2.0" \\, \\text{uid}="RADPRO-..." \\, \\text{type}="a-f-G-U-C-R" \\, \\text{how}="m-g">' },
       { label: 'Confidence Radius of Localization', formula: '\\sigma_r = \\frac{K_{\\text{geom}}}{\\sqrt{\\sum_{i=1}^M (\\dot{D}_i - B_0)}} \\quad [\\text{meters}]' }
     ],
     derivationSteps: [
@@ -1973,7 +1973,7 @@ export const METHOD_DOCS: MethodDoc[] = [
     ],
     primaryFormula: '\\text{D} + \\text{T} \\longrightarrow \\, ^4\\text{He} \\, (3.52\\text{ MeV}) + n \\, (14.06\\text{ MeV}), \\quad n_i T_i \\tau_E \\ge 3 \\times 10^{21}\\text{ m}^{-3}\\cdot\\text{keV}\\cdot\\text{s}',
     secondaryFormulas: [
-      { label: 'Lithium Blanket Tritium Breeding Reactions (Exothermic Li-6 & Endothermic Threshold Li-7)', formula: '^6\\text{Li} + n_{\\text{th}} \\to \\text{T} + \\, ^4\\text{He} + 4.78\\text{ MeV}, \\quad ^7\\text{Li} + n_{\\text{fast}} \\to \\text{T} + \\, ^4\\text{He} + n^{\prime} - 2.47\\text{ MeV}' },
+      { label: 'Lithium Blanket Tritium Breeding Reactions (Exothermic Li-6 & Endothermic Threshold Li-7)', formula: '^6\\text{Li} + n_{\\text{th}} \\to \\text{T} + \\, ^4\\text{He} + 4.78\\text{ MeV}, \\quad ^7\\text{Li} + n_{\\text{fast}} \\to \\text{T} + \\, ^4\\text{He} + n^{\\\\prime} - 2.47\\text{ MeV}' },
       { label: '14.1 MeV Fast Neutron Macroscopic Removal Attenuation Through Blanket/Shield', formula: '\\Phi_{14.1}(x) = \\frac{S_{\\text{fusion}}}{4\\pi r^2} \\exp\\left(-\\sum_k \\Sigma_{R, k} \\cdot x_k\\right), \\quad S_{\\text{fusion}} = \\frac{P_{\\text{fus}} [\\text{W}]}{17.59\\text{ MeV} \\cdot 1.6022 \\times 10^{-13}}' },
       { label: 'Norgett-Robinson-Torrens (NRT) Structural Displacements Per Atom (DPA)', formula: '\\text{DPA}(t) = \\int_0^t \\int_0^{E_{\\max}} \\sigma_d(E_n) \\, \\phi(E_n, \\tau) \\, dE_n \\, d\\tau, \\quad N_d(T_{\\text{PKA}}) = \\frac{0.8 \\cdot T_{\\text{damage}}}{2 E_d}' }
     ],
@@ -1986,7 +1986,7 @@ export const METHOD_DOCS: MethodDoc[] = [
       {
         stepTitle: '2. Tritium Self-Sufficiency Condition (TBR ≥ 1.05–1.15)',
         explanation: 'Because each D-T fusion consumes one Tritium nucleus (T_1/2 = 12.32 yr), the lithium breeding blanket (enriched in Li-6 with Pb or Be (n,2n) neutron multipliers) must achieve a net Tritium Breeding Ratio TBR > 1.05 to compensate for decay, port leakage, and fuel processing hold-up:',
-        math: '\\text{TBR} = \\frac{\\int_{V_{\\text{blanket}}} \\left( N_{^6\\text{Li}} \\sigma_{(n,t)} + N_{^7\\text{Li}} \\sigma_{(n,n^{\prime}t)} \\right) \\phi \\, dV}{S_{\\text{fusion}}} \\ge 1.10'
+        math: '\\text{TBR} = \\frac{\\int_{V_{\\text{blanket}}} \\left( N_{^6\\text{Li}} \\sigma_{(n,t)} + N_{^7\\text{Li}} \\sigma_{(n,n^{\\\\prime}t)} \\right) \\phi \\, dV}{S_{\\text{fusion}}} \\ge 1.10'
       }
     ],
     variables: [

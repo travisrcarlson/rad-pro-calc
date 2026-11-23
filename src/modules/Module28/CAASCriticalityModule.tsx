@@ -1,12 +1,10 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import VerificationBadge from '../../components/VerificationBadge';
-import PlotComponent from 'react-plotly.js';
+import Plot from 'react-plotly.js';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
 import { computeGodivaPromptBurstFwhmUs, computeCAASMaxDetectionRadiusM } from '../../utils/radiologicalPhysicsKernels';
 import { useRegulatory } from '../../context/RegulatoryContext';
-
-const Plot = (PlotComponent as any).default || PlotComponent;
 
 export type CaasTab = 'excursion' | 'caas_coverage' | 'prompt_flash' | 'emergency_plan';
 
@@ -733,9 +731,9 @@ export const CAASCriticalityModule: React.FC = () => {
                 paper_bgcolor: 'transparent',
                 plot_bgcolor: 'transparent',
                 font: { color: 'var(--color-text-muted)', size: 11 },
-                xaxis: { title: 'Time from Prompt Criticality (Milliseconds)', gridcolor: 'rgba(255,255,255,0.06)' },
-                yaxis: { title: 'Fission Power (MW)', gridcolor: 'rgba(255,255,255,0.06)' },
-                yaxis2: { title: 'Energy (MJ)', overlaying: 'y', side: 'right', gridcolor: 'transparent' },
+                xaxis: { title: { text: 'Time from Prompt Criticality (Milliseconds)' }, gridcolor: 'rgba(255,255,255,0.06)' },
+                yaxis: { title: { text: 'Fission Power (MW)' }, gridcolor: 'rgba(255,255,255,0.06)' },
+                yaxis2: { title: { text: 'Energy (MJ)' }, overlaying: 'y', side: 'right', gridcolor: 'transparent' },
                 legend: { orientation: 'h', y: -0.2 }
               }}
               style={{ width: '100%' }}
@@ -865,7 +863,7 @@ export const CAASCriticalityModule: React.FC = () => {
                     [1.0, '#00e5ff']
                   ],
                   colorbar: {
-                    title: 'Channels Tripped',
+                    title: { text: 'Channels Tripped' },
                     tickvals: [0, 1, 2, 3],
                     ticktext: ['0 (Blind)', '1 (1oo3 Warn)', '2 (2oo3 Pass)', '3 (3oo3 Redundant)']
                   }
@@ -875,7 +873,7 @@ export const CAASCriticalityModule: React.FC = () => {
                   y: caasGridCoverage.detectors.map((d) => d.y),
                   text: caasGridCoverage.detectors.map((d) => d.id),
                   type: 'scatter',
-                  mode: 'markers+text',
+                  mode: 'text+markers',
                   textposition: 'top center',
                   name: 'CAAS Detectors',
                   marker: { color: '#ffffff', size: 12, symbol: 'diamond', line: { color: '#000', width: 2 } },
@@ -889,8 +887,8 @@ export const CAASCriticalityModule: React.FC = () => {
                 paper_bgcolor: 'transparent',
                 plot_bgcolor: 'transparent',
                 font: { color: 'var(--color-text-muted)', size: 11 },
-                xaxis: { title: 'Facility East-West Coordinate X (meters)', range: [0, 60] },
-                yaxis: { title: 'Facility North-South Y (meters)', range: [0, 40] }
+                xaxis: { title: { text: 'Facility East-West Coordinate X (meters)' }, range: [0, 60] },
+                yaxis: { title: { text: 'Facility North-South Y (meters)' }, range: [0, 40] }
               }}
               style={{ width: '100%' }}
               config={{ responsive: true, displayModeBar: false }}
@@ -996,8 +994,8 @@ export const CAASCriticalityModule: React.FC = () => {
                 paper_bgcolor: 'transparent',
                 plot_bgcolor: 'transparent',
                 font: { color: 'var(--color-text-muted)', size: 11 },
-                xaxis: { title: 'Standoff Distance r (meters)', type: 'log', gridcolor: 'rgba(255,255,255,0.06)' },
-                yaxis: { title: 'Prompt Dose / Equivalent Dose (Gy or Sv)', type: 'log', gridcolor: 'rgba(255,255,255,0.06)' },
+                xaxis: { title: { text: 'Standoff Distance r (meters)' }, type: 'log', gridcolor: 'rgba(255,255,255,0.06)' },
+                yaxis: { title: { text: 'Prompt Dose / Equivalent Dose (Gy or Sv)' }, type: 'log', gridcolor: 'rgba(255,255,255,0.06)' },
                 legend: { orientation: 'h', y: -0.22 }
               }}
               style={{ width: '100%' }}

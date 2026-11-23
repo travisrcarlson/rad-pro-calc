@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import VerificationBadge from '../../components/VerificationBadge';
-import PlotComponent from 'react-plotly.js';
+import Plot from 'react-plotly.js';
+import type { Data } from 'plotly.js';
 import { BlockMath } from 'react-katex';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
@@ -10,8 +11,6 @@ import { computeFraunhoferFarFieldMeters } from '../../utils/radiologicalPhysics
 // MIL-STD-464C / NAVSEA OP 3565 Peak Electric Field Thresholds (V/m)
 const HERO_SUSCEPTIBLE_PEAK_V_M = 20.0; // Susceptible / exposed electro-explosive devices (EEDs)
 const HERF_FUEL_VENT_PEAK_V_M = 200.0;  // Volatile aviation / tactical fuel handling vents
-
-const Plot = (PlotComponent as any).default || PlotComponent;
 
 export type PresetCategory = 
   | 'C-UAS & Counter-IED'
@@ -703,7 +702,7 @@ const EMRModule: React.FC = () => {
               <select
                 className="form-control"
                 value={antennaPattern}
-                onChange={(e) => setAntennaPattern(e.target.value as any)}
+                onChange={(e) => setAntennaPattern(e.target.value as 'Directional' | 'Omnidirectional')}
                 style={{ fontSize: '0.85rem' }}
               >
                 <option value="Directional">Directional (Dish / AESA)</option>
@@ -716,7 +715,7 @@ const EMRModule: React.FC = () => {
               <select
                 className="form-control"
                 value={signalType}
-                onChange={(e) => setSignalType(e.target.value as any)}
+                onChange={(e) => setSignalType(e.target.value as 'CW' | 'Pulsed')}
                 style={{ fontSize: '0.85rem' }}
               >
                 <option value="CW">CW (Continuous Jammer)</option>
@@ -870,7 +869,7 @@ const EMRModule: React.FC = () => {
               <select
                 className="form-control"
                 value={standard}
-                onChange={(e) => setStandard(e.target.value as any)}
+                onChange={(e) => setStandard(e.target.value as 'FCC' | 'ICNIRP')}
                 style={{ width: 'auto', fontSize: '0.75rem', padding: '2px 6px', background: 'rgba(255,255,255,0.05)' }}
               >
                 <option value="FCC">FCC Part 1.1310</option>
@@ -1248,7 +1247,7 @@ const EMRModule: React.FC = () => {
                   name: `Uncontrolled Limit (${(math.limitUncontrolledW / 10).toFixed(2)} mW/cm²)`,
                   line: { color: '#EF4444', width: 2, dash: 'dash' }
                 }
-              ] as any}
+              ] as Data[]}
               layout={{
                 autosize: true,
                 xaxis: { title: { text: 'Distance from Antenna (meters)' }, color: '#94A3B8', gridcolor: 'rgba(255,255,255,0.06)' },

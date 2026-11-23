@@ -16,17 +16,27 @@ function radproOfflineManifestPlugin(): Plugin {
     apply: 'build',
     writeBundle(options, bundle) {
       const outDir = options.dir || path.resolve(__dirname, 'dist')
+      const buildVersion = `v5-${Date.now().toString(36)}`
       const assets: string[] = []
       for (const fileName of Object.keys(bundle)) {
-        if (/\.(js|css)$/i.test(fileName)) {
+        if (/\.(js|css|woff2)$/i.test(fileName)) {
           assets.push(`/${fileName.replace(/\\/g, '/')}`)
         }
       }
       fs.writeFileSync(
         path.join(outDir, 'precache-manifest.json'),
-        JSON.stringify({ version: 'v5', assets }, null, 2),
+        JSON.stringify({ version: buildVersion, assets }, null, 2),
         'utf8'
       )
+      const builtSwPath = path.join(outDir, 'sw.js')
+      if (fs.existsSync(builtSwPath)) {
+        const swContent = fs.readFileSync(builtSwPath, 'utf8')
+        fs.writeFileSync(
+          builtSwPath,
+          swContent.replace('radpro-cache-v5', `radpro-cache-${buildVersion}`),
+          'utf8'
+        )
+      }
     }
   }
 }

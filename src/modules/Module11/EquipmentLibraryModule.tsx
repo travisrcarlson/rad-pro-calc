@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import equipmentDataRaw from '../../data/equipment_database.json';
 import HistoricalIncidentsModule from '../Module30/HistoricalIncidentsModule';
@@ -97,29 +97,29 @@ const getSectorBadge = (sector: string, name: string): { code: string; label: st
   return { code: 'SRC', label: 'Sealed Source', color: '#94a3b8', bg: 'rgba(148, 163, 184, 0.12)' };
 };
 
-const processedEquipment: EquipmentRecord[] = (equipmentDataRaw as any[]).map((raw: any) => {
+const processedEquipment: EquipmentRecord[] = (equipmentDataRaw as Record<string, unknown>[]).map((raw) => {
   const sectorStr = String(raw['Sector / Application'] || 'Unknown');
   const catMatch = sectorStr.split('–')[0].split('-')[0].trim();
-  const devName = raw['Device Name'] || 'Unknown Device';
+  const devName = String(raw['Device Name'] || 'Unknown Device');
 
   return {
     deviceName: devName,
-    manufacturer: raw['Manufacturer / Owner'] || 'Unknown',
+    manufacturer: String(raw['Manufacturer / Owner'] || 'Unknown'),
     sectorApp: sectorStr,
     category: catMatch,
-    primaryIsotope: raw['Primary Isotope(s)'] || 'Unknown',
-    activity: raw['Activity (Typical)'] || 'Unknown',
-    halfLife: raw['Half-Life'] || 'Unknown',
-    radiationType: raw['Radiation Type'] || 'Unknown',
+    primaryIsotope: String(raw['Primary Isotope(s)'] || 'Unknown'),
+    activity: String(raw['Activity (Typical)'] || 'Unknown'),
+    halfLife: String(raw['Half-Life'] || 'Unknown'),
+    radiationType: String(raw['Radiation Type'] || 'Unknown'),
     iaeaCategory: String(raw['IAEA Cat.'] || 'Unknown'),
-    physicalForm: raw['Physical Form'] || 'Unknown',
-    shieldingMaterial: raw['Shielding Material'] || 'Unknown',
-    orphanSourceRisk: raw['Orphan Source Risk'] || 'Unknown',
+    physicalForm: String(raw['Physical Form'] || 'Unknown'),
+    shieldingMaterial: String(raw['Shielding Material'] || 'Unknown'),
+    orphanSourceRisk: String(raw['Orphan Source Risk'] || 'Unknown'),
     hazardLevel: String(raw['Hazard Level'] || 'UNKNOWN').toUpperCase(),
-    doseAt1m: raw['Dose Rate @ 1m (Bare/Unshielded)'] || 'No Data',
-    hazardProfile: raw['Hazard Profile Summary'] || 'No Description',
-    actionCode: raw['First Responder Action Code'] || '',
-    sectorBadge: getSectorBadge(sectorStr, String(devName))
+    doseAt1m: String(raw['Dose Rate @ 1m (Bare/Unshielded)'] || 'No Data'),
+    hazardProfile: String(raw['Hazard Profile Summary'] || 'No Description'),
+    actionCode: String(raw['First Responder Action Code'] || ''),
+    sectorBadge: getSectorBadge(sectorStr, devName)
   };
 });
 
@@ -156,7 +156,10 @@ const EquipmentLibraryModule: React.FC = () => {
     setInspectBareDoseUSvHr(parseFirstNumericValue(eq.doseAt1m, 1000));
   };
 
-  useEffect(() => {
+  const searchKey = searchParams.toString();
+  const [prevSearchKey, setPrevSearchKey] = useState<string | null>(null);
+  if (searchKey !== prevSearchKey) {
+    setPrevSearchKey(searchKey);
     const tabParam = searchParams.get('tab');
     const searchParam = searchParams.get('search') || searchParams.get('q') || searchParams.get('nuclide');
     if (tabParam === 'incidents' || tabParam === 'equipment') {
@@ -165,7 +168,7 @@ const EquipmentLibraryModule: React.FC = () => {
     if (searchParam !== null) {
       setSearch(searchParam);
     }
-  }, [searchParams]);
+  }
 
   const handleTabChange = (tab: 'equipment' | 'incidents') => {
     setActiveTab(tab);

@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import PlotComponent from 'react-plotly.js';
+import Plot from 'react-plotly.js';
+import type { Data } from 'plotly.js';
 import { BlockMath } from 'react-katex';
 import VerificationBadge from '../../components/VerificationBadge';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
@@ -11,8 +12,6 @@ import {
   computeRadonProgenyAnnualDose
 } from '../../utils/radiologicalPhysicsKernels';
 import { useRegulatory } from '../../context/RegulatoryContext';
-
-const Plot = (PlotComponent as any).default || PlotComponent;
 
 interface NuclideData {
   name: string;
@@ -164,7 +163,10 @@ const InternalDosimetryModule: React.FC = () => {
   const [radonExposureHoursYr, setRadonExposureHoursYr] = useState<number>(2000); // 2,000 occupational hours/yr
   const [radonVentilationACH, setRadonVentilationACH] = useState<number>(0.50); // Air changes per hour
 
-  useEffect(() => {
+  const searchKey = searchParams.toString();
+  const [prevSearchKey, setPrevSearchKey] = useState<string | null>(null);
+  if (searchKey !== prevSearchKey) {
+    setPrevSearchKey(searchKey);
     const iso = searchParams.get('nuclide') || searchParams.get('isotope');
     const actRaw = searchParams.get('activity');
     const unitRaw = searchParams.get('unit') || 'GBq';
@@ -186,7 +188,7 @@ const InternalDosimetryModule: React.FC = () => {
         setIntakeActivity(Number(kBq.toFixed(1)));
       }
     }
-  }, [searchParams]);
+  }
 
   const radonAnalytics = useMemo(() => {
     const pCiPerL = radonConcBqM3 / 37.0;
@@ -465,7 +467,7 @@ const InternalDosimetryModule: React.FC = () => {
           <div className="form-group">
             <label className="form-label">Route of Entry</label>
             <div style={{ display: 'flex', gap: '10px' }}>
-              {['Inhalation', 'Ingestion', 'Injection'].map((r) => (
+              {(['Inhalation', 'Ingestion', 'Injection'] as const).map((r) => (
                 <button
                   key={r}
                   className="btn btn-primary"
@@ -477,7 +479,7 @@ const InternalDosimetryModule: React.FC = () => {
                     border: '1px solid var(--color-border)',
                     boxShadow: 'none'
                   }}
-                  onClick={() => setRoute(r as any)}
+                  onClick={() => setRoute(r)}
                 >
                   {r}
                 </button>
@@ -490,9 +492,9 @@ const InternalDosimetryModule: React.FC = () => {
               <label className="form-label">Lung Absorption Class (Solubility)</label>
               <div style={{ display: 'flex', gap: '10px' }}>
                 {[
-                  { key: 'F', label: 'Class F (Fast/Soluble)' },
-                  { key: 'M', label: 'Class M (Moderate)' },
-                  { key: 'S', label: 'Class S (Slow/Insoluble)' }
+                  { key: 'F' as const, label: 'Class F (Fast/Soluble)' },
+                  { key: 'M' as const, label: 'Class M (Moderate)' },
+                  { key: 'S' as const, label: 'Class S (Slow/Insoluble)' }
                 ].map((c) => (
                   <button
                     key={c.key}
@@ -505,7 +507,7 @@ const InternalDosimetryModule: React.FC = () => {
                       border: '1px solid var(--color-border)',
                       boxShadow: 'none'
                     }}
-                    onClick={() => setAbsorptionClass(c.key as any)}
+                    onClick={() => setAbsorptionClass(c.key)}
                   >
                     {c.label}
                   </button>
@@ -845,7 +847,7 @@ const InternalDosimetryModule: React.FC = () => {
                   name: 'Cumulative Excreted',
                   line: { color: 'var(--color-success)', width: 2 }
                 }
-              ] as any}
+              ] as Data[]}
               layout={{
                 autosize: true,
                 xaxis: { title: { text: 'Time since intake (Days)' }, color: '#94A3B8', gridcolor: 'rgba(255,255,255,0.05)' },
@@ -879,7 +881,7 @@ const InternalDosimetryModule: React.FC = () => {
                   fill: 'tozeroy',
                   fillcolor: 'rgba(239, 68, 68, 0.1)'
                 }
-              ] as any}
+              ] as Data[]}
               layout={{
                 autosize: true,
                 xaxis: { title: { text: 'Days' }, color: '#94A3B8', gridcolor: 'rgba(255,255,255,0.05)' },
@@ -1063,8 +1065,8 @@ const InternalDosimetryModule: React.FC = () => {
                 height: 290,
                 font: { color: '#cbd5e1', size: 11 },
                 title: { text: 'Jacobi HVAC Ventilation Mitigation Curve (mSv/yr vs. Air Changes/Hour)', font: { size: 12, color: '#e2e8f0' } },
-                xaxis: { title: 'Ventilation Rate λ_v (Air Changes per Hour, ACH)', gridcolor: 'rgba(255,255,255,0.06)' },
-                yaxis: { title: 'ICRP-137 Annual Effective Dose (mSv/yr)', gridcolor: 'rgba(255,255,255,0.06)' }
+                xaxis: { title: { text: 'Ventilation Rate λ_v (Air Changes per Hour, ACH)' }, gridcolor: 'rgba(255,255,255,0.06)' },
+                yaxis: { title: { text: 'ICRP-137 Annual Effective Dose (mSv/yr)' }, gridcolor: 'rgba(255,255,255,0.06)' }
               }}
               config={{ displayModeBar: false, responsive: true }}
               style={{ width: '100%' }}

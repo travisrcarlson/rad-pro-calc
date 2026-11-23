@@ -31,20 +31,29 @@ export const DetectorHardwareModule: React.FC = () => {
   const animFrameIdRef = useRef<number | null>(null);
 
   // Web Serial Port ref
-  const serialPortRef = useRef<any>(null);
-  const serialReaderRef = useRef<any>(null);
+  const serialPortRef = useRef<SerialPortLike | null>(null);
+  const serialReaderRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null);
 
   // Pulse timestamps for rolling rate calculation
   const pulseTimestampsRef = useRef<number[]>([]);
 
-  // Web Audio Synth for clicks
+  // Web Audio Synth for clicks + live callback/slider refs for RAF oscilloscope loop
   const clickAudioCtxRef = useRef<AudioContext | null>(null);
+  const thresholdLevelRef = useRef<number>(thresholdLevel);
+
+  const createAudioContext = (): AudioContext => {
+    const AudioCtxCtor = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtxCtor) {
+      throw new Error('Web Audio API is not supported in this browser.');
+    }
+    return new AudioCtxCtor();
+  };
 
   const playClick = () => {
     if (!audioClicksEnabled) return;
     try {
       if (!clickAudioCtxRef.current) {
-        clickAudioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+        clickAudioCtxRef.current = createAudioContext();
       }
       const ctx = clickAudioCtxRef.current;
       const osc = ctx.createOscillator();
@@ -70,6 +79,42 @@ export const DetectorHardwareModule: React.FC = () => {
     setTotalCounts(prev => prev + 1);
     playClick();
   };
+  const recordPulseRef = useRef(recordPulse);
+
+  useEffect(() => {
+    thresholdLevelRef.current = thresholdLevel;
+    recordPulseRef.current = recordPulse;
+  });
+
+  // Full hardware resource cleanup on unmount (AudioContext, MediaStream, RAF loop, WebSerial)
+  useEffect(() => {
+    return () => {
+      if (animFrameIdRef.current) {
+        cancelAnimationFrame(animFrameIdRef.current);
+        animFrameIdRef.current = null;
+      }
+      if (micStreamRef.current) {
+        micStreamRef.current.getTracks().forEach(track => track.stop());
+        micStreamRef.current = null;
+      }
+      if (audioContextRef.current) {
+        audioContextRef.current.close().catch(() => {});
+        audioContextRef.current = null;
+      }
+      if (clickAudioCtxRef.current) {
+        clickAudioCtxRef.current.close().catch(() => {});
+        clickAudioCtxRef.current = null;
+      }
+      if (serialReaderRef.current) {
+        Promise.resolve(serialReaderRef.current.cancel()).catch(() => {});
+        serialReaderRef.current = null;
+      }
+      if (serialPortRef.current) {
+        Promise.resolve(serialPortRef.current.close()).catch(() => {});
+        serialPortRef.current = null;
+      }
+    };
+  }, []);
 
   // Rolling CPS / CPM calculator interval
   useEffect(() => {
@@ -120,7 +165,7 @@ export const DetectorHardwareModule: React.FC = () => {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
       micStreamRef.current = stream;
 
-      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const audioCtx = createAudioContext();
       audioContextRef.current = audioCtx;
 
       const source = audioCtx.createMediaStreamSource(stream);
@@ -139,25 +184,34 @@ export const DetectorHardwareModule: React.FC = () => {
 
   // Stop Audio Ingestion
   const stopAudioIngestion = () => {
-    if (animFrameIdRef.current) cancelAnimationFrame(animFrameIdRef.current);
+    if (animFrameIdRef.current) {
+      cancelAnimationFrame(animFrameIdRef.current);
+      animFrameIdRef.current = null;
+    }
     if (micStreamRef.current) {
       micStreamRef.current.getTracks().forEach(track => track.stop());
+      micStreamRef.current = null;
     }
     if (audioContextRef.current) {
-      audioContextRef.current.close();
+      audioContextRef.current.close().catch(() => {});
+      audioContextRef.current = null;
     }
+    analyserRef.current = null;
     setIsConnected(false);
   };
 
   // Connect Web Serial Port
   const startSerialConnection = async () => {
-    if (!('serial' in navigator)) {
+    if (!navigator.serial) {
       alert('Web Serial API is not supported in this browser. Please use Chrome, Edge, or Opera.');
       return;
     }
     try {
-      const port = await (navigator as any).serial.requestPort();
+      const port = await navigator.serial.requestPort();
       await port.open({ baudRate: 115200 });
+      if (!port.readable) {
+        throw new Error('Serial port readable stream is unavailable.');
+      }
       serialPortRef.current = port;
       setIsConnected(true);
 
@@ -171,7 +225,7 @@ export const DetectorHardwareModule: React.FC = () => {
             if (done) break;
             if (value && value.length > 0) {
               // Register incoming pulse or byte packet
-              recordPulse();
+              recordPulseRef.current();
             }
           }
         } catch {
@@ -192,6 +246,9 @@ export const DetectorHardwareModule: React.FC = () => {
       if (serialPortRef.current) await serialPortRef.current.close();
     } catch {
       // Ignore cleanup error
+    } finally {
+      serialReaderRef.current = null;
+      serialPortRef.current = null;
     }
     setIsConnected(false);
   };
@@ -207,6 +264,9 @@ export const DetectorHardwareModule: React.FC = () => {
 
     const bufferLength = analyser.frequencyBinCount;
     const dataArray = new Uint8Array(bufferLength);
+
+    let isArmed = true;
+    let lastPulseTs = 0;
 
     const render = () => {
       animFrameIdRef.current = requestAnimationFrame(render);
@@ -229,9 +289,10 @@ export const DetectorHardwareModule: React.FC = () => {
       ctx.fillStyle = '#050a12';
       ctx.fillRect(0, 0, width, height);
 
-      // Draw threshold lines
-      const threshY_top = height / 2 - thresholdLevel * (height / 2);
-      const threshY_bot = height / 2 + thresholdLevel * (height / 2);
+      // Draw threshold lines using live ref
+      const curThreshold = thresholdLevelRef.current;
+      const threshY_top = height / 2 - curThreshold * (height / 2);
+      const threshY_bot = height / 2 + curThreshold * (height / 2);
 
       ctx.strokeStyle = 'rgba(239, 68, 68, 0.4)';
       ctx.setLineDash([4, 4]);
@@ -250,15 +311,13 @@ export const DetectorHardwareModule: React.FC = () => {
 
       const sliceWidth = width / bufferLength;
       let x = 0;
-      let pulseDetected = false;
+      let peakDeviation = 0;
 
       for (let i = 0; i < bufferLength; i++) {
         const v = dataArray[i] / 128.0; // 0 to 2, centered at 1
         const y = (v * height) / 2;
-
-        if (Math.abs(v - 1.0) > thresholdLevel) {
-          pulseDetected = true;
-        }
+        const dev = Math.abs(v - 1.0);
+        if (dev > peakDeviation) peakDeviation = dev;
 
         if (i === 0) {
           ctx.moveTo(x, y);
@@ -270,8 +329,13 @@ export const DetectorHardwareModule: React.FC = () => {
 
       ctx.stroke();
 
-      if (pulseDetected) {
-        recordPulse();
+      const now = performance.now();
+      if (isArmed && peakDeviation > curThreshold && now - lastPulseTs > 15) {
+        isArmed = false;
+        lastPulseTs = now;
+        recordPulseRef.current();
+      } else if (!isArmed && peakDeviation < curThreshold * 0.7) {
+        isArmed = true;
       }
     };
     render();
@@ -490,7 +554,7 @@ export const DetectorHardwareModule: React.FC = () => {
               <select
                 className="form-control"
                 value={simPreset}
-                onChange={(e) => setSimPreset(e.target.value as any)}
+                onChange={(e) => setSimPreset(e.target.value as 'background' | 'check_source' | 'high_field')}
                 style={{ padding: '6px 10px', fontSize: '0.78rem', background: '#000', color: '#fff', border: '1px solid var(--color-border)', borderRadius: '6px' }}
               >
                 <option value="background">Background Radiation (~25 CPM)</option>

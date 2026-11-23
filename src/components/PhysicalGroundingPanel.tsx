@@ -7,7 +7,7 @@ import {
   extractPrimaryDataProvenance,
   AMBIENT_BACKGROUND_BASELINES,
   fetchNearestSafecastReading,
-  NUCLIDE_PHYSICAL_CATALOG
+  getNuclidePhysicalSpec
 } from '../utils/physicalGroundingEngine';
 
 export interface PhysicalGroundingPanelProps {
@@ -34,7 +34,7 @@ export const PhysicalGroundingPanel: React.FC<PhysicalGroundingPanelProps> = ({
   const [isQueryingSafecast, setIsQueryingSafecast] = useState<boolean>(false);
   const [showProvenance, setShowProvenance] = useState<boolean>(false);
 
-  const spec = NUCLIDE_PHYSICAL_CATALOG[isotope] || NUCLIDE_PHYSICAL_CATALOG['Co-60'];
+  const spec = getNuclidePhysicalSpec(isotope);
   const matter = useMemo(
     () => computePhysicalMatterAnchor(isotope, activityGBq),
     [isotope, activityGBq]

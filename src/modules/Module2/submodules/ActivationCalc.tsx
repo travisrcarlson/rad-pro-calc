@@ -152,7 +152,7 @@ const ActivationCalc: React.FC = () => {
     const satMBq = saturation_activity / 1e6;
 
     return { irrX, irrY_MBq, coolX, coolY_MBq, eobX, currentX, satMBq, plotUnitName };
-  }, [t_irr, t_cool, tIrrUnit, saturation_activity, activity_eob_Bq, selectedTarget.lambda_s]);
+  }, [t_irr, t_cool, tIrrUnit, saturation_activity, activity_eob_Bq, lambdaEff, selectedTarget.lambda_s]);
 
   const dossierPayload: CalculationDossierPayload = useMemo(() => ({
     reportTitle: `Neutron Activation Analysis — ${selectedTarget.name} → ${selectedTarget.product}`,

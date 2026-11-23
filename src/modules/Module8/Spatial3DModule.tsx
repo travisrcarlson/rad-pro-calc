@@ -1,6 +1,6 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import PlotComponent from 'react-plotly.js';
+import Plot from 'react-plotly.js';
 import { BlockMath, InlineMath } from 'react-katex';
 import VerificationBadge from '../../components/VerificationBadge';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
@@ -13,8 +13,6 @@ import {
   evaluateGPBuildup,
   intersectRayAABB3D
 } from '../../utils/xcomAndGpBuildup';
-
-const Plot = (PlotComponent as any).default || PlotComponent;
 
 interface Source3D {
   id: number;
@@ -78,7 +76,10 @@ const Spatial3DModule: React.FC = () => {
     { id: 1, name: 'Cs-137 Calibrator', nuclide: 'Cs-137', energyMeV: 0.6617, x: 5, y: 5, z: 1.5, activity_MBq: 37000, gamma_uSv: 772 }
   ]);
 
-  useEffect(() => {
+  const searchKey = searchParams.toString();
+  const [prevSearchKey, setPrevSearchKey] = useState<string | null>(null);
+  if (searchKey !== prevSearchKey) {
+    setPrevSearchKey(searchKey);
     const nucParam = searchParams.get('nuclide') || searchParams.get('isotope');
     const actParam = searchParams.get('activity');
     const unitParam = searchParams.get('unit');
@@ -102,7 +103,7 @@ const Spatial3DModule: React.FC = () => {
         });
       }
     }
-  }, [searchParams]);
+  }
 
   const [targets, setTargets] = useState<Target3D[]>([
     { id: 1, name: 'Operator Console Alpha', x: 6, y: 5, z: 1.5 },
@@ -113,7 +114,7 @@ const Spatial3DModule: React.FC = () => {
     { id: 1, name: 'Concrete Shield Wall', x: 5, y: 6.5, z: 1.5, w: 4, l: 0.5, h: 3, material: 'CONCRETE', tvl_cm: 14.7 }
   ]);
 
-  const computeBroadBeamTransmission3D = (
+  const computeBroadBeamTransmission3D = useCallback((
     sx: number,
     sy: number,
     sz: number,
@@ -149,7 +150,7 @@ const Spatial3DModule: React.FC = () => {
       }
     }
     return trans;
-  };
+  }, [shields]);
 
   // Compute 3D Voxel Engine Matrix
   const { volX, volY, volZ, volV } = useMemo(() => {
@@ -199,9 +200,9 @@ const Spatial3DModule: React.FC = () => {
     }
 
     return { volX: X, volY: Y, volZ: Z, volV: V };
-  }, [sources, dimX, dimY, dimZ, shields]);
+  }, [sources, dimX, dimY, dimZ, computeBroadBeamTransmission3D]);
 
-  const calcTargetDose = (t: Target3D) => {
+  const calcTargetDose = useCallback((t: Target3D) => {
     let d = 0;
     sources.forEach(src => {
       const dx = t.x - src.x;
@@ -220,22 +221,22 @@ const Spatial3DModule: React.FC = () => {
       d += ((src.activity_MBq * src.gamma_uSv) / (dist_cm * dist_cm)) * trans;
     });
     return d;
-  };
+  }, [sources, computeBroadBeamTransmission3D]);
 
   // Build scatter mesh tracing arrays for visual shields
-  const shieldTraces: any[] = shields.map(sh => {
+  const shieldTraces = shields.map(sh => {
     return {
-      type: 'mesh3d',
+      type: 'mesh3d' as const,
       x: [sh.x - sh.w / 2, sh.x - sh.w / 2, sh.x + sh.w / 2, sh.x + sh.w / 2, sh.x - sh.w / 2, sh.x - sh.w / 2, sh.x + sh.w / 2, sh.x + sh.w / 2],
       y: [sh.y - sh.l / 2, sh.y + sh.l / 2, sh.y + sh.l / 2, sh.y - sh.l / 2, sh.y - sh.l / 2, sh.y + sh.l / 2, sh.y + sh.l / 2, sh.y - sh.l / 2],
       z: [sh.z - sh.h / 2, sh.z - sh.h / 2, sh.z - sh.h / 2, sh.z - sh.h / 2, sh.z + sh.h / 2, sh.z + sh.h / 2, sh.z + sh.h / 2, sh.z + sh.h / 2],
-      i: [7, 0, 0, 0, 4, 4, 6, 6, 4, 0, 3, 2],
-      j: [3, 4, 1, 2, 5, 6, 5, 2, 0, 1, 6, 3],
-      k: [0, 7, 2, 3, 6, 7, 1, 1, 5, 5, 7, 6],
+      i: new Int32Array([7, 0, 0, 0, 4, 4, 6, 6, 4, 0, 3, 2]),
+      j: new Int32Array([3, 4, 1, 2, 5, 6, 5, 2, 0, 1, 6, 3]),
+      k: new Int32Array([0, 7, 2, 3, 6, 7, 1, 1, 5, 5, 7, 6]),
       opacity: 0.22,
       color: '#94a3b8',
       name: sh.name,
-      hoverinfo: 'name'
+      hoverinfo: 'name' as const
     };
   });
 
@@ -262,7 +263,7 @@ const Spatial3DModule: React.FC = () => {
       petUptakeDecay60m: computeTG108UptakeDecayFactor(109.77, 60.0),
       totalShields: shields.length
     };
-  }, [sources, targets, shields]);
+  }, [sources, targets, shields.length, calcTargetDose]);
 
   useEffect(() => {
     const primaryIso = sources[0]?.nuclide || 'Cs-137';
@@ -480,12 +481,12 @@ const Spatial3DModule: React.FC = () => {
                     opacity: 0.12,
                     surface: { count: 8 },
                     colorscale: 'Jet',
-                    colorbar: { title: 'µSv/h', len: 0.8, x: 0.96 },
+                    colorbar: { title: { text: 'µSv/h' }, len: 0.8, x: 0.96 },
                     hovertemplate: 'X: %{x:.1f}m<br>Y: %{y:.1f}m<br>Z: %{z:.1f}m<br>Field: %{value:.1f} µSv/h<extra></extra>'
-                  },
+                  } as unknown as import('plotly.js').Data,
                   {
                     type: 'scatter3d',
-                    mode: 'markers+text',
+                    mode: 'text+markers',
                     x: sources.map(s => s.x), y: sources.map(s => s.y), z: sources.map(s => s.z),
                     marker: { symbol: 'diamond', color: '#ff3366', size: 8, line: { width: 1.5, color: '#ffffff' } },
                     text: sources.map(s => `[SRC] ${s.name}`),
@@ -496,7 +497,7 @@ const Spatial3DModule: React.FC = () => {
                   },
                   {
                     type: 'scatter3d',
-                    mode: 'markers+text',
+                    mode: 'text+markers',
                     x: targets.map(t => t.x), y: targets.map(t => t.y), z: targets.map(t => t.z),
                     marker: { symbol: 'circle-open', color: '#10b981', size: 9, line: { width: 3, color: '#10b981' } },
                     text: targets.map(t => `[SENS] ${t.name}`),
@@ -511,9 +512,9 @@ const Spatial3DModule: React.FC = () => {
                 layout={{
                   autosize: true, margin: { l: 0, r: 0, t: 0, b: 0 },
                   scene: {
-                    xaxis: { title: 'X (m)', range: [0, dimX], gridcolor: '#1e293b', zerolinecolor: '#334155' },
-                    yaxis: { title: 'Depth Y (m)', range: [0, dimY], gridcolor: '#1e293b', zerolinecolor: '#334155' },
-                    zaxis: { title: 'Elevation Z (m)', range: [0, dimZ], gridcolor: '#1e293b', zerolinecolor: '#334155' },
+                    xaxis: { title: { text: 'X (m)' }, range: [0, dimX], gridcolor: '#1e293b', zerolinecolor: '#334155' },
+                    yaxis: { title: { text: 'Depth Y (m)' }, range: [0, dimY], gridcolor: '#1e293b', zerolinecolor: '#334155' },
+                    zaxis: { title: { text: 'Elevation Z (m)' }, range: [0, dimZ], gridcolor: '#1e293b', zerolinecolor: '#334155' },
                     aspectmode: 'data',
                     camera: { eye: { x: 1.6, y: -1.6, z: 0.9 } }
                   },

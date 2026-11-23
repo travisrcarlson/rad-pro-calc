@@ -14,6 +14,7 @@ import {
   evaluateGPBuildup,
   XCOM_GP_MATERIALS
 } from './xcomAndGpBuildup';
+import { getCanonicalNuclide } from './canonicalNuclidePhysics';
 
 export interface NuclidePhysicalSpec {
   symbol: string;
@@ -163,11 +164,52 @@ export interface PhysicalMatterAnchor {
   chemicalForm: string;
 }
 
+export function getNuclidePhysicalSpec(isotope: string): NuclidePhysicalSpec {
+  if (NUCLIDE_PHYSICAL_CATALOG[isotope]) {
+    return NUCLIDE_PHYSICAL_CATALOG[isotope];
+  }
+  const canon = getCanonicalNuclide(isotope);
+  if (canon) {
+    const massMatch = canon.symbol.match(/(\d+)/);
+    const atomicMassGPerMol = massMatch ? parseInt(massMatch[1], 10) : 100;
+    const linesDesc =
+      canon.photonLines.length > 0
+        ? canon.photonLines
+            .slice(0, 3)
+            .map((l) => `${(l.energyMeV * 1000).toFixed(1)} keV (${(l.yield * 100).toFixed(1)}%)`)
+            .join(', ')
+        : `${canon.decayMode} emitter (no principal γ lines)`;
+    const meanPhotonEnergyMeV = canon.principalPhotonMeV > 0 ? canon.principalPhotonMeV : 0.662;
+    const totalDecayEnergyMeV = Math.max(0.25, canon.principalPhotonMeV > 0 ? canon.principalPhotonMeV * 1.35 : 0.8);
+    return {
+      symbol: canon.symbol,
+      atomicMassGPerMol,
+      halfLifeSeconds: canon.halfLifeSeconds,
+      halfLifeLabel:
+        canon.halfLifeSeconds >= 3.15576e7
+          ? `${(canon.halfLifeSeconds / 3.15576e7).toPrecision(3)} yr`
+          : canon.halfLifeSeconds >= 86400
+          ? `${(canon.halfLifeSeconds / 86400).toPrecision(3)} d`
+          : canon.halfLifeSeconds >= 3600
+          ? `${(canon.halfLifeSeconds / 3600).toPrecision(3)} h`
+          : `${canon.halfLifeSeconds.toPrecision(3)} s`,
+      meanPhotonEnergyMeV,
+      totalDecayEnergyMeV,
+      solidDensityGcm3: 5.0,
+      chemicalForm: `${canon.name} (${canon.decayMode})`,
+      gammaConst_mSv_m2_h_GBq: canon.gammaH10_uSv_m2_h_GBq / 1000,
+      icrp107Lines: linesDesc,
+      icrp119InhalE50_SvPerBq: canon.e50InhalByClass_Sv_Bq.M || canon.e50InhalByClass_Sv_Bq.F || 1e-8
+    };
+  }
+  return NUCLIDE_PHYSICAL_CATALOG['Co-60'];
+}
+
 export function computePhysicalMatterAnchor(
   isotope: string,
   activityGBq: number
 ): PhysicalMatterAnchor {
-  const spec = NUCLIDE_PHYSICAL_CATALOG[isotope] || NUCLIDE_PHYSICAL_CATALOG['Co-60'];
+  const spec = getNuclidePhysicalSpec(isotope);
   const activityBq = Math.max(0, activityGBq) * 1e9;
   const lambda = Math.LN2 / spec.halfLifeSeconds;
   const numAtoms = lambda > 0 ? activityBq / lambda : 0;
@@ -412,13 +454,51 @@ export interface ValidityAndUncertaintyReport {
 }
 
 const MATERIAL_TO_XCOM_KEY: Record<string, string> = {
-  Lead: 'LEAD',
-  Tungsten: 'TUNGSTEN',
-  'Depleted Uranium': 'DU',
-  Steel: 'STEEL',
-  Concrete: 'CONCRETE',
-  Water: 'WATER'
+  lead: 'LEAD',
+  pb: 'LEAD',
+  tungsten: 'TUNGSTEN',
+  w: 'TUNGSTEN',
+  'depleted uranium': 'DU',
+  du: 'DU',
+  steel: 'STEEL',
+  iron: 'STEEL',
+  fe: 'STEEL',
+  concrete: 'CONCRETE',
+  'barite concrete': 'BARITE_CONCRETE',
+  barite: 'BARITE_CONCRETE',
+  'magnetite concrete': 'MAGNETITE_CONCRETE',
+  magnetite: 'MAGNETITE_CONCRETE',
+  aluminum: 'ALUMINUM',
+  al: 'ALUMINUM',
+  water: 'WATER',
+  h2o: 'WATER',
+  hdpe: 'HDPE',
+  polyethylene: 'HDPE',
+  'borated polyethylene': 'BORATED_PE',
+  borated_pe: 'BORATED_PE',
+  'lead glass': 'LEAD_GLASS',
+  glass: 'LEAD_GLASS',
+  bismuth: 'BISMUTH',
+  bi: 'BISMUTH',
+  copper: 'COPPER',
+  cu: 'COPPER',
+  tissue: 'ICRU_TISSUE',
+  soil: 'SOIL_EARTH',
+  earth: 'SOIL_EARTH',
+  air: 'AIR',
+  brick: 'BRICK',
+  drywall: 'DRYWALL',
+  pmma: 'PMMA',
+  acrylic: 'PMMA'
 };
+
+export function resolveXcomMaterialKey(shieldMaterial: string): string {
+  const clean = shieldMaterial.trim().toLowerCase();
+  if (MATERIAL_TO_XCOM_KEY[clean]) return MATERIAL_TO_XCOM_KEY[clean];
+  const upper = clean.toUpperCase().replace(/[^A-Z0-9]+/g, '_');
+  if (XCOM_GP_MATERIALS[upper]) return upper;
+  return 'LEAD';
+}
 
 export function evaluateValidityAndUncertainty(
   isotope: string,
@@ -428,8 +508,8 @@ export function evaluateValidityAndUncertainty(
   shieldedDoseMSvHr: number,
   pelletDiameterMm: number
 ): ValidityAndUncertaintyReport {
-  const spec = NUCLIDE_PHYSICAL_CATALOG[isotope] || NUCLIDE_PHYSICAL_CATALOG['Co-60'];
-  const matKey = MATERIAL_TO_XCOM_KEY[shieldMaterial] || 'LEAD';
+  const spec = getNuclidePhysicalSpec(isotope);
+  const matKey = resolveXcomMaterialKey(shieldMaterial);
   const xcom = evaluateXCOMAttenuation(matKey, spec.meanPhotonEnergyMeV);
   const mfp = xcom.muLinear * Math.max(0, shieldThicknessCm);
 
@@ -522,8 +602,8 @@ export function extractPrimaryDataProvenance(
   shieldMaterial: string,
   shieldThicknessCm: number
 ): PrimaryProvenanceRecord {
-  const spec = NUCLIDE_PHYSICAL_CATALOG[isotope] || NUCLIDE_PHYSICAL_CATALOG['Co-60'];
-  const matKey = MATERIAL_TO_XCOM_KEY[shieldMaterial] || 'LEAD';
+  const spec = getNuclidePhysicalSpec(isotope);
+  const matKey = resolveXcomMaterialKey(shieldMaterial);
   const matObj = XCOM_GP_MATERIALS[matKey] || XCOM_GP_MATERIALS.LEAD;
   const xcom = evaluateXCOMAttenuation(matKey, spec.meanPhotonEnergyMeV);
   const opticalMfp = xcom.muLinear * Math.max(0, shieldThicknessCm);

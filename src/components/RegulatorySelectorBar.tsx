@@ -20,6 +20,7 @@ interface RegulatorySelectorBarProps {
   onStepModule?: (direction: -1 | 1) => void;
   isActivePinned?: boolean;
   onTogglePinActive?: () => void;
+  onLockSession?: () => void;
 }
 
 export const RegulatorySelectorBar: React.FC<RegulatorySelectorBarProps> = ({
@@ -29,7 +30,8 @@ export const RegulatorySelectorBar: React.FC<RegulatorySelectorBarProps> = ({
   activeModuleInfo,
   onStepModule,
   isActivePinned = false,
-  onTogglePinActive
+  onTogglePinActive,
+  onLockSession
 }) => {
   const { currentFramework, frameworkId, setFrameworkId, allFrameworks, unitSystem, setUnitSystem, formatDoseMSv } = useRegulatory();
   const location = useLocation();
@@ -37,21 +39,33 @@ export const RegulatorySelectorBar: React.FC<RegulatorySelectorBarProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [currentTheme, setCurrentThemeState] = useState<'standard' | 'tactical' | 'night_vision'>(() => {
-    return (localStorage.getItem('radpro_theme') as any) || 'standard';
+    try {
+      const saved = localStorage.getItem('radpro_theme');
+      if (saved === 'tactical' || saved === 'night_vision' || saved === 'standard') return saved;
+    } catch {
+      // Ignore storage access errors
+    }
+    return 'standard';
   });
 
   const setTheme = (theme: 'standard' | 'tactical' | 'night_vision') => {
     setCurrentThemeState(theme);
-    localStorage.setItem('radpro_theme', theme);
+    try {
+      localStorage.setItem('radpro_theme', theme);
+    } catch {
+      // Ignore storage access errors
+    }
     document.body.classList.remove('theme-tactical-hud', 'theme-night-vision');
     if (theme === 'tactical') document.body.classList.add('theme-tactical-hud');
     if (theme === 'night_vision') document.body.classList.add('theme-night-vision');
   };
 
-  // Sync theme class on mount
+  // Sync theme class on mount and whenever theme changes
   useEffect(() => {
-    setTheme(currentTheme);
-  }, []);
+    document.body.classList.remove('theme-tactical-hud', 'theme-night-vision');
+    if (currentTheme === 'tactical') document.body.classList.add('theme-tactical-hud');
+    if (currentTheme === 'night_vision') document.body.classList.add('theme-night-vision');
+  }, [currentTheme]);
 
   const handleCopyDeepLink = () => {
     const url = window.location.href;
@@ -279,6 +293,25 @@ export const RegulatorySelectorBar: React.FC<RegulatorySelectorBarProps> = ({
           }}>
             {currentFramework.keyStatutes[0]}
           </span>
+          {onLockSession && (
+            <button
+              type="button"
+              onClick={onLockSession}
+              title="Lock session & return to login screen"
+              style={{
+                padding: '2px 8px',
+                fontSize: '0.68rem',
+                borderRadius: '4px',
+                border: '1px solid rgba(239, 68, 68, 0.35)',
+                background: 'rgba(239, 68, 68, 0.12)',
+                color: '#fca5a5',
+                cursor: 'pointer',
+                fontWeight: 600
+              }}
+            >
+              🔒 Lock
+            </button>
+          )}
         </div>
       </div>
 

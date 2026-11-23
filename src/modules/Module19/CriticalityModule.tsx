@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import VerificationBadge from '../../components/VerificationBadge';
-import PlotComponent from 'react-plotly.js';
+import Plot from 'react-plotly.js';
+import type { Data } from 'plotly.js';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
 import { useRegulatory } from '../../context/RegulatoryContext';
@@ -9,8 +10,6 @@ import {
   computeKeepinInhourReactivityCents,
   computePostScramXenonPeakHours
 } from '../../utils/radiologicalPhysicsKernels';
-
-const Plot = (PlotComponent as any).default || PlotComponent;
 
 export type CellType = 
   | 'FUEL' 
@@ -374,7 +373,7 @@ const CriticalityModule: React.FC = () => {
   };
 
   // Update specific field of the currently selected cell
-  const handleUpdateSelectedCell = (field: keyof LatticeCell, val: any) => {
+  const handleUpdateSelectedCell = <K extends keyof LatticeCell>(field: K, val: LatticeCell[K]) => {
     const { r, c } = selectedCell;
     const newGrid = grid.map(row => row.map(cell => ({ ...cell })));
     newGrid[r][c] = {
@@ -1269,7 +1268,7 @@ const CriticalityModule: React.FC = () => {
               <select
                 className="form-control"
                 value={moderatorType}
-                onChange={(e) => setModeratorType(e.target.value as any)}
+                onChange={(e) => setModeratorType(e.target.value as CorePreset['moderatorType'])}
               >
                 <option value="Light Water (H2O)">Light Water (H₂O)</option>
                 <option value="Heavy Water (D2O)">Heavy Water (D₂O)</option>
@@ -1695,7 +1694,7 @@ const CriticalityModule: React.FC = () => {
                     tickfont: { color: '#F8FAFC' }
                   }
                 }
-              ] as any}
+              ] as Data[]}
               layout={{
                 autosize: true,
                 paper_bgcolor: 'transparent',
@@ -1703,7 +1702,7 @@ const CriticalityModule: React.FC = () => {
                 font: { color: '#F8FAFC' },
                 margin: { l: 40, r: 20, t: 20, b: 40 },
                 xaxis: { title: { text: 'Core X (Lattice Column)' }, tickmode: 'linear', dtick: 1 },
-                yaxis: { title: { text: 'Core Y (Lattice Row)' }, tickmode: 'linear', dtick: 1, autorange: 'reverse' }
+                yaxis: { title: { text: 'Core Y (Lattice Row)' }, tickmode: 'linear', dtick: 1, autorange: 'reversed' }
               }}
               useResizeHandler={true}
               style={{ width: '100%', height: '360px' }}
@@ -1730,7 +1729,7 @@ const CriticalityModule: React.FC = () => {
                 name: 'Relative Power Level',
                 line: { color: math.stateColor, width: 3 }
               }
-            ] as any}
+            ] as Data[]}
             layout={{
               autosize: true,
               xaxis: { title: { text: 'Time (seconds)' }, color: '#94A3B8', gridcolor: 'rgba(255,255,255,0.05)' },
@@ -1957,7 +1956,7 @@ const CriticalityModule: React.FC = () => {
                   name: 'Subcritical Branch (−T)',
                   line: { color: '#38bdf8', width: 2.5, dash: 'dash' }
                 },
-                ...(Number.isFinite(inhourKinetics.asymptoticPeriodS) && Math.abs(inhourKinetics.asymptoticPeriodS) <= 200
+                    ...(Number.isFinite(inhourKinetics.asymptoticPeriodS) && Math.abs(inhourKinetics.asymptoticPeriodS) <= 200
                   ? [
                       {
                         x: [inhourKinetics.asymptoticPeriodS],
@@ -1969,7 +1968,7 @@ const CriticalityModule: React.FC = () => {
                       }
                     ]
                   : [])
-              ] as any}
+              ] as Data[]}
               layout={{
                 autosize: true,
                 height: 255,
@@ -2126,7 +2125,7 @@ const CriticalityModule: React.FC = () => {
               name: `Available Restart Margin (${excessReactivityMarginPcm} pcm)`,
               line: { color: '#38bdf8', width: 2, dash: 'dash' }
             }
-          ] as any}
+          ] as Data[]}
           layout={{
             autosize: true,
             height: 290,

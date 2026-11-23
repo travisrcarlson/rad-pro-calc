@@ -11,11 +11,29 @@ export interface VisualDetonationProps {
   initialCityId?: string;
 }
 
+interface BenchmarkCloudPhysics {
+  rZone3_Mod5psiKm: number;
+  rZone4_Thermal3rdKm: number;
+  hTopKm: number;
+  waterColumnWidthKm: number;
+  waterColumnTopKm: number;
+  tsunamiWaveHeightM: number;
+  rBubbleM: number;
+  rCraterM: number;
+  sdob: number;
+  rFireballKm: number;
+  seismicMb: number;
+}
+
+interface BenchmarkCasualties {
+  totalFatalities: number;
+}
+
 interface EmpiricalBenchmarkItem {
   metricLabel: string;
   measuredValue: string;
   sourceCitation: string;
-  computeModeled: (cp: any, cas: any) => string;
+  computeModeled: (cp: BenchmarkCloudPhysics, cas: BenchmarkCasualties) => string;
 }
 
 interface CityPreset {
@@ -306,7 +324,7 @@ class DetonationSoundEngine {
   public playDetonation(yieldKt: number) {
     if (this.isMuted) return;
     try {
-      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
       if (!AudioCtx) return;
       if (!this.ctx) {
         this.ctx = new AudioCtx();
@@ -413,8 +431,8 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
   const [isPlaying, setIsPlaying] = useState<boolean>(true);
   const [playSpeed, setPlaySpeed] = useState<number>(1.0);
   const [isAudioMuted, setIsAudioMuted] = useState<boolean>(false);
-  const [flashIntensity, setFlashIntensity] = useState<number>(0.0);
-  const [shakeIntensity, setShakeIntensity] = useState<number>(0.0);
+  const [flashIntensity, setFlashIntensity] = useState<number>(1.0);
+  const [shakeIntensity, setShakeIntensity] = useState<number>(1.0);
 
   // Selected City Preset for Casualties & Map Center
   const [selectedCityId, setSelectedCityId] = useState<string>(() => {
@@ -424,10 +442,18 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
     return 'regina';
   });
 
-  // Sync if initialCityId prop updates dynamically
-  useEffect(() => {
+  // Sync local city preset if initialCityId prop updates dynamically
+  const [prevInitialCityId, setPrevInitialCityId] = useState<string | undefined>(initialCityId);
+  if (initialCityId !== prevInitialCityId) {
+    setPrevInitialCityId(initialCityId);
     if (initialCityId && CITY_PRESETS.some(c => c.id === initialCityId)) {
       setSelectedCityId(initialCityId);
+    }
+  }
+
+  // Forward city default parameters to parent callbacks
+  useEffect(() => {
+    if (initialCityId && CITY_PRESETS.some(c => c.id === initialCityId)) {
       const match = CITY_PRESETS.find(c => c.id === initialCityId);
       if (match?.suggestedYieldKt && onYieldChange) {
         onYieldChange(match.suggestedYieldKt);
@@ -742,9 +768,11 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
   const onBurstAltRef = useRef(onBurstAltitudeChange);
   const triggerRef = useRef(triggerDetonation);
   const yieldRef = useRef(yieldKt);
-  onBurstAltRef.current = onBurstAltitudeChange;
-  triggerRef.current = triggerDetonation;
-  yieldRef.current = yieldKt;
+  useEffect(() => {
+    onBurstAltRef.current = onBurstAltitudeChange;
+    triggerRef.current = triggerDetonation;
+    yieldRef.current = yieldKt;
+  }, [onBurstAltitudeChange, triggerDetonation, yieldKt]);
 
   useEffect(() => {
     const regimeDesc = cloudPhysics.isUnderwater
@@ -973,10 +1001,13 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
     };
   }, [isPlaying, playSpeed]);
 
-  // Initial detonation trigger
+  // Initial detonation audio cue (flash & shake start at 1.0)
   useEffect(() => {
-    triggerDetonation();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    const timer = window.setTimeout(() => {
+      soundEngine.playDetonation(yieldRef.current);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   // --- PRELOAD CARTO-DB DARK MAP TILES FOR SELECTED CITY ---
   useEffect(() => {

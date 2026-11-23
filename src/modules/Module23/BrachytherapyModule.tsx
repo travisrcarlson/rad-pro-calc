@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import VerificationBadge from '../../components/VerificationBadge';
-import PlotComponent from 'react-plotly.js';
+import Plot from 'react-plotly.js';
 import { BlockMath } from 'react-katex';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
@@ -10,8 +10,6 @@ import {
   computeTG43ReferenceDoseRateMGyHr,
   evaluateTG43RadialDoseFunction
 } from '../../utils/radiologicalPhysicsKernels';
-
-const Plot = (PlotComponent as any).default || PlotComponent;
 
 /** Deterministic van der Corput / Halton low-discrepancy sequence for jitter-free DVH integration */
 const haltonSequence = (index: number, base: number): number => {
@@ -263,7 +261,10 @@ const BrachytherapyModule: React.FC = () => {
 
   const currentModel = useMemo(() => SEED_MODELS[selectedModelId], [selectedModelId]);
 
-  useEffect(() => {
+  const searchKey = searchParams.toString();
+  const [prevSearchKey, setPrevSearchKey] = useState<string | null>(null);
+  if (searchKey !== prevSearchKey) {
+    setPrevSearchKey(searchKey);
     const presetParam = searchParams.get('preset');
     const modelParam = searchParams.get('model') || searchParams.get('nuclide') || searchParams.get('isotope');
     const doseParam = searchParams.get('dose') || searchParams.get('rxGy');
@@ -287,7 +288,7 @@ const BrachytherapyModule: React.FC = () => {
       const d = parseFloat(doseParam);
       if (!isNaN(d) && d > 0) setPrescribedDoseGy(d);
     }
-  }, [searchParams]);
+  }
 
   // Initial seed configuration from Preset 1
   const [seeds, setSeeds] = useState<SeedInstance[]>(
@@ -516,7 +517,7 @@ const BrachytherapyModule: React.FC = () => {
     setSeeds(seeds.filter((s) => s.id !== id));
   };
 
-  const handleUpdateSeed = (id: string, field: keyof SeedInstance, val: any) => {
+  const handleUpdateSeed = (id: string, field: keyof SeedInstance, val: number) => {
     setSeeds(seeds.map((s) => (s.id === id ? { ...s, [field]: val } : s)));
   };
 
@@ -788,7 +789,7 @@ const BrachytherapyModule: React.FC = () => {
                   {
                     x: [urethra.x],
                     y: [urethra.y],
-                    mode: 'markers+text',
+                    mode: 'text+markers',
                     text: ['Urethra'],
                     textposition: 'top center',
                     textfont: { color: '#f1c40f', size: 11 },
@@ -800,7 +801,7 @@ const BrachytherapyModule: React.FC = () => {
                   {
                     x: [rectum.x],
                     y: [rectum.y],
-                    mode: 'markers+text',
+                    mode: 'text+markers',
                     text: ['Rectum'],
                     textposition: 'bottom center',
                     textfont: { color: '#e74c3c', size: 11 },

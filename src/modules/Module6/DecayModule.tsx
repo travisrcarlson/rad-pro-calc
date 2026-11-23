@@ -4,11 +4,11 @@ import VerificationBadge from '../../components/VerificationBadge';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
 import { useRegulatory } from '../../context/RegulatoryContext';
-import ReactFlow, { Background, Controls, MarkerType } from 'reactflow';
+import ReactFlow, { Background, Controls, MarkerType, Position, type Node as FlowNode, type Edge as FlowEdge } from 'reactflow';
 import 'reactflow/dist/style.css';
-import PlotComponent from 'react-plotly.js';
-const Plot = (PlotComponent as any).default || PlotComponent;
-import KarlsruheSvgChart from './KarlsruheChart';
+import Plot from 'react-plotly.js';
+import type { Data, Annotations } from 'plotly.js';
+import KarlsruheSvgChart, { type KarlsruheNuclideRow } from './KarlsruheChart';
 import allNuclides from '../../data/all_nuclides.json';
 import { parseActivityToGBq } from '../../utils/canonicalNuclidePhysics';
 import {
@@ -23,6 +23,39 @@ import {
   type DecayBranchEdge,
   type ReactorActivationPreset
 } from '../../utils/decayRadiochemistryEngine';
+
+export interface RawDecayNuclide extends KarlsruheNuclideRow {
+  'Half-Life (s)'?: string | number;
+  'Decay %'?: string;
+  'Decay 2'?: string;
+  'Decay 2 %'?: string;
+  'Q-Alpha'?: string;
+  'Q-Beta'?: string;
+  'Q-EC'?: string;
+  principalGammaMeV?: number;
+  gammaYieldPct?: number;
+  specificGammaConst?: number;
+  isMetastable?: boolean;
+}
+
+interface DecaySpectrumTrace {
+  x: number[];
+  y: number[];
+  type: 'scatter';
+  mode: 'lines';
+  fill: 'tozeroy' | 'none';
+  fillcolor?: string;
+  name: string;
+  line: {
+    color: string;
+    width: number;
+    dash?: 'solid' | 'dot' | 'dash';
+  };
+  hovertemplate?: string;
+  hoverinfo?: 'none';
+  opacity?: number;
+  showlegend?: boolean;
+}
 
 const ELEMENT_NAMES: Record<string, string> = {
   "H": "Hydrogen", "He": "Helium", "Li": "Lithium", "Be": "Beryllium", "B": "Boron", "C": "Carbon", "N": "Nitrogen", "O": "Oxygen", "F": "Fluorine", "Ne": "Neon",
@@ -56,7 +89,7 @@ const CHAIN_PALETTE = [
   '#94a3b8'  // Stable / Terminal fallback
 ];
 
-const METASTABLE_CATALOG: Record<string, any> = {
+const METASTABLE_CATALOG: Record<string, RawDecayNuclide> = {
   'Tc-99m': {
     Z: 43, N: 56, Symbol: 'Tc', Nuclide: 'Tc-99m',
     'Half-Life': '6.007 h', 'Half-Life (s)': '21625.2',
@@ -216,12 +249,12 @@ const BENCHMARK_CHAIN_PRESETS: BenchmarkChainPreset[] = [
   }
 ];
 
-const parseHalfLifeSeconds = (nuc: any): number => {
+const parseHalfLifeSeconds = (nuc: RawDecayNuclide | null | undefined): number => {
   if (!nuc || nuc['Half-Life'] === 'STABLE' || String(nuc['Decay Mode']).toUpperCase() === 'STABLE') return Infinity;
 
   const secStr = nuc['Half-Life (s)'];
   if (secStr && String(secStr).trim() !== '') {
-    const val = parseFloat(secStr);
+    const val = parseFloat(String(secStr));
     if (!isNaN(val) && val > 0) return val;
   }
 
@@ -246,10 +279,10 @@ const parseHalfLifeSeconds = (nuc: any): number => {
 };
 
 // Pre-index all 3,386 nuclides once for O(1) coordinate & valley-of-stability resolution
-const NUCLIDE_BY_ZN = new Map<string, any>();
-const NUCLIDE_BY_NAME = new Map<string, any>();
-const STABLE_NUCLIDES: any[] = [];
-for (const n of allNuclides as any[]) {
+const NUCLIDE_BY_ZN = new Map<string, RawDecayNuclide>();
+const NUCLIDE_BY_NAME = new Map<string, RawDecayNuclide>();
+const STABLE_NUCLIDES: RawDecayNuclide[] = [];
+for (const n of allNuclides as RawDecayNuclide[]) {
   NUCLIDE_BY_ZN.set(`${n.Z},${n.N}`, n);
   NUCLIDE_BY_NAME.set(n.Nuclide, n);
   if (n['Half-Life'] === 'STABLE') {
@@ -284,13 +317,13 @@ const prettyDecayMode = (modeStr: string): string => {
 };
 
 interface ResolvedDecayStep {
-  target: any;
+  target: RawDecayNuclide;
   modality: 'alpha' | 'beta' | 'gamma_it' | 'ec_positron';
   qMeV: number;
   modeCode: string;
 }
 
-const resolveModeTarget = (nuc: any, modeStr: string): ResolvedDecayStep | null => {
+const resolveModeTarget = (nuc: RawDecayNuclide, modeStr: string): ResolvedDecayStep | null => {
   const up = String(modeStr || '').trim().toUpperCase();
   if (!up || up === 'STABLE') return null;
 
@@ -304,7 +337,7 @@ const resolveModeTarget = (nuc: any, modeStr: string): ResolvedDecayStep | null 
   ): ResolvedDecayStep | null => {
     const target = NUCLIDE_BY_ZN.get(`${nuc.Z + dz},${nuc.N + dn}`);
     if (!target || target.Nuclide === nuc.Nuclide) return null;
-    const rawQ = parseFloat(nuc[qField] || '0');
+    const rawQ = parseFloat(String(nuc[qField] || '0'));
     const qMeV = (!isNaN(rawQ) && rawQ > 0 ? rawQ : defaultQKeV) / 1000;
     return { target, modality, qMeV, modeCode: code || up };
   };
@@ -328,7 +361,7 @@ const resolveModeTarget = (nuc: any, modeStr: string): ResolvedDecayStep | null 
     const baseName = String(nuc.Nuclide).replace(/m\d*$/, '');
     const ground = NUCLIDE_BY_NAME.get(baseName);
     if (ground && ground.Nuclide !== nuc.Nuclide) {
-      const rawQ = parseFloat(nuc['Q-EC'] || '0');
+      const rawQ = parseFloat(String(nuc['Q-EC'] || '0'));
       return {
         target: ground,
         modality: 'gamma_it',
@@ -340,10 +373,10 @@ const resolveModeTarget = (nuc: any, modeStr: string): ResolvedDecayStep | null 
   return null;
 };
 
-const resolvePrimaryWithFallback = (nuc: any, seenSet?: Set<string>): ResolvedDecayStep | null => {
+const resolvePrimaryWithFallback = (nuc: RawDecayNuclide, seenSet?: Set<string>): ResolvedDecayStep | null => {
   if (!nuc || nuc['Half-Life'] === 'STABLE') return null;
 
-  const isAllowed = (target: any) => !seenSet || !seenSet.has(target.Nuclide);
+  const isAllowed = (target: RawDecayNuclide) => !seenSet || !seenSet.has(target.Nuclide);
 
   const m1 = String(nuc['Decay Mode'] || '').trim();
   const r1 = resolveModeTarget(nuc, m1);
@@ -354,9 +387,9 @@ const resolvePrimaryWithFallback = (nuc: any, seenSet?: Set<string>): ResolvedDe
   if (r2 && isAllowed(r2.target)) return r2;
 
   // Energetic Q-value & valley-of-stability fallback for nuclides with SF / blank / unindexed daughter
-  const qA = parseFloat(nuc['Q-Alpha'] || '0');
-  const qB = parseFloat(nuc['Q-Beta'] || '0');
-  const qE = parseFloat(nuc['Q-EC'] || '0');
+  const qA = parseFloat(String(nuc['Q-Alpha'] || '0'));
+  const qB = parseFloat(String(nuc['Q-Beta'] || '0'));
+  const qE = parseFloat(String(nuc['Q-EC'] || '0'));
 
   const candidates: { dz: number; dn: number; modality: 'alpha' | 'beta' | 'ec_positron'; q: number; code: string }[] = [];
   if (nuc.Z > 82 || (!isNaN(qA) && qA > 0)) {
@@ -389,7 +422,7 @@ const resolvePrimaryWithFallback = (nuc: any, seenSet?: Set<string>): ResolvedDe
   }
 
   // Multi-step bridge toward the nearest valley-of-stability nuclide for extreme drip-line / superheavy isotopes
-  let bestStable: any = null;
+  let bestStable: RawDecayNuclide | null = null;
   let bestDist = Infinity;
   for (const s of STABLE_NUCLIDES) {
     const d = Math.abs(s.Z - nuc.Z) + Math.abs(s.N - nuc.N);
@@ -399,9 +432,9 @@ const resolvePrimaryWithFallback = (nuc: any, seenSet?: Set<string>): ResolvedDe
     }
   }
   if (bestStable) {
-    let bestNeighbor: any = null;
+    let bestNeighbor: RawDecayNuclide | null = null;
     let bestNeighborDist = Infinity;
-    for (const n of allNuclides as any[]) {
+    for (const n of allNuclides as RawDecayNuclide[]) {
       if (n.Nuclide === nuc.Nuclide || !isAllowed(n)) continue;
       const stepDist = Math.abs(n.Z - nuc.Z) + Math.abs(n.N - nuc.N);
       if (stepDist <= 4) {
@@ -429,8 +462,9 @@ const DecayModule: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  const [selectedIsotope, setSelectedIsotope] = useState<any | null>(() => {
-    return allNuclides.find(n => n.Nuclide === 'Mo-99') || allNuclides.find(n => n.Nuclide === 'Ra-226') || null;
+  const [selectedIsotope, setSelectedIsotope] = useState<RawDecayNuclide | null>(() => {
+    const typedNuclides = allNuclides as RawDecayNuclide[];
+    return typedNuclides.find(n => n.Nuclide === 'Mo-99') || typedNuclides.find(n => n.Nuclide === 'Ra-226') || null;
   });
 
   // Yield Calculator State
@@ -501,22 +535,22 @@ const DecayModule: React.FC = () => {
     return '#EcF0F1';
   };
 
-  const findNuclideRecord = (name: string): any | null => {
+  const findNuclideRecord = (name: string): RawDecayNuclide | null => {
     return NUCLIDE_BY_NAME.get(name) || null;
   };
 
   // Build Generalized Topological Decay DAG (guaranteed to terminate at STABLE end-products with zero overlaps)
   const { activePathIds, chainNodes, chainEdges, rawChainNuclides } = useMemo(() => {
     if (!selectedIsotope) {
-      return { activePathIds: [], chainNodes: [] as ChainNuclideNode[], chainEdges: [] as DecayBranchEdge[], rawChainNuclides: [] as any[] };
+      return { activePathIds: [], chainNodes: [] as ChainNuclideNode[], chainEdges: [] as DecayBranchEdge[], rawChainNuclides: [] as RawDecayNuclide[] };
     }
 
-    const rawByName = new Map<string, any>();
+    const rawByName = new Map<string, RawDecayNuclide>();
     const preferredLane = new Map<string, number>();
     const cEdges: DecayBranchEdge[] = [];
     const edgeKeys = new Set<string>();
 
-    const addNode = (nuc: any, lanePref: number) => {
+    const addNode = (nuc: RawDecayNuclide | null | undefined, lanePref: number) => {
       if (!nuc) return;
       if (!rawByName.has(nuc.Nuclide)) {
         rawByName.set(nuc.Nuclide, nuc);
@@ -568,7 +602,7 @@ const DecayModule: React.FC = () => {
 
     addNode(selectedIsotope, 0);
     const expanded = new Set<string>();
-    const queue: { raw: any; lane: number }[] = [{ raw: selectedIsotope, lane: 0 }];
+    const queue: { raw: RawDecayNuclide; lane: number }[] = [{ raw: selectedIsotope, lane: 0 }];
 
     while (queue.length > 0 && rawByName.size < 45) {
       const item = queue.shift()!;
@@ -721,13 +755,13 @@ const DecayModule: React.FC = () => {
       }
     }
 
-    const makeChainNode = (rawNuc: any, generation: number, branchLane: number): ChainNuclideNode => {
+    const makeChainNode = (rawNuc: RawDecayNuclide, generation: number, branchLane: number): ChainNuclideNode => {
       const hlSec = parseHalfLifeSeconds(rawNuc);
       const lambda = hlSec === Infinity || hlSec <= 0 ? 0 : Math.LN2 / hlSec;
       const meta = NUCLIDE_GAMMA_METADATA[rawNuc.Nuclide];
-      const qAlpha = parseFloat(rawNuc['Q-Alpha'] || '0') / 1000;
-      const qBeta = parseFloat(rawNuc['Q-Beta'] || '0') / 1000;
-      const qEc = parseFloat(rawNuc['Q-EC'] || '0') / 1000;
+      const qAlpha = parseFloat(String(rawNuc['Q-Alpha'] || '0')) / 1000;
+      const qBeta = parseFloat(String(rawNuc['Q-Beta'] || '0')) / 1000;
+      const qEc = parseFloat(String(rawNuc['Q-EC'] || '0')) / 1000;
 
       return {
         nuclide: rawNuc.Nuclide,
@@ -758,7 +792,7 @@ const DecayModule: React.FC = () => {
 
     const pathIds: string[] = [];
     const cNodes: ChainNuclideNode[] = [];
-    const rawList: any[] = [];
+    const rawList: RawDecayNuclide[] = [];
 
     for (const name of orderedNames) {
       const nuc = rawByName.get(name)!;
@@ -828,9 +862,9 @@ const DecayModule: React.FC = () => {
 
   // Build ReactFlow nodes & edges (topological left-to-right layout with symmetric diamond bifurcations & STABLE end badges)
   const { nodes, edges } = useMemo(() => {
-    if (chainNodes.length === 0) return { nodes: [], edges: [] };
-    const ns: any[] = [];
-    const es: any[] = [];
+    if (chainNodes.length === 0) return { nodes: [] as FlowNode[], edges: [] as FlowEdge[] };
+    const ns: FlowNode[] = [];
+    const es: FlowEdge[] = [];
 
     const maxGen = Math.max(...chainNodes.map(n => n.generation), 0);
     // Keep chains up to 9 generations in a single horizontal flow; wrap longer 11-15 generation series at 8 columns
@@ -883,8 +917,8 @@ const DecayModule: React.FC = () => {
       ns.push({
         id: cNode.nuclide,
         position: { x: currentX, y: currentY },
-        sourcePosition: 'right',
-        targetPosition: 'left',
+        sourcePosition: Position.Right,
+        targetPosition: Position.Left,
         data: {
           label: (
             <div style={{ padding: '5px 8px', textAlign: 'center', fontSize: '0.76rem' }}>
@@ -966,8 +1000,8 @@ const DecayModule: React.FC = () => {
     return { nodes: ns, edges: es };
   }, [chainNodes, chainEdges, yields]);
 
-  const handleIsotopeClick = (isotopeData: any) => {
-    setSelectedIsotope(isotopeData);
+  const handleIsotopeClick = (isotopeData: KarlsruheNuclideRow) => {
+    setSelectedIsotope(isotopeData as RawDecayNuclide);
     if (isotopeData) {
       setSearchSymbol(isotopeData.Symbol);
       const hlSec = parseHalfLifeSeconds(isotopeData);
@@ -1035,7 +1069,10 @@ const DecayModule: React.FC = () => {
   const [searchSymbol, setSearchSymbol] = useState<string>('Mo');
   const availableIsotopes = useMemo(() => allNuclides.filter(n => n.Symbol === searchSymbol).sort((a, b) => (a.Z + a.N) - (b.Z + b.N)), [searchSymbol]);
 
-  useEffect(() => {
+  const searchKey = searchParams.toString();
+  const [prevSearchKey, setPrevSearchKey] = useState<string | null>(null);
+  if (searchKey !== prevSearchKey) {
+    setPrevSearchKey(searchKey);
     const isoParam = searchParams.get('isotope') || searchParams.get('nuclide');
     if (isoParam) {
       const match = allNuclides.find(n => n.Nuclide.toLowerCase() === isoParam.trim().toLowerCase());
@@ -1052,7 +1089,7 @@ const DecayModule: React.FC = () => {
         }
       }
     }
-  }, [searchParams]);
+  }
 
   // --- Upgrade 4: Cross-Module Dispatch of Aged Parent + Daughter Mixture at t_sim ---
   const agedMixtureSummary = useMemo(() => {
@@ -1285,17 +1322,17 @@ const DecayModule: React.FC = () => {
     const centerTitle = `${chainNodes[0].nuclide}<br>${parentPct.toFixed(1)}%`;
 
     return { labels, values: rawValues, colors, customHover, centerTitle, equilibriumBadge };
-  }, [chainNodes, yields, simResult, pieRatioBasis, includeStableInActivityPie, elutionEnabled, includeHarvestedInPie, activationEnabled, irradiationHours, neutronFluxNcm2s, elutionIntervalHours, timeValue, timeUnit, sliderPct]);
+  }, [chainNodes, chainEdges, yields, simResult, pieRatioBasis, includeStableInActivityPie, elutionEnabled, includeHarvestedInPie, activationEnabled, irradiationHours, neutronFluxNcm2s, elutionIntervalHours, timeValue, timeUnit, sliderPct]);
 
   // --- Continuous Time-Series Ingrowth, Elution Sawtooth & Activation Curves ---
   const timeSeriesPlotData = useMemo(() => {
-    if (!simResult || chainNodes.length === 0) return { traces: [], unitLabel: 'Days', currentT: 0, eobT: null as number | null };
+    if (!simResult || chainNodes.length === 0) return { traces: [] as Data[], unitLabel: 'Days', currentT: 0, eobT: null as number | null };
 
     const unitLabel = timeUnit === 31557600 ? 'Years' : timeUnit === 86400 ? 'Days' : timeUnit === 60 ? 'Minutes' : 'Seconds';
     const xGrid = simResult.timeGridSeconds.map(tSec => tSec / timeUnit);
     const totalInitAtoms = Math.max(1, simResult.seriesAtomsByNuclide[0]?.[0] || 1);
 
-    const traces: any[] = chainNodes.map((node, i) => {
+    const traces: Data[] = chainNodes.map((node, i) => {
       const ySeries =
         pieRatioBasis === 'atoms'
           ? simResult.seriesAtomsByNuclide[i].map(a => (a / totalInitAtoms) * 100)
@@ -1304,13 +1341,13 @@ const DecayModule: React.FC = () => {
       return {
         x: xGrid,
         y: ySeries,
-        type: 'scatter',
-        mode: 'lines',
+        type: 'scatter' as const,
+        mode: 'lines' as const,
         name: `${node.nuclide}${i === 0 ? ' (Parent)' : node.lambda === 0 ? ' (Stable)' : ''}`,
         line: {
           color: CHAIN_PALETTE[i % CHAIN_PALETTE.length],
           width: i === 0 ? 2.6 : 2.2,
-          dash: node.lambda === 0 ? 'dot' : 'solid'
+          dash: (node.lambda === 0 ? 'dot' : 'solid') as 'dot' | 'solid'
         },
         hovertemplate:
           `<b>${node.nuclide}</b><br>` +
@@ -1324,10 +1361,10 @@ const DecayModule: React.FC = () => {
       traces.push({
         x: xGrid,
         y: simResult.seriesHarvestedVialMBq,
-        type: 'scatter',
-        mode: 'lines',
+        type: 'scatter' as const,
+        mode: 'lines' as const,
         name: `🧪 Harvested ${chainNodes[1]?.nuclide || 'Daughter'} Eluate Vial`,
-        line: { color: '#22d3ee', width: 2, dash: 'dashdot' },
+        line: { color: '#22d3ee', width: 2, dash: 'dashdot' as const },
         hovertemplate: `<b>Harvested Eluate Vial</b><br>Time: %{x:.2f} ${unitLabel}<br>Vial Activity: %{y:.3f} MBq<extra></extra>`
       });
     }
@@ -1344,16 +1381,16 @@ const DecayModule: React.FC = () => {
 
   // --- Display spectrum data for Quadrant 2 ---
   const spectrumPlotData = useMemo(() => {
-    if (!selectedIsotope || rawChainNuclides.length === 0 || yields.length === 0) return { traces: [], annotations: [] };
+    if (!selectedIsotope || rawChainNuclides.length === 0 || yields.length === 0) return { traces: [] as Data[], annotations: [] as Partial<Annotations>[] };
 
-    const traces: any[] = [];
-    const annotations: any[] = [];
+    const traces: Data[] = [];
+    const annotations: Partial<Annotations>[] = [];
     const exposureTimeSecs = exposureTime * exposureUnit;
 
     const counts = yields.map(y => y.activityBq * exposureTimeSecs);
     const maxCounts = Math.max(10, ...counts);
 
-    const makeSpike = (energy: number, height: number, name: string, color: string) => {
+    const makeSpike = (energy: number, height: number, name: string, color: string): DecaySpectrumTrace => {
       const x: number[] = [];
       const y: number[] = [];
       const sigma = 0.02;
@@ -1370,7 +1407,7 @@ const DecayModule: React.FC = () => {
       };
     };
 
-    const makeBetaContinuum = (qMax: number, height: number, name: string, color: string) => {
+    const makeBetaContinuum = (qMax: number, height: number, name: string, color: string): DecaySpectrumTrace => {
       const x: number[] = [];
       const y: number[] = [];
       for (let e = 0; e <= qMax; e += qMax / 100) {
@@ -1415,7 +1452,7 @@ const DecayModule: React.FC = () => {
         });
       };
 
-      const applyGhost = (trace: any) => {
+      const applyGhost = (trace: DecaySpectrumTrace): DecaySpectrumTrace => {
         if (isGhosted) {
           trace.opacity = 0.15;
           trace.line.color = '#555';
@@ -1499,11 +1536,11 @@ const DecayModule: React.FC = () => {
       traces.unshift({
         x: envX,
         y: envY,
-        type: 'scatter',
-        mode: 'lines',
+        type: 'scatter' as const,
+        mode: 'lines' as const,
         name: 'Σ Total Detector Envelope (w/ Compton)',
-        line: { color: '#f8fafc', width: 2, dash: 'dot' },
-        fill: 'tozeroy',
+        line: { color: '#f8fafc', width: 2, dash: 'dot' as const },
+        fill: 'tozeroy' as const,
         fillcolor: 'rgba(248, 250, 252, 0.06)',
         hovertemplate: '<b>Σ Total Detector Envelope</b><br>E = %{x:.3f} MeV<br>Counts = %{y:.2e}<extra></extra>'
       });
@@ -1511,8 +1548,9 @@ const DecayModule: React.FC = () => {
 
     traces.push({
       x: [0, 10], y: [0, 0],
-      mode: 'lines', line: { color: '#444', width: 1 },
-      hoverinfo: 'none', showlegend: false
+      type: 'scatter' as const,
+      mode: 'lines' as const, line: { color: '#444', width: 1 },
+      hoverinfo: 'none' as const, showlegend: false
     });
 
     return { traces, annotations };
@@ -2024,13 +2062,13 @@ const DecayModule: React.FC = () => {
                   paper_bgcolor: 'transparent',
                   plot_bgcolor: 'transparent',
                   yaxis: {
-                    title: pieRatioBasis === 'atoms' ? 'Atomic Share (%)' : 'Activity (MBq)',
+                    title: { text: pieRatioBasis === 'atoms' ? 'Atomic Share (%)' : 'Activity (MBq)' },
                     color: '#aaa',
                     gridcolor: '#262b36',
                     zeroline: false
                   },
                   xaxis: {
-                    title: `Elapsed Time (${timeSeriesPlotData.unitLabel})`,
+                    title: { text: `Elapsed Time (${timeSeriesPlotData.unitLabel})` },
                     color: '#aaa',
                     gridcolor: '#262b36',
                     zeroline: false
@@ -2096,14 +2134,14 @@ const DecayModule: React.FC = () => {
               />
             ) : (
               <Plot
-                data={spectrumPlotData.traces as any}
+                data={spectrumPlotData.traces}
                 layout={{
                   autosize: true,
                   margin: { t: 35, l: 55, r: 20, b: 38 },
                   paper_bgcolor: 'transparent',
                   plot_bgcolor: 'transparent',
-                  yaxis: { title: spectrumScale === 'log' ? 'Counts (Log Scale)' : 'Relative Intensity', type: spectrumScale, color: '#aaa', gridcolor: '#333', showticklabels: true, zeroline: false },
-                  xaxis: { title: 'Energy (MeV)', color: '#aaa', gridcolor: '#333', zeroline: false, rangemode: 'tozero' },
+                  yaxis: { title: { text: spectrumScale === 'log' ? 'Counts (Log Scale)' : 'Relative Intensity' }, type: spectrumScale, color: '#aaa', gridcolor: '#333', showticklabels: true, zeroline: false },
+                  xaxis: { title: { text: 'Energy (MeV)' }, color: '#aaa', gridcolor: '#333', zeroline: false, rangemode: 'tozero' },
                   font: { color: '#E0E1DD' },
                   showlegend: false,
                   annotations: spectrumPlotData.annotations
@@ -2411,7 +2449,7 @@ const DecayModule: React.FC = () => {
                           hovertemplate: '%{customdata}<extra></extra>',
                           customdata: pieChartData.customHover,
                           sort: false
-                        } as any
+                        } as Data
                       ]}
                       layout={{
                         autosize: true,

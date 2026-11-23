@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import PlotComponent from 'react-plotly.js';
+import Plot from 'react-plotly.js';
+import type { Data, ModeBarDefaultButtons, PlotMouseEvent } from 'plotly.js';
 import {
   getUnifiedGeospatialPins,
   getGeospatialCountries,
@@ -45,8 +46,6 @@ import {
   fetchLiveSiteMeteorology,
   type LiveMeteorologySnapshot,
 } from '../../utils/liveMeteoAndTerrain';
-
-const Plot = (PlotComponent as any).default || PlotComponent;
 
 export interface HistoricalProvingGround {
   id: string;
@@ -423,7 +422,7 @@ export const GlobalNuclearMapModule: React.FC = () => {
   const [currentYear, setCurrentYear] = useState<number>(1962);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(1); // 1 = 800ms per year
-  const playTimerRef = useRef<any>(null);
+  const playTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Advanced Filtering State
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -867,7 +866,7 @@ export const GlobalNuclearMapModule: React.FC = () => {
     const currentYearDetonationPins = pins.filter(p => p.category === 'detonation' && p.isCurrentYear);
     const incidentPins = pins.filter(p => p.category === 'incident');
 
-    const traces: any[] = [];
+    const traces: Data[] = [];
 
     // 1. Civil Nuclear Power & Research Reactors
     if (reactorPins.length > 0) {
@@ -889,7 +888,7 @@ export const GlobalNuclearMapModule: React.FC = () => {
           symbol: 'circle',
           line: { width: 1.2, color: '#34d399' }
         },
-        customdata: reactorPins
+        customdata: reactorPins.map(p => p.id)
       });
     }
 
@@ -951,7 +950,7 @@ export const GlobalNuclearMapModule: React.FC = () => {
                 )
               }
             },
-            customdata: countryPins
+            customdata: countryPins.map(p => p.id)
           });
         });
       } else {
@@ -983,7 +982,7 @@ export const GlobalNuclearMapModule: React.FC = () => {
               )
             }
           },
-          customdata: sortedPast
+          customdata: sortedPast.map(p => p.id)
         });
       }
     }
@@ -1048,7 +1047,7 @@ export const GlobalNuclearMapModule: React.FC = () => {
           symbol: 'circle',
           line: { width: 1.4, color: '#fef08a' }
         },
-        customdata: sortedActive
+        customdata: sortedActive.map(p => p.id)
       });
     }
 
@@ -1069,7 +1068,7 @@ export const GlobalNuclearMapModule: React.FC = () => {
           symbol: 'triangle-up',
           line: { width: 1.5, color: '#fbbf24' }
         },
-        customdata: incidentPins
+        customdata: incidentPins.map(p => p.id)
       });
     }
 
@@ -1091,7 +1090,7 @@ export const GlobalNuclearMapModule: React.FC = () => {
           symbol: 'square',
           line: { width: 1.2, color: '#f8fafc' }
         },
-        customdata: ctbtoPins
+        customdata: ctbtoPins.map(p => p.id)
       });
     }
 
@@ -1176,7 +1175,7 @@ export const GlobalNuclearMapModule: React.FC = () => {
     plot_bgcolor: 'transparent',
     geo: {
       projection: {
-        type: projectionType as any,
+        type: projectionType,
         rotation: projectionType === 'orthographic' ? centerRotation : undefined
       },
       lataxis: projectionType === 'mercator' ? { range: [-78, 84] } : undefined,
@@ -1211,7 +1210,7 @@ export const GlobalNuclearMapModule: React.FC = () => {
     scrollZoom: true,
     displayModeBar: true,
     displaylogo: false,
-    modeBarButtonsToRemove: ['select2d', 'lasso2d'] as any
+    modeBarButtonsToRemove: ['select2d', 'lasso2d'] as ModeBarDefaultButtons[]
   }), []);
 
   // Render Tactical Distance Measurement Banner
@@ -1651,11 +1650,15 @@ export const GlobalNuclearMapModule: React.FC = () => {
   );
 
   // Handle click on map markers
-  const handlePlotClick = (data: any) => {
+  const handlePlotClick = (data: Readonly<PlotMouseEvent>) => {
     if (data.points && data.points.length > 0) {
       const pt = data.points[0];
-      if (pt.customdata) {
-        handleSelectPin(pt.customdata as UnifiedGeospatialPin);
+      if (pt.customdata !== undefined && pt.customdata !== null) {
+        const pinId = String(pt.customdata);
+        const matchedPin = pins.find(p => p.id === pinId);
+        if (matchedPin) {
+          handleSelectPin(matchedPin);
+        }
       }
     }
   };
@@ -2974,7 +2977,7 @@ export const GlobalNuclearMapModule: React.FC = () => {
                 <select
                   className="form-control"
                   value={epzStabilityClass}
-                  onChange={(e) => setEpzStabilityClass(e.target.value as any)}
+                  onChange={(e) => setEpzStabilityClass(e.target.value as 'A' | 'B' | 'C' | 'D' | 'E' | 'F')}
                   style={{ fontSize: '0.78rem', padding: '5px 8px' }}
                 >
                   <option value="A">Class A - Very Unstable (Strong Daytime Sun)</option>
@@ -3357,7 +3360,7 @@ export const GlobalNuclearMapModule: React.FC = () => {
                 <select
                   className="form-control"
                   value={seismicMedium}
-                  onChange={(e) => setSeismicMedium(e.target.value as any)}
+                  onChange={(e) => setSeismicMedium(e.target.value as GeologicalMedium)}
                   style={{ fontSize: '0.78rem', padding: '5px 8px' }}
                 >
                   <option value="hard_rock">Hard Granite / Basalt (Coupling: 100%, α=4.05, β=0.75)</option>

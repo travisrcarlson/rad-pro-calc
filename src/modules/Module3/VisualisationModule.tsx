@@ -1,14 +1,13 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import PlotComponent from 'react-plotly.js';
+import Plot from 'react-plotly.js';
+import type { PlotMouseEvent, Shape } from 'plotly.js';
 import VerificationBadge from '../../components/VerificationBadge';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
 import { useRegulatory } from '../../context/RegulatoryContext';
 import { getCanonicalNuclide, parseActivityToGBq } from '../../utils/canonicalNuclidePhysics';
 import { evaluateXCOMAttenuation, evaluateGPBuildup } from '../../utils/xcomAndGpBuildup';
-
-const Plot = (PlotComponent as any).default || PlotComponent;
 
 export type VisTab = 'field_map' | 'sources_shields' | 'survey_probe' | 'physics';
 
@@ -138,7 +137,10 @@ export const VisualisationModule: React.FC = () => {
   const [sources, setSources] = useState<RadSource[]>(FACILITY_PRESETS[0].sources);
   const [shields, setShields] = useState<ShieldObstacle[]>(FACILITY_PRESETS[0].shields);
 
-  useEffect(() => {
+  const searchKey = searchParams.toString();
+  const [prevSearchKey, setPrevSearchKey] = useState<string | null>(null);
+  if (searchKey !== prevSearchKey) {
+    setPrevSearchKey(searchKey);
     const nucParam = searchParams.get('nuclide') || searchParams.get('isotope');
     const actParam = searchParams.get('activity');
     const unitParam = searchParams.get('unit');
@@ -162,7 +164,7 @@ export const VisualisationModule: React.FC = () => {
         });
       }
     }
-  }, [searchParams]);
+  }
 
   const handleApplyPreset = (presetId: string) => {
     setSelectedPresetId(presetId);
@@ -500,7 +502,7 @@ export const VisualisationModule: React.FC = () => {
                   y: gridY,
                   type: 'heatmap',
                   colorscale: colorScale,
-                  colorbar: { title: 'µSv/h', len: 0.8 },
+                  colorbar: { title: { text: 'µSv/h' }, len: 0.8 },
                   hoverinfo: 'none'
                 },
                 // Isodose Contours overlay
@@ -525,7 +527,7 @@ export const VisualisationModule: React.FC = () => {
                   x: sources.map(s => s.xM),
                   y: sources.map(s => s.yM),
                   type: 'scatter',
-                  mode: 'markers+text',
+                  mode: 'text+markers',
                   text: sources.map(s => s.name),
                   textposition: 'top center',
                   marker: { symbol: 'star', size: 14, color: '#ff3366', line: { color: '#ffffff', width: 2 } },
@@ -536,7 +538,7 @@ export const VisualisationModule: React.FC = () => {
                   x: [probePos.x],
                   y: [probePos.y],
                   type: 'scatter',
-                  mode: 'markers+text',
+                  mode: 'text+markers',
                   text: [`Survey Meter (${probeData.doseRate.toFixed(1)} µSv/h)`],
                   textposition: 'bottom right',
                   marker: { symbol: 'cross', size: 12, color: '#00e5ff', line: { color: '#000000', width: 2 } },
@@ -546,21 +548,25 @@ export const VisualisationModule: React.FC = () => {
               layout={{
                 autosize: true,
                 margin: { l: 50, r: 30, t: 30, b: 50 },
-                xaxis: { title: 'X Coordinate (meters)', range: [0, roomSizeM], gridcolor: '#1e293b' },
-                yaxis: { title: 'Y Coordinate (meters)', range: [0, roomSizeM], gridcolor: '#1e293b', scaleanchor: 'x' },
+                xaxis: { title: { text: 'X Coordinate (meters)' }, range: [0, roomSizeM], gridcolor: '#1e293b' },
+                yaxis: { title: { text: 'Y Coordinate (meters)' }, range: [0, roomSizeM], gridcolor: '#1e293b', scaleanchor: 'x' },
                 paper_bgcolor: 'transparent',
                 plot_bgcolor: 'transparent',
                 font: { color: '#E0E1DD' },
-                shapes: plotShapes as any,
+                shapes: plotShapes as Partial<Shape>[],
                 showlegend: true,
                 legend: { orientation: 'h', y: -0.15 }
               }}
-              onClick={(e: any) => {
+              onClick={(e: Readonly<PlotMouseEvent>) => {
                 if (e.points && e.points[0]) {
-                  setProbePos({
-                    x: Math.max(0, Math.min(roomSizeM, e.points[0].x)),
-                    y: Math.max(0, Math.min(roomSizeM, e.points[0].y))
-                  });
+                  const x = Number(e.points[0].x);
+                  const y = Number(e.points[0].y);
+                  if (Number.isFinite(x) && Number.isFinite(y)) {
+                    setProbePos({
+                      x: Math.max(0, Math.min(roomSizeM, x)),
+                      y: Math.max(0, Math.min(roomSizeM, y))
+                    });
+                  }
                 }
               }}
               useResizeHandler={true}

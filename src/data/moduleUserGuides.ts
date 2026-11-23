@@ -668,19 +668,19 @@ export const MODULE_USER_GUIDES: Record<number, ModuleUserGuide> = {
   },
   34: {
     whatItDoes:
-      'Executes the automated IEEE 730-2014 / ASME NQA-1 / ISO 17025 Software Quality Assurance (SQA) Verification & Validation test suite across 60 gold-standard vectors (52 analytical benchmarks VTEST-01–VTEST-52 + 8 numerical boundary stress tests STRESS-01–STRESS-08).',
+      'Executes the automated IEEE 730-2014 / ASME NQA-1 / ISO 17025 Software Quality Assurance (SQA) Verification & Validation test suite across 68 gold-standard vectors (60 analytical benchmarks VTEST-01–VTEST-60 + 8 numerical boundary stress tests STRESS-01–STRESS-08).',
     whenToUse: [
       'Auditing the mathematical accuracy of every physics engine in RadPro Calc against peer-reviewed ICRP, NCRP, IAEA, ANSI, and NIST reference values.',
       'Verifying host CPU/FPU 64-bit IEEE 754 floating-point precision (ε = 2⁻⁵²) and singularity boundary clamps.',
       'Generating and printing a formal, signed QA Verification Certificate or NQA-1 Traceability Matrix (JSON / CSV / PDF).'
     ],
     howToUseSteps: [
-      'Click "Re-Run Verification Suite" to execute all 60 analytical and stress vectors in real time on your machine.',
-      'Filter by physics domain or click any benchmark card (VTEST-01 to VTEST-52) to expand its KaTeX proof, inputs, citation, and relative error δ.',
+      'Click "Re-Run Verification Suite" to execute all 68 analytical and stress vectors in real time on your machine.',
+      'Filter by physics domain or click any benchmark card (VTEST-01 to VTEST-60 / STRESS-01 to STRESS-08) to expand its KaTeX proof, inputs, citation, and relative error δ.',
       'Use the Traceability Matrix or Formal SQA Audit Certificate tabs to export JSON/CSV records or print an official sign-off report.'
     ],
     keyCapabilities: [
-      '52 Analytical Benchmarks (VTEST-01 through VTEST-52)',
+      '60 Analytical Benchmarks (VTEST-01 through VTEST-60)',
       '8 Singularity & Asymptotic Boundary Stress Tests',
       'ASME NQA-1 & ISO/IEC 17025 Traceability Register',
       'Exportable QA Certificate (JSON, CSV & Print Sign-Off)'

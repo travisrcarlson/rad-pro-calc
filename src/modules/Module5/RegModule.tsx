@@ -146,7 +146,10 @@ const RegModule: React.FC = () => {
             <select
               className="form-control"
               value={frameworkId}
-              onChange={e => setFrameworkId(e.target.value as any)}
+              onChange={e => {
+                const matched = allFrameworks.find(f => f.id === e.target.value);
+                if (matched) setFrameworkId(matched.id);
+              }}
               style={{ fontWeight: 'bold', color: 'var(--color-primary)', width: '210px', padding: '4px 8px' }}
             >
               {allFrameworks.map(f => (

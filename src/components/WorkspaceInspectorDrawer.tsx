@@ -586,6 +586,11 @@ export const WorkspaceInspectorDrawer: React.FC<WorkspaceInspectorDrawerProps> =
                   onChange={e => {
                     const file = e.target.files?.[0];
                     if (!file) return;
+                    if (file.size > 25 * 1024 * 1024) {
+                      showToast('⚠ File exceeds 25 MB maximum upload limit.');
+                      e.target.value = '';
+                      return;
+                    }
                     const reader = new FileReader();
                     reader.onload = () => {
                       const res = importWorkspaceProject(String(reader.result || ''));
@@ -708,7 +713,7 @@ export const WorkspaceInspectorDrawer: React.FC<WorkspaceInspectorDrawerProps> =
             <PhysicsTutorDrawer
               embeddedInInspector
               activeModuleInfo={activeModuleInfo}
-              onApplySourceToCurrentModule={() => onApplySourceToCurrentModule(activeSource)}
+              onApplySourceToCurrentModule={(overrideSource) => onApplySourceToCurrentModule(overrideSource || activeSource)}
             />
           )}
         </div>
@@ -722,3 +727,5 @@ export const WorkspaceInspectorDrawer: React.FC<WorkspaceInspectorDrawerProps> =
     </>
   );
 };
+
+export default WorkspaceInspectorDrawer;

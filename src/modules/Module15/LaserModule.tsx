@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import VerificationBadge from '../../components/VerificationBadge';
-import PlotComponent from 'react-plotly.js';
+import Plot from 'react-plotly.js';
 import { BlockMath } from 'react-katex';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
@@ -8,8 +8,6 @@ import { useRegulatory } from '../../context/RegulatoryContext';
 import { computeLaserNOHDMeters } from '../../utils/radiologicalPhysicsKernels';
 
 const OCULAR_PUPIL_AREA_CM2 = Math.PI * 0.35 * 0.35; // 7 mm limiting pupil aperture (0.384845 cm²) per ANSI Z136.1
-
-const Plot = (PlotComponent as any).default || PlotComponent;
 
 // Standard presets for Laser Safety
 interface LaserPreset {
@@ -275,7 +273,7 @@ const LaserModule: React.FC = () => {
       waistRadiusCm,
       isRetinalHazardRegion
     };
-  }, [wavelength, actualPowerMW, diameter, divergence, exposureDuration]);
+  }, [wavelength, actualPowerMW, diameter, divergence, exposureDuration, isGaussianProfile]);
 
   useEffect(() => {
     setLiveModuleTelemetry({
@@ -1007,22 +1005,22 @@ const LaserModule: React.FC = () => {
                 {
                   x: distanceData.plotX,
                   y: distanceData.plotY,
-                  type: 'scatter',
-                  mode: 'lines',
+                  type: 'scatter' as const,
+                  mode: 'lines' as const,
                   name: 'Beam Irradiance (mW/cm²)',
                   line: { color: beamColor.hex, width: 3 },
-                  fill: 'tozeroy',
+                  fill: 'tozeroy' as const,
                   fillcolor: `${beamColor.hex}18`
                 },
                 {
                   x: [0, distanceData.maxGraphRange],
                   y: [calculations.mpe, calculations.mpe],
-                  type: 'scatter',
-                  mode: 'lines',
+                  type: 'scatter' as const,
+                  mode: 'lines' as const,
                   name: `MPE Limit (${calculations.mpe.toFixed(2)} mW/cm²)`,
-                  line: { color: '#EF4444', width: 2, dash: 'dash' }
+                  line: { color: '#EF4444', width: 2, dash: 'dash' as const }
                 }
-              ] as any}
+              ]}
               layout={{
                 autosize: true,
                 xaxis: { title: { text: 'Distance from Laser Aperture (meters)' }, color: '#94A3B8', gridcolor: 'rgba(255,255,255,0.06)' },

@@ -1,9 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import PlotComponent from 'react-plotly.js';
+import Plot from 'react-plotly.js';
+import type { Data } from 'plotly.js';
 import nuclidesData from '../../data/all_nuclides.json';
-
-const Plot = (PlotComponent as any).default || PlotComponent;
 
 interface NuclideRecord {
   Nuclide: string;
@@ -17,7 +16,7 @@ interface NuclideRecord {
   'Q-Alpha': string;
   'Q-Beta': string;
   'Q-EC': string;
-  [key: string]: any;
+  [key: string]: string | number | boolean | null | undefined;
 }
 
 const getDecayBadgeColor = (mode: string) => {
@@ -391,7 +390,7 @@ export const NuclideTableModule: React.FC = () => {
       {viewMode === 'scatter' ? (
         <div style={{ flex: 1, minHeight: '420px', background: 'rgba(5, 10, 18, 0.65)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '12px' }}>
           <Plot
-            data={scatterTraces as any}
+            data={scatterTraces as Data[]}
             layout={{
               autosize: true,
               title: {
@@ -400,9 +399,9 @@ export const NuclideTableModule: React.FC = () => {
                   : 'IAEA Nuclide Landscape: Half-Life T½ (s) vs. Specific Activity a_s (TBq/g)',
                 font: { color: '#E0E1DD', size: 14 }
               },
-              xaxis: { title: 'Half-Life T½ (seconds, Log Scale)', type: 'log', gridcolor: '#1e293b' },
+              xaxis: { title: { text: 'Half-Life T½ (seconds, Log Scale)' }, type: 'log', gridcolor: '#1e293b' },
               yaxis: {
-                title: scatterYMetric === 'qval' ? 'Max Decay Q-Value (keV, Log Scale)' : 'Specific Activity a_s (TBq/g, Log Scale)',
+                title: { text: scatterYMetric === 'qval' ? 'Max Decay Q-Value (keV, Log Scale)' : 'Specific Activity a_s (TBq/g, Log Scale)' },
                 type: 'log',
                 gridcolor: '#1e293b'
               },
@@ -426,7 +425,7 @@ export const NuclideTableModule: React.FC = () => {
             </div>
           ) : (
             Object.entries(groupedNuclides)
-              .sort(([_aSym, aIso], [_bSym, bIso]) => (aIso[0]?.Z || 0) - (bIso[0]?.Z || 0))
+              .sort(([, aIso], [, bIso]) => (aIso[0]?.Z || 0) - (bIso[0]?.Z || 0))
               .map(([symbol, isotopes]) => {
                 const isExpanded = expandedElements.has(symbol) || searchTerm !== '';
                 const fullName = ELEMENT_NAMES[symbol] || symbol;
@@ -486,11 +485,11 @@ export const NuclideTableModule: React.FC = () => {
                           </thead>
                           <tbody>
                             {isotopes.map((n, idx) => {
-                              const modes = n['Decay Mode'] || 'Stable';
+                              const modes = String(n['Decay Mode'] || 'Stable');
                               const specActTBq = computeSpecificActivityTBqPerGram(n);
-                              const decayPaths = [];
-                              if (n['Decay Mode']) decayPaths.push({ mode: n['Decay Mode'], perc: n['Decay %'] });
-                              if (n['Decay 2']) decayPaths.push({ mode: n['Decay 2'], perc: n['Decay 2 %'] });
+                              const decayPaths: Array<{ mode: string; perc: string | number | boolean | null | undefined }> = [];
+                              if (n['Decay Mode']) decayPaths.push({ mode: String(n['Decay Mode']), perc: n['Decay %'] });
+                              if (n['Decay 2']) decayPaths.push({ mode: String(n['Decay 2']), perc: n['Decay 2 %'] });
 
                               return (
                                 <tr

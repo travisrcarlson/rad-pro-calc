@@ -81,6 +81,32 @@ import { computeBlastYieldMarkerSizePx } from '../utils/radiologicalPhysicsKerne
 
 export type GeospatialCategory = 'reactor' | 'detonation' | 'incident' | 'ctbto';
 
+export interface GeospatialIncidentRecord {
+  id: string;
+  name: string;
+  year: number;
+  date: string;
+  location: string;
+  coordinates?: {
+    lat: number;
+    lon: number;
+  };
+  inesLevel: number;
+  eventType: string;
+  primaryIsotope: string;
+  radionuclides?: string[];
+  estimatedActivityTBq?: number;
+  estimatedActivityCi?: number;
+  physicalForm?: string;
+  peakContactDoseRate_Gy_h?: number;
+  fatalities?: number;
+  arsCases?: number;
+  summary?: string;
+  healthPhysicsImpact?: string;
+  iaeaReportReference?: string;
+  [key: string]: unknown;
+}
+
 export interface UnifiedGeospatialPin {
   id: string;
   category: GeospatialCategory;
@@ -102,7 +128,7 @@ export interface UnifiedGeospatialPin {
   isFeatured?: boolean;
   rawReactor?: GlobalReactorRecord;
   rawDetonation?: NuclearDetonationRecord;
-  rawIncident?: any;
+  rawIncident?: GeospatialIncidentRecord;
   rawCTBTO?: CTBTOStationRecord;
 }
 
@@ -346,7 +372,7 @@ export function getDetonationMarkerSize(yieldKt: number | undefined, isCurrentYe
 
 const REACTORS: GlobalReactorRecord[] = reactorsDataRaw as unknown as GlobalReactorRecord[];
 const DETONATIONS: NuclearDetonationRecord[] = detonationsDataRaw as unknown as NuclearDetonationRecord[];
-const INCIDENTS: any[] = incidentsDataRaw as any[];
+const INCIDENTS: GeospatialIncidentRecord[] = incidentsDataRaw as unknown as GeospatialIncidentRecord[];
 
 export function getAllReactors(): GlobalReactorRecord[] {
   return REACTORS;
@@ -360,7 +386,7 @@ export function getAllCTBTOStations(): CTBTOStationRecord[] {
   return CTBTO_STATIONS;
 }
 
-export function getAllIncidentsWithCoords(): any[] {
+export function getAllIncidentsWithCoords(): GeospatialIncidentRecord[] {
   return INCIDENTS.filter(i => i.coordinates && typeof i.coordinates.lat === 'number');
 }
 
@@ -622,7 +648,7 @@ export function getUnifiedGeospatialPins(options: GeospatialFilterOptions = {}):
         const match =
           inc.name.toLowerCase().includes(q) ||
           inc.location.toLowerCase().includes(q) ||
-          inc.summary.toLowerCase().includes(q) ||
+          String(inc.summary || '').toLowerCase().includes(q) ||
           inc.primaryIsotope.toLowerCase().includes(q);
         if (!match) return;
       }

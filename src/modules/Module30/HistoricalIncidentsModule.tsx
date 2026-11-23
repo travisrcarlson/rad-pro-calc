@@ -445,7 +445,7 @@ export const HistoricalIncidentsModule: React.FC = () => {
                   className="form-control"
                   value={globalClassification}
                   onChange={(e) => {
-                    setGlobalClassification(e.target.value as any);
+                    setGlobalClassification(e.target.value as 'all' | 'near_miss' | 'incident');
                     setCurrentPage(1);
                   }}
                   style={{ width: '100%', fontSize: '0.85rem' }}

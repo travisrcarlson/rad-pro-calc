@@ -40,10 +40,27 @@ export const ScenarioBuilderModule: React.FC = () => {
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > 25 * 1024 * 1024) {
+      alert('Scenario file exceeds 25 MB upload limit.');
+      e.target.value = '';
+      return;
+    }
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
-        const text = event.target?.result as string;
+        const text = String(event.target?.result || '');
+        const raw = JSON.parse(text);
+        if (!raw || typeof raw !== 'object' || typeof raw.title !== 'string') {
+          throw new Error('Scenario JSON must include a valid "title" field.');
+        }
+        if (
+          raw.phases !== undefined &&
+          !Array.isArray(raw.phases) &&
+          raw.steps !== undefined &&
+          !Array.isArray(raw.steps)
+        ) {
+          throw new Error('Invalid scenario phases/steps structure.');
+        }
         const imported = importScenarioFromJson(text);
         setScenarios(prev => [imported, ...prev.filter(s => s.id !== imported.id)]);
         setSelectedScenarioId(imported.id);
@@ -53,6 +70,7 @@ export const ScenarioBuilderModule: React.FC = () => {
       }
     };
     reader.readAsText(file);
+    e.target.value = '';
   };
 
   const handleCreateCustom = (e: React.FormEvent) => {

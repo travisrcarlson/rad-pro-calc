@@ -1,14 +1,12 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import VerificationBadge from '../../components/VerificationBadge';
-import PlotComponent from 'react-plotly.js';
+import Plot from 'react-plotly.js';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
 import { parseActivityToGBq } from '../../utils/canonicalNuclidePhysics';
 import { computeEffectiveHalfLifeDays } from '../../utils/radiologicalPhysicsKernels';
 import { useRegulatory } from '../../context/RegulatoryContext';
-
-const Plot = (PlotComponent as any).default || PlotComponent;
 
 export type MedTab = 'protocol' | 'kinetics' | 'bioassay' | 'timing' | 'orders';
 
@@ -132,7 +130,10 @@ export const MedicalCountermeasuresModule: React.FC = () => {
   const [hydratedSource, setHydratedSource] = useState<string | null>(null);
   const [isDossierOpen, setIsDossierOpen] = useState<boolean>(false);
 
-  useEffect(() => {
+  const searchKey = searchParams.toString();
+  const [prevSearchKey, setPrevSearchKey] = useState<string | null>(null);
+  if (searchKey !== prevSearchKey) {
+    setPrevSearchKey(searchKey);
     const drugParam = searchParams.get('drug');
     const isoParam = searchParams.get('nuclide') || searchParams.get('isotope');
     const actParam = searchParams.get('activity');
@@ -174,7 +175,7 @@ export const MedicalCountermeasuresModule: React.FC = () => {
     if (sourceParam) {
       setHydratedSource(decodeURIComponent(sourceParam));
     }
-  }, [searchParams]);
+  }
 
   const activeIsotope = useMemo(() => {
     return ISOTOPE_PRESETS.find((x) => x.id === selectedIsotopeId) || ISOTOPE_PRESETS[0];
@@ -711,8 +712,8 @@ export const MedicalCountermeasuresModule: React.FC = () => {
                 paper_bgcolor: 'transparent',
                 plot_bgcolor: 'transparent',
                 font: { color: 'var(--color-text-muted)', size: 11 },
-                xaxis: { title: 'Days Post-Intake', gridcolor: 'rgba(255,255,255,0.06)' },
-                yaxis: { title: 'Retained Body Burden (kBq)', type: 'log', gridcolor: 'rgba(255,255,255,0.06)' },
+                xaxis: { title: { text: 'Days Post-Intake' }, gridcolor: 'rgba(255,255,255,0.06)' },
+                yaxis: { title: { text: 'Retained Body Burden (kBq)' }, type: 'log', gridcolor: 'rgba(255,255,255,0.06)' },
                 legend: { orientation: 'h', y: -0.2 }
               }}
               style={{ width: '100%' }}

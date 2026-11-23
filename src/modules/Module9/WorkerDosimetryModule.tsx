@@ -1,6 +1,7 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import PlotComponent from 'react-plotly.js';
+import Plot from 'react-plotly.js';
+import type { Data } from 'plotly.js';
 import { BlockMath, InlineMath } from 'react-katex';
 import { useRegulatory } from '../../context/RegulatoryContext';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
@@ -16,8 +17,6 @@ import {
   evaluateGPBuildup,
   intersectRayAABB3D
 } from '../../utils/xcomAndGpBuildup';
-
-const Plot = (PlotComponent as any).default || PlotComponent;
 
 interface Source3D {
   id: number;
@@ -88,7 +87,10 @@ const WorkerDosimetryModule: React.FC = () => {
     { id: 1, name: 'Co-60 Floor Hotspot', nuclide: 'Co-60', energyMeV: 1.25, x: 5, y: 5, z: 0.1, activity_MBq: 10000, gamma_uSv: 3085 }
   ]);
 
-  useEffect(() => {
+  const searchKey = searchParams.toString();
+  const [prevSearchKey, setPrevSearchKey] = useState<string | null>(null);
+  if (searchKey !== prevSearchKey) {
+    setPrevSearchKey(searchKey);
     const nucParam = searchParams.get('nuclide') || searchParams.get('isotope');
     const actParam = searchParams.get('activity');
     const unitParam = searchParams.get('unit');
@@ -112,7 +114,7 @@ const WorkerDosimetryModule: React.FC = () => {
         });
       }
     }
-  }, [searchParams]);
+  }
 
   const [workers, setWorkers] = useState<Worker[]>([
     { id: 1, name: 'Primary Technician (Tech-1)', x: 4.5, y: 5, posture: 'Standing', rotationOffset: 0, taskDurationHours: 2 },
@@ -124,7 +126,7 @@ const WorkerDosimetryModule: React.FC = () => {
   ]);
 
   // Exact 3D Ray-AABB chord + NIST XCOM linear attenuation + ANSI/ANS-6.4.3 GP buildup transmission
-  const computeBroadBeamTransmission3D = (
+  const computeBroadBeamTransmission3D = useCallback((
     sx: number,
     sy: number,
     sz: number,
@@ -159,7 +161,7 @@ const WorkerDosimetryModule: React.FC = () => {
       }
     }
     return trans;
-  };
+  }, [shields]);
 
   // Compute 3D Volume Array
   const { volX, volY, volZ, volV } = useMemo(() => {
@@ -201,10 +203,10 @@ const WorkerDosimetryModule: React.FC = () => {
       }
     }
     return { volX: X, volY: Y, volZ: Z, volV: V };
-  }, [sources, dimX, dimY, dimZ, shields]);
+  }, [sources, dimX, dimY, dimZ, computeBroadBeamTransmission3D]);
 
   // Point dose calculator
-  const calcPointDose = (px: number, py: number, pz: number) => {
+  const calcPointDose = useCallback((px: number, py: number, pz: number) => {
     let d = 0;
     sources.forEach(src => {
       const dx = px - src.x; const dy = py - src.y; const dz = pz - src.z;
@@ -221,9 +223,9 @@ const WorkerDosimetryModule: React.FC = () => {
       d += ((src.activity_MBq * src.gamma_uSv) / (dist_cm * dist_cm)) * trans;
     });
     return d;
-  };
+  }, [sources, computeBroadBeamTransmission3D]);
 
-  const getWorkerNodes = (w: Worker) => {
+  const getWorkerNodes = useCallback((w: Worker) => {
     let eyeZ = 1.65, chestZ = 1.30, gonadZ = 0.90, extZ = 0.10;
     let dx = 0, dy = 0;
 
@@ -257,15 +259,15 @@ const WorkerDosimetryModule: React.FC = () => {
       effectiveDoseRate: effective,
       cumulativeEffectiveDose: effective * w.taskDurationHours
     };
-  };
+  }, [calcPointDose]);
 
   // Compile all spatial markers for WebGL render
-  const modelTraces: any[] = [];
+  const modelTraces: Data[] = [];
 
   // Map sources
   modelTraces.push({
     type: 'scatter3d',
-    mode: 'markers+text',
+    mode: 'text+markers',
     x: sources.map(s => s.x), y: sources.map(s => s.y), z: sources.map(s => s.z),
     marker: { symbol: 'diamond', color: '#ff3366', size: 9, line: { width: 1.5, color: '#ffffff' } },
     text: sources.map(s => `[SRC] ${s.name}`),
@@ -280,7 +282,7 @@ const WorkerDosimetryModule: React.FC = () => {
     const nodes = getWorkerNodes(w);
     modelTraces.push({
       type: 'scatter3d',
-      mode: 'lines+markers+text',
+      mode: 'text+lines+markers',
       x: [nodes.extNode.x, nodes.gonadNode.x, nodes.chestNode.x, nodes.eyeNode.x],
       y: [nodes.extNode.y, nodes.gonadNode.y, nodes.chestNode.y, nodes.eyeNode.y],
       z: [nodes.extNode.z, nodes.gonadNode.z, nodes.chestNode.z, nodes.eyeNode.z],
@@ -301,15 +303,15 @@ const WorkerDosimetryModule: React.FC = () => {
   });
 
   // Add translucent mesh bounding boxes for Shields
-  const shieldTraces: any[] = shields.map(sh => {
+  const shieldTraces: Data[] = shields.map(sh => {
     return {
       type: 'mesh3d',
       x: [sh.x - sh.w / 2, sh.x - sh.w / 2, sh.x + sh.w / 2, sh.x + sh.w / 2, sh.x - sh.w / 2, sh.x - sh.w / 2, sh.x + sh.w / 2, sh.x + sh.w / 2],
       y: [sh.y - sh.l / 2, sh.y + sh.l / 2, sh.y + sh.l / 2, sh.y - sh.l / 2, sh.y - sh.l / 2, sh.y + sh.l / 2, sh.y + sh.l / 2, sh.y - sh.l / 2],
       z: [sh.z - sh.h / 2, sh.z - sh.h / 2, sh.z - sh.h / 2, sh.z - sh.h / 2, sh.z + sh.h / 2, sh.z + sh.h / 2, sh.z + sh.h / 2, sh.z + sh.h / 2],
-      i: [7, 0, 0, 0, 4, 4, 6, 6, 4, 0, 3, 2],
-      j: [3, 4, 1, 2, 5, 6, 5, 2, 0, 1, 6, 3],
-      k: [0, 7, 2, 3, 6, 7, 1, 1, 5, 5, 7, 6],
+      i: new Int32Array([7, 0, 0, 0, 4, 4, 6, 6, 4, 0, 3, 2]),
+      j: new Int32Array([3, 4, 1, 2, 5, 6, 5, 2, 0, 1, 6, 3]),
+      k: new Int32Array([0, 7, 2, 3, 6, 7, 1, 1, 5, 5, 7, 6]),
       opacity: 0.22,
       color: '#94a3b8',
       name: sh.name,
@@ -321,7 +323,7 @@ const WorkerDosimetryModule: React.FC = () => {
   const maxTime = Math.max(...workers.map(w => w.taskDurationHours), 5);
   const timeArray = Array.from({ length: 50 }, (_, i) => (i / 49) * maxTime);
 
-  const chartTraces: any[] = workers.map((w, idx) => {
+  const chartTraces: Data[] = workers.map((w, idx) => {
     const ext = getWorkerNodes(w);
     const rate = ext.effectiveDoseRate;
     const colors = ['#00e5ff', '#ff9f1c', '#10b981', '#a855f7'];
@@ -390,7 +392,7 @@ const WorkerDosimetryModule: React.FC = () => {
     else if (worstAccumulation > 100) shiftStatus = 'ALARA_I';
 
     return { peakRate, peakWorker, highestOrgan, highestOrganDose, worstAccumulation, shiftStatus };
-  }, [workers, sources, shields, currentFramework]);
+  }, [workers, currentFramework, getWorkerNodes]);
 
   useEffect(() => {
     const primaryIso = sources[0]?.nuclide || 'Co-60';
@@ -591,18 +593,18 @@ const WorkerDosimetryModule: React.FC = () => {
                     type: 'volume',
                     x: volX, y: volY, z: volZ, value: volV,
                     isomin: displayMin, isomax: displayMax, opacity: 0.12, surface: { count: 8 },
-                    colorscale: 'Jet', colorbar: { title: 'µSv/h', len: 0.8, x: 0.96 },
+                    colorscale: 'Jet', colorbar: { title: { text: 'µSv/h' }, len: 0.8, x: 0.96 },
                     hovertemplate: 'X:%{x:.1f}m, Y:%{y:.1f}m, Z:%{z:.1f}m<br>Dose Rate: %{value:.1f} µSv/h<extra></extra>'
-                  },
+                  } as unknown as Data,
                   ...modelTraces,
                   ...shieldTraces
                 ]}
                 layout={{
                   autosize: true, margin: { l: 0, r: 0, t: 0, b: 0 },
                   scene: {
-                    xaxis: { title: 'X (m)', range: [0, dimX], gridcolor: '#1e293b', zerolinecolor: '#334155' },
-                    yaxis: { title: 'Y (m)', range: [0, dimY], gridcolor: '#1e293b', zerolinecolor: '#334155' },
-                    zaxis: { title: 'Z Elevation (m)', range: [0, dimZ], gridcolor: '#1e293b', zerolinecolor: '#334155' },
+                    xaxis: { title: { text: 'X (m)' }, range: [0, dimX], gridcolor: '#1e293b', zerolinecolor: '#334155' },
+                    yaxis: { title: { text: 'Y (m)' }, range: [0, dimY], gridcolor: '#1e293b', zerolinecolor: '#334155' },
+                    zaxis: { title: { text: 'Z Elevation (m)' }, range: [0, dimZ], gridcolor: '#1e293b', zerolinecolor: '#334155' },
                     aspectmode: 'data',
                     camera: { eye: { x: 1.6, y: -1.6, z: 0.7 } }
                   },
@@ -625,8 +627,8 @@ const WorkerDosimetryModule: React.FC = () => {
                   autosize: true, margin: { l: 60, r: 20, t: 30, b: 50 },
                   title: { text: 'Cumulative ALARA Shift Dose Projection (µSv)', font: { color: '#E0E1DD', size: 14 } },
                   paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', font: { color: '#E0E1DD' },
-                  xaxis: { title: 'Workforce Stay-Time (Hours)', gridcolor: '#1e293b' },
-                  yaxis: { title: 'Cumulative Effective Dose (µSv)', gridcolor: '#1e293b', type: 'linear' },
+                  xaxis: { title: { text: 'Workforce Stay-Time (Hours)' }, gridcolor: '#1e293b' },
+                  yaxis: { title: { text: 'Cumulative Effective Dose (µSv)' }, gridcolor: '#1e293b', type: 'linear' },
                   showlegend: true, legend: { orientation: 'h', y: -0.2 }
                 }}
                 useResizeHandler={true} style={{ width: '100%', height: '100%' }}
@@ -821,7 +823,7 @@ const WorkerDosimetryModule: React.FC = () => {
                           value={w.posture}
                           onChange={ev => {
                             const a = [...workers];
-                            a[idx].posture = ev.target.value as any;
+                            a[idx].posture = ev.target.value as Posture;
                             setWorkers(a);
                           }}
                         >

@@ -1,15 +1,13 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import VerificationBadge from '../../components/VerificationBadge';
-import PlotComponent from 'react-plotly.js';
+import Plot from 'react-plotly.js';
 import { BlockMath, InlineMath } from 'react-katex';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
 import { useRegulatory } from '../../context/RegulatoryContext';
 import { computeWayWignerShelterDose } from '../../utils/radiologicalPhysicsKernels';
 import { evaluateBroadBeamPointShielding } from '../../utils/xcomAndGpBuildup';
-
-const Plot = (PlotComponent as any).default || PlotComponent;
 
 export type CBRNTab = 'fallout' | 'shelter' | 'egress' | 'chemical' | 'biodosimetry' | 'iap';
 
@@ -171,7 +169,10 @@ export const CBRNConsequenceModule: React.FC = () => {
   const [selectedShelterId, setSelectedShelterId] = useState<string>('basement_sub');
   const [isLogPlot, setIsLogPlot] = useState<boolean>(true);
 
-  useEffect(() => {
+  const searchKey = searchParams.toString();
+  const [prevSearchKey, setPrevSearchKey] = useState<string | null>(null);
+  if (searchKey !== prevSearchKey) {
+    setPrevSearchKey(searchKey);
     const yieldParam = searchParams.get('yieldKt');
     const r1Param = searchParams.get('r1');
     if (r1Param) {
@@ -184,7 +185,7 @@ export const CBRNConsequenceModule: React.FC = () => {
         setR1Rate(Math.round(Math.min(10000, Math.max(10, 300 * Math.pow(y / 10.0, 0.65)))));
       }
     }
-  }, [searchParams]);
+  }
 
   // Update scenario presets
   const handleScenarioChange = (presetId: string) => {
@@ -976,17 +977,17 @@ export const CBRNConsequenceModule: React.FC = () => {
                 plot_bgcolor: 'transparent',
                 font: { color: 'var(--color-text-muted)', size: 11 },
                 xaxis: {
-                  title: 'Elapsed Time Post-Burst (Hours)',
+                  title: { text: 'Elapsed Time Post-Burst (Hours)' },
                   type: isLogPlot ? 'log' : 'linear',
                   gridcolor: 'rgba(255, 255, 255, 0.06)'
                 },
                 yaxis: {
-                  title: 'Dose Rate (R/h)',
+                  title: { text: 'Dose Rate (R/h)' },
                   type: isLogPlot ? 'log' : 'linear',
                   gridcolor: 'rgba(255, 255, 255, 0.06)'
                 },
                 yaxis2: {
-                  title: 'Accrued Dose (R)',
+                  title: { text: 'Accrued Dose (R)' },
                   overlaying: 'y',
                   side: 'right',
                   type: isLogPlot ? 'log' : 'linear',
@@ -1282,8 +1283,8 @@ export const CBRNConsequenceModule: React.FC = () => {
                 paper_bgcolor: 'transparent',
                 plot_bgcolor: 'transparent',
                 font: { color: 'var(--color-text-muted)', size: 11 },
-                xaxis: { title: 'Evacuation Departure Time (Hours Post-Burst)', gridcolor: 'rgba(255,255,255,0.06)' },
-                yaxis: { title: 'Cumulative Absorbed Dose (R)', gridcolor: 'rgba(255,255,255,0.06)' },
+                xaxis: { title: { text: 'Evacuation Departure Time (Hours Post-Burst)' }, gridcolor: 'rgba(255,255,255,0.06)' },
+                yaxis: { title: { text: 'Cumulative Absorbed Dose (R)' }, gridcolor: 'rgba(255,255,255,0.06)' },
                 legend: { orientation: 'h', y: -0.2 }
               }}
               style={{ width: '100%' }}
@@ -1445,8 +1446,8 @@ export const CBRNConsequenceModule: React.FC = () => {
                 paper_bgcolor: 'transparent',
                 plot_bgcolor: 'transparent',
                 font: { color: 'var(--color-text-muted)', size: 11 },
-                xaxis: { title: 'Time from Plume Release (Minutes)', gridcolor: 'rgba(255,255,255,0.06)' },
-                yaxis: { title: 'Chemical Concentration (ppm)', gridcolor: 'rgba(255,255,255,0.06)' },
+                xaxis: { title: { text: 'Time from Plume Release (Minutes)' }, gridcolor: 'rgba(255,255,255,0.06)' },
+                yaxis: { title: { text: 'Chemical Concentration (ppm)' }, gridcolor: 'rgba(255,255,255,0.06)' },
                 legend: { orientation: 'h', y: -0.2 }
               }}
               style={{ width: '100%' }}

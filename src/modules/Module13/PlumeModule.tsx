@@ -1,12 +1,13 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import VerificationBadge from '../../components/VerificationBadge';
-import PlotComponent from 'react-plotly.js';
+import Plot from 'react-plotly.js';
 import { BlockMath, InlineMath } from 'react-katex';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
 import { useRegulatory } from '../../context/RegulatoryContext';
 import {
+  classifyTurnerPasquillStability,
   computeBriggsRuralDispersionMeters,
   computeGaussianPlumeGroundConcBqM3,
   computePlumeDepletionSurvivalPct,
@@ -20,8 +21,6 @@ import {
   REFERENCE_MET_SITES,
   type LiveMeteorologySnapshot
 } from '../../utils/liveMeteoAndTerrain';
-
-const Plot = (PlotComponent as any).default || PlotComponent;
 
 // Pasquill-Gifford Stability Classes (A-F)
 const STABILITY_CLASSES = ['A', 'B', 'C', 'D', 'E', 'F'];
@@ -621,7 +620,13 @@ const PlumeModule: React.FC = () => {
             CLASS {stability}
           </span>
           <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
-            Wind Speed: {windSpeed} m/s ({ (windSpeed * 2.237).toFixed(1) } mph)
+            Wind: {windSpeed} m/s ({(windSpeed * 2.237).toFixed(1)} mph) • Turner Ref: Class{' '}
+            {classifyTurnerPasquillStability(
+              windSpeed,
+              liveMet ? liveMet.shortwaveSolarWm2 : 450,
+              liveMet ? Math.round((liveMet.cloudCoverPct / 100) * 8) : 2,
+              liveMet ? !liveMet.isDaytime : false
+            )}
           </span>
         </div>
 
@@ -844,7 +849,7 @@ const PlumeModule: React.FC = () => {
                     x: [centerlineData.peakX],
                     y: [centerlineData.peakC],
                     type: 'scatter',
-                    mode: 'markers+text',
+                    mode: 'text+markers',
                     name: 'Peak Ground Touchdown',
                     marker: { symbol: 'star', color: '#ff9f1c', size: 12 },
                     text: [`Peak @ ${centerlineData.peakX.toFixed(0)}m`],
@@ -881,8 +886,8 @@ const PlumeModule: React.FC = () => {
                 layout={{
                   autosize: true,
                   title: { text: 'Ground-Level Centerline Concentration C(x, y=0, z=0) vs. Downwind Distance', font: { color: '#E0E1DD', size: 13 } },
-                  xaxis: { title: 'Downwind Distance x (meters)', gridcolor: '#1e293b' },
-                  yaxis: { title: 'Ground Concentration (Ci/m³)', gridcolor: '#1e293b' },
+                  xaxis: { title: { text: 'Downwind Distance x (meters)' }, gridcolor: '#1e293b' },
+                  yaxis: { title: { text: 'Ground Concentration (Ci/m³)' }, gridcolor: '#1e293b' },
                   shapes: [
                     {
                       type: 'line',
@@ -923,8 +928,8 @@ const PlumeModule: React.FC = () => {
                   layout={{
                     autosize: true,
                     title: { text: `Lateral Crosswind Bell Curve C(y) @ x₀ = ${centerlineData.x0}m (σ_y = ${centerlineData.sy.toFixed(1)}m)`, font: { color: '#E0E1DD', size: 12 } },
-                    xaxis: { title: 'Crosswind Offset y (meters)', gridcolor: '#1e293b' },
-                    yaxis: { title: 'Concentration (Ci/m³)', gridcolor: '#1e293b' },
+                    xaxis: { title: { text: 'Crosswind Offset y (meters)' }, gridcolor: '#1e293b' },
+                    yaxis: { title: { text: 'Concentration (Ci/m³)' }, gridcolor: '#1e293b' },
                     paper_bgcolor: 'transparent',
                     plot_bgcolor: 'transparent',
                     font: { color: '#E0E1DD', size: 10 },
@@ -953,8 +958,8 @@ const PlumeModule: React.FC = () => {
                   layout={{
                     autosize: true,
                     title: { text: `Vertical Elevation Profile C(z) @ x₀ = ${centerlineData.x0}m (H = ${releaseHeight}m, Lid = ${mixingHeightM}m)`, font: { color: '#E0E1DD', size: 12 } },
-                    xaxis: { title: 'Concentration (Ci/m³)', gridcolor: '#1e293b' },
-                    yaxis: { title: 'Altitude z (meters)', gridcolor: '#1e293b' },
+                    xaxis: { title: { text: 'Concentration (Ci/m³)' }, gridcolor: '#1e293b' },
+                    yaxis: { title: { text: 'Altitude z (meters)' }, gridcolor: '#1e293b' },
                     shapes: [
                       {
                         type: 'line',

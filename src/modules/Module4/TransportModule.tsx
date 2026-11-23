@@ -2,8 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import VerificationBadge from '../../components/VerificationBadge';
 import { BlockMath } from 'react-katex';
-import PlotComponent from 'react-plotly.js';
-const Plot = (PlotComponent as any).default || PlotComponent;
+import Plot from 'react-plotly.js';
+import type { Data } from 'plotly.js';
 import nuclidesData from '../../data/nuclides.json';
 import equipmentDataRaw from '../../data/equipment_database.json';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
@@ -113,8 +113,13 @@ const TransportModule: React.FC = () => {
     return map;
   }, []);
 
+  type TransportEquipmentRow = Record<string, string | number | undefined>;
+
   // Ingest URL params from Nuclide Table / CrossModulePipelineBar (including explicit unit!)
-  useEffect(() => {
+  const searchKey = searchParams.toString();
+  const [prevSearchKey, setPrevSearchKey] = useState<string | null>(null);
+  if (searchKey !== prevSearchKey) {
+    setPrevSearchKey(searchKey);
     const nuclideParam = searchParams.get('nuclide');
     const actParam = searchParams.get('activity');
     const unitParam = searchParams.get('unit');
@@ -147,13 +152,13 @@ const TransportModule: React.FC = () => {
         }
       }
     }
-  }, [searchParams, elementsMap]);
+  }
 
   const handleEquipmentImport = (eqName: string) => {
-    const eq: any = equipmentDataRaw.find((e: any) => e['Device Name'] === eqName);
+    const eq = (equipmentDataRaw as TransportEquipmentRow[]).find((e) => e['Device Name'] === eqName);
     if (!eq) return;
 
-    const isoStr = eq['Primary Isotope(s) भी'] || eq['Primary Isotope(s)'] || '';
+    const isoStr = String(eq['Primary Isotope(s)'] || '');
     const primaryIso = isoStr.split(';')[0].trim();
     const [sym, mass] = primaryIso.split('-');
     if (sym && mass && elementsMap[sym]) {
@@ -163,7 +168,7 @@ const TransportModule: React.FC = () => {
       }
     }
 
-    const mbq = parseActivityMBq(eq['Activity (Typical)'] || '');
+    const mbq = parseActivityMBq(String(eq['Activity (Typical)'] || ''));
     setActivity(mbq);
     setActivityUnit(1e-6); // set unit to MBq
   };
@@ -178,7 +183,7 @@ const TransportModule: React.FC = () => {
         import('jspdf'),
         import('html2canvas')
       ]);
-      const html2canvasFn = html2canvasMod.default || (html2canvasMod as any);
+      const html2canvasFn = html2canvasMod.default;
       const canvas = await html2canvasFn(reportElem, { backgroundColor: '#1a1a1a', scale: 2 });
       const imgData = canvas.toDataURL('image/jpeg', 0.95);
       const pdf = new jsPDF('p', 'mm', 'a4');
@@ -349,7 +354,7 @@ const TransportModule: React.FC = () => {
     { name: 'White-I', maxSurf: 5, max1m: 0.5, color: '#ecf0f1' }
   ];
 
-  const plotDataList: any[] = stackTargets.map((t, tIdx) => {
+  const plotDataList: Data[] = stackTargets.map((t, tIdx) => {
       const xVals = optimizationMaterials.map(m => {
           let req = 0;
           while (req < 200) {
@@ -390,7 +395,7 @@ const TransportModule: React.FC = () => {
           text: xVals.map(val => val > 0.1 ? `${val.toFixed(1)} cm` : ''),
           textposition: 'inside',
           insidetextanchor: 'middle',
-          hoverinfo: 'name+x+y'
+          hoverinfo: 'x+y+name'
       };
   });
 
@@ -548,8 +553,8 @@ const TransportModule: React.FC = () => {
                style={{ width: '100%' }}
              >
                <option value="">-- Select Equipment Profile --</option>
-               {equipmentDataRaw.map((eq: any, idx) => (
-                  <option key={idx} value={eq['Device Name']}>{eq['Device Name']}</option>
+               {(equipmentDataRaw as TransportEquipmentRow[]).map((eq, idx) => (
+                  <option key={idx} value={String(eq['Device Name'] || '')}>{String(eq['Device Name'] || '')}</option>
                ))}
              </select>
           </div>
@@ -808,7 +813,7 @@ const TransportModule: React.FC = () => {
                   x: [0, 1.0, 2.0],
                   y: [Math.max(1e-4, doseSurf), Math.max(1e-4, dose1m), Math.max(1e-4, doseCab2m)],
                   type: 'scatter',
-                  mode: 'markers+text',
+                  mode: 'text+markers',
                   name: 'SSR-6 Checkpoints (Surface, 1m TI, 2m Cab)',
                   marker: { color: '#facc15', size: 9 },
                   text: ['Surface', `1m (TI=${TI.toFixed(1)})`, '2m Cab'],
@@ -821,8 +826,8 @@ const TransportModule: React.FC = () => {
                 paper_bgcolor: 'transparent',
                 plot_bgcolor: 'transparent',
                 font: { color: '#E0E1DD', size: 11 },
-                xaxis: { title: 'Distance from Package Exterior Surface (meters)', gridcolor: '#1e293b' },
-                yaxis: { title: 'Dose Rate (µSv/h, Log Scale)', type: 'log', gridcolor: '#1e293b' },
+                xaxis: { title: { text: 'Distance from Package Exterior Surface (meters)' }, gridcolor: '#1e293b' },
+                yaxis: { title: { text: 'Dose Rate (µSv/h, Log Scale)' }, type: 'log', gridcolor: '#1e293b' },
                 legend: { orientation: 'h', y: 1.15, x: 0 }
               }}
               useResizeHandler
@@ -946,7 +951,7 @@ const TransportModule: React.FC = () => {
                     paper_bgcolor: 'transparent',
                     plot_bgcolor: 'transparent',
                     font: { color: '#E0E1DD' },
-                    xaxis: { title: 'Required Thickness (cm)' as any, color: '#aaa', gridcolor: '#333' },
+                    xaxis: { title: { text: 'Required Thickness (cm)' }, color: '#aaa', gridcolor: '#333' },
                     barmode: 'stack'
                  }}
                  useResizeHandler

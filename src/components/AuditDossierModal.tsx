@@ -13,24 +13,36 @@ export const AuditDossierModal: React.FC<AuditDossierModalProps> = ({ payload, i
   const [facility, setFacility] = useState(payload.facility || 'Radiological Physics Center - Sector 4');
   const [notes, setNotes] = useState(payload.notes || 'Routine health physics evaluation compliant with ALARA procedures.');
   const [previewHash, setPreviewHash] = useState<string>('');
+  const [dossierTimestampIso, setDossierTimestampIso] = useState<string>(() => new Date().toISOString());
 
   React.useEffect(() => {
     if (isOpen) {
-      generateDossierHash({ ...payload, operatorName, facility }, new Date().toISOString())
-        .then(hash => setPreviewHash(hash));
+      setDossierTimestampIso(new Date().toISOString());
     }
-  }, [isOpen, operatorName, facility]);
+  }, [isOpen]);
+
+  React.useEffect(() => {
+    if (isOpen) {
+      generateDossierHash(
+        { ...payload, operatorName, operatorCredentials, facility, notes },
+        dossierTimestampIso
+      ).then(hash => setPreviewHash(hash));
+    }
+  }, [isOpen, payload, operatorName, operatorCredentials, facility, notes, dossierTimestampIso]);
 
   if (!isOpen) return null;
 
   const handleGenerate = () => {
-    openPrintableAuditDossier({
-      ...payload,
-      operatorName,
-      operatorCredentials,
-      facility,
-      notes
-    });
+    openPrintableAuditDossier(
+      {
+        ...payload,
+        operatorName,
+        operatorCredentials,
+        facility,
+        notes
+      },
+      dossierTimestampIso
+    );
     onClose();
   };
 

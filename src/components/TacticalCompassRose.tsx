@@ -44,7 +44,7 @@ export const TacticalCompassRose: React.FC<TacticalCompassRoseProps> = ({
     const y = e.clientY - rect.top - center;
 
     // Angle from North (0° is top / negative Y)
-    let angleRad = Math.atan2(x, -y);
+    const angleRad = Math.atan2(x, -y);
     let deg = (angleRad * 180) / Math.PI;
     if (deg < 0) deg += 360;
 

@@ -3,6 +3,16 @@
  * Generates tamper-evident calculation reports with SHA-256 digital verification hashes.
  */
 import { computeGUMUncertaintyBudget } from '../utils/radiologicalPhysicsKernels.ts';
+import { sha256Hex } from '../utils/cryptoHash.ts';
+
+function escapeHtml(value: unknown): string {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 export interface DossierInputParam {
   label: string;
@@ -34,40 +44,53 @@ export interface CalculationDossierPayload {
 }
 
 /**
- * Generate SHA-256 hash using native Web Crypto API
+ * Generate FIPS 180-4 SHA-256 hash using Web Crypto with pure-JS fallback
  */
 export async function generateDossierHash(payload: CalculationDossierPayload, timestampIso: string): Promise<string> {
   const contentToHash = JSON.stringify({
     title: payload.reportTitle,
     module: payload.moduleName,
+    statute: payload.statuteCitation,
+    verificationTestId: payload.verificationTestId || '',
     operator: payload.operatorName,
+    operatorCredentials: payload.operatorCredentials || '',
     facility: payload.facility,
+    notes: payload.notes || '',
     inputs: payload.inputs,
     outputs: payload.outputs,
     timestamp: timestampIso
   });
 
-  const encoder = new TextEncoder();
-  const data = encoder.encode(contentToHash);
-  const hashBuffer = await window.crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+  return sha256Hex(contentToHash);
 }
 
 /**
  * Open printable audit dossier window formatted for formal PDF export
  */
-export async function openPrintableAuditDossier(payload: CalculationDossierPayload): Promise<void> {
-  const timestampIso = new Date().toISOString();
-  const dateFormatted = new Date().toLocaleString();
+export async function openPrintableAuditDossier(
+  payload: CalculationDossierPayload,
+  fixedTimestampIso?: string
+): Promise<void> {
+  const timestampIso = fixedTimestampIso || new Date().toISOString();
+  const dateFormatted = new Date(timestampIso).toLocaleString();
   const sha256Checksum = await generateDossierHash(payload, timestampIso);
   const dcn = `RADPRO-DCN-${Date.now().toString(36).toUpperCase()}-${sha256Checksum.slice(0, 6)}`;
+
+  const safeTitle = escapeHtml(payload.reportTitle);
+  const safeCitation = escapeHtml(payload.statuteCitation);
+  const safeModuleName = escapeHtml(payload.moduleName);
+  const safeFacility = escapeHtml(payload.facility);
+  const safeOperator = escapeHtml(payload.operatorName);
+  const safeCredentials = payload.operatorCredentials ? ` (${escapeHtml(payload.operatorCredentials)})` : '';
+  const safeVerificationId = escapeHtml(payload.verificationTestId || 'VTEST SQA VALIDATED');
+  const safeFormula = escapeHtml(payload.formulaDescription);
+  const safeNotes = payload.notes ? escapeHtml(payload.notes) : '';
 
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>${payload.reportTitle} - Technical Audit Dossier</title>
+  <title>${safeTitle} - Technical Audit Dossier</title>
   <style>
     @page { size: letter; margin: 18mm; }
     body {
@@ -199,22 +222,22 @@ export async function openPrintableAuditDossier(payload: CalculationDossierPaylo
         <div style="font-size: 9pt; color: #64748b; font-weight: 600;">HEALTH PHYSICS & RADIOLOGICAL ENGINEERING DOSSIER</div>
       </td>
       <td class="dcn-box">
-        <div><strong>DOCUMENT CONTROL NO:</strong> ${dcn}</div>
-        <div><strong>DATE/TIME:</strong> ${dateFormatted}</div>
+        <div><strong>DOCUMENT CONTROL NO:</strong> ${escapeHtml(dcn)}</div>
+        <div><strong>DATE/TIME:</strong> ${escapeHtml(dateFormatted)}</div>
         <div><strong>SECURITY:</strong> OFFICIAL HEALTH PHYSICS RECORD</div>
       </td>
     </tr>
   </table>
 
-  <h1>${payload.reportTitle}</h1>
+  <h1>${safeTitle}</h1>
   <div style="font-size: 9.5pt; color: #475569; margin-bottom: 12px;">
-    Governing Regulatory Standard: <strong>${payload.statuteCitation}</strong> | Module: <strong>${payload.moduleName}</strong>
+    Governing Regulatory Standard: <strong>${safeCitation}</strong> | Module: <strong>${safeModuleName}</strong>
   </div>
 
   <div class="meta-grid">
-    <div class="meta-item"><strong>Facility / Site:</strong> ${payload.facility}</div>
-    <div class="meta-item"><strong>Evaluator / Operator:</strong> ${payload.operatorName} ${payload.operatorCredentials ? `(${payload.operatorCredentials})` : ''}</div>
-    <div class="meta-item"><strong>Verification Traceability:</strong> ${payload.verificationTestId || 'VTEST SQA VALIDATED'} (ISO/IEC 17025 Cl. 7.11)</div>
+    <div class="meta-item"><strong>Facility / Site:</strong> ${safeFacility}</div>
+    <div class="meta-item"><strong>Evaluator / Operator:</strong> ${safeOperator}${safeCredentials}</div>
+    <div class="meta-item"><strong>Verification Traceability:</strong> ${safeVerificationId} (ISO/IEC 17025 Cl. 7.11)</div>
     <div class="meta-item"><strong>Integrity &amp; QA Protocol:</strong> 21 CFR Part 11 / ISO 19443 / ASME NQA-1</div>
     <div class="meta-item"><strong>Metrology &amp; Units:</strong> ISO 80000-10:2019 &amp; ISO/IEC Guide 98-3 (GUM)</div>
     <div class="meta-item"><strong>Engine Build &amp; FPU:</strong> RadPro v2026.10 (IEEE 754-2019 Binary64)</div>
@@ -222,7 +245,7 @@ export async function openPrintableAuditDossier(payload: CalculationDossierPaylo
 
   <div class="section-title">1. Governing Mathematical Methodology & Formulation</div>
   <p style="font-size: 9.5pt; color: #334155; margin-bottom: 12px;">
-    ${payload.formulaDescription}
+    ${safeFormula}
   </p>
 
   <div class="section-title">2. Certified Input Parameters & Geometric Constraints (ISO 80000-10)</div>
@@ -237,9 +260,9 @@ export async function openPrintableAuditDossier(payload: CalculationDossierPaylo
     <tbody>
       ${payload.inputs.map(inp => `
         <tr>
-          <td><strong>${inp.label}</strong></td>
-          <td>${inp.value}</td>
-          <td>${inp.unit || '—'}</td>
+          <td><strong>${escapeHtml(inp.label)}</strong></td>
+          <td>${escapeHtml(inp.value)}</td>
+          <td>${inp.unit ? escapeHtml(inp.unit) : '—'}</td>
         </tr>
       `).join('')}
     </tbody>
@@ -265,17 +288,19 @@ export async function openPrintableAuditDossier(payload: CalculationDossierPaylo
           const uStdPct = out.relativeStdUncertaintyPct ?? 2.5;
           const uExpPct = computeGUMUncertaintyBudget([uStdPct], 2.0).expandedPct;
           const numVal = typeof out.value === 'number' ? out.value : parseFloat(String(out.value).replace(/[^0-9.eE+-]/g, ''));
+          const safeUnit = out.unit ? escapeHtml(out.unit) : '';
           const absBand = !isNaN(numVal) && numVal > 0
-            ? `±${(numVal * (uExpPct / 100)).toPrecision(3)} ${out.unit || ''} (±${uExpPct.toFixed(1)}% | RSS U_k2=${gumBudget.expandedPct.toFixed(1)}%)`
+            ? `±${escapeHtml((numVal * (uExpPct / 100)).toPrecision(3))} ${safeUnit} (±${uExpPct.toFixed(1)}% | RSS U_k2=${gumBudget.expandedPct.toFixed(1)}%)`
             : `±${uExpPct.toFixed(1)}% (k=2)`;
+          const safeStatus = escapeHtml(out.status || 'VERIFIED');
           return `
         <tr>
-          <td><strong>${out.label}</strong></td>
-          <td>${out.value} ${out.unit ? out.unit : ''}</td>
+          <td><strong>${escapeHtml(out.label)}</strong></td>
+          <td>${escapeHtml(out.value)} ${safeUnit}</td>
           <td style="font-family: 'Courier New', monospace; font-size: 8.5pt; color: #334155;">${absBand}</td>
           <td>
             <span style="font-weight: 700; color: ${out.status === 'EXCEEDED' ? '#dc2626' : out.status === 'WARNING' ? '#d97706' : '#16a34a'};">
-              ${out.status || 'VERIFIED'}
+              ${safeStatus}
             </span>
           </td>
         </tr>
@@ -285,9 +310,9 @@ export async function openPrintableAuditDossier(payload: CalculationDossierPaylo
     </tbody>
   </table>
 
-  ${payload.notes ? `
+  ${safeNotes ? `
     <div class="section-title">4. Operational Health Physics Notes</div>
-    <p style="font-size: 9.5pt; color: #475569;">${payload.notes}</p>
+    <p style="font-size: 9.5pt; color: #475569;">${safeNotes}</p>
   ` : ''}
 
   <div class="section-title">5. ISO 19443 / ISO 14971 Regulatory &amp; Risk Management Attestation</div>

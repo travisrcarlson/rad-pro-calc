@@ -1,15 +1,14 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import allNuclidesData from '../../data/all_nuclides.json'; // Contains Z, N, Nuclide, Half-Life, Decay Mode, etc.
-import PlotComponent from 'react-plotly.js';
+import Plot from 'react-plotly.js';
+import type { Data } from 'plotly.js';
 import VerificationBadge from '../../components/VerificationBadge';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
 import { getCanonicalNuclide } from '../../utils/canonicalNuclidePhysics';
 import { intersectRayAABB3D, evaluateGPBuildup } from '../../utils/xcomAndGpBuildup';
 import { useRegulatory } from '../../context/RegulatoryContext';
-
-const Plot = (PlotComponent as any).default || PlotComponent;
 
 type Equipment = 
   | 'Alpha Probe (ZnS)' 
@@ -119,21 +118,24 @@ const ReverseResponderModule: React.FC = () => {
   const [detectedEnergy, setDetectedEnergy] = useState<string>('');
   const [energyUnit, setEnergyUnit] = useState<EnergyUnit>('MeV');
 
-  useEffect(() => {
+  const searchKey = searchParams.toString();
+  const [prevSearchKey, setPrevSearchKey] = useState<string | null>(null);
+  if (searchKey !== prevSearchKey) {
+    setPrevSearchKey(searchKey);
     const distParam = searchParams.get('distance');
     const readParam = searchParams.get('reading');
     const unitParam = searchParams.get('unit') as Unit | null;
     if (distParam && !isNaN(parseFloat(distParam))) setDistance(Math.max(0.05, parseFloat(distParam)));
     if (readParam && !isNaN(parseFloat(readParam))) setReading(Math.max(0.001, parseFloat(readParam)));
     if (unitParam && ['CPM', 'mSv/hr', 'µSv/hr', 'R/hr', 'mR/hr'].includes(unitParam)) setUnit(unitParam);
-  }, [searchParams]);
+  }
 
   // Generate perfectly cut meshes for visuals and analytical 3D AABB slab ray-intersections
   const visualMeshes = useMemo(() => {
      const t = wallThickness;
      const meshes: { xMin: number; xMax: number; yMin: number; yMax: number; zMin: number; zMax: number; material: ShieldType }[] = [];
      
-     const generateCutWall = (wallLimit: number, thicknessY: [number, number], isXAligned: boolean, localApertures: any[]) => {
+     const generateCutWall = (wallLimit: number, thicknessY: [number, number], isXAligned: boolean, localApertures: typeof derivedApertures) => {
          const sorted = [...localApertures].sort((a,b) => a.dist - b.dist);
          let lastPos = 0;
          
@@ -492,6 +494,13 @@ const ReverseResponderModule: React.FC = () => {
 
   }, [distance, reading, equipment, efficiency, unit, detectedEnergy, energyUnit, mode, triangulationResult, nuclideDict]);
 
+  const formatActivity = (mbq: number) => {
+      if (mbq > 1e6) return (mbq / 1e6).toFixed(2) + ' TBq';
+      if (mbq > 1e3) return (mbq / 1e3).toFixed(2) + ' GBq';
+      if (mbq < 1) return (mbq * 1000).toFixed(2) + ' kBq';
+      return mbq.toFixed(2) + ' MBq';
+  };
+
   useEffect(() => {
     const top = results[0];
     setLiveModuleTelemetry({
@@ -513,13 +522,6 @@ const ReverseResponderModule: React.FC = () => {
       }
     });
   }, [equipment, reading, unit, distance, mode, results, triangulationResult, setLiveModuleTelemetry]);
-
-  const formatActivity = (mbq: number) => {
-      if (mbq > 1e6) return (mbq / 1e6).toFixed(2) + ' TBq';
-      if (mbq > 1e3) return (mbq / 1e3).toFixed(2) + ' GBq';
-      if (mbq < 1) return (mbq * 1000).toFixed(2) + ' kBq';
-      return mbq.toFixed(2) + ' MBq';
-  };
 
   const [isDossierOpen, setIsDossierOpen] = useState<boolean>(false);
 
@@ -803,37 +805,37 @@ const ReverseResponderModule: React.FC = () => {
                 <Plot
                    data={[
                      ...visualMeshes.map((w, idx) => ({
-                        type: 'mesh3d',
+                        type: 'mesh3d' as const,
                         x: [w.xMin, w.xMin, w.xMax, w.xMax, w.xMin, w.xMin, w.xMax, w.xMax],
                         y: [w.yMin, w.yMax, w.yMax, w.yMin, w.yMin, w.yMax, w.yMax, w.yMin],
                         z: [w.zMin, w.zMin, w.zMin, w.zMin, w.zMax, w.zMax, w.zMax, w.zMax],
-                        i: [7, 0, 0, 0, 4, 4, 6, 6, 4, 0, 3, 2],
-                        j: [3, 4, 1, 2, 5, 6, 5, 2, 0, 1, 6, 3],
-                        k: [0, 7, 2, 3, 6, 7, 1, 1, 5, 5, 7, 6],
+                        i: new Int32Array([7, 0, 0, 0, 4, 4, 6, 6, 4, 0, 3, 2]),
+                        j: new Int32Array([3, 4, 1, 2, 5, 6, 5, 2, 0, 1, 6, 3]),
+                        k: new Int32Array([0, 7, 2, 3, 6, 7, 1, 1, 5, 5, 7, 6]),
                         color: SHIELDING_FACTORS[w.material as ShieldType].color,
                         opacity: 0.2,
                         name: `Wall Construct ${idx}`,
-                        hoverinfo: 'name'
+                        hoverinfo: 'name' as const
                      })),
                      ...derivedApertures.filter(ap => ap.material !== 'Air / Open').map(ap => ({
-                        type: 'mesh3d',
+                        type: 'mesh3d' as const,
                         x: [ap.xMin, ap.xMin, ap.xMax, ap.xMax, ap.xMin, ap.xMin, ap.xMax, ap.xMax],
                         y: [ap.yMin, ap.yMax, ap.yMax, ap.yMin, ap.yMin, ap.yMax, ap.yMax, ap.yMin],
                         z: [ap.zMin, ap.zMin, ap.zMin, ap.zMin, ap.zMax, ap.zMax, ap.zMax, ap.zMax],
-                        i: [7, 0, 0, 0, 4, 4, 6, 6, 4, 0, 3, 2],
-                        j: [3, 4, 1, 2, 5, 6, 5, 2, 0, 1, 6, 3],
-                        k: [0, 7, 2, 3, 6, 7, 1, 1, 5, 5, 7, 6],
+                        i: new Int32Array([7, 0, 0, 0, 4, 4, 6, 6, 4, 0, 3, 2]),
+                        j: new Int32Array([3, 4, 1, 2, 5, 6, 5, 2, 0, 1, 6, 3]),
+                        k: new Int32Array([0, 7, 2, 3, 6, 7, 1, 1, 5, 5, 7, 6]),
                         color: SHIELDING_FACTORS[ap.material as ShieldType].color,
                         opacity: 0.6,
                         name: `Aperture (${ap.material})`,
-                        hoverinfo: 'name'
+                        hoverinfo: 'name' as const
                      })),
                      {
                        x: triangulationReadings.map(r => r.x),
                        y: triangulationReadings.map(r => r.y),
                        z: triangulationReadings.map(r => r.z),
                        type: 'scatter3d',
-                       mode: 'markers+text',
+                       mode: 'text+markers',
                        text: triangulationReadings.map(r => `${r.reading} ${unit}`),
                        textposition: 'top center',
                        marker: { size: 5, color: '#3498db' },
@@ -844,14 +846,14 @@ const ReverseResponderModule: React.FC = () => {
                        y: [triangulationResult.y],
                        z: [triangulationResult.z],
                        type: 'scatter3d',
-                       mode: 'markers+text',
+                       mode: 'text+markers',
                        text: ['Est. Source Origin'],
                        textposition: 'bottom center',
                        textfont: { color: '#e74c3c', weight: 'bold' },
                        marker: { size: 8, symbol: 'diamond', color: '#e74c3c' },
                        name: 'Geolocated Source'
                      } : undefined
-                   ].filter(Boolean) as any}
+                   ].filter(Boolean) as Data[]}
                    layout={{
                      autosize: true,
                      margin: { l: 0, r: 0, t: 30, b: 0 },
@@ -859,9 +861,9 @@ const ReverseResponderModule: React.FC = () => {
                      paper_bgcolor: 'transparent',
                      font: { color: '#E0E1DD' },
                      scene: {
-                       xaxis: { title: 'X (m)', backgroundcolor: '#111', gridcolor: '#333' },
-                       yaxis: { title: 'Y (m)', backgroundcolor: '#111', gridcolor: '#333' },
-                       zaxis: { title: 'Z (m)', backgroundcolor: '#111', gridcolor: '#333' },
+                       xaxis: { title: { text: 'X (m)' }, backgroundcolor: '#111', gridcolor: '#333' },
+                       yaxis: { title: { text: 'Y (m)' }, backgroundcolor: '#111', gridcolor: '#333' },
+                       zaxis: { title: { text: 'Z (m)' }, backgroundcolor: '#111', gridcolor: '#333' },
                        aspectmode: 'data'
                      },
                      showlegend: false

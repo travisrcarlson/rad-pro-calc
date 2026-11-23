@@ -42,7 +42,8 @@ const TacticalGISModule = lazyWithRetry(() => import('./modules/Module29/Tactica
 const HistoricalIncidentsModule = lazyWithRetry(() => import('./modules/Module30/HistoricalIncidentsModule'), 'HistoricalIncidentsModule');
 const GlobalNuclearMapModule = lazyWithRetry(() => import('./modules/Module31/GlobalNuclearMapModule'), 'GlobalNuclearMapModule');
 
-import { RegulatoryProvider, useRegulatory, type GlobalSourceContext } from './context/RegulatoryContext';
+import { useRegulatory, type GlobalSourceContext } from './context/RegulatoryContext';
+import { RegulatoryProvider } from './context/RegulatoryProvider';
 import { RegulatorySelectorBar } from './components/RegulatorySelectorBar';
 import { CommandPalette } from './components/CommandPalette';
 import { MODULE_USER_GUIDES } from './data/moduleUserGuides';
@@ -51,7 +52,7 @@ import ErrorBoundary from './ErrorBoundary';
 
 const ModuleInfoTabPanel = lazyWithRetry(() => import('./components/ModuleInfoTabPanel'), 'ModuleInfoTabPanel');
 const WorkspaceInspectorDrawer = lazyWithRetry(
-  () => import('./components/WorkspaceInspectorDrawer').then(m => ({ default: m.WorkspaceInspectorDrawer })),
+  () => import('./components/WorkspaceInspectorDrawer'),
   'WorkspaceInspectorDrawer'
 );
 
@@ -278,14 +279,16 @@ const Sidebar: React.FC<SidebarProps> = ({
   });
 
   // Ensure current active route's category is expanded whenever location changes
-  useEffect(() => {
+  const [prevPathname, setPrevPathname] = useState<string | null>(null);
+  if (location.pathname !== prevPathname) {
+    setPrevPathname(location.pathname);
     const activeCategory = NAV_CATEGORIES.find(cat =>
       cat.items.some(item => item.path === location.pathname)
     );
     if (activeCategory && !openCategories[activeCategory.id]) {
       setOpenCategories(prev => ({ ...prev, [activeCategory.id]: true }));
     }
-  }, [location.pathname]);
+  }
 
   const toggleCategory = (catId: string) => {
     setOpenCategories(prev => ({
@@ -344,7 +347,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   if (isCollapsed) {
     return (
       <div
-        className="sidebar"
+        className="sidebar sidebar-collapsed"
         style={{
           width: '62px',
           minWidth: '62px',
@@ -798,12 +801,17 @@ const Sidebar: React.FC<SidebarProps> = ({
 const AppShell: React.FC<{
   isCommandPaletteOpen: boolean;
   setIsCommandPaletteOpen: React.Dispatch<React.SetStateAction<boolean>>;
-}> = ({ isCommandPaletteOpen, setIsCommandPaletteOpen }) => {
+  onLockSession: () => void;
+}> = ({ isCommandPaletteOpen, setIsCommandPaletteOpen, onLockSession }) => {
   const location = useLocation();
   const navigate = useNavigate();
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
-    return localStorage.getItem('radpro_sidebar_collapsed') === 'true';
+    try {
+      return localStorage.getItem('radpro_sidebar_collapsed') === 'true';
+    } catch {
+      return false;
+    }
   });
 
   const [pinnedPaths, setPinnedPaths] = useState<string[]>(() => {
@@ -835,7 +843,11 @@ const AppShell: React.FC<{
   const toggleSidebarCollapse = () => {
     setIsSidebarCollapsed(prev => {
       const next = !prev;
-      localStorage.setItem('radpro_sidebar_collapsed', String(next));
+      try {
+        localStorage.setItem('radpro_sidebar_collapsed', String(next));
+      } catch {
+        // Ignore storage errors
+      }
       setTimeout(() => window.dispatchEvent(new Event('resize')), 60);
       return next;
     });
@@ -848,14 +860,22 @@ const AppShell: React.FC<{
     }
     setPinnedPaths(prev => {
       const next = prev.includes(path) ? prev.filter(p => p !== path) : [...prev, path];
-      localStorage.setItem('radpro_pinned_modules', JSON.stringify(next));
+      try {
+        localStorage.setItem('radpro_pinned_modules', JSON.stringify(next));
+      } catch {
+        // Ignore storage errors
+      }
       return next;
     });
   };
 
   const handleClearRecent = () => {
     setRecentPaths([]);
-    localStorage.setItem('radpro_recent_modules', JSON.stringify([]));
+    try {
+      localStorage.setItem('radpro_recent_modules', JSON.stringify([]));
+    } catch {
+      // Ignore storage errors
+    }
   };
 
   const {
@@ -913,6 +933,7 @@ const AppShell: React.FC<{
     params.set('material', source.shieldMaterial);
     params.set('thickness', String(source.shieldThicknessCm));
     params.set('sync', String(Date.now()));
+    window.dispatchEvent(new CustomEvent('radpro:apply-source', { detail: source }));
     navigate(`${location.pathname}?${params.toString()}`, { replace: true });
     setWorkspaceTab('tool');
   };
@@ -936,18 +957,27 @@ const AppShell: React.FC<{
     setTimeout(() => setCopiedShareLink(false), 2000);
   };
 
-  useEffect(() => {
+  const [prevMainPath, setPrevMainPath] = useState<string>(location.pathname);
+  if (location.pathname !== prevMainPath) {
+    setPrevMainPath(location.pathname);
     setWorkspaceTab('tool');
-    clearLiveModuleTelemetry();
     const matched = ALL_FLAT_NAV_ITEMS.find(item => item.path === location.pathname);
     if (matched) {
-      setRecentPaths(prev => {
-        const next = [matched.path, ...prev.filter(p => p !== matched.path)].slice(0, 5);
-        localStorage.setItem('radpro_recent_modules', JSON.stringify(next));
-        return next;
-      });
+      setRecentPaths(prev => [matched.path, ...prev.filter(p => p !== matched.path)].slice(0, 5));
     }
+  }
+
+  useEffect(() => {
+    clearLiveModuleTelemetry();
   }, [location.pathname, clearLiveModuleTelemetry]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('radpro_recent_modules', JSON.stringify(recentPaths));
+    } catch {
+      // Ignore storage errors
+    }
+  }, [recentPaths]);
 
   const activeModuleInfo = useMemo(() => {
     return ALL_FLAT_NAV_ITEMS.find(item => item.path === location.pathname) || null;
@@ -1012,6 +1042,7 @@ const AppShell: React.FC<{
           onStepModule={handleStepModule}
           isActivePinned={activeModuleInfo ? pinnedPaths.includes(activeModuleInfo.path) : false}
           onTogglePinActive={activeModuleInfo ? () => handleTogglePin(activeModuleInfo.path) : undefined}
+          onLockSession={onLockSession}
         />
         <CommandPalette isOpen={isCommandPaletteOpen} onClose={() => setIsCommandPaletteOpen(false)} />
 
@@ -1223,7 +1254,7 @@ const AppShell: React.FC<{
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     try {
-      return localStorage.getItem('radpro_auth') === 'true' || sessionStorage.getItem('radpro_auth') === 'true';
+      return sessionStorage.getItem('radpro_auth') === 'true';
     } catch {
       return false;
     }
@@ -1250,12 +1281,22 @@ const App: React.FC = () => {
 
   const handleLogin = () => {
     try {
-      localStorage.setItem('radpro_auth', 'true');
       sessionStorage.setItem('radpro_auth', 'true');
+      localStorage.removeItem('radpro_auth');
     } catch {
       // Ignore storage quota errors in private mode
     }
     setIsAuthenticated(true);
+  };
+
+  const handleLockSession = () => {
+    try {
+      sessionStorage.removeItem('radpro_auth');
+      localStorage.removeItem('radpro_auth');
+    } catch {
+      // Ignore storage access errors
+    }
+    setIsAuthenticated(false);
   };
 
   if (!isAuthenticated) {
@@ -1263,14 +1304,17 @@ const App: React.FC = () => {
   }
 
   return (
-    <RegulatoryProvider>
-      <Router>
-        <AppShell
-          isCommandPaletteOpen={isCommandPaletteOpen}
-          setIsCommandPaletteOpen={setIsCommandPaletteOpen}
-        />
-      </Router>
-    </RegulatoryProvider>
+    <ErrorBoundary>
+      <RegulatoryProvider>
+        <Router>
+          <AppShell
+            isCommandPaletteOpen={isCommandPaletteOpen}
+            setIsCommandPaletteOpen={setIsCommandPaletteOpen}
+            onLockSession={handleLockSession}
+          />
+        </Router>
+      </RegulatoryProvider>
+    </ErrorBoundary>
   );
 };
 

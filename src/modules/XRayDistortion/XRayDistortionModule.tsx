@@ -1,13 +1,11 @@
 import React, { useState, useMemo, useRef, useEffect, useLayoutEffect } from 'react';
 import VerificationBadge from '../../components/VerificationBadge';
-import PlotComponent from 'react-plotly.js';
+import Plot from 'react-plotly.js';
 import { BlockMath, InlineMath } from 'react-katex';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
 import { useRegulatory } from '../../context/RegulatoryContext';
 import { computeRadiographicGeometry } from '../../utils/radiologicalPhysicsKernels';
-
-const Plot = (PlotComponent as any).default || PlotComponent;
 
 type DistortionTab = 'ray_tracer' | 'depth_distortion' | 'shape_distortion' | 'compliance_ndt' | 'physics_theory';
 

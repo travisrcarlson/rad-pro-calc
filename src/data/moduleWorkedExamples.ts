@@ -32,22 +32,23 @@ export const MODULE_WORKED_EXAMPLES: Record<number, ModuleWorkedExample> = {
     sourceSync: { isotope: 'Co-60', activityGBq: 370, distanceM: 2.0, shieldMaterial: 'Lead', shieldThicknessCm: 4.8 }
   },
   2: {
-    title: 'Multi-Source Hot Lab Room Ray-AABB 3D Dose Field Superposition',
+    title: 'Multi-Task RWP Stay-Time Budget & Extremity Ring Dosimetry Audit',
     scenario:
-      'Two point sources—a 185 GBq Cs-137 source at (-2, 0, 1) m and a 370 GBq Co-60 source at (+2, 0, 1) m—are separated from a central walkway (0, 2, 1) m by a 20 cm concrete monolith.',
+      'A maintenance technician with 8.5 mSv YTD cumulative dose must replace a valve at 0.35 m contact distance from a 18.5 GBq Co-60 pipe trap (body at 0.80 m) under a 2.0 mSv RWP administrative ceiling.',
     inputs: [
-      { label: 'Source 1', value: 'Cs-137, 185 GBq at (-2, 0, 1) m' },
-      { label: 'Source 2', value: 'Co-60, 370 GBq at (+2, 0, 1) m' },
-      { label: 'Barrier', value: '20 cm Concrete Wall (ρ = 2.35 g/cm³)' },
-      { label: 'Receptor Point', value: '(0, 2, 1) m (r = 2.828 m from each source)' }
+      { label: 'Source in Pipe Trap', value: 'Co-60, 18.5 GBq (0.5 Ci)' },
+      { label: 'Torso Distance / Hand Distance', value: 'r_torso = 0.80 m | r_hand = 0.25 m' },
+      { label: 'RWP Dose Ceiling', value: '2.0 mSv (200 mrem) Whole-Body DDE' },
+      { label: 'Planned Task Duration', value: '12 minutes (0.20 hours)' }
     ],
     steps: [
-      'Compute 3D Euclidean ray distance r = √(2² + 2²) = 2.828 m from each source to the receptor.',
-      'Kay-Kajiya Ray-AABB intersection yields oblique path length Δs = 20 cm / cos(45°) = 28.28 cm through the concrete slab.',
-      'Superimpose attenuated dose contributions from Source 1 (Cs-137) and Source 2 (Co-60) including concrete GP buildup.'
+      'Torso dose rate at 0.80 m: H*(10) = (0.3085 × 18.5) / 0.80² = 8.92 mSv/h.',
+      'Hand extremity dose rate at 0.25 m: H_p(0.07) = (0.3085 × 18.5) / 0.25² = 91.32 mSv/h.',
+      'For a 12-minute (0.20 h) task: Torso DDE = 1.78 mSv (< 2.0 mSv RWP limit); Hand SDE = 18.26 mSv (< 500 mSv annual limit).',
+      'Maximum permissible stay time before hitting 2.0 mSv RWP alarm = (2.0 / 8.92) × 60 = 13.45 minutes.'
     ],
-    result: 'Combined shielded receptor dose rate = 0.42 mSv/h (Green/Amber transition zone on 3D iso-surface mesh).',
-    sourceSync: { isotope: 'Co-60', activityGBq: 370, distanceM: 2.83, shieldMaterial: 'Concrete', shieldThicknessCm: 20 }
+    result: 'Task DDE = 1.78 mSv, Extremity Dose = 18.26 mSv, Max Stay Time = 13 min 27 sec.',
+    sourceSync: { isotope: 'Co-60', activityGBq: 18.5, distanceM: 0.8, shieldMaterial: 'Steel', shieldThicknessCm: 0 }
   },
   3: {
     title: 'Acute I-131 Inhalation Intake, Thyroid Bioassay & Radon-222 Working Level',
@@ -69,45 +70,24 @@ export const MODULE_WORKED_EXAMPLES: Record<number, ModuleWorkedExample> = {
     sourceSync: { isotope: 'I-131', activityGBq: 0.000074, distanceM: 1.0 }
   },
   4: {
-    title: 'Industrial Ir-192 Vault Multi-Layer Shielding & AAPM TG-108 PET Barrier',
+    title: 'Multi-Source Hot Lab Room Ray-AABB 3D Dose Field Superposition',
     scenario:
-      'Design a composite Lead + Concrete wall for a 3,700 GBq (100 Ci) Ir-192 NDT radiography bay at r = 4.0 m to reduce the outside public dose rate below 0.02 mSv/h (2 mrem/h).',
+      'Two point sources—a 185 GBq Cs-137 source at (-2, 0, 1) m and a 370 GBq Co-60 source at (+2, 0, 1) m—are separated from a central walkway (0, 2, 1) m by a 20 cm concrete monolith.',
     inputs: [
-      { label: 'Source', value: 'Ir-192, A = 3,700 GBq (100 Ci)' },
-      { label: 'Distance (r)', value: '4.0 m' },
-      { label: 'Layer 1 + Layer 2', value: '3.0 cm Lead (Pb) + 30.0 cm Concrete' },
-      { label: 'Design Target', value: '≤ 0.020 mSv/h (Uncontrolled Public Boundary)' }
+      { label: 'Source 1', value: 'Cs-137, 185 GBq at (-2, 0, 1) m' },
+      { label: 'Source 2', value: 'Co-60, 370 GBq at (+2, 0, 1) m' },
+      { label: 'Barrier', value: '20 cm Concrete Wall (ρ = 2.35 g/cm³)' },
+      { label: 'Receptor Point', value: '(0, 2, 1) m (r = 2.828 m from each source)' }
     ],
     steps: [
-      'Unshielded dose rate at 4.0 m: H*(10)_0 = (0.1168 × 3700) / 4.0² = 27.01 mSv/h.',
-      'Required total transmission factor B·exp(-Σμx) ≤ 0.020 / 27.01 = 7.40 × 10⁻⁴ (3.13 TVLs).',
-      '3.0 cm Pb provides 6.25 HVLs (1.88 TVLs) and 30 cm Concrete provides 6.98 HVLs (2.10 TVLs); Kalos dual-layer buildup B_comp ≈ 3.8.',
-      'Resulting shielded dose rate outside vault = 0.0112 mSv/h (1.12 mrem/h) — compliant with 10 CFR 20.1301.'
+      'Compute 3D Euclidean ray distance r = √(2² + 2²) = 2.828 m from each source to the receptor.',
+      'Kay-Kajiya Ray-AABB intersection yields oblique path length Δs = 20 cm / cos(45°) = 28.28 cm through the concrete slab.',
+      'Superimpose attenuated dose contributions from Source 1 (Cs-137) and Source 2 (Co-60) including concrete GP buildup.'
     ],
-    result: 'Shielded Dose Rate = 0.0112 mSv/h (44% safety margin below the 0.020 mSv/h uncontrolled limit).',
-    queryParams: '?isotope=Ir-192&activity=3700&distance=4.0&material=Lead&thickness=3.0',
-    sourceSync: { isotope: 'Ir-192', activityGBq: 3700, distanceM: 4.0, shieldMaterial: 'Lead', shieldThicknessCm: 3.0 }
+    result: 'Combined shielded receptor dose rate = 0.42 mSv/h (Green/Amber transition zone on 3D iso-surface mesh).',
+    sourceSync: { isotope: 'Co-60', activityGBq: 370, distanceM: 2.83, shieldMaterial: 'Concrete', shieldThicknessCm: 20 }
   },
   5: {
-    title: 'Multi-Task RWP Stay-Time Budget & Extremity Ring Dosimetry Audit',
-    scenario:
-      'A maintenance technician with 8.5 mSv YTD cumulative dose must replace a valve at 0.35 m contact distance from a 18.5 GBq Co-60 pipe trap (body at 0.80 m) under a 2.0 mSv RWP administrative ceiling.',
-    inputs: [
-      { label: 'Source in Pipe Trap', value: 'Co-60, 18.5 GBq (0.5 Ci)' },
-      { label: 'Torso Distance / Hand Distance', value: 'r_torso = 0.80 m | r_hand = 0.25 m' },
-      { label: 'RWP Dose Ceiling', value: '2.0 mSv (200 mrem) Whole-Body DDE' },
-      { label: 'Planned Task Duration', value: '12 minutes (0.20 hours)' }
-    ],
-    steps: [
-      'Torso dose rate at 0.80 m: H*(10) = (0.3085 × 18.5) / 0.80² = 8.92 mSv/h.',
-      'Hand extremity dose rate at 0.25 m: H_p(0.07) = (0.3085 × 18.5) / 0.25² = 91.32 mSv/h.',
-      'For a 12-minute (0.20 h) task: Torso DDE = 1.78 mSv (< 2.0 mSv RWP limit); Hand SDE = 18.26 mSv (< 500 mSv annual limit).',
-      'Maximum permissible stay time before hitting 2.0 mSv RWP alarm = (2.0 / 8.92) × 60 = 13.45 minutes.'
-    ],
-    result: 'Task DDE = 1.78 mSv, Extremity Dose = 18.26 mSv, Max Stay Time = 13 min 27 sec.',
-    sourceSync: { isotope: 'Co-60', activityGBq: 18.5, distanceM: 0.8, shieldMaterial: 'Steel', shieldThicknessCm: 0 }
-  },
-  6: {
     title: 'Multi-Point Survey Contour Interpolation & Hot-Spot Localization',
     scenario:
       'A radiological survey around a waste storage drum array records 4.2 mSv/h at (2, 2) m and 1.1 mSv/h at (6, 2) m. Generate the 2D inverse-distance-squared iso-dose contour map to mark the 0.02 mSv/h rope boundary.',
@@ -125,26 +105,7 @@ export const MODULE_WORKED_EXAMPLES: Record<number, ModuleWorkedExample> = {
     result: 'High Radiation Area (1.0 mSv/h) extends 5.6 m from Drum 1; 2.5 cm Pb shielding shrinks the HRA radius to 1.3 m.',
     sourceSync: { isotope: 'Co-60', activityGBq: 92.5, distanceM: 5.6, shieldMaterial: 'Lead', shieldThicknessCm: 2.5 }
   },
-  7: {
-    title: 'End-to-End Hot Cell Valve Replacement Mission Playbook',
-    scenario:
-      'Execute a 4-stage operational workflow combining Source Characterization (M01), Shielding Optimization (M04), Worker Stay-Time Budgeting (M05), and Transport Packaging (M15).',
-    inputs: [
-      { label: 'Playbook Preset', value: 'Industrial Radiography Ir-192 Source Recovery' },
-      { label: 'Source Activity', value: '1,850 GBq (50 Ci) Ir-192' },
-      { label: 'Temporary Shield', value: '3.0 cm Tungsten Collimator' },
-      { label: 'Overpack Cask', value: 'Type B(U) Container (TI = 1.8)' }
-    ],
-    steps: [
-      'Stage 1: Compute unshielded hazard radius (1.0 mSv/h at r = 14.7 m).',
-      'Stage 2: Place 3.0 cm Tungsten collimator (attenuates forward dose rate by 98.4%).',
-      'Stage 3: Verify recovery technician dose (< 1.5 mSv during 4-minute tong retrieval).',
-      'Stage 4: Confirm IAEA SSR-6 Yellow-II / Yellow-III label and TI = 1.8 for highway shipment.'
-    ],
-    result: 'All 4 operational stages verified compliant under US NRC 10 CFR 20 / 49 CFR 173.',
-    sourceSync: { isotope: 'Ir-192', activityGBq: 1850, distanceM: 3.0, shieldMaterial: 'Tungsten', shieldThicknessCm: 3.0 }
-  },
-  8: {
+  6: {
     title: 'Urban Cs-137 RDD ("Dirty Bomb") First Responder Perimeter & Turn-Back',
     scenario:
       'First responders arrive at an explosive dispersal of 37 TBq (1,000 Ci) Cs-137. Establish the IAEA / NCRP-161 Inner Cordoned Area (100 µSv/h), Hot-Zone Turn-Back limit, and Life-Saving stay time.',
@@ -163,23 +124,60 @@ export const MODULE_WORKED_EXAMPLES: Record<number, ModuleWorkedExample> = {
     queryParams: '?isotope=Cs-137&activity=37000&distance=15',
     sourceSync: { isotope: 'Cs-137', activityGBq: 37000, distanceM: 15.0 }
   },
-  9: {
-    title: 'Multi-Sensor Inverse Localization of an Orphan Co-60 Source',
+  7: {
+    title: 'AFRRI Biodosimetry Triage: Lymphocyte Depletion & Dicentric Chromosome Assay',
     scenario:
-      'Three survey team readings are logged in a scrap metal yard: Sensor A at (0, 0) reads 1.234 mSv/h, Sensor B at (10, 0) reads 0.494 mSv/h, and Sensor C at (0, 10) reads 0.494 mSv/h. Locate the unknown Co-60 source and estimate its activity.',
+      'An accident victim presents with emesis at 1.5 hours post-exposure. Absolute lymphocyte counts drop from 2.2 × 10⁹/L at baseline to 0.65 × 10⁹/L at 24 hours, and cytogenetics scores 48 dicentrics in 200 metaphases.',
     inputs: [
-      { label: 'Sensor A (0, 0) m', value: '1.234 mSv/h' },
-      { label: 'Sensor B (10, 0) m', value: '0.494 mSv/h' },
-      { label: 'Sensor C (0, 10) m', value: '0.494 mSv/h' },
-      { label: 'Assumed Isotope', value: 'Co-60 (Γ = 0.3085 mSv·m²/(h·GBq))' }
+      { label: 'Time to Emesis', value: '1.5 hours post-exposure' },
+      { label: '24-Hour Lymphocyte Count', value: '0.65 × 10⁹ cells/L (Severe Depletion)' },
+      { label: 'Dicentric Yield (Y)', value: '48 / 200 = 0.240 dicentrics/cell' },
+      { label: 'Calibration Constants (Co-60)', value: 'c = 0.001, α = 0.025 Gy⁻¹, β = 0.055 Gy⁻²' }
     ],
     steps: [
-      'Equal readings at (10, 0) and (0, 10) place the source along the diagonal x₀ = y₀.',
-      'Distance ratio r_B² / r_A² = 1.234 / 0.494 = 2.50 → solving yields source coordinates (x₀, y₀) = (4.0, 4.0) m (r_A = 5.657 m, r_B = 8.944 m).',
-      'Back-calculate source activity: A = H*(10)_A × r_A² / Γ = 1.234 × 32.0 / 0.3085 = 128.0 GBq (3.46 Ci).'
+      'Solve the quadratic cytogenetic calibration αD + βD² = Y - c → 0.025 D + 0.055 D² = 0.239.',
+      'Quadratic root: D = [-0.025 + √(0.025² + 4 × 0.055 × 0.239)] / (2 × 0.055) = 1.87 Gy.',
+      'Cross-check with Goans lymphocyte depletion rate and 1.5 h emesis onset → consistent with 1.8–2.2 Gy Moderate Hematopoietic ARS.'
     ],
-    result: 'Source localized at (4.00 m, 4.00 m) with estimated activity A = 128.0 GBq (3.46 Ci) Co-60.',
-    sourceSync: { isotope: 'Co-60', activityGBq: 128, distanceM: 5.66 }
+    result: 'Estimated Whole-Body Dose = 1.87 Gy → Initiate Filgrastim (G-CSF) cytokine therapy within 24 hours.',
+    sourceSync: { isotope: 'Co-60', activityGBq: 1000, distanceM: 1.5 }
+  },
+  8: {
+    title: '10 kt Surface Nuclear Detonation Glasstone-Dolan Blast, Thermal & WSEG-10 Fallout',
+    scenario:
+      'Evaluate the 5 psi structural blast radius, 2nd-degree thermal burn radius, prompt 4.0 Gy LD50 radiation radius, and H+1 fallout dose rate for a 10 kt surface nuclear detonation.',
+    inputs: [
+      { label: 'Explosive Yield (W)', value: '10.0 kilotons (kt) TNT Equivalent' },
+      { label: 'Height of Burst (HOB)', value: '0 m (Surface Burst — 50% Fission Fallout Fraction)' },
+      { label: 'Effective Wind Speed', value: '24 km/h (15 mph)' },
+      { label: 'Decay Law', value: 'Way-Wigner t⁻¹·² Fallout Decay' }
+    ],
+    steps: [
+      'Cube-root hydrodynamic blast scaling (W¹/³ = 2.154): 5 psi overpressure radius R_5psi ≈ 1,380 m.',
+      'Thermal 50% 2nd-degree burn radius (≈ 5 cal/cm²): R_thermal ≈ 2,150 m.',
+      'Prompt initial nuclear radiation (4.0 Gy total gamma + neutron): R_prompt ≈ 1,120 m.',
+      'Way-Wigner decay: a 100 Gy/h fallout zone at H+1 decays to 100 × 7⁻¹·² = 9.68 Gy/h at H+7 and 100 × 49⁻¹·² = 0.94 Gy/h at H+49.'
+    ],
+    result: '5 psi Blast = 1.38 km | Thermal Burn = 2.15 km | Prompt 4 Gy = 1.12 km | H+7 Fallout = 9.7% of H+1 rate.',
+    sourceSync: { isotope: 'Cs-137', activityGBq: 100000, distanceM: 1380 }
+  },
+  9: {
+    title: 'FRMAC Downwind TEDE & KI Thyroid Protection Decision Analysis',
+    scenario:
+      'Assess whether Potassium Iodide (KI) prophylaxis is warranted at 2.0 km downwind from a 50 TBq I-131 containment venting lasting 2 hours under Class E stability.',
+    inputs: [
+      { label: 'Isotope & Release', value: 'I-131, Total Release = 50 TBq (1,350 Ci)' },
+      { label: 'Receptor Standoff', value: '2,000 m Downwind Centerline' },
+      { label: 'Stability & Wind', value: 'Pasquill Class E, u = 2.5 m/s' },
+      { label: 'FDA / EPA KI PAG', value: '50 mSv (5 rem) Projected Child/Adult Thyroid Dose' }
+    ],
+    steps: [
+      'Compute time-integrated air concentration Ψ = Q · (χ/Q) at x = 2.0 km.',
+      'Multiply by adult breathing rate B = 3.33 × 10⁻⁴ m³/s and ICRP-119 thyroid dose coefficient e_thyroid(I-131) = 2.1 × 10⁻⁷ Sv/Bq.',
+      'Projected uncommitted thyroid dose = 142 mSv (14.2 rem), exceeding the 50 mSv FDA KI threshold.'
+    ],
+    result: 'Projected Thyroid Dose = 142 mSv (> 50 mSv PAG) → Issue 130 mg KI prophylaxis immediately and shelter/evacuate.',
+    sourceSync: { isotope: 'I-131', activityGBq: 50000, distanceM: 2000 }
   },
   10: {
     title: 'Geospatial Fallout Plume & Evacuation Sector Overlay on Facility GIS',
@@ -200,6 +198,43 @@ export const MODULE_WORKED_EXAMPLES: Record<number, ModuleWorkedExample> = {
     sourceSync: { isotope: 'I-131', activityGBq: 5000, distanceM: 500 }
   },
   11: {
+    title: 'End-to-End Hot Cell Valve Replacement Mission Playbook',
+    scenario:
+      'Execute a 4-stage operational workflow combining Source Characterization (M28), Shielding Optimization (M14), Worker Stay-Time Budgeting (M02), and Transport Packaging (M15).',
+    inputs: [
+      { label: 'Playbook Preset', value: 'Industrial Radiography Ir-192 Source Recovery' },
+      { label: 'Source Activity', value: '1,850 GBq (50 Ci) Ir-192' },
+      { label: 'Temporary Shield', value: '3.0 cm Tungsten Collimator' },
+      { label: 'Overpack Cask', value: 'Type B(U) Container (TI = 1.8)' }
+    ],
+    steps: [
+      'Stage 1: Compute unshielded hazard radius (1.0 mSv/h at r = 14.7 m).',
+      'Stage 2: Place 3.0 cm Tungsten collimator (attenuates forward dose rate by 98.4%).',
+      'Stage 3: Verify recovery technician dose (< 1.5 mSv during 4-minute tong retrieval).',
+      'Stage 4: Confirm IAEA SSR-6 Yellow-II / Yellow-III label and TI = 1.8 for highway shipment.'
+    ],
+    result: 'All 4 operational stages verified compliant under US NRC 10 CFR 20 / 49 CFR 173.',
+    sourceSync: { isotope: 'Ir-192', activityGBq: 1850, distanceM: 3.0, shieldMaterial: 'Tungsten', shieldThicknessCm: 3.0 }
+  },
+  12: {
+    title: 'Multi-Sensor Inverse Localization of an Orphan Co-60 Source',
+    scenario:
+      'Three survey team readings are logged in a scrap metal yard: Sensor A at (0, 0) reads 1.234 mSv/h, Sensor B at (10, 0) reads 0.494 mSv/h, and Sensor C at (0, 10) reads 0.494 mSv/h. Locate the unknown Co-60 source and estimate its activity.',
+    inputs: [
+      { label: 'Sensor A (0, 0) m', value: '1.234 mSv/h' },
+      { label: 'Sensor B (10, 0) m', value: '0.494 mSv/h' },
+      { label: 'Sensor C (0, 10) m', value: '0.494 mSv/h' },
+      { label: 'Assumed Isotope', value: 'Co-60 (Γ = 0.3085 mSv·m²/(h·GBq))' }
+    ],
+    steps: [
+      'Equal readings at (10, 0) and (0, 10) place the source along the diagonal x₀ = y₀.',
+      'Distance ratio r_B² / r_A² = 1.234 / 0.494 = 2.50 → solving yields source coordinates (x₀, y₀) = (4.0, 4.0) m (r_A = 5.657 m, r_B = 8.944 m).',
+      'Back-calculate source activity: A = H*(10)_A × r_A² / Γ = 1.234 × 32.0 / 0.3085 = 128.0 GBq (3.46 Ci).'
+    ],
+    result: 'Source localized at (4.00 m, 4.00 m) with estimated activity A = 128.0 GBq (3.46 Ci) Co-60.',
+    sourceSync: { isotope: 'Co-60', activityGBq: 128, distanceM: 5.66 }
+  },
+  13: {
     title: 'Elevated Stack I-131 Release Gaussian Plume & Pasquill-Gifford χ/Q',
     scenario:
       'Calculate the ground-level centerline air concentration χ(x,0,0) and atmospheric dilution factor χ/Q at x = 1,000 m downwind from a 30 m effective stack release of 1.0 GBq/s I-131 under Pasquill Stability Class D and wind speed u = 4.0 m/s.',
@@ -217,60 +252,25 @@ export const MODULE_WORKED_EXAMPLES: Record<number, ModuleWorkedExample> = {
     result: 'Centerline Dilution Factor χ/Q = 2.01 × 10⁻⁵ s/m³; Ground Air Concentration χ = 20.1 kBq/m³.',
     sourceSync: { isotope: 'I-131', activityGBq: 3600, distanceM: 1000 }
   },
-  12: {
-    title: 'FRMAC Downwind TEDE & KI Thyroid Protection Decision Analysis',
-    scenario:
-      'Assess whether Potassium Iodide (KI) prophylaxis is warranted at 2.0 km downwind from a 50 TBq I-131 containment venting lasting 2 hours under Class E stability.',
-    inputs: [
-      { label: 'Isotope & Release', value: 'I-131, Total Release = 50 TBq (1,350 Ci)' },
-      { label: 'Receptor Standoff', value: '2,000 m Downwind Centerline' },
-      { label: 'Stability & Wind', value: 'Pasquill Class E, u = 2.5 m/s' },
-      { label: 'FDA / EPA KI PAG', value: '50 mSv (5 rem) Projected Child/Adult Thyroid Dose' }
-    ],
-    steps: [
-      'Compute time-integrated air concentration Ψ = Q · (χ/Q) at x = 2.0 km.',
-      'Multiply by adult breathing rate B = 3.33 × 10⁻⁴ m³/s and ICRP-119 thyroid dose coefficient e_thyroid(I-131) = 2.1 × 10⁻⁷ Sv/Bq.',
-      'Projected uncommitted thyroid dose = 142 mSv (14.2 rem), exceeding the 50 mSv FDA KI threshold.'
-    ],
-    result: 'Projected Thyroid Dose = 142 mSv (> 50 mSv PAG) → Issue 130 mg KI prophylaxis immediately and shelter/evacuate.',
-    sourceSync: { isotope: 'I-131', activityGBq: 50000, distanceM: 2000 }
-  },
-  13: {
-    title: '10 kt Surface Nuclear Detonation Glasstone-Dolan Blast, Thermal & WSEG-10 Fallout',
-    scenario:
-      'Evaluate the 5 psi structural blast radius, 2nd-degree thermal burn radius, prompt 4.0 Gy LD50 radiation radius, and H+1 fallout dose rate for a 10 kt surface nuclear detonation.',
-    inputs: [
-      { label: 'Explosive Yield (W)', value: '10.0 kilotons (kt) TNT Equivalent' },
-      { label: 'Height of Burst (HOB)', value: '0 m (Surface Burst — 50% Fission Fallout Fraction)' },
-      { label: 'Effective Wind Speed', value: '24 km/h (15 mph)' },
-      { label: 'Decay Law', value: 'Way-Wigner t⁻¹·² Fallout Decay' }
-    ],
-    steps: [
-      'Cube-root hydrodynamic blast scaling (W¹/³ = 2.154): 5 psi overpressure radius R_5psi ≈ 1,380 m.',
-      'Thermal 50% 2nd-degree burn radius (≈ 5 cal/cm²): R_thermal ≈ 2,150 m.',
-      'Prompt initial nuclear radiation (4.0 Gy total gamma + neutron): R_prompt ≈ 1,120 m.',
-      'Way-Wigner decay: a 100 Gy/h fallout zone at H+1 decays to 100 × 7⁻¹·² = 9.68 Gy/h at H+7 and 100 × 49⁻¹·² = 0.94 Gy/h at H+49.'
-    ],
-    result: '5 psi Blast = 1.38 km | Thermal Burn = 2.15 km | Prompt 4 Gy = 1.12 km | H+7 Fallout = 9.7% of H+1 rate.',
-    sourceSync: { isotope: 'Cs-137', activityGBq: 100000, distanceM: 1380 }
-  },
   14: {
-    title: 'AFRRI Biodosimetry Triage: Lymphocyte Depletion & Dicentric Chromosome Assay',
+    title: 'Industrial Ir-192 Vault Multi-Layer Shielding & AAPM TG-108 PET Barrier',
     scenario:
-      'An accident victim presents with emesis at 1.5 hours post-exposure. Absolute lymphocyte counts drop from 2.2 × 10⁹/L at baseline to 0.65 × 10⁹/L at 24 hours, and cytogenetics scores 48 dicentrics in 200 metaphases.',
+      'Design a composite Lead + Concrete wall for a 3,700 GBq (100 Ci) Ir-192 NDT radiography bay at r = 4.0 m to reduce the outside public dose rate below 0.02 mSv/h (2 mrem/h).',
     inputs: [
-      { label: 'Time to Emesis', value: '1.5 hours post-exposure' },
-      { label: '24-Hour Lymphocyte Count', value: '0.65 × 10⁹ cells/L (Severe Depletion)' },
-      { label: 'Dicentric Yield (Y)', value: '48 / 200 = 0.240 dicentrics/cell' },
-      { label: 'Calibration Constants (Co-60)', value: 'c = 0.001, α = 0.025 Gy⁻¹, β = 0.055 Gy⁻²' }
+      { label: 'Source', value: 'Ir-192, A = 3,700 GBq (100 Ci)' },
+      { label: 'Distance (r)', value: '4.0 m' },
+      { label: 'Layer 1 + Layer 2', value: '3.0 cm Lead (Pb) + 30.0 cm Concrete' },
+      { label: 'Design Target', value: '≤ 0.020 mSv/h (Uncontrolled Public Boundary)' }
     ],
     steps: [
-      'Solve the quadratic cytogenetic calibration αD + βD² = Y - c → 0.025 D + 0.055 D² = 0.239.',
-      'Quadratic root: D = [-0.025 + √(0.025² + 4 × 0.055 × 0.239)] / (2 × 0.055) = 1.87 Gy.',
-      'Cross-check with Goans lymphocyte depletion rate and 1.5 h emesis onset → consistent with 1.8–2.2 Gy Moderate Hematopoietic ARS.'
+      'Unshielded dose rate at 4.0 m: H*(10)_0 = (0.1168 × 3700) / 4.0² = 27.01 mSv/h.',
+      'Required total transmission factor B·exp(-Σμx) ≤ 0.020 / 27.01 = 7.40 × 10⁻⁴ (3.13 TVLs).',
+      '3.0 cm Pb provides 6.25 HVLs (1.88 TVLs) and 30 cm Concrete provides 6.98 HVLs (2.10 TVLs); Kalos dual-layer buildup B_comp ≈ 3.8.',
+      'Resulting shielded dose rate outside vault = 0.0112 mSv/h (1.12 mrem/h) — compliant with 10 CFR 20.1301.'
     ],
-    result: 'Estimated Whole-Body Dose = 1.87 Gy → Initiate Filgrastim (G-CSF) cytokine therapy within 24 hours.',
-    sourceSync: { isotope: 'Co-60', activityGBq: 1000, distanceM: 1.5 }
+    result: 'Shielded Dose Rate = 0.0112 mSv/h (44% safety margin below the 0.020 mSv/h uncontrolled limit).',
+    queryParams: '?isotope=Ir-192&activity=3700&distance=4.0&material=Lead&thickness=3.0',
+    sourceSync: { isotope: 'Ir-192', activityGBq: 3700, distanceM: 4.0, shieldMaterial: 'Lead', shieldThicknessCm: 3.0 }
   },
   15: {
     title: 'IAEA SSR-6 / 49 CFR 173 Type A Qualification & Yellow-II Transport Index',
@@ -531,7 +531,7 @@ export const MODULE_WORKED_EXAMPLES: Record<number, ModuleWorkedExample> = {
     ],
     steps: [
       'Calculate Currie Critical Level L_c = 2.326 × √45 = 15.6 net counts (Net count = 92 - 45 = 47 > L_c → Positive detection!).',
-      'Calculate Minimum Detectable Activity: MDA = (2.71 + 4.653 × √45) / (60 s × 0.22 × 0.50 × 100 cm²) = 33.92 / 660 = 0.0514 Bq/cm² (3.08 dpm/100 cm²).',
+      'Calculate Minimum Detectable Activity: MDA = (2.71 + 4.653 × √45) / (60 s × 0.22 × 0.50 × 100 cm²) = 33.92 / 660 = 0.0514 Bq/cm² (308 dpm/100 cm²).',
       'Calculate Measured Surface Activity: A_surf = (47 / 60) / (0.22 × 0.50 × 100) = 0.0712 Bq/cm².'
     ],
     result: 'Net Activity = 0.0712 Bq/cm² (Above MDA = 0.0514 Bq/cm² — Positive Contamination Detected).'

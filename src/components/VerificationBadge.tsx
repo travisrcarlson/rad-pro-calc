@@ -24,7 +24,7 @@ export const VerificationBadge: React.FC<VerificationBadgeProps> = ({
   const targetTest = primaryTestId || (testId.includes(' ') ? testId.split(' ')[0] : testId);
   const displayStandard = standard || label || 'ISO 17025';
   const liveStatus = getVerificationStatusById(targetTest);
-  const isVerifiedPass = liveStatus ? liveStatus.passed : true;
+  const isVerifiedPass = liveStatus ? liveStatus.passed : false;
 
   return (
     <div style={{ display: 'inline-flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap', ...style }}>
@@ -49,8 +49,10 @@ export const VerificationBadge: React.FC<VerificationBadgeProps> = ({
         title={
           title ||
           `Live V&V status for ${testId} (${displayStandard}): ${
-            isVerifiedPass
-              ? `PASSED${liveStatus?.errorPct !== undefined ? ` (δ = ${liveStatus.errorPct.toFixed(4)}%)` : ''}`
+            !liveStatus
+              ? 'UNVERIFIED / MISSING TEST ID — click to inspect'
+              : isVerifiedPass
+              ? `PASSED${liveStatus.errorPct !== undefined ? ` (δ = ${liveStatus.errorPct.toFixed(4)}%)` : ''}`
               : 'FAILED — click to inspect'
           }`
         }

@@ -6,6 +6,19 @@
 
 import { calculateGeodesicPoint, type EPZScenarioInput, type EPZEvacuationPlan } from './epzConsequenceService';
 
+function escapeXml(value: unknown): string {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+function escapeCdata(value: unknown): string {
+  return String(value ?? '').replace(/\]\]>/g, ']]]]><![CDATA[>');
+}
+
 /**
  * Triggers a client-side file download in the browser.
  */
@@ -208,8 +221,12 @@ export function generateEPZGeoJSON(scenario: EPZScenarioInput, plan: EPZEvacuati
  * for Google Earth, ArcGIS Earth, and desktop GIS tools.
  */
 export function generateEPZKML(scenario: EPZScenarioInput, plan: EPZEvacuationPlan): string {
-  const sanitizeName = scenario.plantName.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  const timestamp = new Date().toISOString();
+  const safePlantNameXml = escapeXml(scenario.plantName);
+  const safePlantNameCdata = escapeCdata(escapeXml(scenario.plantName));
+  const safeSectors = escapeCdata(escapeXml(plan.affectedSectors.join(', ')));
+  const safeSectorsHyphen = escapeXml(plan.affectedSectors.join('-'));
+  const safeKeyholeSector = escapeCdata(escapeXml(plan.keyholeCenterSector));
+  const timestamp = escapeCdata(new Date().toISOString());
 
   const toKmlCoordinates = (pts: { lat: number; lon: number }[]): string => {
     if (pts.length === 0) return '';
@@ -223,14 +240,14 @@ export function generateEPZKML(scenario: EPZScenarioInput, plan: EPZEvacuationPl
   return `<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2">
   <Document>
-    <name>EPZ Evacuation Plan - ${sanitizeName}</name>
+    <name>EPZ Evacuation Plan - ${safePlantNameXml}</name>
     <open>1</open>
     <description><![CDATA[
       <h2>Rad Pro Calc: Emergency Planning Zone (EPZ) Consequence Map</h2>
       <p><strong>Standard:</strong> EPA-400-R-92-001 (EPA PAG 2017) / IAEA GSR Part 7</p>
-      <p><strong>Facility:</strong> ${sanitizeName}</p>
-      <p><strong>Wind Direction:</strong> Blowing from ${scenario.windOriginDegrees}° towards ${plan.plumeCenterlineBearingDeg}° (${plan.keyholeCenterSector})</p>
-      <p><strong>Affected Keyhole Sectors:</strong> ${plan.affectedSectors.join(', ')}</p>
+      <p><strong>Facility:</strong> ${safePlantNameCdata}</p>
+      <p><strong>Wind Direction:</strong> Blowing from ${scenario.windOriginDegrees}° towards ${plan.plumeCenterlineBearingDeg}° (${safeKeyholeSector})</p>
+      <p><strong>Affected Keyhole Sectors:</strong> ${safeSectors}</p>
       <p><strong>Calculated Evacuation Radius:</strong> ${plan.evacuationRadiusKm} km (${(plan.evacuationRadiusKm * 0.621371).toFixed(1)} miles)</p>
       <p><strong>Generated At:</strong> ${timestamp}</p>
     ]]></description>
@@ -297,17 +314,17 @@ export function generateEPZKML(scenario: EPZScenarioInput, plan: EPZEvacuationPl
     <!-- PLACEMARKS -->
     <!-- 1. Facility Origin Placemark -->
     <Placemark>
-      <name>📍 ${sanitizeName}</name>
+      <name>📍 ${safePlantNameXml}</name>
       <styleUrl>#facilityPin</styleUrl>
       <description><![CDATA[
         <table border="1" cellpadding="4" cellspacing="0" style="border-collapse:collapse;font-family:sans-serif;font-size:11px;">
           <tr bgcolor="#0f172a" style="color:#38bdf8;"><th>Parameter</th><th>Value</th></tr>
-          <tr><td>Facility Name</td><td><strong>${sanitizeName}</strong></td></tr>
+          <tr><td>Facility Name</td><td><strong>${safePlantNameCdata}</strong></td></tr>
           <tr><td>Latitude / Longitude</td><td>${scenario.coordinates.lat.toFixed(4)}°, ${scenario.coordinates.lon.toFixed(4)}°</td></tr>
           <tr><td>Thermal Power</td><td>${scenario.thermalPowerMWth} MWth</td></tr>
           <tr><td>Core Release Fraction</td><td>${(scenario.coreReleaseFraction * 100).toFixed(1)}%</td></tr>
           <tr><td>Wind Speed</td><td>${scenario.windSpeedMps} m/s (${(scenario.windSpeedMps * 2.237).toFixed(1)} mph)</td></tr>
-          <tr><td>Downwind Axis</td><td>${plan.plumeCenterlineBearingDeg}° (${plan.keyholeCenterSector})</td></tr>
+          <tr><td>Downwind Axis</td><td>${plan.plumeCenterlineBearingDeg}° (${safeKeyholeSector})</td></tr>
         </table>
       ]]></description>
       <Point>
@@ -317,7 +334,7 @@ export function generateEPZKML(scenario: EPZScenarioInput, plan: EPZEvacuationPl
 
     <!-- 2. Keyhole Evacuation Wedge -->
     <Placemark>
-      <name>🚨 Mandatory Keyhole Evacuation Arc (${plan.affectedSectors.join('-')})</name>
+      <name>🚨 Mandatory Keyhole Evacuation Arc (${safeSectorsHyphen})</name>
       <styleUrl>#keyholeWedgeStyle</styleUrl>
       <description><![CDATA[
         <div style="font-family:sans-serif;font-size:12px;">
@@ -418,26 +435,30 @@ export function generateEPZKML(scenario: EPZScenarioInput, plan: EPZEvacuationPl
  */
 export function generateEPZCursorOnTargetXML(scenario: EPZScenarioInput, plan: EPZEvacuationPlan): string {
   const now = new Date();
-  const timeIso = now.toISOString();
-  const staleIso = new Date(now.getTime() + 6 * 3600 * 1000).toISOString(); // 6-hour operational freshness
+  const timeIso = escapeXml(now.toISOString());
+  const staleIso = escapeXml(new Date(now.getTime() + 6 * 3600 * 1000).toISOString()); // 6-hour operational freshness
   const sanitizeName = scenario.plantName.replace(/[^a-zA-Z0-9_-]/g, '_');
-  const uid = `RADPRO-EPZ-${sanitizeName}-${Date.now().toString(36).toUpperCase()}`;
+  const safePlantName = escapeXml(scenario.plantName);
+  const safeKeyholeSector = escapeXml(plan.keyholeCenterSector);
+  const safeSectors = escapeXml(plan.affectedSectors.join(', '));
+  const safeSectorsCompact = escapeXml(plan.affectedSectors.join(','));
+  const uid = escapeXml(`RADPRO-EPZ-${sanitizeName}-${Date.now().toString(36).toUpperCase()}`);
 
   // CoT 2.0 type for Radiological Hazard Event: a-h-G-U-C-R (Atom - Hazard - Ground - Unit - CBRN - Radiological)
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <event version="2.0" uid="${uid}" type="a-h-G-U-C-R" time="${timeIso}" start="${timeIso}" stale="${staleIso}" how="m-g">
   <point lat="${scenario.coordinates.lat.toFixed(6)}" lon="${scenario.coordinates.lon.toFixed(6)}" hae="0.0" ce="10.0" le="10.0"/>
   <detail>
-    <contact callsign="EPZ-${sanitizeName}" endpoint="mesh:radpro/tacgis"/>
+    <contact callsign="EPZ-${escapeXml(sanitizeName)}" endpoint="mesh:radpro/tacgis"/>
     <remarks>
       [CRITICAL CBRN ADVISORY]
-      Facility: ${scenario.plantName}
+      Facility: ${safePlantName}
       Standard: EPA PAG 2017 / IAEA GSR Part 7
       Release Fraction: ${(scenario.coreReleaseFraction * 100).toFixed(1)}% Core Inventory
-      Wind Vector: Bearing ${plan.plumeCenterlineBearingDeg}° (${plan.keyholeCenterSector}) at ${scenario.windSpeedMps} m/s
-      Affected Keyhole Sectors: ${plan.affectedSectors.join(', ')} (67.5 deg arc)
-      Mandatory Evac Radius: ${plan.evacuationRadiusKm} km (${(plan.evacuationRadiusKm * 0.621371).toFixed(1)} mi) - TEDE >= 1.0 rem
-      Thyroid KI Prophylaxis Radius: ${plan.kiDistributionRadiusKm} km (${(plan.kiDistributionRadiusKm * 0.621371).toFixed(1)} mi) - CDE >= 5.0 rem
+      Wind Vector: Bearing ${plan.plumeCenterlineBearingDeg}° (${safeKeyholeSector}) at ${scenario.windSpeedMps} m/s
+      Affected Keyhole Sectors: ${safeSectors} (67.5 deg arc)
+      Mandatory Evac Radius: ${plan.evacuationRadiusKm} km (${(plan.evacuationRadiusKm * 0.621371).toFixed(1)} mi) - TEDE &gt;= 1.0 rem
+      Thyroid KI Prophylaxis Radius: ${plan.kiDistributionRadiusKm} km (${(plan.kiDistributionRadiusKm * 0.621371).toFixed(1)} mi) - CDE &gt;= 5.0 rem
       Ingestion Interdiction (IPZ): ${plan.interdictionRadiusKm} km (${(plan.interdictionRadiusKm * 0.621371).toFixed(1)} mi)
     </remarks>
     <emergency type="CBRN-Radiological" status="Active"/>
@@ -446,7 +467,7 @@ export function generateEPZCursorOnTargetXML(scenario: EPZScenarioInput, plan: E
       <origin_lon>${scenario.coordinates.lon.toFixed(6)}</origin_lon>
       <downwind_bearing_deg>${plan.plumeCenterlineBearingDeg}</downwind_bearing_deg>
       <arc_sweep_deg>67.5</arc_sweep_deg>
-      <affected_sectors>${plan.affectedSectors.join(',')}</affected_sectors>
+      <affected_sectors>${safeSectorsCompact}</affected_sectors>
       <evac_radius_m>${Math.round(plan.evacuationRadiusKm * 1000)}</evac_radius_m>
       <paz_radius_m>5000</paz_radius_m>
       <upz_radius_m>16093</upz_radius_m>

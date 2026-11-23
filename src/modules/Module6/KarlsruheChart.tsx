@@ -1,31 +1,100 @@
 import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import allNuclides from '../../data/all_nuclides.json';
 
+export interface KarlsruheNuclideRow {
+  Nuclide: string;
+  Symbol: string;
+  Z: number;
+  N: number;
+  'Half-Life': string;
+  'Decay Mode': string;
+  [key: string]: string | number | boolean | null | undefined;
+}
+
 interface KarlsruheChartProps {
-  onIsotopeClick: (isotopeData: any) => void;
+  onIsotopeClick: (isotopeData: KarlsruheNuclideRow) => void;
   onClearSelection?: () => void;
   activePathIds?: string[];
   activeEdges?: Array<{ fromNuclide: string; toNuclide: string; modality?: string }>;
 }
 
+const BOX_SIZE = 100;
+const GAP = 2;
+
+function computeChainViewBox(
+  activePathIds: string[] | undefined,
+  nuclideMap: Map<string, KarlsruheNuclideRow>
+): { x: number; y: number; w: number; h: number } {
+  if (!activePathIds || activePathIds.length === 0) {
+    return { x: 8000, y: 2000, w: 6000, h: 4000 };
+  }
+
+  // Match base nuclide names (strip 'm' metastable suffix if not directly in all_nuclides)
+  const matchedNodes: KarlsruheNuclideRow[] = [];
+  activePathIds.forEach(id => {
+    const direct = nuclideMap.get(id);
+    if (direct) {
+      matchedNodes.push(direct);
+    } else {
+      const stripped = id.replace(/m\d*$/i, '');
+      const fallback = nuclideMap.get(stripped);
+      if (fallback) matchedNodes.push(fallback);
+    }
+  });
+
+  if (matchedNodes.length === 0) {
+    return { x: 8000, y: 2000, w: 6000, h: 4000 };
+  }
+
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+
+  matchedNodes.forEach(n => {
+    const x = n.N * BOX_SIZE;
+    const y = (120 - n.Z) * BOX_SIZE;
+    if (x < minX) minX = x;
+    if (x + BOX_SIZE > maxX) maxX = x + BOX_SIZE;
+    if (y < minY) minY = y;
+    if (y + BOX_SIZE > maxY) maxY = y + BOX_SIZE;
+  });
+
+  const spanW = Math.max(maxX - minX, BOX_SIZE * 5);
+  const spanH = Math.max(maxY - minY, BOX_SIZE * 4);
+  const padX = Math.max(spanW * 0.45, BOX_SIZE * 2.5);
+  const padY = Math.max(spanH * 0.45, BOX_SIZE * 2.0);
+
+  const w = Math.min(Math.max(spanW + padX * 2, 700), 18000);
+  const h = Math.min(Math.max(spanH + padY * 2, 550), 12000);
+  const cx = (minX + maxX) / 2;
+  const cy = (minY + maxY) / 2;
+
+  return {
+    x: cx - w / 2,
+    y: cy - h / 2,
+    w,
+    h
+  };
+}
+
 const KarlsruheSvgChart: React.FC<KarlsruheChartProps> = ({ onIsotopeClick, onClearSelection, activePathIds, activeEdges }) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const BOX_SIZE = 100;
-  const GAP = 2;
-
   const [viewBox, setViewBox] = useState({ x: 8000, y: 2000, w: 6000, h: 4000 });
   const viewBoxRef = useRef(viewBox);
-  viewBoxRef.current = viewBox;
+  useEffect(() => {
+    viewBoxRef.current = viewBox;
+  }, [viewBox]);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0, vx: 0, vy: 0 });
 
-  const [hoveredIsotope, setHoveredIsotope] = useState<any>(null);
+  const [hoveredIsotope, setHoveredIsotope] = useState<KarlsruheNuclideRow | null>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
 
   const nuclideMap = useMemo(() => {
-    const map = new Map<string, any>();
-    (allNuclides as any[]).forEach(n => {
+    const map = new Map<string, KarlsruheNuclideRow>();
+    (allNuclides as KarlsruheNuclideRow[]).forEach(n => {
       map.set(n.Nuclide, n);
     });
     return map;
@@ -33,62 +102,16 @@ const KarlsruheSvgChart: React.FC<KarlsruheChartProps> = ({ onIsotopeClick, onCl
 
   // Compute bounding box of activePathIds and center/frame the viewport onto the chain
   const centerOnActiveChain = useCallback(() => {
-    if (!activePathIds || activePathIds.length === 0) {
-      setViewBox({ x: 8000, y: 2000, w: 6000, h: 4000 });
-      return;
-    }
-
-    // Match base nuclide names (strip 'm' metastable suffix if not directly in all_nuclides)
-    const matchedNodes: any[] = [];
-    activePathIds.forEach(id => {
-      const direct = nuclideMap.get(id);
-      if (direct) {
-        matchedNodes.push(direct);
-      } else {
-        const stripped = id.replace(/m\d*$/i, '');
-        const fallback = nuclideMap.get(stripped);
-        if (fallback) matchedNodes.push(fallback);
-      }
-    });
-
-    if (matchedNodes.length === 0) return;
-
-    let minX = Infinity;
-    let maxX = -Infinity;
-    let minY = Infinity;
-    let maxY = -Infinity;
-
-    matchedNodes.forEach(n => {
-      const x = n.N * BOX_SIZE;
-      const y = (120 - n.Z) * BOX_SIZE;
-      if (x < minX) minX = x;
-      if (x + BOX_SIZE > maxX) maxX = x + BOX_SIZE;
-      if (y < minY) minY = y;
-      if (y + BOX_SIZE > maxY) maxY = y + BOX_SIZE;
-    });
-
-    const spanW = Math.max(maxX - minX, BOX_SIZE * 5);
-    const spanH = Math.max(maxY - minY, BOX_SIZE * 4);
-    const padX = Math.max(spanW * 0.45, BOX_SIZE * 2.5);
-    const padY = Math.max(spanH * 0.45, BOX_SIZE * 2.0);
-
-    const w = Math.min(Math.max(spanW + padX * 2, 700), 18000);
-    const h = Math.min(Math.max(spanH + padY * 2, 550), 12000);
-    const cx = (minX + maxX) / 2;
-    const cy = (minY + maxY) / 2;
-
-    setViewBox({
-      x: cx - w / 2,
-      y: cy - h / 2,
-      w,
-      h
-    });
+    setViewBox(computeChainViewBox(activePathIds, nuclideMap));
   }, [activePathIds, nuclideMap]);
 
   // Auto-pan/zoom whenever the active decay chain changes
-  useEffect(() => {
-    centerOnActiveChain();
-  }, [centerOnActiveChain]);
+  const activePathKey = (activePathIds || []).join('|');
+  const [prevPathKey, setPrevPathKey] = useState<string | null>(null);
+  if (activePathKey !== prevPathKey) {
+    setPrevPathKey(activePathKey);
+    setViewBox(computeChainViewBox(activePathIds, nuclideMap));
+  }
 
   const zoomBy = (factor: number) => {
     const cx = viewBox.x + viewBox.w / 2;
@@ -180,7 +203,7 @@ const KarlsruheSvgChart: React.FC<KarlsruheChartProps> = ({ onIsotopeClick, onCl
   const renderBlocks = useMemo(() => {
     const parentId = activePathIds && activePathIds.length > 0 ? activePathIds[0].replace(/m\d*$/i, '') : null;
 
-    return (allNuclides as any[]).map((n: any) => {
+    return (allNuclides as KarlsruheNuclideRow[]).map((n: KarlsruheNuclideRow) => {
       const x = n.N * BOX_SIZE;
       const y = (120 - n.Z) * BOX_SIZE;
       const color = getColor(n['Decay Mode'], n['Half-Life']);
@@ -204,12 +227,20 @@ const KarlsruheSvgChart: React.FC<KarlsruheChartProps> = ({ onIsotopeClick, onCl
           }}
           onMouseEnter={(e) => {
             const rect = containerRef.current?.getBoundingClientRect();
-            if (rect) setTooltipPos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+            if (rect) {
+              const clampedX = Math.max(8, Math.min(e.clientX - rect.left, Math.max(8, rect.width - 252)));
+              const clampedY = Math.max(8, Math.min(e.clientY - rect.top, Math.max(8, rect.height - 190)));
+              setTooltipPos({ x: clampedX, y: clampedY });
+            }
             setHoveredIsotope(n);
           }}
           onMouseMove={(e) => {
             const rect = containerRef.current?.getBoundingClientRect();
-            if (rect) setTooltipPos({ x: e.clientX - rect.left + 15, y: e.clientY - rect.top + 15 });
+            if (rect) {
+              const clampedX = Math.max(8, Math.min(e.clientX - rect.left + 15, Math.max(8, rect.width - 252)));
+              const clampedY = Math.max(8, Math.min(e.clientY - rect.top + 15, Math.max(8, rect.height - 190)));
+              setTooltipPos({ x: clampedX, y: clampedY });
+            }
           }}
           onMouseLeave={() => setHoveredIsotope(null)}
           style={{ cursor: 'pointer', opacity: blockOpacity, transition: 'opacity 0.25s ease' }}
@@ -460,16 +491,11 @@ const KarlsruheSvgChart: React.FC<KarlsruheChartProps> = ({ onIsotopeClick, onCl
       </svg>
 
       {/* Detailed Placard Hover Tooltip (clamped within container bounds) */}
-      {hoveredIsotope && (() => {
-        const cw = containerRef.current?.clientWidth || 800;
-        const ch = containerRef.current?.clientHeight || 500;
-        const clampedX = Math.max(8, Math.min(tooltipPos.x, Math.max(8, cw - 252)));
-        const clampedY = Math.max(8, Math.min(tooltipPos.y, Math.max(8, ch - 190)));
-        return (
+      {hoveredIsotope && (
         <div style={{
           position: 'absolute',
-          left: clampedX,
-          top: clampedY,
+          left: tooltipPos.x,
+          top: tooltipPos.y,
           width: '240px',
           backgroundColor: '#fff',
           border: '2px solid #333',
@@ -521,8 +547,7 @@ const KarlsruheSvgChart: React.FC<KarlsruheChartProps> = ({ onIsotopeClick, onCl
             </div>
           </div>
         </div>
-        );
-      })()}
+      )}
     </div>
   );
 };

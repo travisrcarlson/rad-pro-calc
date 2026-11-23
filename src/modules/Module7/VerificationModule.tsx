@@ -8,6 +8,7 @@ import {
   type StressTestRecord as StressTestResult,
   type VerificationCategory
 } from '../../utils/vvBenchmarkSuite';
+import { sha256Hex } from '../../utils/cryptoHash';
 
 type TestCategory = 'All' | VerificationCategory;
 type VerificationTab = 'benchmarks' | 'stress' | 'traceability' | 'iso_matrix' | 'certificate';
@@ -148,22 +149,35 @@ const VerificationModule: React.FC = () => {
   const [rsoName, setRsoName] = useState<string>('Senior Radiation Safety Officer (RSO)');
   const [facilityName, setFacilityName] = useState<string>('RadPro Analytical Dosimetry & Verification Laboratory');
 
-  useEffect(() => {
+  const searchKey = searchParams.toString();
+  const [prevSearchKey, setPrevSearchKey] = useState<string | null>(null);
+  if (searchKey !== prevSearchKey) {
+    setPrevSearchKey(searchKey);
     const testParam = searchParams.get('test');
     if (testParam) {
-      setActiveTab('benchmarks');
+      const isStress = testParam.toUpperCase().startsWith('STRESS-');
+      setActiveTab(isStress ? 'stress' : 'benchmarks');
       setExpandedTestIds(new Set([testParam]));
-      setTimeout(() => {
-        const el = document.getElementById(`test-card-${testParam}`);
-        if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-      }, 200);
     }
     const tabParam = searchParams.get('tab') as VerificationTab;
     if (tabParam && ['benchmarks', 'stress', 'traceability', 'iso_matrix', 'certificate'].includes(tabParam)) {
       setActiveTab(tabParam);
     }
+  }
+
+  useEffect(() => {
+    const testParam = searchParams.get('test');
+    if (!testParam) return;
+    const isStress = testParam.toUpperCase().startsWith('STRESS-');
+    const timer = window.setTimeout(() => {
+      const el =
+        document.getElementById(isStress ? `stress-card-${testParam}` : `test-card-${testParam}`) ||
+        document.getElementById(`test-card-${testParam}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 200);
+    return () => window.clearTimeout(timer);
   }, [searchParams]);
 
   const handleRunTests = () => {
@@ -241,8 +255,8 @@ const VerificationModule: React.FC = () => {
   }, [tests, stressTests]);
 
   // Export JSON Certificate
-  const handleExportJSON = () => {
-    const cert = {
+  const handleExportJSON = async () => {
+    const certPayload = {
       verificationTitle: 'RadPro Calc Scientific Verification & Validation Suite',
       executionEngine: 'Production TypeScript Solvers (src/utils/* & src/services/*)',
       standardCompliance: [
@@ -290,6 +304,15 @@ const VerificationModule: React.FC = () => {
         latencyMicroseconds: s.execTimeUs,
         passed: s.passed
       }))
+    };
+
+    const sha256Checksum = await sha256Hex(JSON.stringify(certPayload));
+    const cert = {
+      ...certPayload,
+      integrity: {
+        algorithm: 'SHA-256 (FIPS 180-4)',
+        sha256Checksum
+      }
     };
 
     const blob = new Blob([JSON.stringify(cert, null, 2)], { type: 'application/json' });

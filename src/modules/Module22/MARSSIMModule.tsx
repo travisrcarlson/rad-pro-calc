@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef } from 'react';
 import VerificationBadge from '../../components/VerificationBadge';
-import PlotComponent from 'react-plotly.js';
+import Plot from 'react-plotly.js';
 import { BlockMath } from 'react-katex';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
@@ -13,8 +13,6 @@ import {
   computeISO11929CharacteristicLimits,
   computeCurrieDetectionLimits
 } from '../../utils/radiologicalPhysicsKernels';
-
-const Plot = (PlotComponent as any).default || PlotComponent;
 
 type ActiveTab = 'detection_limits' | 'sample_size' | 'decision_engine' | 'presets';
 type StatisticalTestType = 'Sign' | 'WRS';
@@ -224,19 +222,33 @@ const MARSSIMModule: React.FC = () => {
   const handleMarssimCsvUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > 25 * 1024 * 1024) {
+      setCsvImportStatus('Error: Survey CSV file exceeds 25 MB maximum upload limit.');
+      e.target.value = '';
+      return;
+    }
     const reader = new FileReader();
     reader.onload = ev => {
-      const text = String(ev.target?.result || '');
-      const parsed = parseMarssimSurveyCsv(text);
-      if (parsed.suValues.length > 0) {
-        setDatasetString(parsed.suValues.join(', '));
+      try {
+        const text = String(ev.target?.result || '');
+        const parsed = parseMarssimSurveyCsv(text);
+        if (parsed.suValues.length === 0 && parsed.refValues.length === 0) {
+          setCsvImportStatus(`No valid numeric survey measurements found in "${file.name}".`);
+          return;
+        }
+        if (parsed.suValues.length > 0) {
+          setDatasetString(parsed.suValues.join(', '));
+        }
+        if (parsed.refValues.length > 0) {
+          setRefDatasetString(parsed.refValues.join(', '));
+        }
+        setCsvImportStatus(`Ingested "${file.name}": ${parsed.suValues.length} Survey Unit (SU) points & ${parsed.refValues.length} Reference (REF) points.`);
+      } catch {
+        setCsvImportStatus(`Failed to parse CSV survey data from "${file.name}".`);
       }
-      if (parsed.refValues.length > 0) {
-        setRefDatasetString(parsed.refValues.join(', '));
-      }
-      setCsvImportStatus(`Ingested "${file.name}": ${parsed.suValues.length} Survey Unit (SU) points & ${parsed.refValues.length} Reference (REF) points.`);
     };
     reader.readAsText(file);
+    e.target.value = '';
   };
 
   const handleExportMarssimCsv = () => {
@@ -1025,7 +1037,7 @@ const MARSSIMModule: React.FC = () => {
                     x: surveyPlanning.sampleCoords.map((c) => c.x),
                     y: surveyPlanning.sampleCoords.map((c) => c.y),
                     text: surveyPlanning.sampleCoords.map((c) => `Point #${c.id} (${c.x}m, ${c.y}m)`),
-                    mode: 'markers+text',
+                    mode: 'text+markers',
                     textposition: 'top center',
                     textfont: { color: '#00e5ff', size: 9 },
                     marker: { size: 10, color: '#00e5ff', symbol: 'hexagon' },

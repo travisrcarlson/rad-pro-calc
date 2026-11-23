@@ -2,10 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import nuclidesData from '../../../data/nuclides.json';
 import { BlockMath } from 'react-katex';
-import PlotComponent from 'react-plotly.js';
+import Plot from 'react-plotly.js';
 import equipmentDataRaw from '../../../data/equipment_database.json';
-
-const Plot = (PlotComponent as any).default || PlotComponent;
 import { useRegulatory } from '../../../context/RegulatoryContext';
 import { AuditDossierModal } from '../../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../../services/auditDossierService';
@@ -47,7 +45,13 @@ const ExternalDoseCalc: React.FC = () => {
   } = useRegulatory();
   const [searchParams] = useSearchParams();
   const [isDossierOpen, setIsDossierOpen] = useState<boolean>(false);
-  const nuclides = nuclidesData as any[];
+  type ExternalNuclideRow = {
+    Nuclide: string;
+    Symbol: string;
+    [key: string]: string | number | undefined;
+  };
+  type EquipmentCatalogRow = Record<string, string | number | undefined>;
+  const nuclides = nuclidesData as ExternalNuclideRow[];
   const [selectedNuclide, setSelectedNuclide] = useState(nuclides.find(n => n.Nuclide === 'Cobalt-60') || nuclides[0]);
   const [activity, setActivity] = useState<number>(100);
   const [activityUnit, setActivityUnit] = useState<number>(1); // Multiplier to get MBq
@@ -55,7 +59,10 @@ const ExternalDoseCalc: React.FC = () => {
   const agedMixBanner = searchParams.get('agedMix');
 
   // Ingest URL params from Scenario Builder or external links
-  useEffect(() => {
+  const searchKey = searchParams.toString();
+  const [prevSearchKey, setPrevSearchKey] = useState<string | null>(null);
+  if (searchKey !== prevSearchKey) {
+    setPrevSearchKey(searchKey);
     const nuclideParam = searchParams.get('nuclide') || searchParams.get('isotope');
     const actMBqParam = searchParams.get('activityMBq');
     const actParam = searchParams.get('activity');
@@ -63,7 +70,7 @@ const ExternalDoseCalc: React.FC = () => {
     const distParam = searchParams.get('distance');
 
     if (nuclideParam) {
-      const match = nuclides.find((n: any) => 
+      const match = nuclides.find((n) => 
         n.Symbol?.toLowerCase() === nuclideParam.toLowerCase() ||
         n.Nuclide?.toLowerCase() === nuclideParam.toLowerCase() ||
         n.Nuclide?.toLowerCase().includes(nuclideParam.toLowerCase())
@@ -101,20 +108,20 @@ const ExternalDoseCalc: React.FC = () => {
         setDistance(dVal);
       }
     }
-  }, [searchParams, nuclides]);
+  }
 
   const handleEquipmentImport = (eqName: string) => {
-    const eq: any = equipmentDataRaw.find((e: any) => e['Device Name'] === eqName);
+    const eq = (equipmentDataRaw as EquipmentCatalogRow[]).find((e) => e['Device Name'] === eqName);
     if (!eq) return;
 
     // Isotope
-    const isoStr = eq['Primary Isotope(s)'] || '';
+    const isoStr = String(eq['Primary Isotope(s)'] || '');
     const primaryIso = isoStr.split(';')[0].trim();
-    const matchedNuc = nuclides.find((n: any) => n.Symbol === primaryIso || n.Nuclide.startsWith(primaryIso));
+    const matchedNuc = nuclides.find((n) => n.Symbol === primaryIso || n.Nuclide.startsWith(primaryIso));
     if (matchedNuc) setSelectedNuclide(matchedNuc);
     
     // Activity
-    const mbq = parseActivityMBq(eq['Activity (Typical)'] || '');
+    const mbq = parseActivityMBq(String(eq['Activity (Typical)'] || ''));
     setActivity(mbq);
     setActivityUnit(1); // set unit to MBq
   };
@@ -207,7 +214,7 @@ const ExternalDoseCalc: React.FC = () => {
     setLiveModuleTelemetry
   ]);
 
-  const dossierPayload: CalculationDossierPayload = useMemo(() => ({
+  const dossierPayload: CalculationDossierPayload = {
     reportTitle: `Point Source External Gamma Dosimetry — ${selectedNuclide?.Nuclide || 'Isotope'}`,
     moduleName: 'Module 1A: Point Source Calculation Engine',
     statuteCitation: `${currentFramework.name} (${currentFramework.citation}) / ICRP 107`,
@@ -232,7 +239,7 @@ const ExternalDoseCalc: React.FC = () => {
       { label: 'Public Limit Fraction (8760h continuous)', value: `${(((doseRate * 8760) / 1000) / currentFramework.limits.publicAnnualEffective_mSv * 100).toFixed(1)}%`, status: (doseRate * 8760 / 1000) > currentFramework.limits.publicAnnualEffective_mSv ? 'EXCEEDED' : 'PASS' },
       { label: 'Stay-Time to 1 mSv ALARA Action Target', value: `${(1000 / Math.max(0.0001, doseRate)).toFixed(1)} hrs`, status: 'PASS' }
     ]
-  }), [selectedNuclide, activity, unitLabel, distance, gammaSI, currentFramework, doseRate]);
+  };
 
   const navigate = useNavigate();
 
@@ -292,8 +299,8 @@ const ExternalDoseCalc: React.FC = () => {
              style={{ width: '100%' }}
            >
              <option value="">-- Select Equipment Profile --</option>
-             {equipmentDataRaw.map((eq: any, idx) => (
-                <option key={idx} value={eq['Device Name']}>{eq['Device Name']}</option>
+             {(equipmentDataRaw as EquipmentCatalogRow[]).map((eq, idx) => (
+                <option key={idx} value={String(eq['Device Name'] || '')}>{String(eq['Device Name'] || '')}</option>
              ))}
            </select>
         </div>
@@ -308,7 +315,10 @@ const ExternalDoseCalc: React.FC = () => {
           <select 
             className="form-control" 
             value={selectedNuclide?.Nuclide} 
-            onChange={e => setSelectedNuclide(nuclides.find(n => n.Nuclide === e.target.value))}
+            onChange={e => {
+              const found = nuclides.find(n => n.Nuclide === e.target.value);
+              if (found) setSelectedNuclide(found);
+            }}
           >
             {nuclides.map((n, i) => (
               <option key={i} value={n.Nuclide}>{n.Nuclide} ({n.Symbol})</option>
@@ -459,14 +469,13 @@ const ExternalDoseCalc: React.FC = () => {
             paper_bgcolor: 'transparent',
             plot_bgcolor: 'transparent',
             font: { color: '#E0E1DD' },
-            xaxis: { title: 'Distance from Source (meters)', type: 'log', gridcolor: '#1e293b' },
-            yaxis: { title: 'Dose Rate (µSv/h)', type: 'log', gridcolor: '#1e293b', titlefont: { color: '#00e5ff' }, tickfont: { color: '#00e5ff' } },
+            xaxis: { title: { text: 'Distance from Source (meters)' }, type: 'log', gridcolor: '#1e293b' },
+            yaxis: { title: { text: 'Dose Rate (µSv/h)', font: { color: '#00e5ff' } }, type: 'log', gridcolor: '#1e293b', tickfont: { color: '#00e5ff' } },
             yaxis2: {
-              title: 'Stay-Time to 1 mSv (Hours)',
+              title: { text: 'Stay-Time to 1 mSv (Hours)', font: { color: '#10b981' } },
               type: 'log',
               overlaying: 'y',
               side: 'right',
-              titlefont: { color: '#10b981' },
               tickfont: { color: '#10b981' }
             },
             showlegend: true,
