@@ -5,6 +5,11 @@ import { BlockMath, InlineMath } from 'react-katex';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
 import { useRegulatory } from '../../context/RegulatoryContext';
+import {
+  computePulsedXRayInstantaneousRateKSvHr,
+  computeSynchrotronCriticalEnergyKeV,
+  computeRelativisticLorentzGamma
+} from '../../utils/radiologicalPhysicsKernels';
 
 const Plot = (PlotComponent as any).default || PlotComponent;
 
@@ -56,6 +61,13 @@ const PulsedXRayModule: React.FC = () => {
   // Medical
   const [customMa, setCustomMa] = useState<number>(10);
   const [customTime, setCustomTime] = useState<number>(1.0);
+  // Relativistic & Synchrotron Beam Parameters
+  const [ringEnergyGeV, setRingEnergyGeV] = useState<number>(3.0);
+  const [dipoleFieldT, setDipoleFieldT] = useState<number>(1.2);
+  const [beamBeta, setBeamBeta] = useState<number>(0.9999);
+
+  const lorentzGamma = computeRelativisticLorentzGamma(beamBeta);
+  const synchCriticalKeV = computeSynchrotronCriticalEnergyKeV(ringEnergyGeV, dipoleFieldT);
 
   const handlePresetChange = (pid: string) => {
     setSelectedPresetId(pid);
@@ -85,9 +97,8 @@ const PulsedXRayModule: React.FC = () => {
       const dosePerPulseAtTarget_uSv = doseAt30cm_uSv * distanceFactor;
       accumulatedDose_uSv = dosePerPulseAtTarget_uSv * Math.max(0, customPulses);
       const safePulseWidthNs = Math.max(1e-3, customPulseWidthNs);
-      const pulseWidthSec = safePulseWidthNs * 1e-9;
-      const svPerSec = (dosePerPulseAtTarget_uSv / 1_000_000) / pulseWidthSec;
-      instantaneousRate_Sv_H = svPerSec * 3600;
+      instantaneousRate_Sv_H =
+        computePulsedXRayInstantaneousRateKSvHr(dosePerPulseAtTarget_uSv, safePulseWidthNs) * 1000.0;
     } else {
       const mAs = Math.max(0, customMa) * Math.max(0, customTime);
       // Clinical NCRP-147 / AAPM diagnostic tungsten output (~75 µSv/mAs at 100 kVp, 1 m, ~2.5 mm Al filtration)
@@ -625,10 +636,24 @@ const PulsedXRayModule: React.FC = () => {
               </div>
 
               <div style={{ background: 'rgba(0,0,0,0.3)', padding: '14px', borderRadius: '6px', border: '1px solid #334155' }}>
-                <h4 style={{ margin: '0 0 8px 0', color: 'var(--color-accent)' }}>4. Continuous Diagnostic Output</h4>
-                <BlockMath math="D_{\text{med}}(r) = \frac{k \cdot (\text{kVp})^2 \cdot (\text{mAs})}{r^2}" />
-                <p style={{ fontSize: '0.82rem', color: '#94a3b8', margin: '8px 0 0 0' }}>
-                  Kramer's empirical continuum formulation for continuous diagnostic tubes, where output scales quadratically with peak voltage and linearly with charge product.
+                <h4 style={{ margin: '0 0 8px 0', color: 'var(--color-accent)' }}>4. Continuous Diagnostic &amp; Relativistic / Synchrotron</h4>
+                <BlockMath math="E_c = 0.665\,E^2[\text{GeV}]\,B[\text{T}], \quad \gamma = \frac{1}{\sqrt{1 - \beta^2}}" />
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginTop: '8px', fontSize: '0.76rem' }}>
+                  <div>
+                    <label style={{ color: '#94a3b8' }}>e⁻ Energy E (GeV)</label>
+                    <input type="number" step="0.1" min="0.01" className="form-control" value={ringEnergyGeV} onChange={e => setRingEnergyGeV(Math.max(0.01, Number(e.target.value) || 3))} />
+                  </div>
+                  <div>
+                    <label style={{ color: '#94a3b8' }}>Dipole B (T)</label>
+                    <input type="number" step="0.1" min="0.01" className="form-control" value={dipoleFieldT} onChange={e => setDipoleFieldT(Math.max(0.01, Number(e.target.value) || 1.2))} />
+                  </div>
+                  <div>
+                    <label style={{ color: '#94a3b8' }}>Velocity Ratio &beta;</label>
+                    <input type="number" step="0.0001" min="0.1" max="0.999999" className="form-control" value={beamBeta} onChange={e => setBeamBeta(Math.max(0.1, Math.min(0.999999999, Number(e.target.value) || 0.9999)))} />
+                  </div>
+                </div>
+                <p style={{ fontSize: '0.82rem', color: '#38bdf8', margin: '8px 0 0 0' }}>
+                  E<sub>c</sub> = <strong>{synchCriticalKeV.toFixed(3)} keV</strong> &nbsp;|&nbsp; Lorentz &gamma; = <strong>{lorentzGamma.toFixed(2)}</strong>
                 </p>
               </div>
             </div>

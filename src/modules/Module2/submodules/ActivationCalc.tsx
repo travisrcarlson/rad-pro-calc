@@ -5,17 +5,18 @@ import VerificationBadge from '../../../components/VerificationBadge';
 import { AuditDossierModal } from '../../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../../services/auditDossierService';
 import { useRegulatory } from '../../../context/RegulatoryContext';
+import { computeNeutronActivationSaturationBq } from '../../../utils/radiologicalPhysicsKernels';
 
 // Standard thermal, epithermal resonance integral (I_0), and fast neutron activation targets
 const TARGETS = [
-  { name: 'Cobalt (Co-59)', product: 'Co-60', sigma_barns: 37.2, resonance_I0_barns: 74.0, lambda_s: 4.168e-9, halfLifeLabel: '5.271 y', n_atoms_g: 1.022e22, gamma_uSv: 0.357 },
-  { name: 'Gold (Au-197)', product: 'Au-198', sigma_barns: 98.7, resonance_I0_barns: 1550.0, lambda_s: 2.977e-6, halfLifeLabel: '2.695 d', n_atoms_g: 3.057e21, gamma_uSv: 0.059 },
-  { name: 'Sodium (Na-23)', product: 'Na-24', sigma_barns: 0.53, resonance_I0_barns: 0.31, lambda_s: 1.287e-5, halfLifeLabel: '14.96 h', n_atoms_g: 2.619e22, gamma_uSv: 0.498 },
-  { name: 'Iron (Fe-54 fast n,p)', product: 'Mn-54', sigma_barns: 0.08, resonance_I0_barns: 0.05, lambda_s: 2.56e-8, halfLifeLabel: '312.2 d', n_atoms_g: 6.4e20, gamma_uSv: 0.127 },
-  { name: 'Nickel (Ni-62)', product: 'Ni-63', sigma_barns: 14.5, resonance_I0_barns: 6.8, lambda_s: 2.19e-10, halfLifeLabel: '100.1 y', n_atoms_g: 3.0e20, gamma_uSv: 0.0 },
-  { name: 'Manganese (Mn-55)', product: 'Mn-56', sigma_barns: 13.3, resonance_I0_barns: 14.0, lambda_s: 7.467e-5, halfLifeLabel: '2.579 h', n_atoms_g: 1.096e22, gamma_uSv: 0.242 },
-  { name: 'Copper (Cu-63)', product: 'Cu-64', sigma_barns: 4.50, resonance_I0_barns: 4.97, lambda_s: 1.516e-5, halfLifeLabel: '12.70 h', n_atoms_g: 6.56e21, gamma_uSv: 0.031 },
-  { name: 'Iridium (Ir-191)', product: 'Ir-192', sigma_barns: 954.0, resonance_I0_barns: 3500.0, lambda_s: 1.086e-7, halfLifeLabel: '73.83 d', n_atoms_g: 1.167e21, gamma_uSv: 0.130 }
+  { name: 'Cobalt (Co-59)', product: 'Co-60', sigma_barns: 37.2, resonance_I0_barns: 74.0, sigmaBurnBarns: 2.0, molarMass: 58.9332, abundance: 1.0, lambda_s: 4.168e-9, halfLifeLabel: '5.271 y', n_atoms_g: 1.022e22, gamma_uSv: 0.357 },
+  { name: 'Gold (Au-197)', product: 'Au-198', sigma_barns: 98.7, resonance_I0_barns: 1550.0, sigmaBurnBarns: 25100, molarMass: 196.96657, abundance: 1.0, lambda_s: 2.977e-6, halfLifeLabel: '2.695 d', n_atoms_g: 3.057e21, gamma_uSv: 0.059 },
+  { name: 'Sodium (Na-23)', product: 'Na-24', sigma_barns: 0.53, resonance_I0_barns: 0.31, sigmaBurnBarns: 0.0, molarMass: 22.98977, abundance: 1.0, lambda_s: 1.287e-5, halfLifeLabel: '14.96 h', n_atoms_g: 2.619e22, gamma_uSv: 0.498 },
+  { name: 'Iron (Fe-54 fast n,p)', product: 'Mn-54', sigma_barns: 0.08, resonance_I0_barns: 0.05, sigmaBurnBarns: 0.0, molarMass: 55.845, abundance: 0.0585, lambda_s: 2.56e-8, halfLifeLabel: '312.2 d', n_atoms_g: 6.4e20, gamma_uSv: 0.127 },
+  { name: 'Nickel (Ni-62)', product: 'Ni-63', sigma_barns: 14.5, resonance_I0_barns: 6.8, sigmaBurnBarns: 0.0, molarMass: 58.6934, abundance: 0.0363, lambda_s: 2.19e-10, halfLifeLabel: '100.1 y', n_atoms_g: 3.0e20, gamma_uSv: 0.0 },
+  { name: 'Manganese (Mn-55)', product: 'Mn-56', sigma_barns: 13.3, resonance_I0_barns: 14.0, sigmaBurnBarns: 0.0, molarMass: 54.93804, abundance: 1.0, lambda_s: 7.467e-5, halfLifeLabel: '2.579 h', n_atoms_g: 1.096e22, gamma_uSv: 0.242 },
+  { name: 'Copper (Cu-63)', product: 'Cu-64', sigma_barns: 4.50, resonance_I0_barns: 4.97, sigmaBurnBarns: 0.0, molarMass: 63.546, abundance: 0.6915, lambda_s: 1.516e-5, halfLifeLabel: '12.70 h', n_atoms_g: 6.56e21, gamma_uSv: 0.031 },
+  { name: 'Iridium (Ir-191)', product: 'Ir-192', sigma_barns: 954.0, resonance_I0_barns: 3500.0, sigmaBurnBarns: 1100.0, molarMass: 192.217, abundance: 0.3727, lambda_s: 1.086e-7, halfLifeLabel: '73.83 d', n_atoms_g: 1.167e21, gamma_uSv: 0.130 }
 ];
 
 const getActivationUnitLabel = (unitSec: number) => {
@@ -49,23 +50,31 @@ const ActivationCalc: React.FC = () => {
 
   const t_irr = Math.max(0, tIrrStr * tIrrUnit);
   const t_cool = Math.max(0, tCoolStr * tCoolUnit);
-  const sigma_cm2 = selectedTarget.sigma_barns * 1e-24;
   const resonance_I0_cm2 = selectedTarget.resonance_I0_barns * 1e-24;
   const epiFlux = flux * Math.max(0, epiToThermalRatio);
 
   const N_total = selectedTarget.n_atoms_g * mass;
 
-  // Westcott 2-group reaction rate: R = N * (sigma_0 * Phi_th + I_0 * Phi_epi)
-  const thermalReactionRate = N_total * sigma_cm2 * flux;
+  // Westcott 2-group reaction rate with product self-burnup via canonical kernel
+  const thermalReactionRate = computeNeutronActivationSaturationBq(
+    mass,
+    selectedTarget.molarMass,
+    selectedTarget.sigma_barns,
+    flux,
+    selectedTarget.abundance,
+    selectedTarget.sigmaBurnBarns,
+    selectedTarget.lambda_s
+  );
   const epithermalReactionRate = N_total * resonance_I0_cm2 * epiFlux;
   const saturation_activity = thermalReactionRate + epithermalReactionRate;
+  const lambdaEff = selectedTarget.lambda_s + selectedTarget.sigmaBurnBarns * 1e-24 * flux;
 
   // Cadmium ratio R_Cd = 1 + (sigma_0 * Phi_th) / (I_0 * Phi_epi)
   const cadmiumRatio = epithermalReactionRate > 0
-    ? 1 + (thermalReactionRate / epithermalReactionRate)
+    ? 1 + ((N_total * (selectedTarget.sigma_barns * 1e-24) * flux) / epithermalReactionRate)
     : Infinity;
 
-  const buildup_factor = 1 - Math.exp(-selectedTarget.lambda_s * t_irr);
+  const buildup_factor = 1 - Math.exp(-lambdaEff * t_irr);
   const decay_factor = Math.exp(-selectedTarget.lambda_s * t_cool);
 
   const activity_eob_Bq = saturation_activity * buildup_factor;
@@ -125,7 +134,7 @@ const ActivationCalc: React.FC = () => {
     for (let i = 0; i <= steps; i++) {
       const t = (irrDuration * i) / steps;
       irrX.push(t / plotUnitSec);
-      const act = saturation_activity * (1 - Math.exp(-selectedTarget.lambda_s * t));
+      const act = saturation_activity * (1 - Math.exp(-lambdaEff * t));
       irrY_MBq.push(act / 1e6);
     }
 

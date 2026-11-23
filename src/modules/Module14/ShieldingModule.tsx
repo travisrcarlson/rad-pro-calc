@@ -18,6 +18,11 @@ import {
   type BuildupModelType
 } from '../../utils/xcomAndGpBuildup';
 import { getCanonicalNuclide, parseActivityToGBq } from '../../utils/canonicalNuclidePhysics';
+import {
+  computeTG108UptakeDecayFactor,
+  computeArcherBroadBeamTransmission,
+  computeCossairtMazeDoorDoseRateUSvHr
+} from '../../utils/radiologicalPhysicsKernels';
 
 const Plot = (PlotComponent as any).default || PlotComponent;
 
@@ -99,6 +104,7 @@ export const ShieldingModule: React.FC = () => {
   const [skyRoofThicknessConcreteCm, setSkyRoofThicknessConcreteCm] = useState<number>(60.0);
   const [skySolidAngleSr, setSkySolidAngleSr] = useState<number>(0.85);
   const [skyHorizontalDistM, setSkyHorizontalDistM] = useState<number>(30.0);
+  const [mazeBeamMv, setMazeBeamMv] = useState<number>(6); // Nominal Linac MV (photoneutrons > 10 MV)
 
   useEffect(() => {
     const eParam = searchParams.get('energyMeV');
@@ -315,7 +321,11 @@ export const ShieldingModule: React.FC = () => {
       accumulatedOpticalThickness,
       cumulativeBuildup,
       neutronEval,
-      combinedGammaNeutronExitRate: finalDoseRate + (enableNeutronField ? neutronEval.transmittedNeutronDoseRate : 0)
+      combinedGammaNeutronExitRate:
+        finalDoseRate +
+        (enableNeutronField
+          ? neutronEval.transmittedNeutronDoseRate + neutronEval.secondaryCaptureGammaDoseRate
+          : 0)
     };
   }, [layers, photonEnergyMev, incidentDoseRate, buildupModel, enableNeutronField, incidentNeutronRate]);
 
@@ -520,8 +530,8 @@ export const ShieldingModule: React.FC = () => {
     const tI = Math.max(1, petImagingTimeMin);
     const d = Math.max(0.3, petDistanceM);
 
-    const rU = ((1.443 * halfLifeMin) / tU) * (1 - Math.exp((-Math.LN2 * tU) / halfLifeMin));
-    const rI = ((1.443 * halfLifeMin) / tI) * (1 - Math.exp((-Math.LN2 * tI) / halfLifeMin));
+    const rU = computeTG108UptakeDecayFactor(halfLifeMin, tU);
+    const rI = computeTG108UptakeDecayFactor(halfLifeMin, tI);
     const fU = Math.exp((-Math.LN2 * tU) / halfLifeMin);
     const fVoid = 0.85; // 15% urinary excretion post-uptake
 
@@ -540,8 +550,7 @@ export const ShieldingModule: React.FC = () => {
     const evalArcher = (mat: 'LEAD' | 'CONCRETE' | 'IRON', xCm: number) => {
       if (xCm <= 0) return 1.0;
       const p = archerParams[mat];
-      const base = (1 + p.beta / p.alpha) * Math.exp(p.alpha * p.gamma * xCm) - p.beta / p.alpha;
-      return Math.pow(Math.max(1.0, base), -1.0 / p.gamma);
+      return computeArcherBroadBeamTransmission(xCm, p.alpha, p.beta, p.gamma);
     };
 
     const solveArcherThicknessCm = (mat: 'LEAD' | 'CONCRETE' | 'IRON', reqB: number) => {
@@ -613,25 +622,41 @@ export const ShieldingModule: React.FC = () => {
     const d2 = Math.max(0.5, mazeLeg2LengthM);
 
     const doseAtMazeMouthSvH = mazeWorkloadDoseAt1mSvH / (d1 * d1);
-    const evaluateLeg2SvH = (dist2: number) => {
-      const geomFactor = areaM2 / (d1 * d1);
-      const decay2 = 0.20 * Math.exp(-dist2 / (1.95 * sqrtA)) + 0.80 * Math.exp(-dist2 / (5.4 * sqrtA));
-      return doseAtMazeMouthSvH * geomFactor * decay2;
+    // Scattered X-ray / capture gamma via canonical Cossairt two-component kernel [µSv/h]
+    const evaluateLeg2PhotonUSvH = (dist2: number) =>
+      computeCossairtMazeDoorDoseRateUSvHr(mazeWorkloadDoseAt1mSvH, d1, dist2, areaM2);
+
+    // Above 10 MV, photonuclear (γ,n) yields fast + thermalized neutrons down the maze (NCRP-151 Sec 2.4.2 Kersey neutron TVL)
+    const photoneutronYieldFrac = mazeBeamMv > 10 ? ((mazeBeamMv - 10) / 8.0) * 2.2e-3 : 0;
+    const neutronTvlM = 2.3 * Math.max(1.0, sqrtA); // Kersey photoneutron maze TVL (~4.4–5.0 m)
+    const evaluateLeg2NeutronUSvH = (dist2: number) => {
+      if (photoneutronYieldFrac <= 0) return 0;
+      const neutronMouthUSvH = doseAtMazeMouthSvH * 1e6 * photoneutronYieldFrac;
+      return neutronMouthUSvH * Math.pow(10, -dist2 / neutronTvlM);
     };
 
-    const unshieldedDoorDoseUSvH = evaluateLeg2SvH(d2) * 1e6; // convert Sv/h to uSv/h
-    const doorAttenuation =
-      0.65 * Math.pow(10, -mazeDoorBpeCm / 4.5) + 0.35 * Math.pow(10, -mazeDoorLeadCm / 5.0);
-    const shieldedDoorDoseUSvH = unshieldedDoorDoseUSvH * doorAttenuation;
+    const unshieldedPhotonDoorUSvH = evaluateLeg2PhotonUSvH(d2);
+    const unshieldedNeutronDoorUSvH = evaluateLeg2NeutronUSvH(d2);
+    const unshieldedDoorDoseUSvH = unshieldedPhotonDoorUSvH + unshieldedNeutronDoorUSvH;
 
-    // Roof Skyshine (NCRP-151 Eq. 5.12)
-    const roofTransmission = Math.pow(10, -skyRoofThicknessConcreteCm / 37.0);
+    // Below/equal 10 MV: scattered photons attenuated by Pb (TVL ≈ 0.6 cm); > 10 MV: BPE (TVL ≈ 4.5 cm) + capture-γ Pb (TVL ≈ 5.0 cm)
+    const photonDoorPbTvlCm = mazeBeamMv > 10 ? 5.0 : 0.6;
+    const photonDoorTransmission = Math.pow(10, -mazeDoorLeadCm / photonDoorPbTvlCm) * Math.pow(10, -mazeDoorBpeCm / 32.0);
+    const neutronDoorTransmission = Math.pow(10, -mazeDoorBpeCm / 4.5);
+    const shieldedDoorDoseUSvH =
+      unshieldedPhotonDoorUSvH * photonDoorTransmission +
+      unshieldedNeutronDoorUSvH * neutronDoorTransmission;
+    const doorAttenuation = unshieldedDoorDoseUSvH > 0 ? shieldedDoorDoseUSvH / unshieldedDoorDoseUSvH : 1.0;
+
+    // Roof Skyshine (NCRP-151 Eq. 5.12): H_s = 2.5e-2 * H_0 * B_xs * Omega^1.3 / (d_i * d_s)^2
+    const roofConcreteTvlCm = mazeBeamMv > 10 ? 41.0 : 37.0;
+    const roofTransmission = Math.pow(10, -skyRoofThicknessConcreteCm / roofConcreteTvlCm);
     const dRoofInternalM = 4.0;
     const evaluateSkyshineUSvH = (dHoriz: number) => {
+      const denomDist = (dRoofInternalM + 2.0) * Math.max(2.0, dHoriz);
       const baseSvH =
-        ((2.5e-2 * mazeWorkloadDoseAt1mSvH * roofTransmission * Math.pow(skySolidAngleSr, 1.3)) /
-          Math.pow(dRoofInternalM + 2.0, 2)) *
-        Math.exp(-dHoriz / 90.0);
+        (2.5e-2 * mazeWorkloadDoseAt1mSvH * roofTransmission * Math.pow(skySolidAngleSr, 1.3)) /
+        (denomDist * denomDist);
       return baseSvH * 1e6;
     };
 
@@ -643,7 +668,7 @@ export const ShieldingModule: React.FC = () => {
     for (let i = 0; i <= 40; i++) {
       const x = 0.5 + (i / 40) * 11.5;
       leg2Xs.push(Number(x.toFixed(2)));
-      leg2DoseUSvH.push(evaluateLeg2SvH(x) * 1e6);
+      leg2DoseUSvH.push(evaluateLeg2PhotonUSvH(x) + evaluateLeg2NeutronUSvH(x));
     }
 
     const skyXs: number[] = [];
@@ -657,6 +682,8 @@ export const ShieldingModule: React.FC = () => {
     return {
       areaM2,
       doseAtMazeMouthSvH,
+      unshieldedPhotonDoorUSvH,
+      unshieldedNeutronDoorUSvH,
       unshieldedDoorDoseUSvH,
       doorAttenuation,
       shieldedDoorDoseUSvH,
@@ -669,6 +696,7 @@ export const ShieldingModule: React.FC = () => {
     };
   }, [
     mazeWorkloadDoseAt1mSvH,
+    mazeBeamMv,
     mazeLeg1LengthM,
     mazeLeg2LengthM,
     mazeWidthM,
@@ -1160,10 +1188,20 @@ export const ShieldingModule: React.FC = () => {
                     <strong style={{ color: '#c084fc', fontSize: '0.88rem' }}>{stackAnalytics.neutronEval.transmittedNeutronDoseRate.toFixed(2)} µSv/h</strong>
                   </div>
                   <div style={{ background: 'rgba(0,0,0,0.35)', padding: '6px 8px', borderRadius: '4px' }}>
+                    <span style={{ fontSize: '0.68rem', color: '#94a3b8', display: 'block' }}>Capture-γ (n,γ) Dose</span>
+                    <strong style={{ color: '#f59e0b', fontSize: '0.88rem' }}>{stackAnalytics.neutronEval.secondaryCaptureGammaDoseRate.toFixed(2)} µSv/h</strong>
+                  </div>
+                  <div style={{ background: 'rgba(0,0,0,0.35)', padding: '6px 8px', borderRadius: '4px' }}>
                     <span style={{ fontSize: '0.68rem', color: '#94a3b8', display: 'block' }}>Combined (&gamma; + n) Exit</span>
                     <strong style={{ color: '#38bdf8', fontSize: '0.88rem' }}>{stackAnalytics.combinedGammaNeutronExitRate.toFixed(2)} µSv/h</strong>
                   </div>
                 </div>
+
+                {stackAnalytics.neutronEval.unbackedHeavyLayerWarning && (
+                  <div style={{ fontSize: '0.75rem', color: '#fbbf24', background: 'rgba(245, 158, 11, 0.14)', border: '1px solid rgba(245, 158, 11, 0.4)', padding: '6px 10px', borderRadius: '5px' }}>
+                    ⚠️ {stackAnalytics.neutronEval.unbackedHeavyLayerWarning}
+                  </div>
+                )}
 
                 <div style={{ fontSize: '0.76rem', color: '#cbd5e1', lineHeight: 1.35 }}>
                   {stackAnalytics.neutronEval.advisory}
@@ -1743,13 +1781,26 @@ export const ShieldingModule: React.FC = () => {
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', marginBottom: '12px' }}>
                 <div>
-                  <label className="form-label" style={{ fontSize: '0.75rem' }}>Source 1m Dose Rate H₀ (Sv/h):</label>
-                  <input
-                    type="number"
-                    className="form-control"
-                    value={mazeWorkloadDoseAt1mSvH}
-                    onChange={e => setMazeWorkloadDoseAt1mSvH(Math.max(0.1, Number(e.target.value) || 50))}
-                  />
+                  <label className="form-label" style={{ fontSize: '0.75rem' }}>Source 1m Rate H₀ (Sv/h) &amp; Linac MV:</label>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <input
+                      type="number"
+                      className="form-control"
+                      value={mazeWorkloadDoseAt1mSvH}
+                      onChange={e => setMazeWorkloadDoseAt1mSvH(Math.max(0.1, Number(e.target.value) || 50))}
+                    />
+                    <select
+                      className="form-control"
+                      value={mazeBeamMv}
+                      onChange={e => setMazeBeamMv(Number(e.target.value))}
+                      title="Linac photon accelerating potential (MV)"
+                    >
+                      <option value={6}>6 MV</option>
+                      <option value={10}>10 MV</option>
+                      <option value={15}>15 MV (n,γ)</option>
+                      <option value={18}>18 MV (n,γ)</option>
+                    </select>
+                  </div>
                 </div>
                 <div>
                   <label className="form-label" style={{ fontSize: '0.75rem' }}>Leg 1 Distance d₁ (m) &amp; Leg 2 Length d₂ (m):</label>
@@ -1844,7 +1895,7 @@ export const ShieldingModule: React.FC = () => {
               </div>
 
               <div className="formula-box" style={{ padding: '10px', fontSize: '0.76rem' }}>
-                <BlockMath math="\dot{H}_{\text{maze}}(d_2) = \frac{\dot{H}_0 A}{d_1^4}\left(0.20 e^{-d_2 / 1.95\sqrt{A}} + 0.80 e^{-d_2 / 5.4\sqrt{A}}\right), \quad \dot{H}_{\text{sky}}(d_s) = \frac{2.5\times 10^{-2} \dot{H}_0 B_{\text{roof}} \Omega^{1.3}}{(d_i + 2)^2} e^{-d_s/90}" />
+                <BlockMath math="\dot{H}_{\text{maze}}(d_2) = \frac{\dot{H}_0 A}{d_1^4}\left(0.20 e^{-d_2 / 1.95\sqrt{A}} + 0.80 e^{-d_2 / 5.4\sqrt{A}}\right), \quad \dot{H}_{\text{sky}}(d_s) = \frac{2.5\times 10^{-2} \dot{H}_0 B_{\text{roof}} \Omega^{1.3}}{\left((d_i + 2)\,d_s\right)^2}" />
               </div>
             </div>
 

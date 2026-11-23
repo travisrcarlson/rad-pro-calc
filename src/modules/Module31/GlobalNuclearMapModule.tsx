@@ -1179,6 +1179,8 @@ export const GlobalNuclearMapModule: React.FC = () => {
         type: projectionType as any,
         rotation: projectionType === 'orthographic' ? centerRotation : undefined
       },
+      lataxis: projectionType === 'mercator' ? { range: [-78, 84] } : undefined,
+      lonaxis: projectionType === 'mercator' ? { range: [-180, 180] } : undefined,
       showland: true,
       landcolor: '#111827',
       showocean: true,

@@ -5,6 +5,7 @@ import { BlockMath } from 'react-katex';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
 import { useRegulatory } from '../../context/RegulatoryContext';
+import { computeLaserNOHDMeters } from '../../utils/radiologicalPhysicsKernels';
 
 const OCULAR_PUPIL_AREA_CM2 = Math.PI * 0.35 * 0.35; // 7 mm limiting pupil aperture (0.384845 cm²) per ANSI Z136.1
 
@@ -95,6 +96,7 @@ const LaserModule: React.FC = () => {
   const [customDuration, setCustomDuration] = useState<string>('0.25');
   const [activeTab, setActiveTab] = useState<LaserTab>('schematic');
   const [probeDistance, setProbeDistance] = useState<number>(1.0); // interactive probe distance in meters
+  const [isGaussianProfile, setIsGaussianProfile] = useState<boolean>(false);
   const [isDossierOpen, setIsDossierOpen] = useState<boolean>(false);
 
   // Load a preset
@@ -180,15 +182,13 @@ const LaserModule: React.FC = () => {
     // Ocular-Averaged Irradiance at Aperture (W/cm^2)
     const irradianceAperture = powerW / effectiveApertureArea;
 
-    // 3. Nominal Ocular Hazard Distance (NOHD) in meters
-    let nohdMeters = 0;
-    if (irradianceAperture > mpeWcm2) {
-      const term = Math.sqrt((4 * powerW) / (Math.PI * mpeWcm2));
-      const nohdCm = (term - diamCm) / divRad;
-      nohdMeters = Math.max(0, nohdCm / 100);
-    } else {
-      nohdMeters = 0;
-    }
+    // 3. Nominal Ocular Hazard Distance (NOHD) in meters via ANSI Z136.1 canonical kernel
+    const apertureM = diamCm / 100.0;
+    const mpeWm2 = mpe * 10.0; // mW/cm² -> W/m²
+    const nohdMeters =
+      irradianceAperture > mpeWcm2
+        ? computeLaserNOHDMeters(powerW, mpeWm2, apertureM, divRad, isGaussianProfile)
+        : 0;
 
     // 4. Rayleigh Range (z_R) & Beam Waist (w_0)
     const waistRadiusCm = diamCm / 2;
@@ -568,6 +568,43 @@ const LaserModule: React.FC = () => {
             </div>
           </div>
 
+          {/* Beam Irradiance Profile Toggle */}
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label" style={{ fontSize: '0.8rem', marginBottom: '3px' }}>Beam Spatial Irradiance Profile</label>
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => setIsGaussianProfile(false)}
+                style={{
+                  flex: 1,
+                  padding: '4px 8px',
+                  fontSize: '0.75rem',
+                  background: !isGaussianProfile ? 'rgba(0, 229, 255, 0.2)' : 'rgba(255,255,255,0.03)',
+                  color: !isGaussianProfile ? '#00e5ff' : 'var(--color-text-muted)',
+                  border: !isGaussianProfile ? '1px solid #00e5ff' : '1px solid var(--color-border)'
+                }}
+              >
+                Uniform Top-Hat (4P)
+              </button>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => setIsGaussianProfile(true)}
+                style={{
+                  flex: 1,
+                  padding: '4px 8px',
+                  fontSize: '0.75rem',
+                  background: isGaussianProfile ? 'rgba(0, 229, 255, 0.2)' : 'rgba(255,255,255,0.03)',
+                  color: isGaussianProfile ? '#00e5ff' : 'var(--color-text-muted)',
+                  border: isGaussianProfile ? '1px solid #00e5ff' : '1px solid var(--color-border)'
+                }}
+              >
+                Gaussian 1/e² Peak (8P)
+              </button>
+            </div>
+          </div>
+
           {/* Exposure Duration Selector */}
           <div className="form-group" style={{ marginBottom: 0 }}>
             <label className="form-label" style={{ fontSize: '0.82rem', marginBottom: '4px' }}>ANSI Exposure Duration (T)</label>
@@ -739,7 +776,7 @@ const LaserModule: React.FC = () => {
           </div>
 
           <div style={{ width: '100%', overflowX: 'auto', background: '#020617', borderRadius: '8px', border: '1px solid var(--color-border)', padding: '15px 10px' }}>
-            <svg viewBox="0 0 950 260" style={{ width: '100%', minWidth: '850px', height: 'auto', display: 'block' }}>
+            <svg viewBox="0 0 950 260" preserveAspectRatio="xMidYMid meet" style={{ width: '100%', minWidth: '850px', maxHeight: '300px', height: 'auto', display: 'block', margin: '0 auto' }}>
               <defs>
                 {/* Optical breadboard hole pattern */}
                 <pattern id="breadboardGrid" width="25" height="25" patternUnits="userSpaceOnUse">
@@ -814,18 +851,22 @@ const LaserModule: React.FC = () => {
                 </text>
               </g>
 
-              {/* Gaussian Beam Caustic Rendering */}
+              {/* Gaussian Beam Caustic Rendering synced to bottom ruler (120..900 -> 0..1.5 * refScale) */}
               {(() => {
-                const originX = 122;
-                const nohdPixelDist = calculations.nohdMeters > 0 
-                  ? Math.min(750, Math.max(80, (calculations.nohdMeters / Math.max(5, calculations.nohdMeters * 1.4)) * 680))
+                const originX = 120;
+                const refScaleM = Math.max(5, calculations.nohdMeters);
+                const nohdPixelDist = calculations.nohdMeters > 0
+                  ? Math.min(760, Math.max(20, (calculations.nohdMeters / refScaleM) * 520))
                   : 0;
 
-                const endX = 920;
-                const topDivergeNOHD = calculations.nohdMeters > 0 ? 130 - (10 + (nohdPixelDist / 15)) : 130 - 30;
-                const botDivergeNOHD = calculations.nohdMeters > 0 ? 130 + (10 + (nohdPixelDist / 15)) : 130 + 30;
-                const topDivergeEnd = 130 - (10 + ((endX - originX) / 15));
-                const botDivergeEnd = 130 + (10 + ((endX - originX) / 15));
+                const endX = 900;
+                const waistHalfPx = Math.min(18, Math.max(3, diameter * 0.9));
+                const spreadAtNohdPx = Math.min(72, waistHalfPx + Math.max(10, Math.min(55, (calculations.nohdMeters * divergence) * 0.25 + nohdPixelDist / 16)));
+                const topDivergeNOHD = calculations.nohdMeters > 0 ? 130 - spreadAtNohdPx : 130 - 30;
+                const botDivergeNOHD = calculations.nohdMeters > 0 ? 130 + spreadAtNohdPx : 130 + 30;
+                const spreadAtEndPx = Math.min(88, spreadAtNohdPx * ((endX - originX) / Math.max(40, nohdPixelDist)));
+                const topDivergeEnd = 130 - spreadAtEndPx;
+                const botDivergeEnd = 130 + spreadAtEndPx;
 
                 return (
                   <>
@@ -833,13 +874,13 @@ const LaserModule: React.FC = () => {
                       <>
                         {/* Hazard Zone Beam Envelope (Aperture to NOHD) */}
                         <polygon
-                          points={`${originX},127 ${originX + nohdPixelDist},${topDivergeNOHD} ${originX + nohdPixelDist},${botDivergeNOHD} ${originX},133`}
+                          points={`${originX},${130 - waistHalfPx} ${originX + nohdPixelDist},${topDivergeNOHD} ${originX + nohdPixelDist},${botDivergeNOHD} ${originX},${130 + waistHalfPx}`}
                           fill="url(#causticGlow)"
                           style={{ filter: `drop-shadow(0 0 10px ${beamColor.hex}80)` }}
                         />
                         {/* Core intense center ray */}
                         <polygon
-                          points={`${originX},129 ${originX + nohdPixelDist},${130 - (topDivergeNOHD - 130) * 0.4} ${originX + nohdPixelDist},${130 + (botDivergeNOHD - 130) * 0.4} ${originX},131`}
+                          points={`${originX},129 ${originX + nohdPixelDist},${130 - (130 - topDivergeNOHD) * 0.4} ${originX + nohdPixelDist},${130 + (botDivergeNOHD - 130) * 0.4} ${originX},131`}
                           fill="url(#causticCenter)"
                         />
 
@@ -873,7 +914,7 @@ const LaserModule: React.FC = () => {
                         <line x1={originX} y1="36" x2={originX} y2="48" stroke="var(--color-primary)" strokeWidth="1.5" />
                         <line x1={originX + nohdPixelDist} y1="36" x2={originX + nohdPixelDist} y2="48" stroke="var(--color-primary)" strokeWidth="1.5" />
                         <text
-                          x={originX + nohdPixelDist / 2}
+                          x={Math.max(200, Math.min(780, originX + nohdPixelDist / 2))}
                           y="34"
                           fill="var(--color-primary)"
                           fontSize="10"
@@ -885,7 +926,7 @@ const LaserModule: React.FC = () => {
                         </text>
 
                         {/* Exclusion Zone Tag Badge */}
-                        <g transform={`translate(${originX + nohdPixelDist / 2 - 75}, 55)`}>
+                        <g transform={`translate(${Math.max(132, Math.min(740, originX + nohdPixelDist / 2 - 75))}, 55)`}>
                           <rect x="0" y="0" width="150" height="20" rx="3" fill="rgba(239, 68, 68, 0.15)" stroke="#ef4444" strokeWidth="1" />
                           <text x="75" y="14" fill="#ef4444" fontSize="9" fontWeight="bold" textAnchor="middle" letterSpacing="0.5">
                             OCULAR HAZARD (E ≥ MPE)

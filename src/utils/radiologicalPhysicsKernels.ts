@@ -336,49 +336,108 @@ export function computeGaussianPlumeGroundConcBqM3(
 /**
  * Chamberlain (1953) / Slade (1968) Wet + Dry Plume Source Depletion Survival Percentage Q(x)/Q_0 [%].
  */
+/**
+ * 8-point Gauss-Legendre nodes and weights on [-1, 1] for Chamberlain dry-deposition integral.
+ */
+const GL8_NODES = [
+  -0.9602898564975363, -0.7966664774136267, -0.525532409916329, -0.1834346424956498,
+  0.1834346424956498, 0.525532409916329, 0.7966664774136267, 0.9602898564975363
+];
+const GL8_WEIGHTS = [
+  0.1012285362903763, 0.2223810344533745, 0.3137066458778873, 0.362683783378362,
+  0.362683783378362, 0.3137066458778873, 0.2223810344533745, 0.1012285362903763
+];
+
 export function computePlumeDepletionSurvivalPct(
   downwindXM: number,
   windSpeedMps: number,
   wetWashoutCoeffS1: number,
   dryDepositionVelocityMps: number,
-  meanSigmaZM: number
+  meanSigmaZM: number,
+  stabilityClass?: 'A' | 'B' | 'C' | 'D' | 'E' | 'F',
+  releaseHeightM = 0
 ): number {
   if (downwindXM <= 0) return 100.0;
   const u = Math.max(0.1, windSpeedMps);
   const transitSec = downwindXM / u;
-  const lambdaDry =
-    meanSigmaZM > 0 ? dryDepositionVelocityMps / (meanSigmaZM * Math.sqrt(Math.PI / 2.0)) : 0;
-  return 100.0 * Math.exp(-(Math.max(0, wetWashoutCoeffS1) + lambdaDry) * transitSec);
+  const wetExponent = Math.max(0, wetWashoutCoeffS1) * transitSec;
+  const vd = Math.max(0, dryDepositionVelocityMps);
+
+  let dryExponent = 0;
+  if (vd > 0) {
+    if (stabilityClass || releaseHeightM > 0) {
+      const cls = stabilityClass ?? 'D';
+      const xStart = Math.min(downwindXM, 1.0);
+      const halfSpan = 0.5 * (downwindXM - xStart);
+      const mid = 0.5 * (downwindXM + xStart);
+      const he = Math.max(0, releaseHeightM);
+      let integral = 0;
+      if (halfSpan > 0) {
+        for (let i = 0; i < 8; i++) {
+          const x = mid + halfSpan * GL8_NODES[i];
+          const sz = Math.max(0.1, computeBriggsRuralDispersionMeters(x, cls).sigmaZM);
+          const groundExp = he > 0 ? Math.exp(-(he * he) / (2.0 * sz * sz)) : 1.0;
+          integral += GL8_WEIGHTS[i] * (groundExp / sz);
+        }
+        integral *= halfSpan;
+      }
+      dryExponent = Math.sqrt(2.0 / Math.PI) * (vd / u) * integral;
+    } else if (meanSigmaZM > 0) {
+      const lambdaDry = vd / (meanSigmaZM * Math.sqrt(Math.PI / 2.0));
+      dryExponent = lambdaDry * transitSec;
+    }
+  }
+
+  return 100.0 * Math.exp(-(wetExponent + dryExponent));
 }
 
 /**
- * Turner (1994) Planetary Boundary Layer (PBL) Capping Inversion Method-of-Images Multiplier.
+ * Turner (1994) Planetary Boundary Layer (PBL) Capping Inversion Symmetric Method-of-Images Multiplier.
  */
 export function computePBLInversionReflectionMultiplier(
   mixingHeightM: number,
   sigmaZM: number,
-  harmonics = 3
+  harmonics = 3,
+  releaseHeightM = 0
 ): number {
   if (mixingHeightM <= 0 || sigmaZM <= 0) return 1.0;
-  let mult = 1.0;
-  for (let m = 1; m <= harmonics; m++) {
-    const zImg = 2.0 * m * mixingHeightM;
-    mult += 2.0 * Math.exp(-(zImg * zImg) / (2.0 * sigmaZM * sigmaZM));
+  if (releaseHeightM <= 0) {
+    let mult = 1.0;
+    for (let m = 1; m <= harmonics; m++) {
+      const zImg = 2.0 * m * mixingHeightM;
+      mult += 2.0 * Math.exp(-(zImg * zImg) / (2.0 * sigmaZM * sigmaZM));
+    }
+    return mult;
   }
-  return mult;
+
+  const h = Math.min(releaseHeightM, mixingHeightM);
+  const twoSig2 = 2.0 * sigmaZM * sigmaZM;
+  const directTerm = Math.exp(-(h * h) / twoSig2);
+  if (directTerm <= 1e-300) return 1.0;
+
+  let reflectedSum = 0;
+  for (let m = 1; m <= harmonics; m++) {
+    const dMinus = 2.0 * m * mixingHeightM - h;
+    const dPlus = 2.0 * m * mixingHeightM + h;
+    reflectedSum += Math.exp(-(dMinus * dMinus) / twoSig2) + Math.exp(-(dPlus * dPlus) / twoSig2);
+  }
+  return 1.0 + reflectedSum / directTerm;
 }
 
 /**
  * ANSI Z136.1-2014 Nominal Ocular Hazard Distance (NOHD) [m] for CW/average laser beam.
+ * Supports uniform top-hat (4P, default) or Gaussian 1/e² beam irradiance profile (8P).
  */
 export function computeLaserNOHDMeters(
   powerWatts: number,
   mpeWattsPerM2: number,
   apertureDiameterM: number,
-  divergenceRad: number
+  divergenceRad: number,
+  isGaussian1e2 = false
 ): number {
   if (powerWatts <= 0 || mpeWattsPerM2 <= 0 || divergenceRad <= 0) return 0;
-  const hazardDiam = Math.sqrt((4.0 * powerWatts) / (Math.PI * mpeWattsPerM2));
+  const profileFactor = isGaussian1e2 ? 8.0 : 4.0;
+  const hazardDiam = Math.sqrt((profileFactor * powerWatts) / (Math.PI * mpeWattsPerM2));
   return Math.max(0, (hazardDiam - apertureDiameterM) / divergenceRad);
 }
 
@@ -645,7 +704,9 @@ export function computeNeutronActivationSaturationBq(
   molarMassGPerMol: number,
   crossSectionBarns: number,
   thermalFluxNcm2s: number,
-  isotopicAbundance = 1.0
+  isotopicAbundance = 1.0,
+  sigmaBurnBarns = 0,
+  productDecayLambdaS1 = 0
 ): number {
   if (
     targetMassGrams <= 0 ||
@@ -657,7 +718,13 @@ export function computeNeutronActivationSaturationBq(
   }
   const nTargetAtoms = (targetMassGrams / molarMassGPerMol) * AVOGADRO * isotopicAbundance;
   const sigmaCm2 = crossSectionBarns * 1e-24;
-  return nTargetAtoms * sigmaCm2 * thermalFluxNcm2s;
+  const productionSatBq = nTargetAtoms * sigmaCm2 * thermalFluxNcm2s;
+  if (sigmaBurnBarns > 0 && productDecayLambdaS1 > 0) {
+    const sigmaBurnCm2 = sigmaBurnBarns * 1e-24;
+    const burnFactor = productDecayLambdaS1 / (productDecayLambdaS1 + sigmaBurnCm2 * thermalFluxNcm2s);
+    return productionSatBq * burnFactor;
+  }
+  return productionSatBq;
 }
 
 /**
@@ -766,7 +833,7 @@ export function computeCurrieDetectionLimits(
 ): { lcCounts: number; ldCounts: number } {
   const b = Math.max(0, backgroundCounts);
   const sigma0Factor = pairedBlank ? Math.SQRT2 : 1.0; // paired blank = 2.33 * sqrt(B), well-known = 1.645 * sqrt(B)
-  const kAlpha = pairedBlank ? 1.6448536 * sigma0Factor : 2.33;
+  const kAlpha = 1.6448536 * sigma0Factor;
   const lcCounts = kAlpha * Math.sqrt(b);
   const ldCounts = 2.71 + 2.0 * lcCounts;
   return { lcCounts, ldCounts };
@@ -840,6 +907,62 @@ export function computeMultiCompartmentRetentionKBq(
       ? Math.pow(2.0, -(timeDays / physicalHalfLifeDays))
       : 1.0;
   return intakeKBq * bioSum * physFactor;
+}
+
+const TG43_RADIAL_TABLES: Record<string, { r: number[]; g: number[]; muEffTail: number }> = {
+  // Rivard et al., Med. Phys. 31(3), 2004 — I-125 Model 6711 OncoSeed
+  'I-125': {
+    r: [0.1, 0.15, 0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0],
+    g: [1.055, 1.078, 1.082, 1.071, 1.042, 1.0, 0.908, 0.814, 0.632, 0.496, 0.364, 0.27, 0.199, 0.148, 0.109, 0.08],
+    muEffTail: 0.305
+  },
+  // Rivard et al., Med. Phys. 31(3), 2004 — Pd-103 Model 200 TheraSeed
+  'Pd-103': {
+    r: [0.1, 0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 10.0],
+    g: [1.3, 1.24, 1.19, 1.11, 1.0, 0.764, 0.569, 0.303, 0.157, 0.0806, 0.0417, 0.0217, 0.0114, 0.0033],
+    muEffTail: 0.62
+  },
+  // Rivard (2007) / AAPM consensus — Cs-131 Model CS-1
+  'Cs-131': {
+    r: [0.1, 0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 10.0],
+    g: [1.011, 1.036, 1.047, 1.031, 1.0, 0.922, 0.834, 0.659, 0.501, 0.371, 0.268, 0.19, 0.132, 0.062],
+    muEffTail: 0.375
+  },
+  // Daskalov et al. / AAPM HEBD — Ir-192 MicroSelectron v2
+  'Ir-192': {
+    r: [0.1, 0.25, 0.5, 0.75, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 10.0, 12.0],
+    g: [0.996, 0.997, 0.998, 0.999, 1.0, 1.006, 1.007, 1.005, 0.999, 0.99, 0.978, 0.963, 0.926, 0.88],
+    muEffTail: 0.026
+  }
+};
+
+/**
+ * AAPM TG-43U1 Radial Dose Function g_L(r) via log-linear consensus table interpolation (g_L(1 cm) = 1.0).
+ */
+export function evaluateTG43RadialDoseFunction(rCm: number, seedNuclide = 'I-125'): number {
+  const key =
+    seedNuclide.includes('103') || seedNuclide.toUpperCase().includes('PD')
+      ? 'Pd-103'
+      : seedNuclide.includes('131') || seedNuclide.toUpperCase().includes('CS')
+        ? 'Cs-131'
+        : seedNuclide.includes('192') || seedNuclide.toUpperCase().includes('IR')
+          ? 'Ir-192'
+          : 'I-125';
+  const tbl = TG43_RADIAL_TABLES[key];
+  const r = Math.max(0.05, rCm);
+  const n = tbl.r.length;
+  if (r <= tbl.r[0]) return tbl.g[0];
+  if (r >= tbl.r[n - 1]) {
+    return Math.max(1e-6, tbl.g[n - 1] * Math.exp(-tbl.muEffTail * (r - tbl.r[n - 1])));
+  }
+  for (let i = 0; i < n - 1; i++) {
+    if (r >= tbl.r[i] && r <= tbl.r[i + 1]) {
+      const f = (r - tbl.r[i]) / (tbl.r[i + 1] - tbl.r[i]);
+      const lnG = Math.log(tbl.g[i]) + f * (Math.log(tbl.g[i + 1]) - Math.log(tbl.g[i]));
+      return Math.exp(lnG);
+    }
+  }
+  return 1.0;
 }
 
 /**

@@ -11,6 +11,14 @@ import { AuditDossierModal } from '../../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../../services/auditDossierService';
 import VerificationBadge from '../../../components/VerificationBadge';
 import { PhysicalGroundingPanel } from '../../../components/PhysicalGroundingPanel';
+import { getCanonicalNuclide } from '../../../utils/canonicalNuclidePhysics';
+import {
+  computePointSourceAmbientDoseRateUSvHr,
+  computeControlledBoundaryDistanceM,
+  computeISO4037AirKermaToHStar10MSvHr,
+  computeFluenceToHStar10MSvHr,
+  computeKatzPenfoldBetaRangeMm
+} from '../../../utils/radiologicalPhysicsKernels';
 
 const parseActivityMBq = (activityStr: string) => {
   const str = activityStr.toLowerCase();
@@ -111,18 +119,49 @@ const ExternalDoseCalc: React.FC = () => {
     setActivityUnit(1); // set unit to MBq
   };
 
-  // Canonical ICRP-107 / ICRU-57 ambient dose equivalent constant Γ_SI in µSv·m²/(h·GBq),
-  // divided by 1000 for mSv·m²/(h·GBq) (equiv. µSv·m²/(h·MBq)):
-  // e.g. Co-60 = 308.5 µSv·m²/(h·GBq) -> 0.3085 mSv/h at 1 GBq @ 1 m;
-  //      Cs-137 = 77.20 µSv·m²/(h·GBq) -> 0.0772 mSv/h at 1 GBq @ 1 m.
-  const gammaSI_GBq = parseFloat(String(selectedNuclide?.['Γ_SI (µSv·m²/h·GBq)'] ?? '0')) || 0;
+  const canonNuclide = getCanonicalNuclide(String(selectedNuclide?.Symbol || ''));
+  const tableGammaSI_GBq = parseFloat(String(selectedNuclide?.['Γ_SI (µSv·m²/h·GBq)'] ?? '0')) || 0;
+  const gammaSI_GBq = canonNuclide && canonNuclide.gammaH10_uSv_m2_h_GBq > 0
+    ? canonNuclide.gammaH10_uSv_m2_h_GBq
+    : tableGammaSI_GBq;
   const gammaSI = gammaSI_GBq / 1000.0; // mSv·m²/(h·GBq) === µSv·m²/(h·MBq)
 
   const activityMBq = activity * activityUnit;
   const activityGBq = activityMBq / 1000.0;
   const safeDistance = Math.max(0.01, distance || 0.01); // Near-field singularity clamp (STRESS-01)
-  const doseRateMSvHr = (activityGBq * gammaSI) / (safeDistance * safeDistance); // mSv/h
-  const doseRate = doseRateMSvHr * 1000.0; // µSv/h
+  const canonRateUSvHr = computePointSourceAmbientDoseRateUSvHr(
+    String(selectedNuclide?.Symbol || ''),
+    activityGBq,
+    safeDistance,
+    0.01
+  );
+  const doseRate = canonRateUSvHr > 0
+    ? canonRateUSvHr
+    : (activityGBq * gammaSI_GBq) / (safeDistance * safeDistance); // µSv/h
+  const doseRateMSvHr = doseRate / 1000.0; // mSv/h
+
+  const occHourlyLimitUSvHr = (currentFramework.limits.occupationalAnnualEffective_mSv * 1000) / 2000;
+  const pubHourlyLimitUSvHr = (currentFramework.limits.publicAnnualEffective_mSv * 1000) / 8760;
+  const occBoundaryM = computeControlledBoundaryDistanceM(gammaSI_GBq, activityGBq, occHourlyLimitUSvHr);
+  const pubBoundaryM = computeControlledBoundaryDistanceM(gammaSI_GBq, activityGBq, pubHourlyLimitUSvHr);
+
+  // ISO 4037-3 S-Cs / photon reference conversion (~1.20 Sv/Gy air-kerma to H*(10)) & ICRP-74 fluence cross-check
+  const airKermaRateMGyHr = doseRateMSvHr / 1.20;
+  const isoHStar10MSvHr = computeISO4037AirKermaToHStar10MSvHr(airKermaRateMGyHr, 1.20);
+  const totalPhotonYield = canonNuclide?.photonLines?.length
+    ? canonNuclide.photonLines.reduce((acc, l) => acc + l.yield, 0)
+    : 1.0;
+  const photonFluenceRateCm2S =
+    (activityGBq * 1e9 * Math.max(0.01, totalPhotonYield)) /
+    (4.0 * Math.PI * Math.pow(safeDistance * 100.0, 2));
+  const icrp74FluenceHStar10MSvHr = computeFluenceToHStar10MSvHr(photonFluenceRateCm2S, 3.25);
+
+  const betaMaxMeV = Math.max(
+    0.05,
+    parseFloat(String(selectedNuclide?.['Beta Max (MeV)'] ?? selectedNuclide?.['Max Beta Energy (MeV)'] ?? '1.0')) || 1.0
+  );
+  const betaRangeTissueMm = computeKatzPenfoldBetaRangeMm(betaMaxMeV, 1.0);
+  const betaRangeAlMm = computeKatzPenfoldBetaRangeMm(betaMaxMeV, 2.70);
 
   const unitLabel = useMemo(() => {
     if (activityUnit === 1000000) return 'TBq';
@@ -326,13 +365,19 @@ const ExternalDoseCalc: React.FC = () => {
           </div>
         </div>
 
-        {/* Regulatory Context Callout */}
+        {/* Regulatory Context & Secondary Radiological Conversions */}
         <div style={{ background: 'rgba(0,0,0,0.25)', padding: '10px 12px', borderRadius: '6px', border: '1px solid var(--color-border)', fontSize: '0.78rem' }}>
           <div style={{ color: 'var(--color-text-muted)', marginBottom: '4px' }}>
-            {currentFramework.shortCode} Annual Reference:
+            {currentFramework.shortCode} Annual Reference &amp; Boundary Distances:
           </div>
-          <div>Occupational: <strong style={{ color: '#00e5ff' }}>{formatDoseMSv(currentFramework.limits.occupationalAnnualEffective_mSv, '/yr')}</strong> (~{formatDoseRateMSvHr(currentFramework.limits.occupationalAnnualEffective_mSv / 2000)} for 2000h work year)</div>
-          <div>Public: <strong style={{ color: '#10b981' }}>{formatDoseMSv(currentFramework.limits.publicAnnualEffective_mSv, '/yr')}</strong> (~{formatDoseRateMSvHr(currentFramework.limits.publicAnnualEffective_mSv / 8760)} continuous)</div>
+          <div>Occupational: <strong style={{ color: '#00e5ff' }}>{formatDoseMSv(currentFramework.limits.occupationalAnnualEffective_mSv, '/yr')}</strong> (~{formatDoseRateMSvHr(occHourlyLimitUSvHr / 1000)} for 2000h) &rarr; Boundary: <strong>{occBoundaryM.toFixed(2)} m</strong></div>
+          <div>Public: <strong style={{ color: '#10b981' }}>{formatDoseMSv(currentFramework.limits.publicAnnualEffective_mSv, '/yr')}</strong> (~{formatDoseRateMSvHr(pubHourlyLimitUSvHr / 1000)} continuous) &rarr; Boundary: <strong>{pubBoundaryM.toFixed(2)} m</strong></div>
+          <div style={{ marginTop: '6px', paddingTop: '6px', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontSize: '0.72rem', color: '#94a3b8' }}>
+            <div>ISO 4037 H*(10): <strong style={{ color: '#e2e8f0' }}>{isoHStar10MSvHr.toFixed(4)} mSv/h</strong> (Ka {airKermaRateMGyHr.toFixed(4)} mGy/h)</div>
+            <div>ICRP-74 Fluence H*(10): <strong style={{ color: '#e2e8f0' }}>{icrp74FluenceHStar10MSvHr.toFixed(4)} mSv/h</strong></div>
+            <div>Katz-Penfold β Range ({betaMaxMeV.toFixed(2)} MeV):</div>
+            <div><strong style={{ color: '#f59e0b' }}>{betaRangeTissueMm.toFixed(2)} mm</strong> tissue / <strong>{betaRangeAlMm.toFixed(2)} mm</strong> Al</div>
+          </div>
         </div>
 
         <button

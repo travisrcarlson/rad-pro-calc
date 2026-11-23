@@ -6,6 +6,10 @@ import VerificationBadge from '../../components/VerificationBadge';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
 import { getCanonicalNuclide, parseActivityToGBq } from '../../utils/canonicalNuclidePhysics';
+import {
+  computeMultiCompartmentRetentionKBq,
+  computeRadonProgenyAnnualDose
+} from '../../utils/radiologicalPhysicsKernels';
 import { useRegulatory } from '../../context/RegulatoryContext';
 
 const Plot = (PlotComponent as any).default || PlotComponent;
@@ -65,6 +69,17 @@ const RADIONUCLIDES: Record<string, NuclideData> = {
     targetOrgan: 'Skeleton & Liver',
     ingestionDoseCoeff: 2.5e-7,
     inhalationDoseCoeff: 1.2e-4, // Highly hazardous as alpha-emitter in lungs
+    toxicity: 'Very High'
+  },
+  'Americium-241': {
+    name: 'Americium-241',
+    symbol: 'Am-241',
+    halfLifeRadioDays: 157860, // 432.2 years
+    halfLifeBioDays: 18250.0, // Bone / Liver accumulator (50 years biological)
+    fractionToOrgan: 0.45,
+    targetOrgan: 'Skeleton & Liver',
+    ingestionDoseCoeff: 2.0e-7,
+    inhalationDoseCoeff: 9.6e-5,
     toxicity: 'Very High'
   },
   'Tritium (H-3)': {
@@ -158,7 +173,8 @@ const InternalDosimetryModule: React.FC = () => {
       if (norm.includes('131')) setNuclideKey('Iodine-131');
       else if (norm.includes('137')) setNuclideKey('Cesium-137');
       else if (norm.includes('90')) setNuclideKey('Strontium-90');
-      else if (norm.includes('239') || norm.includes('241')) setNuclideKey('Plutonium-239');
+      else if (norm.includes('241')) setNuclideKey('Americium-241');
+      else if (norm.includes('239')) setNuclideKey('Plutonium-239');
       else if (norm.includes('H-3') || norm === 'H3' || norm.includes('TRITIUM')) setNuclideKey('Tritium (H-3)');
     }
     if (actRaw) {
@@ -175,9 +191,8 @@ const InternalDosimetryModule: React.FC = () => {
   const radonAnalytics = useMemo(() => {
     const pCiPerL = radonConcBqM3 / 37.0;
     const eecBqM3 = radonConcBqM3 * radonEquilibriumF;
-    const workingLevelWL = eecBqM3 / 3700.0;
-    const annualWLM = workingLevelWL * (radonExposureHoursYr / 170.0);
-    const doseICRP137_mSv = annualWLM * 10.0; // ICRP-137 standard occupational 10 mSv/WLM
+    const { wl: workingLevelWL, wlm: annualWLM, annualDoseMSv: doseICRP137_mSv } =
+      computeRadonProgenyAnnualDose(radonConcBqM3, radonEquilibriumF, radonExposureHoursYr, 10.0);
     const doseICRP65_mSv = annualWLM * 5.0;   // Traditional ICRP-65 5 mSv/WLM
 
     // Jacobi Ventilation Curve (0.1 to 4.0 ACH)
@@ -285,11 +300,12 @@ const InternalDosimetryModule: React.FC = () => {
       const currentCommittedDose = activityBq * doseCoeff * (1 - Math.exp(-(lambdaRadio + lambdaBio) * t)) * 1000; // in mSv
       doseArr.push(currentCommittedDose);
 
-      // ODE system derivatives (Euler method)
+      // ODE system derivatives (Euler method), honoring canonical ICRP f1 GI absorption fraction
+      const f1GutAbsorbed = route === 'Ingestion' ? (getCanonicalNuclide(nuclide.symbol)?.f1Gut ?? 1.0) : 1.0;
       const dIntake = -ka * intake - lambdaRadio * intake;
-      const dBlood = ka * intake - kOrgan * blood - kUrine * blood - lambdaRadio * blood;
+      const dBlood = ka * f1GutAbsorbed * intake - kOrgan * blood - kUrine * blood - lambdaRadio * blood;
       const dOrgan = kOrgan * blood - lambdaBio * organ - lambdaRadio * organ;
-      const dExcreted = lambdaBio * organ + kUrine * blood - lambdaRadio * excreted;
+      const dExcreted = lambdaBio * organ + kUrine * blood + ka * (1 - f1GutAbsorbed) * intake - lambdaRadio * excreted;
 
       // Update states
       intake += dIntake * dt;
@@ -306,22 +322,32 @@ const InternalDosimetryModule: React.FC = () => {
     return { time, intakeArr, bloodArr, organArr, excretionArr, doseArr };
   }, [nuclide, route, intakeActivity, absorptionClass, timespan, effectiveDoseCoeffSvBq]);
 
-  // Find simulated values at the currently selected day
+  // Find simulated values at the currently selected day + ICRP-78 multi-compartment systemic reference
   const scrubbedValues = useMemo(() => {
     const idx = Math.min(
       simulation.time.length - 1,
       Math.round(selectedDay / 0.1)
     );
-    
+    const icrp78RetentionKBq = computeMultiCompartmentRetentionKBq(
+      intakeActivity,
+      selectedDay,
+      [
+        { fraction: 0.30, halfLifeDays: 1.5 },
+        { fraction: 0.70, halfLifeDays: nuclide.halfLifeBioDays }
+      ],
+      nuclide.halfLifeRadioDays
+    );
+
     return {
       day: simulation.time[idx],
       intake: simulation.intakeArr[idx],
       blood: simulation.bloodArr[idx],
       organ: simulation.organArr[idx],
       excretion: simulation.excretionArr[idx],
-      dose: simulation.doseArr[idx]
+      dose: simulation.doseArr[idx],
+      icrp78RetentionKBq
     };
-  }, [simulation, selectedDay]);
+  }, [simulation, selectedDay, intakeActivity, nuclide.halfLifeBioDays, nuclide.halfLifeRadioDays]);
 
   // Max dose commits at infinite time
   const maxCommittedDose = useMemo(() => {
@@ -668,8 +694,8 @@ const InternalDosimetryModule: React.FC = () => {
                   />
                 )}
 
-                {/* Target Organ: Skeleton / Bones (Sr-90 & Pu-239 target) */}
-                {(nuclideKey === 'Strontium-90' || nuclideKey === 'Plutonium-239') && (
+                {/* Target Organ: Skeleton / Bones (Sr-90, Pu-239 & Am-241 target) */}
+                {(nuclideKey === 'Strontium-90' || nuclideKey === 'Plutonium-239' || nuclideKey === 'Americium-241') && (
                   <g 
                     fill="#fbbf24" 
                     stroke="#fbbf24"

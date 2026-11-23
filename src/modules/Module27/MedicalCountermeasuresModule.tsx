@@ -150,7 +150,8 @@ export const MedicalCountermeasuresModule: React.FC = () => {
         setSelectedIsotopeId('pu239');
         setIntakeActivitykBq(50);
       }
-    } else if (isoParam) {
+    }
+    if (isoParam) {
       const cleanIso = isoParam.toLowerCase().replace(/[^a-z0-9]/g, '');
       const match = ISOTOPE_PRESETS.find(
         p => p.id === cleanIso || p.name.toLowerCase().replace(/[^a-z0-9]/g, '').includes(cleanIso)

@@ -1,10 +1,11 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useLayoutEffect } from 'react';
 import VerificationBadge from '../../components/VerificationBadge';
 import PlotComponent from 'react-plotly.js';
 import { BlockMath, InlineMath } from 'react-katex';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
 import { useRegulatory } from '../../context/RegulatoryContext';
+import { computeRadiographicGeometry } from '../../utils/radiologicalPhysicsKernels';
 
 const Plot = (PlotComponent as any).default || PlotComponent;
 
@@ -136,8 +137,38 @@ const XRayDistortionModule: React.FC = () => {
   // Audit Dossier Modal State
   const [isDossierOpen, setIsDossierOpen] = useState<boolean>(false);
 
-  // Canvas Reference
+  // Canvas Reference & Responsive Sizing
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const canvasWrapperRef = useRef<HTMLDivElement | null>(null);
+  const [canvasDims, setCanvasDims] = useState<{ width: number; height: number }>({ width: 780, height: 420 });
+
+  useLayoutEffect(() => {
+    const syncDims = () => {
+      if (!canvasWrapperRef.current) return;
+      const rect = canvasWrapperRef.current.getBoundingClientRect();
+      const w = Math.max(320, Math.round(rect.width));
+      const h = Math.max(300, Math.round(rect.height));
+      setCanvasDims((prev) => (Math.abs(prev.width - w) > 1 || Math.abs(prev.height - h) > 1 ? { width: w, height: h } : prev));
+    };
+    syncDims();
+    const ro = typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver((entries) => {
+          for (const entry of entries) {
+            if (entry.target === canvasWrapperRef.current) {
+              const w = Math.max(320, Math.round(entry.contentRect.width));
+              const h = Math.max(300, Math.round(entry.contentRect.height));
+              setCanvasDims((prev) => (Math.abs(prev.width - w) > 1 || Math.abs(prev.height - h) > 1 ? { width: w, height: h } : prev));
+            }
+          }
+        })
+      : null;
+    if (ro && canvasWrapperRef.current) ro.observe(canvasWrapperRef.current);
+    window.addEventListener('resize', syncDims);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener('resize', syncDims);
+    };
+  }, [activeTab]);
 
   // Handler for preset selection
   const handleSelectPreset = (presetId: string) => {
@@ -162,15 +193,15 @@ const XRayDistortionModule: React.FC = () => {
     const safeOid = Math.max(0, Math.min(oid, safeSid - 1));
     const rawSod = Math.max(1, safeSid - safeOid);
     const sod = safeOid > 0 ? Math.min(rawSod, safeSid - 1) : rawSod; // Source-to-Object Distance (cm)
-    const magnification = safeSid / sod; // M
+    const { magnification, unsharpnessUgMm: unsharpness_mm } = computeRadiographicGeometry(
+      safeSid,
+      safeOid,
+      focalSpot
+    );
     const percentEnlargement = (magnification - 1) * 100;
 
     // Projected nominal image size of object width (cm)
     const nominalImageWidth = objectWidth * magnification;
-
-    // Geometric Unsharpness / Penumbra Ug (mm)
-    // Ug = F * (OID / SOD) = F * (M - 1)
-    const unsharpness_mm = focalSpot * (safeOid / sod);
 
     // Umbra width (mm) on plate for object of width objectWidth (converted to mm = * 10)
     // Nominal magnified dimension in mm = nominalImageWidth * 10
@@ -329,8 +360,17 @@ const XRayDistortionModule: React.FC = () => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const width = canvas.width;
-    const height = canvas.height;
+    const rect = canvas.getBoundingClientRect();
+    const width = Math.max(320, Math.round(rect.width || canvas.clientWidth || canvasDims.width));
+    const height = Math.max(300, Math.round(rect.height || canvas.clientHeight || canvasDims.height));
+    const dpr = Math.min(2.5, Math.max(1.0, typeof window !== 'undefined' ? window.devicePixelRatio || 1.0 : 1.0));
+    const targetW = Math.round(width * dpr);
+    const targetH = Math.round(height * dpr);
+    if (canvas.width !== targetW || canvas.height !== targetH) {
+      canvas.width = targetW;
+      canvas.height = targetH;
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     // Clear background
     ctx.fillStyle = '#0a0e17';
@@ -351,13 +391,15 @@ const XRayDistortionModule: React.FC = () => {
     const objTopY = Math.max(sourceY + 12, detectorY - calc.oidTop * zScale);
     const sodY = (objTopY + objBottomY) / 2;
 
-    // Horizontal center with lateral offset
+    // Horizontal center with lateral offset (isotropic reference cap on ultrawide displays)
     const centerX = width / 2;
-    const xOffPx = lateralOffset * 4.0;
+    const effectiveWidth = Math.min(width, height * 1.95);
+    const xScale = Math.max(
+      2.5,
+      Math.min(18.0, (effectiveWidth * 0.44) / Math.max(4, calc.nominalImageWidth + Math.abs(lateralOffset) * 1.5))
+    );
+    const xOffPx = lateralOffset * Math.min(4.0, xScale * 0.65);
     const objCenterX = centerX + xOffPx;
-
-    // Horizontal scale for rendering object and shadows
-    const xScale = 6.0; // pixels per cm
 
     // Focal spot representation at top
     // Visually magnified so the user can perceive the finite focal width
@@ -377,7 +419,7 @@ const XRayDistortionModule: React.FC = () => {
     const objCornerBR = { x: objCenterX + dxTilt, y: objBottomY + dyTilt };
 
     // 1. Draw Divergent Beam Cone (translucent background radiation field)
-    const beamSpanDetector = Math.max(width * 0.45, (objectWidth * calc.magnification * xScale * 1.6));
+    const beamSpanDetector = Math.max(effectiveWidth * 0.45, (objectWidth * calc.magnification * xScale * 1.6));
     const beamAngleRad = (beamAngle * Math.PI) / 180;
     const beamCenterPlateX = centerX + Math.tan(beamAngleRad) * usableHeight;
 
@@ -632,7 +674,7 @@ const XRayDistortionModule: React.FC = () => {
     ctx.fillText(`SOD = ${calc.sodTop.toFixed(1)} cm`, oidDimX + 4, (sourceY + objTopY) / 2);
     ctx.restore();
 
-  }, [sid, oid, objectWidth, objectDepth, focalSpot, objectTilt, beamAngle, lateralOffset, calc]);
+  }, [sid, oid, objectWidth, objectDepth, focalSpot, objectTilt, beamAngle, lateralOffset, calc, canvasDims]);
 
   // Generate Audit Dossier Payload
   const dossierPayload: CalculationDossierPayload = useMemo(() => {
@@ -1084,18 +1126,18 @@ const XRayDistortionModule: React.FC = () => {
               </div>
 
               {/* HTML5 Canvas */}
-              <canvas
-                ref={canvasRef}
-                width={780}
-                height={400}
-                style={{
-                  width: '100%',
-                  height: 'auto',
-                  borderRadius: '6px',
-                  border: '1px solid rgba(255, 255, 255, 0.08)',
-                  display: 'block'
-                }}
-              />
+              <div ref={canvasWrapperRef} style={{ width: '100%', height: '420px', position: 'relative' }}>
+                <canvas
+                  ref={canvasRef}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    borderRadius: '6px',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    display: 'block'
+                  }}
+                />
+              </div>
 
               {/* Canvas Legend */}
               <div style={{

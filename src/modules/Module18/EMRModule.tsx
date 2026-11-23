@@ -5,6 +5,7 @@ import { BlockMath } from 'react-katex';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
 import { useRegulatory } from '../../context/RegulatoryContext';
+import { computeFraunhoferFarFieldMeters } from '../../utils/radiologicalPhysicsKernels';
 
 // MIL-STD-464C / NAVSEA OP 3565 Peak Electric Field Thresholds (V/m)
 const HERO_SUSCEPTIBLE_PEAK_V_M = 20.0; // Susceptible / exposed electro-explosive devices (EEDs)
@@ -320,7 +321,7 @@ const EMRModule: React.FC = () => {
     const eirpStaticAvgW = avgPowerW * linearGain;
     const eirpScanningAvgW = scanningAvgPowerW * linearGain;
 
-    const transitionDistM = (2 * Math.pow(apertureM, 2)) / wavelength;
+    const transitionDistM = computeFraunhoferFarFieldMeters(apertureM, freqHz);
     const apertureArea = (Math.PI * Math.pow(apertureM, 2)) / 4;
     const maxNearFieldPowerDensityW = (4 * avgPowerW) / Math.max(0.001, apertureArea);
     const maxNearFieldPowerDensityScanningW = (4 * scanningAvgPowerW) / Math.max(0.001, apertureArea);
@@ -1013,12 +1014,12 @@ const EMRModule: React.FC = () => {
               </p>
             </div>
             <span style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontFamily: 'monospace' }}>
-              GRID RESOLUTION: 10m/DIV
+              SCALE SPAN: {Math.max(activeSafeUncontrolled * 1.35, math.transitionDistM * 1.1, 30).toFixed(0)}m
             </span>
           </div>
 
           <div style={{ width: '100%', overflowX: 'auto', background: '#020617', borderRadius: '8px', border: '1px solid var(--color-border)', padding: '15px 10px' }}>
-            <svg viewBox="0 0 900 320" style={{ width: '100%', minWidth: '850px', height: 'auto', display: 'block' }}>
+            <svg viewBox="0 0 900 320" preserveAspectRatio="xMidYMid meet" style={{ width: '100%', minWidth: '850px', maxHeight: '340px', height: 'auto', display: 'block', margin: '0 auto' }}>
               <defs>
                 <radialGradient id="tacticalGridGlow" cx="50%" cy="50%" r="50%">
                   <stop offset="0%" stopColor="#00e5ff" stopOpacity="0.08" />
@@ -1082,19 +1083,19 @@ const EMRModule: React.FC = () => {
                         <circle cx="0" cy="0" r="35" fill="none" stroke="var(--color-primary)" strokeWidth="1" strokeOpacity="0.2" strokeDasharray="4 4" />
                       </g>
 
-                      {/* Tactical HUD Boundary Labels */}
-                      <g transform={`translate(${cx + rUncontrolled}, ${cy})`}>
-                        <line x1="0" y1="0" x2="25" y2="-15" stroke="#ef4444" strokeWidth="1" />
-                        <rect x="25" y="-25" width="160" height="20" rx="3" fill="rgba(239, 68, 68, 0.15)" stroke="#ef4444" strokeWidth="1" />
-                        <text x="32" y="-11" fill="#ef4444" fontSize="9" fontWeight="bold">
+                      {/* Tactical HUD Boundary Labels (clamped inside 900x320 viewBox) */}
+                      <g transform={`translate(${Math.min(710, cx + rUncontrolled)}, ${cy})`}>
+                        <line x1="0" y1="0" x2="20" y2="-15" stroke="#ef4444" strokeWidth="1" />
+                        <rect x="20" y="-25" width="160" height="20" rx="3" fill="rgba(239, 68, 68, 0.15)" stroke="#ef4444" strokeWidth="1" />
+                        <text x="27" y="-11" fill="#ef4444" fontSize="9" fontWeight="bold">
                           UNCONTROLLED: {activeSafeUncontrolled.toFixed(1)}m
                         </text>
                       </g>
 
-                      <g transform={`translate(${cx}, ${cy - rControlled})`}>
-                        <line x1="0" y1="0" x2="25" y2="-15" stroke="#f59e0b" strokeWidth="1" />
-                        <rect x="25" y="-25" width="150" height="20" rx="3" fill="rgba(245, 158, 11, 0.15)" stroke="#f59e0b" strokeWidth="1" />
-                        <text x="32" y="-11" fill="#f59e0b" fontSize="9" fontWeight="bold">
+                      <g transform={`translate(${Math.min(720, cx)}, ${Math.max(40, cy - rControlled)})`}>
+                        <line x1="0" y1="0" x2="20" y2="-15" stroke="#f59e0b" strokeWidth="1" />
+                        <rect x="20" y="-25" width="150" height="20" rx="3" fill="rgba(245, 158, 11, 0.15)" stroke="#f59e0b" strokeWidth="1" />
+                        <text x="27" y="-11" fill="#f59e0b" fontSize="9" fontWeight="bold">
                           CONTROLLED: {activeSafeControlled.toFixed(1)}m
                         </text>
                       </g>
@@ -1106,16 +1107,16 @@ const EMRModule: React.FC = () => {
                 (() => {
                   const ox = 90;
                   const oy = 160;
-                  const maxRange = Math.max(activeSafeUncontrolled * 1.3, 30);
-                  const scale = 720 / maxRange;
+                  const maxRange = Math.max(activeSafeUncontrolled * 1.35, math.transitionDistM * 1.15, 30);
+                  const scale = 680 / maxRange;
 
-                  const cDistPix = Math.min(680, Math.max(30, activeSafeControlled * scale));
-                  const uDistPix = Math.min(760, Math.max(50, activeSafeUncontrolled * scale));
-                  const nfDistPix = Math.min(760, math.transitionDistM * scale);
+                  const cDistPix = Math.min(640, Math.max(30, activeSafeControlled * scale));
+                  const uDistPix = Math.min(700, Math.max(50, activeSafeUncontrolled * scale));
+                  const nfDistPix = Math.min(700, math.transitionDistM * scale);
 
-                  const halfBeamRad = (math.beamwidthDeg / 2) * (Math.PI / 180);
-                  const spreadControlled = Math.max(12, cDistPix * Math.tan(halfBeamRad));
-                  const spreadUncontrolled = Math.max(22, uDistPix * Math.tan(halfBeamRad));
+                  const halfBeamRad = Math.min(0.65, (math.beamwidthDeg / 2) * (Math.PI / 180));
+                  const spreadControlled = Math.min(115, Math.max(12, cDistPix * Math.tan(halfBeamRad)));
+                  const spreadUncontrolled = Math.min(125, Math.max(22, uDistPix * Math.tan(halfBeamRad)));
 
                   return (
                     <>
@@ -1148,10 +1149,10 @@ const EMRModule: React.FC = () => {
                       <ellipse cx={ox + 50} cy={oy + 45} rx="35" ry="14" fill="rgba(245, 158, 11, 0.08)" stroke="#f59e0b" strokeWidth="1" strokeDasharray="3 2" transform={`rotate(35 ${ox + 50} ${oy + 45})`} />
 
                       {/* Near-Field Rayleigh Datum Line */}
-                      {nfDistPix > 10 && nfDistPix < 780 && (
+                      {nfDistPix > 10 && nfDistPix < 720 && (
                         <g transform={`translate(${ox + nfDistPix}, 0)`}>
                           <line x1="0" y1="40" x2="0" y2="280" stroke="#00e5ff" strokeWidth="1" strokeDasharray="3 3" />
-                          <text x="4" y="52" fill="#00e5ff" fontSize="8" fontWeight="bold">
+                          <text x={ox + nfDistPix > 650 ? -6 : 4} y="52" textAnchor={ox + nfDistPix > 650 ? 'end' : 'start'} fill="#00e5ff" fontSize="8" fontWeight="bold">
                             RAYLEIGH BOUNDARY (2D²/λ = {math.transitionDistM.toFixed(1)}m)
                           </text>
                         </g>
@@ -1159,7 +1160,7 @@ const EMRModule: React.FC = () => {
 
                       {/* Controlled Boundary Caliper */}
                       <line x1={ox + cDistPix} y1="70" x2={ox + cDistPix} y2="250" stroke="#f59e0b" strokeWidth="2" strokeDasharray="4 2" />
-                      <g transform={`translate(${ox + cDistPix + 6}, 80)`}>
+                      <g transform={`translate(${Math.min(735, ox + cDistPix + 6)}, 88)`}>
                         <rect x="0" y="0" width="150" height="20" rx="3" fill="rgba(245, 158, 11, 0.2)" stroke="#f59e0b" strokeWidth="1" />
                         <text x="8" y="14" fill="#f59e0b" fontSize="8" fontWeight="bold">
                           CONTROLLED: {activeSafeControlled.toFixed(1)}m
@@ -1168,7 +1169,7 @@ const EMRModule: React.FC = () => {
 
                       {/* Uncontrolled Boundary Caliper */}
                       <line x1={ox + uDistPix} y1="50" x2={ox + uDistPix} y2="270" stroke="#ef4444" strokeWidth="2" strokeDasharray="6 3" />
-                      <g transform={`translate(${ox + uDistPix + 6}, 60)`}>
+                      <g transform={`translate(${Math.min(720, ox + uDistPix + 6)}, 60)`}>
                         <rect x="0" y="0" width="165" height="20" rx="3" fill="rgba(239, 68, 68, 0.2)" stroke="#ef4444" strokeWidth="1" />
                         <text x="8" y="14" fill="#ef4444" fontSize="8" fontWeight="bold">
                           UNCONTROLLED: {activeSafeUncontrolled.toFixed(1)}m

@@ -76,7 +76,13 @@ const getSectorBadge = (sector: string, name: string): { code: string; label: st
   if (n.includes('smoke') || n.includes('detector') || n.includes('security')) {
     return { code: 'DET', label: 'Ion Detection', color: '#a855f7', bg: 'rgba(168, 85, 247, 0.12)' };
   }
-  if (n.includes('military') || n.includes('munitions') || n.includes('eod')) {
+  if (
+    s.includes('military') ||
+    s.includes('aerospace') ||
+    n.includes('military') ||
+    n.includes('munitions') ||
+    n.includes('eod')
+  ) {
     return { code: 'DEF', label: 'Defense / EOD', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.12)' };
   }
   if (n.includes('camera') || n.includes('radiography') || n.includes('ndt')) {
@@ -152,8 +158,12 @@ const EquipmentLibraryModule: React.FC = () => {
 
   useEffect(() => {
     const tabParam = searchParams.get('tab');
+    const searchParam = searchParams.get('search') || searchParams.get('q') || searchParams.get('nuclide');
     if (tabParam === 'incidents' || tabParam === 'equipment') {
       setActiveTab(tabParam);
+    }
+    if (searchParam !== null) {
+      setSearch(searchParam);
     }
   }, [searchParams]);
 

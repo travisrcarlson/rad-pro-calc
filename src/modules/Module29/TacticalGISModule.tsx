@@ -417,13 +417,14 @@ export const TacticalGISModule: React.FC = () => {
               <rect width="100%" height="100%" fill="url(#tacticalGrid)" />
             </svg>
 
-            {/* Dynamic Map Elements */}
+            {/* Dynamic Map Elements (zero-size origin anchor so (0,0) aligns identically for HTML rings & SVG overlays) */}
             <div
               style={{
                 position: 'absolute',
                 left: `calc(50% + ${panOffset.x}px)`,
                 top: `calc(50% + ${panOffset.y}px)`,
-                transform: 'translate(-50%, -50%)',
+                width: 0,
+                height: 0,
                 pointerEvents: 'none'
               }}
             >
@@ -449,6 +450,8 @@ export const TacticalGISModule: React.FC = () => {
 
                 return (
                   <svg
+                    width="1"
+                    height="1"
                     style={{
                       position: 'absolute',
                       left: 0,
@@ -634,7 +637,7 @@ export const TacticalGISModule: React.FC = () => {
               {showSensors && (
                 <>
                   {/* Connecting vector between Ground Zero and Triangulated Hotspot */}
-                  <svg style={{ position: 'absolute', left: 0, top: 0, overflow: 'visible', pointerEvents: 'none', zIndex: 6 }}>
+                  <svg width="1" height="1" style={{ position: 'absolute', left: 0, top: 0, overflow: 'visible', pointerEvents: 'none', zIndex: 6 }}>
                     <line
                       x1="0"
                       y1="0"

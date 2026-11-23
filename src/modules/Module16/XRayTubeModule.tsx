@@ -4,6 +4,7 @@ import PlotComponent from 'react-plotly.js';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
 import { evaluateXCOMAttenuation } from '../../utils/xcomAndGpBuildup';
+import { computeDuaneHuntMinWavelengthNm } from '../../utils/radiologicalPhysicsKernels';
 import { useRegulatory } from '../../context/RegulatoryContext';
 
 const Plot = (PlotComponent as any).default || PlotComponent;
@@ -215,7 +216,7 @@ const XRayTubeModule: React.FC = () => {
       { label: 'Effective Mean Energy', value: metrics.meanEnergy.toFixed(1), unit: 'keV', status: 'PASS' },
       { label: 'First Half-Value Layer (HVL)', value: metrics.hvl.toFixed(2), unit: 'mm Al', status: 'PASS' },
       { label: 'Air Kerma at 1 Meter', value: metrics.doseRate.toFixed(2), unit: 'µGy', status: 'PASS' },
-      { label: 'Duane-Hunt Cutoff Wavelength', value: (1.2398 / kvp).toFixed(4), unit: 'nm', status: 'PASS' }
+      { label: 'Duane-Hunt Cutoff Wavelength', value: (computeDuaneHuntMinWavelengthNm(kvp) ?? 0).toFixed(4), unit: 'nm', status: 'PASS' }
     ]
   }), [target, material, kvp, ma, time, filterAl, filterCu, anodeAngle, metrics]);
 
@@ -377,7 +378,7 @@ const XRayTubeModule: React.FC = () => {
             </p>
             
             <div style={{ background: '#030712', borderRadius: '8px', border: '1px solid var(--color-border)', padding: '15px', position: 'relative' }}>
-              <svg viewBox="0 0 500 240" style={{ width: '100%', height: 'auto' }}>
+              <svg viewBox="0 0 500 240" preserveAspectRatio="xMidYMid meet" style={{ width: '100%', maxHeight: '280px', height: 'auto', display: 'block', margin: '0 auto' }}>
                 <defs>
                   {/* Glowing cathode filament */}
                   <filter id="glowFilament">
@@ -412,42 +413,46 @@ const XRayTubeModule: React.FC = () => {
                 {/* Hot Glowing Filament */}
                 <circle cx="120" cy="100" r="4" fill={ma > 200 ? '#f97316' : '#ea580c'} filter="url(#glowFilament)" style={{ animation: 'pulse 2s infinite' }} />
 
-                {/* Rotating Anode Target Structure (Right side) */}
-                <rect x="360" y="50" width="30" height="100" rx="3" fill="#64748b" />
+                {/* Rotating Anode Target Structure (Right side — beveled face oriented toward bottom window) */}
+                <rect x="358" y="55" width="28" height="90" rx="3" fill="#64748b" />
                 {/* Angled Target Face */}
-                <polygon points="360,50 330,60 330,140 360,150" fill="#94a3b8" stroke="#475569" />
+                <polygon points="358,55 318,92 346,138 358,138" fill="#94a3b8" stroke="#475569" />
                 {/* Rotating Rotor Shaft */}
-                <rect x="390" y="85" width="50" height="30" fill="#475569" />
+                <rect x="386" y="85" width="54" height="30" fill="#475569" />
 
-                {/* Electron Stream (Cathode to Anode) */}
-                <path d="M 125,100 Q 220,95 332,100" fill="none" stroke="url(#electronBeam)" strokeWidth={Math.max(2, ma / 100)} strokeDasharray="8 4" style={{ strokeDashoffset: -20, animation: 'dash 1s linear infinite' }} />
+                {/* Electron Stream (Cathode to Anode focal spot) */}
+                <path d="M 125,100 Q 220,96 332,102" fill="none" stroke="url(#electronBeam)" strokeWidth={Math.max(2, ma / 100)} strokeDasharray="8 4" style={{ strokeDashoffset: -20, animation: 'dash 1s linear infinite' }} />
                 
                 {/* Anode Focal Spot Hot Glow */}
-                <circle cx="332" cy="100" r={Math.min(12, 4 + kvp / 15)} fill="#ef4444" opacity="0.8" filter="url(#glowFocalSpot)" />
+                <circle cx="332" cy="102" r={Math.min(12, 4 + kvp / 15)} fill="#ef4444" opacity="0.85" filter="url(#glowFocalSpot)" />
 
-                {/* X-Ray Cone Beam */}
-                <polygon points="332,100 240,240 380,240" fill="url(#xrayBeam)" opacity={0.6 + filterAl * -0.05} />
+                {/* X-Ray Cone Beam (collimated through X-Ray Window x=200..300 and Al/Cu filter slab x=220..280) */}
+                <polygon
+                  points="332,102 182,238 318,238"
+                  fill="url(#xrayBeam)"
+                  opacity={Math.max(0.18, Math.min(0.85, 0.72 - filterAl * 0.04 - filterCu * 0.12))}
+                />
 
-                {/* Filter Layers placed at the bottom window */}
+                {/* Filter Layers placed centered under the bottom window */}
                 {/* Glass window */}
                 <line x1="200" y1="170" x2="300" y2="170" stroke="#38bdf8" strokeWidth="4" />
                 
                 {/* Aluminum Filter Graphic */}
                 {filterAl > 0 && (
-                  <rect x="230" y="180" width="60" height={Math.min(10, filterAl * 2)} fill="#94a3b8" rx="1" />
+                  <rect x="215" y="178" width="70" height={Math.min(10, Math.max(2, filterAl * 2))} fill="#94a3b8" rx="1" />
                 )}
                 
                 {/* Copper Filter Graphic */}
                 {filterCu > 0 && (
-                  <rect x="230" y="195" width="60" height={Math.min(10, filterCu * 6)} fill="#ea580c" rx="1" />
+                  <rect x="215" y="193" width="70" height={Math.min(10, Math.max(2, filterCu * 6))} fill="#ea580c" rx="1" />
                 )}
 
                 {/* Text overlays */}
-                <text x="90" y="60" fill="var(--color-text-muted)" fontSize="10">Filament (Cathode)</text>
-                <text x="360" y="40" fill="var(--color-text-muted)" fontSize="10">Target (Anode)</text>
-                <text x="180" y="160" fill="var(--color-primary)" fontSize="10" fontWeight="bold">X-Ray Window</text>
-                {filterAl > 0 && <text x="300" y="188" fill="#94a3b8" fontSize="8">Al ({filterAl} mm)</text>}
-                {filterCu > 0 && <text x="300" y="203" fill="#ea580c" fontSize="8">Cu ({filterCu} mm)</text>}
+                <text x="90" y="55" fill="var(--color-text-muted)" fontSize="10" textAnchor="middle">Filament (Cathode)</text>
+                <text x="365" y="42" fill="var(--color-text-muted)" fontSize="10" textAnchor="middle">Target (Anode)</text>
+                <text x="200" y="160" fill="var(--color-primary)" fontSize="10" fontWeight="bold" textAnchor="middle">X-Ray Window</text>
+                {filterAl > 0 && <text x="295" y="186" fill="#94a3b8" fontSize="8">Al ({filterAl} mm)</text>}
+                {filterCu > 0 && <text x="295" y="201" fill="#ea580c" fontSize="8">Cu ({filterCu} mm)</text>}
               </svg>
             </div>
           </div>

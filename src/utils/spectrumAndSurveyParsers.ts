@@ -107,6 +107,9 @@ function parseIsoDurationSec(raw: string | null | undefined, fallback = 300): nu
 export function parseAnsiN42Xml(xmlText: string, fileName = 'spectrum.n42'): IngestedSpectrum {
   const parser = new DOMParser();
   const doc = parser.parseFromString(xmlText, 'application/xml');
+  if (doc.querySelector('parsererror')) {
+    throw new Error('Malformed ANSI N42.42 XML file: XML parsererror detected.');
+  }
 
   const getTagText = (tagNames: string[]): string | null => {
     for (const name of tagNames) {
@@ -153,7 +156,7 @@ export function parseAnsiN42Xml(xmlText: string, fileName = 'spectrum.n42'): Ing
   }
 
   const channels = counts.map((_, idx) => idx);
-  const energiesKeV = channels.map(ch => Math.max(0, coeffs[0] + coeffs[1] * ch + coeffs[2] * ch * ch));
+  const energiesKeV = channels.map(ch => coeffs[0] + coeffs[1] * ch + coeffs[2] * ch * ch);
 
   return {
     sourceFormat: 'ANSI_N42_42',
@@ -217,7 +220,7 @@ export function parseOrtecSpeOrCsv(rawText: string, fileName = 'spectrum.spe'): 
     }
 
     const channels = counts.map((_, idx) => startCh + idx);
-    const energiesKeV = channels.map(ch => Math.max(0, coeffs[0] + coeffs[1] * ch + coeffs[2] * ch * ch));
+    const energiesKeV = channels.map(ch => coeffs[0] + coeffs[1] * ch + coeffs[2] * ch * ch);
 
     return {
       sourceFormat: 'ORTEC_SPE',
@@ -237,24 +240,61 @@ export function parseOrtecSpeOrCsv(rawText: string, fileName = 'spectrum.spe'): 
   const channels: number[] = [];
   const energiesKeV: number[] = [];
   const counts: number[] = [];
+  const parsedRows: number[][] = [];
+  let liveTimeSec = 300;
+  let realTimeSec = 300;
 
   for (const rawLine of lines) {
     const line = rawLine.trim();
     if (!line || line.startsWith('#') || /^[a-zA-Z]/.test(line)) continue;
     const cols = line.split(/[,;\t\s]+/).map(Number).filter(n => !isNaN(n));
+    if (cols.length > 0) {
+      parsedRows.push(cols);
+    }
+  }
+
+  const isTka = fileName.toLowerCase().endsWith('.tka');
+  let dataRows = parsedRows;
+  if (
+    isTka &&
+    parsedRows.length >= 18 &&
+    parsedRows[0].length === 1 &&
+    parsedRows[1].length === 1 &&
+    parsedRows[0][0] > 0 &&
+    parsedRows[1][0] >= parsedRows[0][0]
+  ) {
+    liveTimeSec = parsedRows[0][0];
+    realTimeSec = parsedRows[1][0];
+    dataRows = parsedRows.slice(2);
+  }
+
+  const isSequentialTwoColChannel =
+    dataRows.length >= 16 &&
+    dataRows.every(r => r.length === 2 && Number.isInteger(r[0])) &&
+    (dataRows[0][0] === 0 || dataRows[0][0] === 1) &&
+    dataRows.every((r, idx) => idx === 0 || r[0] === dataRows[idx - 1][0] + 1);
+
+  for (const cols of dataRows) {
     if (cols.length === 1) {
       const ch = channels.length;
       channels.push(ch);
       energiesKeV.push(ch * 1.4648);
       counts.push(Math.max(0, Math.round(cols[0])));
     } else if (cols.length === 2) {
-      const ch = channels.length;
-      channels.push(ch);
-      energiesKeV.push(Math.max(0, cols[0]));
-      counts.push(Math.max(0, Math.round(cols[1])));
+      if (isSequentialTwoColChannel) {
+        const ch = Math.round(cols[0]);
+        channels.push(ch);
+        energiesKeV.push(ch * 1.4648);
+        counts.push(Math.max(0, Math.round(cols[1])));
+      } else {
+        const ch = channels.length;
+        channels.push(ch);
+        energiesKeV.push(cols[0]);
+        counts.push(Math.max(0, Math.round(cols[1])));
+      }
     } else if (cols.length >= 3) {
       channels.push(Math.round(cols[0]));
-      energiesKeV.push(Math.max(0, cols[1]));
+      energiesKeV.push(cols[1]);
       counts.push(Math.max(0, Math.round(cols[2])));
     }
   }
@@ -267,10 +307,10 @@ export function parseOrtecSpeOrCsv(rawText: string, fileName = 'spectrum.spe'): 
   return {
     sourceFormat: 'MCA_CSV',
     fileName,
-    instrumentModel: 'Multi-Channel CSV / TKA Import',
+    instrumentModel: isTka ? 'Canberra Genie MCA (.TKA)' : 'Multi-Channel CSV / TKA Import',
     sampleDescription: `Imported ${counts.length}-channel pulse-height spectrum`,
-    liveTimeSec: 300,
-    realTimeSec: 300,
+    liveTimeSec,
+    realTimeSec,
     calibrationCoeffs: [energiesKeV[0] || 0, dE, 0],
     channels,
     energiesKeV,
@@ -301,19 +341,10 @@ export function runMariscottiPeakSearch(
   const n = counts.length;
   if (n < 10) return { peaks: [], mariscottiSignal: [] };
 
-  // Step 1: Raw second difference D_i = C_{i+1} - 2*C_i + C_{i-1} and variance V_i = C_{i+1} + 4*C_i + C_{i-1}
-  const D = new Float64Array(n);
-  const V = new Float64Array(n);
-  for (let i = 1; i < n - 1; i++) {
-    const cPrev = Math.max(1, counts[i - 1]);
-    const cCurr = Math.max(1, counts[i]);
-    const cNext = Math.max(1, counts[i + 1]);
-    D[i] = counts[i + 1] - 2 * counts[i] + counts[i - 1];
-    V[i] = cNext + 4 * cCurr + cPrev;
-  }
-
-  // Step 2: 5-point binomial/Gaussian smoothing kernel w = [1, 4, 6, 4, 1] / 16
-  const weights = [1, 4, 6, 4, 1];
+  // Step 1 & 2: Exact Mariscotti (1967) convolved 7-point second-difference kernel
+  // [1, 4, 6, 4, 1] * [1, -2, 1] = [1, 2, -1, -4, -1, 2, 1]
+  // Exact channel-wise variance V_i = sum_k c_k^2 * max(1, C_{i+k}) avoids overlapping covariance inflation.
+  const cKernel = [1, 2, -1, -4, -1, 2, 1];
   const S = new Float64Array(n);
   const F = new Float64Array(n);
   const mariscottiSignal: number[] = new Array(n).fill(0);
@@ -321,10 +352,11 @@ export function runMariscottiPeakSearch(
   for (let i = 3; i < n - 3; i++) {
     let sSum = 0;
     let fVarSum = 0;
-    for (let k = -2; k <= 2; k++) {
-      const w = weights[k + 2];
-      sSum += w * D[i + k];
-      fVarSum += w * w * V[i + k];
+    for (let k = -3; k <= 3; k++) {
+      const ck = cKernel[k + 3];
+      const cVal = Math.max(0, counts[i + k]);
+      sSum += ck * cVal;
+      fVarSum += ck * ck * Math.max(1, cVal);
     }
     S[i] = sSum;
     F[i] = Math.sqrt(Math.max(1, fVarSum));
@@ -336,7 +368,10 @@ export function runMariscottiPeakSearch(
   // Step 3: Locate local maxima of Z_i = -S_i / F_i exceeding zThreshold
   const rawPeakChannels: number[] = [];
   const minSeparationCh = 6;
-  const maxSpectrumHeight = Math.max(1, ...counts);
+  let maxSpectrumHeight = 1;
+  for (let i = 0; i < n; i++) {
+    if (counts[i] > maxSpectrumHeight) maxSpectrumHeight = counts[i];
+  }
 
   for (let i = 5; i < n - 5; i++) {
     const z = mariscottiSignal[i];

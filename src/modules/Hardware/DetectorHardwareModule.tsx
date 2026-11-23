@@ -212,8 +212,19 @@ export const DetectorHardwareModule: React.FC = () => {
       animFrameIdRef.current = requestAnimationFrame(render);
       analyser.getByteTimeDomainData(dataArray);
 
-      const width = canvas.width;
-      const height = canvas.height;
+      const cssW = Math.max(320, canvas.clientWidth || 700);
+      const cssH = Math.max(120, canvas.clientHeight || 180);
+      const dpr = Math.min(2.5, typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1);
+      const targetW = Math.round(cssW * dpr);
+      const targetH = Math.round(cssH * dpr);
+      if (canvas.width !== targetW || canvas.height !== targetH) {
+        canvas.width = targetW;
+        canvas.height = targetH;
+      }
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      const width = cssW;
+      const height = cssH;
 
       ctx.fillStyle = '#050a12';
       ctx.fillRect(0, 0, width, height);
@@ -295,7 +306,7 @@ export const DetectorHardwareModule: React.FC = () => {
 
   // Currie (1968) Decision Level L_C & Detection Limit L_D via canonical metrology kernel
   const expectedBgCounts = (backgroundCpm / 60.0) * Math.max(1, elapsedSeconds);
-  const { lcCounts: currieLc, ldCounts: currieLd } = computeCurrieDetectionLimits(expectedBgCounts, false);
+  const { lcCounts: currieLc, ldCounts: currieLd } = computeCurrieDetectionLimits(expectedBgCounts, true);
   const isAboveCurrie = netCounts > currieLc;
   const occHourlyLimitUSvHr = (currentFramework.limits.occupationalAnnualEffective_mSv * 1000) / 2000;
 
@@ -581,12 +592,12 @@ export const DetectorHardwareModule: React.FC = () => {
               />
             </div>
           </div>
-          <canvas
-            ref={canvasRef}
-            width={700}
-            height={160}
-            style={{ width: '100%', height: 'auto', background: '#050a12', borderRadius: '6px', border: '1px solid rgba(65, 90, 119, 0.3)' }}
-          />
+          <div style={{ width: '100%', height: '180px' }}>
+            <canvas
+              ref={canvasRef}
+              style={{ width: '100%', height: '100%', display: 'block', background: '#050a12', borderRadius: '6px', border: '1px solid rgba(65, 90, 119, 0.3)' }}
+            />
+          </div>
         </div>
       )}
 

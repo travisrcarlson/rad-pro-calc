@@ -24,7 +24,7 @@ function radproOfflineManifestPlugin(): Plugin {
       }
       fs.writeFileSync(
         path.join(outDir, 'precache-manifest.json'),
-        JSON.stringify({ version: 'v4', assets }, null, 2),
+        JSON.stringify({ version: 'v5', assets }, null, 2),
         'utf8'
       )
     }

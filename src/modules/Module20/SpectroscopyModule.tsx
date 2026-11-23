@@ -7,6 +7,10 @@ import { type CalculationDossierPayload } from '../../services/auditDossierServi
 import { useRegulatory } from '../../context/RegulatoryContext';
 import { parseActivityToGBq } from '../../utils/canonicalNuclidePhysics';
 import {
+  computeSpectrometerResolution,
+  computeMariscottiPeakSignificanceSigma
+} from '../../utils/radiologicalPhysicsKernels';
+import {
   parseAnsiN42Xml,
   parseOrtecSpeOrCsv,
   runMariscottiPeakSearch,
@@ -499,13 +503,16 @@ const SpectroscopyModule: React.FC = () => {
     return features;
   }, [showSpectralFeatures, ingestedSpectrum, isotope, hasShielding]);
 
-  // Selected Peak ROI & Currie MDA / LLD Details
+  // Selected Peak ROI & Currie MDA / LLD Details + IEEE-325 Resolution & Mariscotti Sigma
   const activeRoiDetails = useMemo(() => {
     if (identifiedPeaks.length === 0) return null;
     const pk = identifiedPeaks.find(p => p.peakIndex === selectedPeakIndex) || identifiedPeaks[0];
     const B = Math.max(1, pk.continuumCounts);
     const Lc = 2.326 * Math.sqrt(B);
     const Ld = 2.706 + 4.653 * Math.sqrt(B);
+    const { resolutionPct, sigmaKeV } = computeSpectrometerResolution(pk.fwhmKeV, pk.energyKeV);
+    const gaussianAmplitude = Math.max(1, pk.peakHeightCounts - B / 8.0);
+    const analyticMariscottiSigma = computeMariscottiPeakSignificanceSigma(gaussianAmplitude, B / 8.0);
     const tLive = ingestedSpectrum ? ingestedSpectrum.liveTimeSec : liveTimeSec;
     const branchFrac = Math.max(0.01, (pk.branchingIntensityPct || 85) / 100);
     const geomEff = Math.max(0.0005, (detector.relativeEffPct / 100) * 0.005);
@@ -539,6 +546,9 @@ const SpectroscopyModule: React.FC = () => {
       Lc,
       Ld,
       mdaBq,
+      resolutionPct,
+      sigmaKeV,
+      analyticMariscottiSigma,
       roiX,
       roiY,
       baseX,
@@ -568,6 +578,12 @@ const SpectroscopyModule: React.FC = () => {
     outputs: [
       { label: 'Resolved Photopeak Count', value: identifiedPeaks.length, status: 'PASS' },
       { label: 'Primary Identified Isotope', value: identifiedPeaks[0]?.matchedIsotope || 'Unresolved', status: 'PASS' },
+      ...(activeRoiDetails
+        ? [
+            { label: 'IEEE-325 Peak Resolution (FWHM)', value: activeRoiDetails.resolutionPct.toFixed(2), unit: '%', status: 'PASS' as const },
+            { label: 'Mariscotti Peak Significance', value: activeRoiDetails.analyticMariscottiSigma.toFixed(2), unit: 'σ', status: 'PASS' as const }
+          ]
+        : []),
       { label: 'Primary Energy Centroid', value: identifiedPeaks[0] ? `${identifiedPeaks[0].energyKeV.toFixed(2)} keV` : 'N/A', status: 'PASS' },
       { label: 'Primary Net Peak Area', value: identifiedPeaks[0] ? `${identifiedPeaks[0].netAreaCounts.toLocaleString()} ± ${identifiedPeaks[0].netAreaUncertainty} cts` : 'N/A', status: 'PASS' }
     ]

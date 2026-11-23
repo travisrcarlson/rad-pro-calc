@@ -11,6 +11,10 @@ import {
   solveBroadBeamThicknessCm,
   resolveXCOMMaterialKey
 } from '../../../utils/xcomAndGpBuildup';
+import {
+  computeArcherBroadBeamTransmission,
+  computeKleinNishinaCrossSectionBarns
+} from '../../../utils/radiologicalPhysicsKernels';
 
 const TVL_MATERIALS = [
   { key: 'LEAD', name: 'Lead (Pb, Z=82)', density: 11.34, tvl1_1MeV: 3.8, tvle_1MeV: 4.0 },
@@ -92,6 +96,10 @@ const ShieldingCalc: React.FC = () => {
     () => evaluateXCOMAttenuation(selectedMaterial.key, energyMev),
     [selectedMaterial.key, energyMev]
   );
+  const kleinNishinaBarns = useMemo(
+    () => computeKleinNishinaCrossSectionBarns(energyMev),
+    [energyMev]
+  );
 
   // Calculation logic
   const computed = useMemo(() => {
@@ -102,6 +110,17 @@ const ShieldingCalc: React.FC = () => {
     let gpBuildup = 1.0;
     let gpK = 1.0;
     const gpParams = evaluateGPBuildup(selectedMaterial.key, energyMev, 1.0).params;
+
+    // NCRP-147 / Archer 3-parameter effective coefficients derived from NIST XCOM linear attenuation
+    const archerAlpha = Math.max(0.05, xcom.muLinear * 1.15);
+    const archerBeta = Math.max(0.02, -xcom.muLinear * 0.25);
+    const archerGamma = 0.65;
+    let archerRefTransmission = computeArcherBroadBeamTransmission(
+      Math.max(0, calcMode === 'transmission' ? thicknessInput : 1.0),
+      archerAlpha,
+      archerBeta,
+      archerGamma
+    );
 
     if (engineMode === 'ans_gp_xcom') {
       if (calcMode === 'thickness') {
@@ -148,6 +167,15 @@ const ShieldingCalc: React.FC = () => {
       }
     }
 
+    if (calcMode === 'thickness') {
+      archerRefTransmission = computeArcherBroadBeamTransmission(
+        Math.max(0, result),
+        archerAlpha,
+        archerBeta,
+        archerGamma
+      );
+    }
+
     return {
       result,
       resultLabel,
@@ -155,7 +183,8 @@ const ShieldingCalc: React.FC = () => {
       mfp,
       gpBuildup,
       gpK,
-      gpParams
+      gpParams,
+      archerRefTransmission
     };
   }, [engineMode, calcMode, h0, targetH, thicknessInput, selectedMaterial, energyMev, xcom]);
 
@@ -402,16 +431,18 @@ const ShieldingCalc: React.FC = () => {
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginTop: '12px' }}>
           <div style={{ background: 'rgba(0,0,0,0.3)', padding: '8px', borderRadius: '6px', border: '1px solid var(--color-border)' }}>
-            <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>NIST XCOM μ/ρ</div>
-            <div style={{ fontSize: '0.95rem', fontWeight: 'bold', color: '#00e5ff' }}>{xcom.muMass.toFixed(4)} cm²/g</div>
+            <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>NIST XCOM μ/ρ &amp; σ_KN</div>
+            <div style={{ fontSize: '0.92rem', fontWeight: 'bold', color: '#00e5ff' }}>{xcom.muMass.toFixed(4)} cm²/g</div>
+            <div style={{ fontSize: '0.68rem', color: '#94a3b8' }}>σ_KN = {kleinNishinaBarns.toFixed(4)} b/e⁻</div>
           </div>
           <div style={{ background: 'rgba(0,0,0,0.3)', padding: '8px', borderRadius: '6px', border: '1px solid var(--color-border)' }}>
             <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>Optical Depth (μx)</div>
-            <div style={{ fontSize: '0.95rem', fontWeight: 'bold', color: '#10b981' }}>{computed.mfp.toFixed(2)} mfp</div>
+            <div style={{ fontSize: '0.92rem', fontWeight: 'bold', color: '#10b981' }}>{computed.mfp.toFixed(2)} mfp</div>
+            <div style={{ fontSize: '0.68rem', color: '#94a3b8' }}>Archer B_eff = {computed.archerRefTransmission.toExponential(2)}</div>
           </div>
           <div style={{ background: 'rgba(0,0,0,0.3)', padding: '8px', borderRadius: '6px', border: '1px solid var(--color-border)' }}>
             <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>GP Buildup B(E,μx)</div>
-            <div style={{ fontSize: '0.95rem', fontWeight: 'bold', color: '#f59e0b' }}>{computed.gpBuildup.toFixed(2)}×</div>
+            <div style={{ fontSize: '0.92rem', fontWeight: 'bold', color: '#f59e0b' }}>{computed.gpBuildup.toFixed(2)}×</div>
           </div>
         </div>
 

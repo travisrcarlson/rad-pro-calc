@@ -15,6 +15,8 @@ const KarlsruheSvgChart: React.FC<KarlsruheChartProps> = ({ onIsotopeClick, onCl
   const GAP = 2;
 
   const [viewBox, setViewBox] = useState({ x: 8000, y: 2000, w: 6000, h: 4000 });
+  const viewBoxRef = useRef(viewBox);
+  viewBoxRef.current = viewBox;
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0, vx: 0, vy: 0 });
 
@@ -101,30 +103,33 @@ const KarlsruheSvgChart: React.FC<KarlsruheChartProps> = ({ onIsotopeClick, onCl
     });
   };
 
-  const handleWheel = (e: React.WheelEvent) => {
-    e.preventDefault();
-    const zoomFactor = 1.12;
-    const direction = e.deltaY > 0 ? zoomFactor : 1 / zoomFactor;
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const onNativeWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const zoomFactor = 1.12;
+      const direction = e.deltaY > 0 ? zoomFactor : 1 / zoomFactor;
+      const rect = el.getBoundingClientRect();
+      if (!rect || rect.width <= 0 || rect.height <= 0) return;
 
-    const rect = containerRef.current?.getBoundingClientRect();
-    if (!rect) return;
+      const vb = viewBoxRef.current;
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      const svgX = vb.x + (mouseX / rect.width) * vb.w;
+      const svgY = vb.y + (mouseY / rect.height) * vb.h;
+      const newW = vb.w * direction;
+      const newH = vb.h * direction;
+      const newX = svgX - (mouseX / rect.width) * newW;
+      const newY = svgY - (mouseY / rect.height) * newH;
 
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-
-    const svgX = viewBox.x + (mouseX / rect.width) * viewBox.w;
-    const svgY = viewBox.y + (mouseY / rect.height) * viewBox.h;
-
-    const newW = viewBox.w * direction;
-    const newH = viewBox.h * direction;
-
-    const newX = svgX - (mouseX / rect.width) * newW;
-    const newY = svgY - (mouseY / rect.height) * newH;
-
-    if (newW > 500 && newW < 30000) {
-      setViewBox({ x: newX, y: newY, w: newW, h: newH });
-    }
-  };
+      if (newW > 500 && newW < 30000) {
+        setViewBox({ x: newX, y: newY, w: newW, h: newH });
+      }
+    };
+    el.addEventListener('wheel', onNativeWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onNativeWheel);
+  }, []);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     setIsDragging(true);
@@ -344,7 +349,6 @@ const KarlsruheSvgChart: React.FC<KarlsruheChartProps> = ({ onIsotopeClick, onCl
     <div
       ref={containerRef}
       style={{ width: '100%', height: '100%', minHeight: '400px', backgroundColor: '#181c22', position: 'relative', overflow: 'hidden', cursor: isDragging ? 'grabbing' : 'grab' }}
-      onWheel={handleWheel}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
@@ -455,12 +459,17 @@ const KarlsruheSvgChart: React.FC<KarlsruheChartProps> = ({ onIsotopeClick, onCl
         {activeChainVectors}
       </svg>
 
-      {/* Detailed Placard Hover Tooltip */}
-      {hoveredIsotope && (
+      {/* Detailed Placard Hover Tooltip (clamped within container bounds) */}
+      {hoveredIsotope && (() => {
+        const cw = containerRef.current?.clientWidth || 800;
+        const ch = containerRef.current?.clientHeight || 500;
+        const clampedX = Math.max(8, Math.min(tooltipPos.x, Math.max(8, cw - 252)));
+        const clampedY = Math.max(8, Math.min(tooltipPos.y, Math.max(8, ch - 190)));
+        return (
         <div style={{
           position: 'absolute',
-          left: tooltipPos.x,
-          top: tooltipPos.y,
+          left: clampedX,
+          top: clampedY,
           width: '240px',
           backgroundColor: '#fff',
           border: '2px solid #333',
@@ -512,7 +521,8 @@ const KarlsruheSvgChart: React.FC<KarlsruheChartProps> = ({ onIsotopeClick, onCl
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
     </div>
   );
 };

@@ -2,6 +2,7 @@
  * Cryptographic Audit Dossier Service (21 CFR Part 11 & ISO 17025 Compliant)
  * Generates tamper-evident calculation reports with SHA-256 digital verification hashes.
  */
+import { computeGUMUncertaintyBudget } from '../utils/radiologicalPhysicsKernels.ts';
 
 export interface DossierInputParam {
   label: string;
@@ -255,26 +256,32 @@ export async function openPrintableAuditDossier(payload: CalculationDossierPaylo
       </tr>
     </thead>
     <tbody>
-      ${payload.outputs.map(out => {
-        const uStdPct = out.relativeStdUncertaintyPct ?? 2.5;
-        const uExpPct = uStdPct * 2.0;
-        const numVal = typeof out.value === 'number' ? out.value : parseFloat(String(out.value).replace(/[^0-9.eE+-]/g, ''));
-        const absBand = !isNaN(numVal) && numVal > 0
-          ? `±${(numVal * (uExpPct / 100)).toPrecision(3)} ${out.unit || ''} (±${uExpPct.toFixed(1)}%)`
-          : `±${uExpPct.toFixed(1)}% (k=2)`;
-        return `
+      ${(() => {
+        const gumBudget = computeGUMUncertaintyBudget(
+          payload.outputs.map(o => o.relativeStdUncertaintyPct ?? 2.5),
+          2.0
+        );
+        return payload.outputs.map(out => {
+          const uStdPct = out.relativeStdUncertaintyPct ?? 2.5;
+          const uExpPct = computeGUMUncertaintyBudget([uStdPct], 2.0).expandedPct;
+          const numVal = typeof out.value === 'number' ? out.value : parseFloat(String(out.value).replace(/[^0-9.eE+-]/g, ''));
+          const absBand = !isNaN(numVal) && numVal > 0
+            ? `±${(numVal * (uExpPct / 100)).toPrecision(3)} ${out.unit || ''} (±${uExpPct.toFixed(1)}% | RSS U_k2=${gumBudget.expandedPct.toFixed(1)}%)`
+            : `±${uExpPct.toFixed(1)}% (k=2)`;
+          return `
         <tr>
           <td><strong>${out.label}</strong></td>
           <td>${out.value} ${out.unit ? out.unit : ''}</td>
           <td style="font-family: 'Courier New', monospace; font-size: 8.5pt; color: #334155;">${absBand}</td>
           <td>
-            <span style="font-weight: 700; color: ${out.status === 'EXCEEDED' ? '#dc2626' : '#16a34a'};">
+            <span style="font-weight: 700; color: ${out.status === 'EXCEEDED' ? '#dc2626' : out.status === 'WARNING' ? '#d97706' : '#16a34a'};">
               ${out.status || 'VERIFIED'}
             </span>
           </td>
         </tr>
       `;
-      }).join('')}
+        }).join('');
+      })()}
     </tbody>
   </table>
 

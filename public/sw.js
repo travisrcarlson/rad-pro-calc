@@ -1,5 +1,5 @@
 // RadPro Analyst Progressive Web App (PWA) Service Worker — Offline Field Edition
-const CACHE_NAME = 'radpro-cache-v4';
+const CACHE_NAME = 'radpro-cache-v5';
 const TILE_CACHE_NAME = 'radpro-map-tiles-v1';
 const MAX_CACHED_TILES = 350;
 
@@ -117,6 +117,15 @@ self.addEventListener('fetch', (event) => {
   // Only handle same-origin assets below
   if (url.origin !== self.location.origin) return;
 
+  // Never intercept or cache Vite dev server module/HMR requests
+  if (
+    url.pathname.startsWith('/src/') ||
+    url.pathname.startsWith('/@') ||
+    url.pathname.startsWith('/node_modules/')
+  ) {
+    return;
+  }
+
   const isNavigate =
     event.request.mode === 'navigate' ||
     event.request.headers.get('accept')?.includes('text/html');
@@ -139,21 +148,40 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Strategy 2: Cache-first with network fallback for hashed JS/CSS/font bundles
-  event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) return cachedResponse;
+  // Strategy 2: Cache-first only for hashed immutable bundles/fonts/icons; network-first for other assets
+  const isImmutableAsset =
+    url.pathname.startsWith('/assets/') ||
+    /\.(woff2|svg|png|ico)$/i.test(url.pathname);
 
-      return fetch(event.request)
-        .then((networkResponse) => {
-          if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
+  if (isImmutableAsset) {
+    event.respondWith(
+      caches.match(event.request).then((cachedResponse) => {
+        if (cachedResponse) return cachedResponse;
+
+        return fetch(event.request)
+          .then((networkResponse) => {
+            if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
+              return networkResponse;
+            }
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseToCache));
             return networkResponse;
-          }
+          })
+          .catch(() => cachedResponse || Response.error());
+      })
+    );
+    return;
+  }
+
+  event.respondWith(
+    fetch(event.request)
+      .then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
           const responseToCache = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseToCache));
-          return networkResponse;
-        })
-        .catch(() => cachedResponse || Response.error());
-    })
+        }
+        return networkResponse;
+      })
+      .catch(() => caches.match(event.request).then((cached) => cached || Response.error()))
   );
 });

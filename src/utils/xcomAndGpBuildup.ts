@@ -565,7 +565,7 @@ export const XCOM_GP_MATERIALS: Record<string, XCOMMaterialSpec> = {
       { energyMev: 0.200, b: 3.260, c: 1.790, a: -0.082, Xk: 13.6, d: 0.036 },
       { energyMev: 0.500, b: 2.520, c: 1.460, a: -0.048, Xk: 13.7, d: 0.018 },
       { energyMev: 0.662, b: 2.310, c: 1.360, a: -0.036, Xk: 13.7, d: 0.012 },
-      { energyMev: 1.000, b: 2.130, c: 1.150, a: 0.044, Xk: 13.7, d: -0.025 },
+      { energyMev: 1.000, b: 2.130, c: 1.250, a: -0.023, Xk: 13.7, d: 0.006 },
       { energyMev: 1.250, b: 2.030, c: 1.200, a: -0.015, Xk: 13.7, d: 0.003 },
       { energyMev: 2.000, b: 1.840, c: 1.110, a: -0.002, Xk: 13.6, d: -0.002 },
       { energyMev: 4.000, b: 1.630, c: 1.020, a: 0.010, Xk: 13.5, d: -0.007 },
@@ -1063,7 +1063,7 @@ export const XCOM_GP_MATERIALS: Record<string, XCOMMaterialSpec> = {
       { energyMev: 0.200, b: 3.210, c: 1.770, a: -0.080, Xk: 13.6, d: 0.035 },
       { energyMev: 0.500, b: 2.490, c: 1.450, a: -0.047, Xk: 13.7, d: 0.017 },
       { energyMev: 0.662, b: 2.290, c: 1.350, a: -0.035, Xk: 13.7, d: 0.011 },
-      { energyMev: 1.000, b: 2.110, c: 1.150, a: 0.042, Xk: 13.7, d: -0.024 },
+      { energyMev: 1.000, b: 2.110, c: 1.250, a: -0.023, Xk: 13.8, d: 0.006 },
       { energyMev: 1.250, b: 2.010, c: 1.190, a: -0.014, Xk: 13.7, d: 0.002 },
       { energyMev: 2.000, b: 1.830, c: 1.105, a: -0.002, Xk: 13.6, d: -0.002 },
       { energyMev: 6.000, b: 1.510, c: 0.985, a: 0.015, Xk: 13.4, d: -0.009 },
@@ -1074,6 +1074,159 @@ export const XCOM_GP_MATERIALS: Record<string, XCOMMaterialSpec> = {
     sigmaRMass: 0.046,
     sigmaRLinear: 0.000055,
     neutronCaptureNote: 'N-14(n,p)C-14 & N-14(n,γ)N-15 (10.8 MeV capture gamma in air skyshine).'
+  },
+
+  BRICK: {
+    key: 'BRICK',
+    name: 'Common Clay Brick / Masonry (SiO2/Al2O3/Fe2O3, 1.92 g/cm³)',
+    symbol: 'Brick',
+    effectiveZ: 11.4,
+    density: 1.92,
+    edges: [],
+    segments: [
+      {
+        minEnergyMev: 0.010,
+        maxEnergyMev: 15.0,
+        points: [
+          [0.010, 26.8, 25.5],
+          [0.015, 8.20, 7.62],
+          [0.020, 3.55, 3.12],
+          [0.030, 1.18, 0.900],
+          [0.050, 0.390, 0.196],
+          [0.080, 0.212, 0.0610],
+          [0.100, 0.178, 0.0416],
+          [0.200, 0.127, 0.0288],
+          [0.500, 0.0875, 0.0298],
+          [0.6617, 0.0776, 0.0295],
+          [1.000, 0.0635, 0.0279],
+          [1.250, 0.0568, 0.0266],
+          [2.000, 0.0447, 0.0234],
+          [4.000, 0.0318, 0.0194],
+          [6.000, 0.0269, 0.0179],
+          [10.00, 0.0230, 0.0168],
+          [15.00, 0.0213, 0.0164]
+        ]
+      }
+    ],
+    gpTable: [
+      { energyMev: 0.050, b: 2.240, c: 1.250, a: -0.023, Xk: 13.8, d: 0.005 },
+      { energyMev: 0.100, b: 2.960, c: 1.690, a: -0.073, Xk: 13.6, d: 0.032 },
+      { energyMev: 0.200, b: 2.730, c: 1.590, a: -0.063, Xk: 13.7, d: 0.026 },
+      { energyMev: 0.500, b: 2.280, c: 1.375, a: -0.038, Xk: 13.8, d: 0.014 },
+      { energyMev: 0.662, b: 2.140, c: 1.305, a: -0.030, Xk: 13.8, d: 0.010 },
+      { energyMev: 1.000, b: 1.985, c: 1.215, a: -0.018, Xk: 13.7, d: 0.005 },
+      { energyMev: 1.250, b: 1.915, c: 1.170, a: -0.012, Xk: 13.7, d: 0.002 },
+      { energyMev: 2.000, b: 1.775, c: 1.100, a: -0.002, Xk: 13.6, d: -0.002 },
+      { energyMev: 6.000, b: 1.495, c: 1.000, a: 0.012, Xk: 13.4, d: -0.008 },
+      { energyMev: 10.00, b: 1.375, c: 0.970, a: 0.015, Xk: 13.3, d: -0.010 }
+    ],
+    bergerA: 1.16,
+    bergerB: 0.048,
+    sigmaRMass: 0.0345,
+    sigmaRLinear: 0.066,
+    neutronCaptureNote: 'Clay masonry (~1.92 g/cm³ SiO2/Al2O3) with trace structural moisture.'
+  },
+
+  DRYWALL: {
+    key: 'DRYWALL',
+    name: 'Gypsum Drywall / Wallboard (CaSO4·2H2O, 0.80 g/cm³)',
+    symbol: 'Drywall',
+    effectiveZ: 13.8,
+    density: 0.80,
+    edges: [],
+    segments: [
+      {
+        minEnergyMev: 0.010,
+        maxEnergyMev: 15.0,
+        points: [
+          [0.010, 39.8, 37.9],
+          [0.015, 12.2, 11.4],
+          [0.020, 5.25, 4.70],
+          [0.030, 1.66, 1.34],
+          [0.050, 0.482, 0.275],
+          [0.080, 0.228, 0.078],
+          [0.100, 0.184, 0.049],
+          [0.200, 0.128, 0.0301],
+          [0.500, 0.0890, 0.0303],
+          [0.6617, 0.0789, 0.0300],
+          [1.000, 0.0646, 0.0284],
+          [1.250, 0.0578, 0.0271],
+          [2.000, 0.0455, 0.0238],
+          [4.000, 0.0322, 0.0197],
+          [6.000, 0.0272, 0.0181],
+          [10.00, 0.0233, 0.0170],
+          [15.00, 0.0216, 0.0165]
+        ]
+      }
+    ],
+    gpTable: [
+      { energyMev: 0.050, b: 1.920, c: 1.050, a: 0.005, Xk: 13.9, d: -0.008 },
+      { energyMev: 0.100, b: 2.680, c: 1.520, a: -0.054, Xk: 13.7, d: 0.024 },
+      { energyMev: 0.200, b: 2.580, c: 1.500, a: -0.052, Xk: 13.7, d: 0.022 },
+      { energyMev: 0.500, b: 2.220, c: 1.340, a: -0.034, Xk: 13.8, d: 0.012 },
+      { energyMev: 0.662, b: 2.100, c: 1.285, a: -0.028, Xk: 13.8, d: 0.009 },
+      { energyMev: 1.000, b: 1.960, c: 1.200, a: -0.017, Xk: 13.7, d: 0.004 },
+      { energyMev: 1.250, b: 1.895, c: 1.160, a: -0.011, Xk: 13.7, d: 0.002 },
+      { energyMev: 2.000, b: 1.760, c: 1.095, a: -0.001, Xk: 13.6, d: -0.002 },
+      { energyMev: 6.000, b: 1.485, c: 0.995, a: 0.012, Xk: 13.4, d: -0.008 },
+      { energyMev: 10.00, b: 1.370, c: 0.970, a: 0.015, Xk: 13.3, d: -0.010 }
+    ],
+    bergerA: 1.10,
+    bergerB: 0.045,
+    sigmaRMass: 0.0480,
+    sigmaRLinear: 0.0384,
+    neutronCaptureNote: 'Gypsum wallboard (~20.9% bound crystal water H2O) at 0.80 g/cm³ bulk density.'
+  },
+
+  PMMA: {
+    key: 'PMMA',
+    name: 'Polymethyl Methacrylate / Acrylic / Lucite (C5H8O2, 1.18 g/cm³)',
+    symbol: 'PMMA',
+    effectiveZ: 6.56,
+    density: 1.18,
+    edges: [],
+    segments: [
+      {
+        minEnergyMev: 0.010,
+        maxEnergyMev: 15.0,
+        points: [
+          [0.010, 3.357, 3.04],
+          [0.015, 1.101, 0.833],
+          [0.020, 0.571, 0.340],
+          [0.030, 0.303, 0.104],
+          [0.050, 0.207, 0.0326],
+          [0.080, 0.177, 0.0246],
+          [0.100, 0.164, 0.0249],
+          [0.200, 0.132, 0.0287],
+          [0.500, 0.0941, 0.0321],
+          [0.6617, 0.0833, 0.0318],
+          [1.000, 0.0687, 0.0302],
+          [1.250, 0.0614, 0.0288],
+          [2.000, 0.0479, 0.0252],
+          [4.000, 0.0329, 0.0199],
+          [6.000, 0.0266, 0.0174],
+          [10.00, 0.0211, 0.0150],
+          [15.00, 0.0183, 0.0136]
+        ]
+      }
+    ],
+    gpTable: [
+      { energyMev: 0.050, b: 3.640, c: 1.990, a: -0.099, Xk: 13.5, d: 0.047 },
+      { energyMev: 0.100, b: 3.920, c: 2.070, a: -0.107, Xk: 13.5, d: 0.051 },
+      { energyMev: 0.200, b: 3.330, c: 1.820, a: -0.085, Xk: 13.6, d: 0.038 },
+      { energyMev: 0.500, b: 2.560, c: 1.480, a: -0.050, Xk: 13.7, d: 0.019 },
+      { energyMev: 0.662, b: 2.340, c: 1.375, a: -0.038, Xk: 13.7, d: 0.013 },
+      { energyMev: 1.000, b: 2.150, c: 1.260, a: -0.024, Xk: 13.7, d: 0.006 },
+      { energyMev: 1.250, b: 2.050, c: 1.210, a: -0.016, Xk: 13.7, d: 0.003 },
+      { energyMev: 2.000, b: 1.850, c: 1.115, a: -0.003, Xk: 13.6, d: -0.001 },
+      { energyMev: 6.000, b: 1.530, c: 0.988, a: 0.014, Xk: 13.4, d: -0.008 },
+      { energyMev: 10.00, b: 1.400, c: 0.952, a: 0.017, Xk: 13.3, d: -0.010 }
+    ],
+    bergerA: 1.38,
+    bergerB: 0.058,
+    sigmaRMass: 0.0881,
+    sigmaRLinear: 0.104,
+    neutronCaptureNote: 'Transparent beta/bremsstrahlung & fast-n hydrogenous moderator (1.18 g/cm³; zero high-Z bremsstrahlung).'
   }
 };
 
@@ -1096,8 +1249,13 @@ const XCOM_MATERIAL_ALIASES: Record<string, string> = {
   STAINLESS_STEEL: 'STEEL',
   CONCRETE: 'CONCRETE',
   'ORDINARY CONCRETE': 'CONCRETE',
-  DRYWALL: 'CONCRETE',
-  BRICK: 'CONCRETE',
+  DRYWALL: 'DRYWALL',
+  GYPSUM: 'DRYWALL',
+  SHEETROCK: 'DRYWALL',
+  PLASTERBOARD: 'DRYWALL',
+  BRICK: 'BRICK',
+  'CLAY BRICK': 'BRICK',
+  MASONRY: 'BRICK',
   BARITE_CONCRETE: 'BARITE_CONCRETE',
   BARITE: 'BARITE_CONCRETE',
   'BARITE CONCRETE': 'BARITE_CONCRETE',
@@ -1109,13 +1267,16 @@ const XCOM_MATERIAL_ALIASES: Record<string, string> = {
   H2O: 'WATER',
   HDPE: 'HDPE',
   POLYETHYLENE: 'HDPE',
-  ACRYLIC: 'HDPE',
-  PMMA: 'HDPE',
-  LUCITE: 'HDPE',
+  PE: 'HDPE',
+  ACRYLIC: 'PMMA',
+  PMMA: 'PMMA',
+  LUCITE: 'PMMA',
+  PLEXIGLASS: 'PMMA',
   LEAD_GLASS: 'LEAD_GLASS',
   'LEAD GLASS': 'LEAD_GLASS',
   'LEADED GLASS': 'LEAD_GLASS',
   BORATED_PE: 'BORATED_PE',
+  BPE: 'BORATED_PE',
   'BORATED PE': 'BORATED_PE',
   'BORATED POLYETHYLENE': 'BORATED_PE',
   MAGNETITE_CONCRETE: 'MAGNETITE_CONCRETE',
@@ -1134,6 +1295,10 @@ const XCOM_MATERIAL_ALIASES: Record<string, string> = {
   AIR: 'AIR'
 };
 
+const SORTED_XCOM_ALIAS_ENTRIES = Object.entries(XCOM_MATERIAL_ALIASES).sort(
+  (a, b) => b[0].length - a[0].length
+);
+
 /**
  * Strictly resolves human-readable or code material identifiers to canonical XCOM_GP_MATERIALS keys.
  * Throws an explicit error on unknown material names rather than silently substituting Lead.
@@ -1143,9 +1308,9 @@ export function resolveXCOMMaterialKey(materialInput: string): string {
   if (XCOM_GP_MATERIALS[normalized]) return normalized;
   const alias = XCOM_MATERIAL_ALIASES[normalized];
   if (alias && XCOM_GP_MATERIALS[alias]) return alias;
-  // Handle compound UI labels such as "Lead (Pb)" or "Steel (Fe)"
-  for (const [k, target] of Object.entries(XCOM_MATERIAL_ALIASES)) {
-    if (k.length >= 4 && normalized.includes(k)) return target;
+  // Handle compound UI labels longest-key-first so "5% Borated Polyethylene" beats "Polyethylene"
+  for (const [k, target] of SORTED_XCOM_ALIAS_ENTRIES) {
+    if (k.length >= 3 && normalized.includes(k)) return target;
   }
   throw new Error(`Unknown XCOM shielding material key: "${materialInput}"`);
 }
@@ -1318,7 +1483,7 @@ export function evaluateBuildupByModel(
     // Energy-scaled Berger formula anchored at 1 mfp (b - 1)
     const aBerger = Math.max(0.02, gp.b - 1.0);
     const bBerger = mat.bergerB;
-    return Math.max(1.0, 1.0 + aBerger * mfp * Math.exp(bBerger * Math.min(25, mfp)));
+    return Math.max(1.0, 1.0 + aBerger * mfp * Math.exp(bBerger * Math.min(40, mfp)));
   }
 
   // TAYLOR 2-exponential form
@@ -1327,7 +1492,7 @@ export function evaluateBuildupByModel(
   const alpha2 = 0.085;
   return Math.max(
     1.0,
-    A1 * Math.exp(-alpha1 * Math.min(25, mfp)) + (1.0 - A1) * Math.exp(-alpha2 * Math.min(25, mfp))
+    A1 * Math.exp(-alpha1 * Math.min(40, mfp)) + (1.0 - A1) * Math.exp(-alpha2 * Math.min(40, mfp))
   );
 }
 
@@ -1482,7 +1647,10 @@ export const NEUTRON_REMOVAL_CATALOG: Record<string, {
   BISMUTH: { sigmaRMass: 0.0101, sigmaRLinear: 0.099, captureNote: 'Non-toxic high-Z gamma shield with ultra-low thermal neutron capture (0.034 b).' },
   COPPER: { sigmaRMass: 0.0202, sigmaRLinear: 0.181, captureNote: 'High fast-n inelastic cross-section; Cu-63/65(n,γ) activation.' },
   ICRU_TISSUE: { sigmaRMass: 0.0980, sigmaRLinear: 0.098, captureNote: 'ICRU 30-cm sphere phantom composition (10.1% H, 11.1% C, 2.6% N, 76.2% O).' },
-  SOIL_EARTH: { sigmaRMass: 0.0361, sigmaRLinear: 0.065, captureNote: 'Expedient trench/bunker earth overburden (Σ_R ≈ 0.065 cm⁻¹).' }
+  SOIL_EARTH: { sigmaRMass: 0.0361, sigmaRLinear: 0.065, captureNote: 'Expedient trench/bunker earth overburden (Σ_R ≈ 0.065 cm⁻¹).' },
+  BRICK: { sigmaRMass: 0.0345, sigmaRLinear: 0.066, captureNote: 'Clay masonry (~1.92 g/cm³ SiO2/Al2O3) with trace structural moisture.' },
+  DRYWALL: { sigmaRMass: 0.0480, sigmaRLinear: 0.0384, captureNote: 'Gypsum wallboard (CaSO4·2H2O, ~20.9% bound H2O) at 0.80 g/cm³.' },
+  PMMA: { sigmaRMass: 0.0881, sigmaRLinear: 0.104, captureNote: 'PMMA/Acrylic hydrogenous moderator (~8% wt H); 2.223 MeV H(n,γ) capture photons.' }
 };
 
 export function getMaterialNeutronRemoval(materialKey: string): {
@@ -1519,38 +1687,120 @@ export function evaluateNeutronRemovalStack(
   totalSigmaRx: number;
   neutronBuildup: number;
   transmittedNeutronDoseRate: number;
+  secondaryCaptureGammaDoseRate: number;
   captureGammaSuppressionFactor: number;
   hasHydrogenousModerator: boolean;
   hasBoronAbsorber: boolean;
+  unbackedHeavyLayerWarning: boolean;
   advisory: string;
 } {
+  const HYDROGENOUS_KEYS = new Set([
+    'WATER',
+    'HDPE',
+    'BORATED_PE',
+    'PMMA',
+    'CONCRETE',
+    'BARITE_CONCRETE',
+    'MAGNETITE_CONCRETE',
+    'DRYWALL',
+    'ICRU_TISSUE'
+  ]);
+  const HEAVY_METAL_KEYS = new Set(['LEAD', 'TUNGSTEN', 'DU', 'STEEL', 'COPPER', 'BISMUTH', 'ALUMINUM']);
+
+  const resolvedLayers = layers.map(l => {
+    const resolvedKey = resolveXCOMMaterialKey(l.materialKey);
+    const thicknessCm = Math.max(0, l.thicknessCm);
+    const nSpec = getMaterialNeutronRemoval(resolvedKey);
+    const rx = nSpec.sigmaRLinear * thicknessCm;
+    return {
+      resolvedKey,
+      thicknessCm,
+      rx,
+      isHydrogenous: HYDROGENOUS_KEYS.has(resolvedKey),
+      isHeavyMetal: HEAVY_METAL_KEYS.has(resolvedKey),
+      isBoron: resolvedKey === 'BORATED_PE'
+    };
+  });
+
   let totalSigmaRx = 0;
   let hydrogenousRelaxation = 0;
   let hasBoronAbsorber = false;
 
-  for (const l of layers) {
-    const resolvedKey = resolveXCOMMaterialKey(l.materialKey);
-    const nSpec = getMaterialNeutronRemoval(resolvedKey);
-    const rx = nSpec.sigmaRLinear * Math.max(0, l.thicknessCm);
-    totalSigmaRx += rx;
-    if (['WATER', 'HDPE', 'BORATED_PE', 'CONCRETE', 'BARITE_CONCRETE', 'MAGNETITE_CONCRETE', 'ICRU_TISSUE'].includes(resolvedKey)) {
-      hydrogenousRelaxation += rx;
+  for (const rl of resolvedLayers) {
+    totalSigmaRx += rl.rx;
+    if (rl.isHydrogenous) hydrogenousRelaxation += rl.rx;
+    if (rl.isBoron) hasBoronAbsorber = true;
+  }
+
+  // Non-commutative layer ordering check: heavy metal inelastic scatterers require downstream
+  // hydrogenous moderation (Σ_R*x >= 0.4) to thermalize sub-MeV neutrons (~24 keV Fe window).
+  let unbackedHeavyRx = 0;
+  for (let i = 0; i < resolvedLayers.length; i++) {
+    const rl = resolvedLayers[i];
+    if (!rl.isHeavyMetal || rl.rx <= 0.15) continue;
+    let downstreamHRx = 0;
+    for (let j = i + 1; j < resolvedLayers.length; j++) {
+      if (resolvedLayers[j].isHydrogenous) downstreamHRx += resolvedLayers[j].rx;
     }
-    if (resolvedKey === 'BORATED_PE') {
-      hasBoronAbsorber = true;
+    if (downstreamHRx < 0.4) {
+      unbackedHeavyRx += rl.rx;
     }
   }
 
   const hasHydrogenousModerator = hydrogenousRelaxation >= 0.5;
-  // Spinney Removal-Diffusion buildup factor: lower (~1.5-2.5) when sufficient hydrogenous backing is present, higher (~4-6) in pure metal shields due to 24 keV Fe / sub-MeV streaming
-  const bCoeff = hasHydrogenousModerator ? 0.35 : 0.95;
-  const neutronBuildup = 1.0 + bCoeff * totalSigmaRx * Math.exp(-0.08 * Math.min(20, totalSigmaRx));
+  const unbackedHeavyLayerWarning = unbackedHeavyRx > 0.25;
+
+  // Spinney Removal-Diffusion buildup factor:
+  // Lowest (~0.35 coeff) when heavy inelastic layers are backed downstream by hydrogenous moderator,
+  // higher (~0.75) when heavy metal sits downstream of H moderator (unmoderated sub-MeV streaming),
+  // highest (~0.95) in pure metal stacks with no hydrogenous moderator.
+  const bCoeff = !hasHydrogenousModerator ? 0.95 : unbackedHeavyLayerWarning ? 0.75 : 0.35;
+  const streamingPenalty = unbackedHeavyLayerWarning ? 1.0 + 0.18 * Math.min(3.0, unbackedHeavyRx) : 1.0;
+  const neutronBuildup = (1.0 + bCoeff * totalSigmaRx * Math.exp(-0.08 * Math.min(20, totalSigmaRx))) * streamingPenalty;
   const transmittedNeutronDoseRate = incidentNeutronDoseRate * neutronBuildup * Math.exp(-totalSigmaRx);
   const captureGammaSuppressionFactor = hasBoronAbsorber ? 0.08 : 1.0;
 
-  let advisory = 'Balanced fast-neutron inelastic slowing + hydrogenous moderation.';
+  // Secondary (n,γ) capture gamma source & downstream gamma self-attenuation (non-commutative!)
+  let secondaryCaptureGammaDoseRate = 0;
+  let cumRxBefore = 0;
+  for (let i = 0; i < resolvedLayers.length; i++) {
+    const rl = resolvedLayers[i];
+    if (rl.thicknessCm > 0 && incidentNeutronDoseRate > 0) {
+      const phiIn = Math.exp(-cumRxBefore);
+      const absorbedFraction = phiIn * (1.0 - Math.exp(-rl.rx));
+
+      let gammaYield = 0.008;
+      let captureEnergyMev = 2.223;
+      if (rl.isBoron) {
+        gammaYield = 0.0036; // 92% suppressed via 10B(n,alpha)7Li (478 keV gamma)
+        captureEnergyMev = 0.478;
+      } else if (rl.isHydrogenous) {
+        gammaYield = 0.045; // H-1(n,gamma)H-2 -> 2.223 MeV
+        captureEnergyMev = 2.223;
+      } else if (rl.resolvedKey === 'STEEL' || rl.resolvedKey === 'COPPER') {
+        gammaYield = 0.025; // Fe/Cu high-E ~7 MeV capture gammas
+        captureEnergyMev = 6.0;
+      }
+
+      // Self-attenuate over half the birth layer + full transmission through downstream layers
+      let gammaMfpDownstream = 0.5 * evaluateXCOMAttenuation(rl.resolvedKey, captureEnergyMev).muLinear * rl.thicknessCm;
+      for (let j = i + 1; j < resolvedLayers.length; j++) {
+        const dl = resolvedLayers[j];
+        gammaMfpDownstream += evaluateXCOMAttenuation(dl.resolvedKey, captureEnergyMev).muLinear * dl.thicknessCm;
+      }
+      const exitKey = resolvedLayers[resolvedLayers.length - 1]?.resolvedKey || rl.resolvedKey;
+      const bCapture = evaluateGPBuildup(exitKey, captureEnergyMev, Math.min(35, gammaMfpDownstream)).B;
+      secondaryCaptureGammaDoseRate +=
+        incidentNeutronDoseRate * absorbedFraction * gammaYield * bCapture * Math.exp(-gammaMfpDownstream);
+    }
+    cumRxBefore += rl.rx;
+  }
+
+  let advisory = 'Balanced fast-neutron inelastic slowing + downstream hydrogenous moderation.';
   if (!hasHydrogenousModerator && totalSigmaRx > 0.2) {
     advisory = '⚠️ Pure metal/high-Z stack lacks hydrogenous moderation: sub-MeV neutrons stream through inelastic windows (e.g., 24 keV Fe window). Add HDPE, Borated PE, or Water.';
+  } else if (unbackedHeavyLayerWarning) {
+    advisory = '⚠️ Sub-optimal ordering: high-Z/metal layer follows the hydrogenous moderator. Place heavy inelastic scatterer (Fe/Pb) upstream and HDPE/Borated PE downstream to thermalize ~24–500 keV neutrons.';
   } else if (hasBoronAbsorber) {
     advisory = '✅ 5% Borated PE captures thermalized neutrons via ¹⁰B(n,α)⁷Li (0.478 MeV γ), suppressing 2.223 MeV ¹H(n,γ)²H capture gamma production by ~92%.';
   }
@@ -1559,9 +1809,11 @@ export function evaluateNeutronRemovalStack(
     totalSigmaRx,
     neutronBuildup,
     transmittedNeutronDoseRate,
+    secondaryCaptureGammaDoseRate,
     captureGammaSuppressionFactor,
     hasHydrogenousModerator,
     hasBoronAbsorber,
+    unbackedHeavyLayerWarning,
     advisory
   };
 }

@@ -77,6 +77,7 @@ export interface NuclearDetonationRecord {
 }
 
 import { CTBTO_STATIONS, type CTBTOStationRecord } from './seismicYieldInversionService.ts';
+import { computeBlastYieldMarkerSizePx } from '../utils/radiologicalPhysicsKernels.ts';
 
 export type GeospatialCategory = 'reactor' | 'detonation' | 'incident' | 'ctbto';
 
@@ -338,10 +339,8 @@ export function getDetonationMarkerSize(yieldKt: number | undefined, isCurrentYe
   if (yieldKt === undefined || yieldKt <= 0) {
     return isCurrentYear ? 7.5 : 4.0;
   }
-  const y = Math.max(0.01, yieldKt);
-  const baseSize = 4.5 + 3.25 * Math.log10(y);
-  const clamped = Math.max(4.0, Math.min(24.0, Math.round(baseSize * 10) / 10));
-  return isCurrentYear ? Math.min(28.0, clamped + 3.5) : clamped;
+  const baseSize = Math.round(computeBlastYieldMarkerSizePx(yieldKt) * 10) / 10;
+  return isCurrentYear ? Math.min(26.0, baseSize + 3.5) : baseSize;
 }
 
 

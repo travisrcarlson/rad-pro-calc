@@ -472,21 +472,60 @@ export function simulateGeneralizedDecayDAG(config: DecaySimulationConfig): Deca
   const idxMap = new Map<string, number>();
   nodes.forEach((n, idx) => idxMap.set(n.nuclide, idx));
 
-  // Build adjacency feed matrix B[toIdx][fromIdx] = branchFraction * lambda_from
+  // Topological sort (Kahn's algorithm) so lower-triangular substitution handles ANY node order
+  const inDegree = new Array(m).fill(0);
+  const outgoingAdj: number[][] = nodes.map(() => []);
   const feedLinks: { fromIdx: number; branchFraction: number }[][] = nodes.map(() => []);
+  const validEdges: { u: number; v: number; branchFraction: number }[] = [];
+
   edges.forEach(e => {
     const u = idxMap.get(e.fromNuclide);
     const v = idxMap.get(e.toNuclide);
-    if (u !== undefined && v !== undefined && v > u) {
-      feedLinks[v].push({ fromIdx: u, branchFraction: e.branchFraction });
+    if (u !== undefined && v !== undefined && u !== v) {
+      validEdges.push({ u, v, branchFraction: e.branchFraction });
+      outgoingAdj[u].push(v);
+      inDegree[v] += 1;
     }
   });
 
+  const queue: number[] = [];
+  for (let i = 0; i < m; i++) {
+    if (inDegree[i] === 0) queue.push(i);
+  }
+  const topoOrder: number[] = [];
+  while (queue.length > 0) {
+    queue.sort((a, b) => a - b);
+    const u = queue.shift()!;
+    topoOrder.push(u);
+    for (const v of outgoingAdj[u]) {
+      inDegree[v] -= 1;
+      if (inDegree[v] === 0) queue.push(v);
+    }
+  }
+  const topoPos = new Array(m).fill(0);
+  if (topoOrder.length < m) {
+    const seen = new Set(topoOrder);
+    for (let i = 0; i < m; i++) {
+      if (!seen.has(i)) topoOrder.push(i);
+    }
+  }
+  topoOrder.forEach((nodeIdx, pos) => {
+    topoPos[nodeIdx] = pos;
+  });
+
+  for (const { u, v, branchFraction } of validEdges) {
+    if (topoPos[u] < topoPos[v]) {
+      feedLinks[v].push({ fromIdx: u, branchFraction });
+    }
+  }
+
+  // Exact Bank et al. (1985) / Hosea & Shampine (1996) L-stable TR-BDF2 weights (w2 - w1 === 1)
   const gamma = 2.0 - Math.SQRT2;
   const d1 = gamma / 2.0;
-  const w1 = (1.0 - gamma) / (2.0 * (2.0 - gamma));
-  const w2 = 1.0 / (2.0 * (2.0 - gamma));
-  const d2 = (1.0 - gamma) / (2.0 - gamma);
+  const oneMinusGamma = 1.0 - gamma;
+  const w1 = (oneMinusGamma * oneMinusGamma) / (gamma * (2.0 - gamma));
+  const w2 = 1.0 / (gamma * (2.0 - gamma));
+  const d2 = oneMinusGamma / (2.0 - gamma);
 
   const stepInterval = (
     startAtoms: number[],
@@ -512,7 +551,8 @@ export function simulateGeneralizedDecayDAG(config: DecaySimulationConfig): Deca
 
       const solveLowerTriangular = (rhs: number[], alphaDt: number, source0: number): number[] => {
         const out = new Array(m).fill(0);
-        for (let i = 0; i < m; i++) {
+        for (let k = 0; k < m; k++) {
+          const i = topoOrder[k];
           let feed = i === 0 ? alphaDt * source0 : 0;
           for (const link of feedLinks[i]) {
             feed += alphaDt * link.branchFraction * nodes[link.fromIdx].lambda * out[link.fromIdx];
@@ -531,25 +571,16 @@ export function simulateGeneralizedDecayDAG(config: DecaySimulationConfig): Deca
           feed += link.branchFraction * nodes[link.fromIdx].lambda * state[link.fromIdx];
         }
         const deriv = feed - effLambda[i] * state[i];
-        rhs1[i] = Math.max(0, state[i] + d1 * dt * deriv);
+        rhs1[i] = state[i] + d1 * dt * deriv;
       }
       const stateGamma = solveLowerTriangular(rhs1, d1 * dt, prodRate0);
 
-      // Stage 2: BDF2 step
+      // Stage 2: BDF2 step (unclamped linear weights preserve exact conservation)
       const rhs2 = new Array(m).fill(0);
       for (let i = 0; i < m; i++) {
-        rhs2[i] = Math.max(0, w2 * stateGamma[i] - w1 * state[i]);
+        rhs2[i] = w2 * stateGamma[i] - w1 * state[i];
       }
       state = solveLowerTriangular(rhs2, d2 * dt, prodRate0);
-
-      // If closed decay system (no neutron activation & no elution removal), conserve exact total atoms
-      if (!activationEnabled && !elutionEnabled) {
-        const sumA = state.reduce((a, b) => a + b, 0);
-        if (sumA > 0) {
-          const scale = initialParentAtoms / sumA;
-          for (let i = 0; i < m; i++) state[i] *= scale;
-        }
-      }
     }
     return state;
   };
@@ -665,9 +696,18 @@ export function simulateGeneralizedDecayDAG(config: DecaySimulationConfig): Deca
     harvestedCumAtCurrentT = 0;
   }
 
+  const modeledAtomsAtCurrentT = snapshotAtCurrentT.reduce((a, b) => a + b, 0);
+  const stableSinkAtCurrentT =
+    !activationEnabled && !elutionEnabled ? Math.max(0, initialParentAtoms - modeledAtomsAtCurrentT) : 0;
   const totalCurrentAtoms =
-    snapshotAtCurrentT.reduce((a, b) => a + b, 0) +
-    (elutionEnabled ? harvestedCumAtCurrentT : 0) || 1;
+    modeledAtomsAtCurrentT + (elutionEnabled ? harvestedCumAtCurrentT : stableSinkAtCurrentT) || 1;
+
+  const outEdgesByNuclide = new Map<string, DecayBranchEdge[]>();
+  edges.forEach(e => {
+    const arr = outEdgesByNuclide.get(e.fromNuclide) || [];
+    arr.push(e);
+    outEdgesByNuclide.set(e.fromNuclide, arr);
+  });
 
   let totalAlphaW = 0;
   let totalBetaW = 0;
@@ -678,15 +718,40 @@ export function simulateGeneralizedDecayDAG(config: DecaySimulationConfig): Deca
     const activityBq = atoms * n.lambda;
     const activityMBq = activityBq / 1e6;
 
-    // Partition emitted power into Alpha, Beta, and Gamma/IT/EC modalities
-    const alphaMeV = n.qAlphaMeV;
-    const betaMeV = n.qBetaMeV * 0.40; // Average beta kinetic energy ~ 0.40 * Q_beta (Fermi spectrum)
+    // Partition emitted power into Alpha, Beta, and Gamma/IT/EC weighted by outgoing branch fractions
+    const outEdges = outEdgesByNuclide.get(n.nuclide) || [];
+    let alphaMeV = n.qAlphaMeV;
+    let betaMeV = n.qBetaMeV * 0.40; // Average beta kinetic energy ~ 0.40 * Q_beta (Fermi spectrum)
+    let ecGammaFrac = 1.0;
+
+    if (outEdges.length > 0) {
+      let weightedAlpha = 0;
+      let weightedBeta = 0;
+      let ecGammaSum = 0;
+      let hasAlphaEdge = false;
+      let hasBetaEdge = false;
+      for (const e of outEdges) {
+        if (e.modality === 'alpha') {
+          hasAlphaEdge = true;
+          weightedAlpha += e.branchFraction * (n.qAlphaMeV > 0 ? n.qAlphaMeV : e.qMeV);
+        } else if (e.modality === 'beta') {
+          hasBetaEdge = true;
+          weightedBeta += e.branchFraction * 0.40 * (e.qMeV > 0 ? e.qMeV : n.qBetaMeV);
+        } else {
+          ecGammaSum += e.branchFraction;
+        }
+      }
+      alphaMeV = hasAlphaEdge ? weightedAlpha : 0;
+      betaMeV = hasBetaEdge ? weightedBeta : 0;
+      ecGammaFrac = ecGammaSum > 0 ? Math.min(1.0, ecGammaSum) : 1.0;
+    }
+
     const gammaMeV =
       n.principalGammaMeV > 0
         ? n.principalGammaMeV * (n.gammaYieldPct / 100)
         : n.qGammaOrEcMeV > 0
-        ? n.qGammaOrEcMeV
-        : n.qBetaMeV * 0.25;
+        ? n.qGammaOrEcMeV * ecGammaFrac
+        : 0;
 
     const alphaPowerWatts = activityBq * alphaMeV * 1.60217663e-13;
     const betaPowerWatts = activityBq * betaMeV * 1.60217663e-13;

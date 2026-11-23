@@ -8,6 +8,10 @@ import { type CalculationDossierPayload } from '../../services/auditDossierServi
 import VerificationBadge from '../../components/VerificationBadge';
 import { getCanonicalNuclide, parseActivityToGBq } from '../../utils/canonicalNuclidePhysics';
 import {
+  computeGalacticCosmicDoseRateUSvHr,
+  computeISO7503SurfaceActivityBqCm2
+} from '../../utils/radiologicalPhysicsKernels';
+import {
   evaluateXCOMAttenuation,
   evaluateGPBuildup,
   intersectRayAABB3D
@@ -71,6 +75,13 @@ const WorkerDosimetryModule: React.FC = () => {
 
   const [displayMin] = useState<number>(10);
   const [displayMax, setDisplayMax] = useState<number>(2000);
+  const [facilityAltFt, setFacilityAltFt] = useState<number>(500);
+  const [smearGrossCps, setSmearGrossCps] = useState<number>(21.0);
+  const [smearBgCps, setSmearBgCps] = useState<number>(1.0);
+  const [smearProbeCm2, setSmearProbeCm2] = useState<number>(100.0);
+
+  const cosmicAmbientUSvHr = computeGalacticCosmicDoseRateUSvHr(facilityAltFt, 0.5, 420.0);
+  const isoSurfaceBqCm2 = computeISO7503SurfaceActivityBqCm2(smearGrossCps, smearBgCps, 0.40, 0.50, smearProbeCm2);
 
   // Co-60 canonical Γ_SI = 308.5 µSv·m²/(GBq·h) = 3,085 µSv·cm²/(MBq·h)
   const [sources, setSources] = useState<Source3D[]>([
@@ -664,6 +675,45 @@ const WorkerDosimetryModule: React.FC = () => {
                   <li><strong style={{ color: '#f59e0b' }}>Level II (300 µSv / shift):</strong> RSO review required; investigate shielding barriers or rotate operators.</li>
                   <li><strong style={{ color: '#ff3366' }}>Action Limit (1,000 µSv / shift):</strong> Immediate job pause; mandatory stay-time reallocation and ALARA brief.</li>
                 </ul>
+              </div>
+            </div>
+
+            {/* ISO 7503-1 Surface Contamination Frisk & Cosmic Background Baseline */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '14px' }}>
+              <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '14px' }}>
+                <h4 style={{ margin: '0 0 8px 0', color: '#38bdf8', fontSize: '0.92rem' }}>
+                  🧼 ISO 7503-1 Worker Surface Contamination Frisk
+                </h4>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginBottom: '8px' }}>
+                  <div>
+                    <label style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Gross (cps)</label>
+                    <input type="number" className="form-control" value={smearGrossCps} onChange={e => setSmearGrossCps(Math.max(0, Number(e.target.value)))} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Background (cps)</label>
+                    <input type="number" className="form-control" value={smearBgCps} onChange={e => setSmearBgCps(Math.max(0, Number(e.target.value)))} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Probe Window (cm²)</label>
+                    <input type="number" className="form-control" value={smearProbeCm2} onChange={e => setSmearProbeCm2(Math.max(1, Number(e.target.value) || 100))} />
+                  </div>
+                </div>
+                <div style={{ fontSize: '0.84rem', color: '#e2e8f0' }}>
+                  Surface Activity <strong>A_s = {isoSurfaceBqCm2.toFixed(4)} Bq/cm²</strong> ({(isoSurfaceBqCm2 * 6000).toFixed(0)} dpm / 100 cm²) [&epsilon;_i=0.40, &epsilon;_s=0.50]
+                </div>
+              </div>
+
+              <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '14px' }}>
+                <h4 style={{ margin: '0 0 8px 0', color: '#a78bfa', fontSize: '0.92rem' }}>
+                  🌌 Cosmic Natural Background Subtraction Baseline
+                </h4>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '8px' }}>
+                  <label style={{ fontSize: '0.76rem', color: '#94a3b8' }}>Elevation / Flight Alt (ft):</label>
+                  <input type="number" step="500" className="form-control" style={{ width: '120px' }} value={facilityAltFt} onChange={e => setFacilityAltFt(Math.max(0, Number(e.target.value)))} />
+                </div>
+                <div style={{ fontSize: '0.84rem', color: '#e2e8f0' }}>
+                  GCR Ambient Rate: <strong>{cosmicAmbientUSvHr.toFixed(4)} µSv/h</strong> ({(cosmicAmbientUSvHr * 8.76).toFixed(3)} mSv/yr natural background)
+                </div>
               </div>
             </div>
           </div>

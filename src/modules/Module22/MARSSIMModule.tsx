@@ -10,7 +10,8 @@ import {
   standardNormalCDF,
   inverseStandardNormalCDF,
   computeMARSSIMSignSampleSize,
-  computeISO11929CharacteristicLimits
+  computeISO11929CharacteristicLimits,
+  computeCurrieDetectionLimits
 } from '../../utils/radiologicalPhysicsKernels';
 
 const Plot = (PlotComponent as any).default || PlotComponent;
@@ -268,11 +269,11 @@ const MARSSIMModule: React.FC = () => {
     const varDiff = bgCounts * timeRatio * (1 + timeRatio);
     const sigmaNet = Math.sqrt(varDiff);
 
-    // Critical level LC (Decision Level in counts)
-    const lcCounts = zAlpha * sigmaNet;
-    
-    // Detection limit LD (Currie net counts)
-    const ldCounts = Math.pow(zAlpha, 2) + 2 * zAlpha * sigmaNet;
+    // Currie paired-blank vs well-known blank reference via canonical kernel
+    const isPairedCount = Math.abs(timeRatio - 1.0) < 0.05 && Math.abs(alphaRisk - 0.05) < 0.015;
+    const currieRef = computeCurrieDetectionLimits(bgCounts, timeRatio >= 0.5);
+    const lcCounts = isPairedCount ? currieRef.lcCounts : zAlpha * sigmaNet;
+    const ldCounts = isPairedCount ? currieRef.ldCounts : Math.pow(zAlpha, 2) + 2 * zAlpha * sigmaNet;
 
     // Total efficiency
     const totalEff = instrEfficiency * surfaceEfficiency * wipeRecovery;

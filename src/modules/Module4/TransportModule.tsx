@@ -740,10 +740,18 @@ const TransportModule: React.FC = () => {
              }}>
                <div style={{ transform: 'rotate(-45deg)', textAlign: 'center', fontWeight: 'bold' }}>
                  <svg width="24" height="24" viewBox="0 0 100 100" style={{ display: 'block', margin: '0 auto 3px auto' }}>
-                  <circle cx="50" cy="50" r="10" fill={activeCategoryData.text === '#fff' ? '#ffffff' : '#000000'} />
-                  <path d="M 50 50 L 32.68 20 A 35 35 0 0 1 67.32 20 Z" fill={activeCategoryData.text === '#fff' ? '#ffffff' : '#000000'} />
-                  <path d="M 50 50 L 67.32 80 A 35 35 0 0 1 32.68 80 Z" fill={activeCategoryData.text === '#fff' ? '#ffffff' : '#000000'} transform="rotate(120, 50, 50)" />
-                  <path d="M 50 50 L 67.32 80 A 35 35 0 0 1 32.68 80 Z" fill={activeCategoryData.text === '#fff' ? '#ffffff' : '#000000'} transform="rotate(240, 50, 50)" />
+                  {(() => {
+                    const fillCol = activeCategoryData.text === '#fff' ? '#ffffff' : '#000000';
+                    const bladePath = 'M 56.5 61.26 L 70 84.64 A 40 40 0 0 1 30 84.64 L 43.5 61.26 A 13 13 0 0 0 56.5 61.26 Z';
+                    return (
+                      <>
+                        <circle cx="50" cy="50" r="8" fill={fillCol} />
+                        <path d={bladePath} fill={fillCol} />
+                        <path d={bladePath} fill={fillCol} transform="rotate(120, 50, 50)" />
+                        <path d={bladePath} fill={fillCol} transform="rotate(240, 50, 50)" />
+                      </>
+                    );
+                  })()}
                 </svg>
                  <span style={{ fontSize: '0.6rem', lineHeight: '1' }}>RADIOACTIVE</span><br/>
                  <span style={{ fontSize: '0.7rem' }}>{activeCategoryData.id.split('-')[1] || activeCategoryData.id}</span>

@@ -7,6 +7,7 @@ import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
 import { useRegulatory } from '../../context/RegulatoryContext';
 import { getCanonicalNuclide, parseActivityToGBq } from '../../utils/canonicalNuclidePhysics';
+import { computeTG108UptakeDecayFactor } from '../../utils/radiologicalPhysicsKernels';
 import {
   evaluateXCOMAttenuation,
   evaluateGPBuildup,
@@ -258,6 +259,7 @@ const Spatial3DModule: React.FC = () => {
       totalCi: totalMBq / 37000,
       maxSensorDose,
       worstSensor,
+      petUptakeDecay60m: computeTG108UptakeDecayFactor(109.77, 60.0),
       totalShields: shields.length
     };
   }, [sources, targets, shields]);
@@ -531,7 +533,7 @@ const Spatial3DModule: React.FC = () => {
               <div>
                 <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#fff' }}>Target Sensor &amp; Virtual Detector Network</h3>
                 <p style={{ margin: '2px 0 0 0', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-                  Active sensor probe coordinates and point dose evaluation including multi-barrier attenuation.
+                  Active sensor probe coordinates and point dose evaluation including multi-barrier attenuation (TG-108 F-18 60m uptake factor R_U = {analytics.petUptakeDecay60m.toFixed(4)}).
                 </p>
               </div>
               <button

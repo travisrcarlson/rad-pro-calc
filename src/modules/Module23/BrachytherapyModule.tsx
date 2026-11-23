@@ -1,10 +1,15 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import VerificationBadge from '../../components/VerificationBadge';
 import PlotComponent from 'react-plotly.js';
 import { BlockMath } from 'react-katex';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
 import { useRegulatory } from '../../context/RegulatoryContext';
+import {
+  computeTG43ReferenceDoseRateMGyHr,
+  evaluateTG43RadialDoseFunction
+} from '../../utils/radiologicalPhysicsKernels';
 
 const Plot = (PlotComponent as any).default || PlotComponent;
 
@@ -221,18 +226,8 @@ const computeTG43DoseRate = (
   const beta0 = 2 * Math.atan(L / 2);
   const GL0 = beta0 / L;
 
-  // 2. Radial Dose Function g_L(r)
-  let gl = 1.0;
-  if (model.isotope === 'I-125') {
-    gl = 1.014 - 0.003 * r - 0.012 * r * r + 0.001 * Math.pow(r, 3);
-  } else if (model.isotope === 'Pd-103') {
-    gl = 1.05 - 0.08 * r - 0.015 * r * r;
-  } else if (model.isotope === 'Ir-192') {
-    gl = 1.002 - 0.0015 * r;
-  } else {
-    gl = 1.0 / (1.0 + 0.02 * r);
-  }
-  gl = Math.max(0.01, gl);
+  // 2. Radial Dose Function g_L(r) via consensus AAPM TG-43U1 log-linear tables
+  const gl = Math.max(0.001, evaluateTG43RadialDoseFunction(r, model.isotope));
 
   // 3. 2D Anisotropy Function F(r, theta)
   const cosTheta = Math.abs(xPrime) / r;
@@ -260,12 +255,39 @@ const computeSeedTotalDoseGy = (
 
 const BrachytherapyModule: React.FC = () => {
   const { setLiveModuleTelemetry } = useRegulatory();
+  const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<ActiveTab>('planner');
   const [selectedModelId, setSelectedModelId] = useState<string>('I-125_6711');
   const [prescribedDoseGy, setPrescribedDoseGy] = useState<number>(145);
   const [isDossierOpen, setIsDossierOpen] = useState<boolean>(false);
 
   const currentModel = useMemo(() => SEED_MODELS[selectedModelId], [selectedModelId]);
+
+  useEffect(() => {
+    const presetParam = searchParams.get('preset');
+    const modelParam = searchParams.get('model') || searchParams.get('nuclide') || searchParams.get('isotope');
+    const doseParam = searchParams.get('dose') || searchParams.get('rxGy');
+    if (presetParam) {
+      const found = CLINICAL_PRESETS.find(p => p.id.toLowerCase() === presetParam.toLowerCase());
+      if (found) {
+        setSelectedModelId(found.seedModelId);
+        setPrescribedDoseGy(found.prescribedDoseGy);
+      }
+    } else if (modelParam) {
+      const mKey = Object.keys(SEED_MODELS).find(k =>
+        k.toLowerCase().includes(modelParam.toLowerCase()) ||
+        SEED_MODELS[k].isotope.toLowerCase() === modelParam.toLowerCase()
+      );
+      if (mKey) {
+        setSelectedModelId(mKey);
+        setPrescribedDoseGy(SEED_MODELS[mKey].typicalPrescribedDoseGy);
+      }
+    }
+    if (doseParam !== null) {
+      const d = parseFloat(doseParam);
+      if (!isNaN(d) && d > 0) setPrescribedDoseGy(d);
+    }
+  }, [searchParams]);
 
   // Initial seed configuration from Preset 1
   const [seeds, setSeeds] = useState<SeedInstance[]>(
@@ -733,9 +755,15 @@ const BrachytherapyModule: React.FC = () => {
                     x: doseDistribution.xVals,
                     y: doseDistribution.yVals,
                     type: 'contour',
+                    zmin: 0,
+                    zmax: Math.max(prescribedDoseGy * 2.5, 10),
+                    zauto: false,
                     contours: {
                       coloring: 'heatmap',
                       showlabels: true,
+                      start: prescribedDoseGy * 0.25,
+                      end: prescribedDoseGy * 2.0,
+                      size: Math.max(1, prescribedDoseGy * 0.25),
                       labelfont: { size: 10, color: '#fff' }
                     },
                     colorscale: [
@@ -925,7 +953,11 @@ const BrachytherapyModule: React.FC = () => {
             <div style={{ padding: '14px', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--color-border)', borderRadius: '6px' }}>
               <strong style={{ color: '#00e5ff', fontSize: '0.85rem' }}>1. Air-Kerma Strength (S_K) & Dose-Rate Constant (Λ)</strong>
               <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: '6px 0' }}>
-                S_K is the air-kerma rate in free space at distance d multiplied by d². The dose-rate constant Λ converts air kerma to absorbed dose rate in water at reference point (r₀ = 1 cm, θ₀ = 90°):
+                S_K is the air-kerma rate in free space at distance d multiplied by d². At active seed strength S_K = {(seeds[0]?.airKermaStrength ?? currentModel.defaultAirKermaStrength).toFixed(2)} U and &Lambda; = {currentModel.doseRateConstant}, reference point dose rate is{' '}
+                <strong style={{ color: '#10b981' }}>
+                  {computeTG43ReferenceDoseRateMGyHr(seeds[0]?.airKermaStrength ?? currentModel.defaultAirKermaStrength, currentModel.doseRateConstant).toFixed(2)} mGy/h
+                </strong>{' '}
+                at (r₀ = 1 cm, θ₀ = 90°).
               </p>
               <BlockMath math="\Lambda = \frac{\dot{D}(r_0, \theta_0)}{S_K} \quad [\text{cGy}\cdot\text{h}^{-1}\cdot\text{U}^{-1}]" />
             </div>

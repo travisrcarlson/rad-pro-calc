@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import VerificationBadge from '../../components/VerificationBadge';
 import PlotComponent from 'react-plotly.js';
@@ -87,38 +87,44 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
   }, [searchParams]);
 
   // Unified handler that keeps burstAltitudeM and burstMode strictly synchronized
-  const handleBurstAltitudeChange = (newAltM: number, explicitMode?: 'surface' | 'air' | 'underground' | 'underwater') => {
-    const clamped = Math.max(-2500, Math.min(100000, Math.round(newAltM)));
-    setBurstAltitudeM(clamped);
-    if (explicitMode) {
-      setBurstMode(explicitMode);
-    } else if (clamped < 0) {
-      setBurstMode((prev) => (prev === 'underwater' ? 'underwater' : 'underground'));
-    } else if (clamped === 0) {
-      setBurstMode('surface');
-    } else {
-      setBurstMode('air');
-    }
-  };
+  const handleBurstAltitudeChange = useCallback(
+    (newAltM: number, explicitMode?: 'surface' | 'air' | 'underground' | 'underwater') => {
+      const clamped = Math.max(-2500, Math.min(100000, Math.round(newAltM)));
+      setBurstAltitudeM(clamped);
+      if (explicitMode) {
+        setBurstMode(explicitMode);
+      } else if (clamped < 0) {
+        setBurstMode((prev) => (prev === 'underwater' ? 'underwater' : 'underground'));
+      } else if (clamped === 0) {
+        setBurstMode('surface');
+      } else {
+        setBurstMode('air');
+      }
+    },
+    []
+  );
 
-  const handleBurstModeChange = (mode: 'surface' | 'air' | 'underground' | 'underwater') => {
-    setBurstMode(mode);
-    if (mode === 'surface') {
-      setBurstAltitudeM(0);
-    } else if (mode === 'underwater') {
-      setBurstAltitudeM((prev) =>
-        prev < 0 ? prev : -Math.max(15, Math.min(600, Math.round(18 * Math.pow(customYieldKt, 1 / 3))))
-      );
-    } else if (mode === 'underground') {
-      setBurstAltitudeM((prev) =>
-        prev < 0 ? prev : -Math.max(25, Math.min(1500, Math.round(45 * Math.pow(customYieldKt, 1 / 3))))
-      );
-    } else {
-      setBurstAltitudeM((prev) =>
-        prev > 0 ? prev : Math.round(140 * Math.pow(customYieldKt, 1 / 3))
-      );
-    }
-  };
+  const handleBurstModeChange = useCallback(
+    (mode: 'surface' | 'air' | 'underground' | 'underwater') => {
+      setBurstMode(mode);
+      if (mode === 'surface') {
+        setBurstAltitudeM(0);
+      } else if (mode === 'underwater') {
+        setBurstAltitudeM((prev) =>
+          prev < 0 ? prev : -Math.max(15, Math.min(600, Math.round(18 * Math.pow(customYieldKt, 1 / 3))))
+        );
+      } else if (mode === 'underground') {
+        setBurstAltitudeM((prev) =>
+          prev < 0 ? prev : -Math.max(25, Math.min(1500, Math.round(45 * Math.pow(customYieldKt, 1 / 3))))
+        );
+      } else {
+        setBurstAltitudeM((prev) =>
+          prev > 0 ? prev : Math.round(140 * Math.pow(customYieldKt, 1 / 3))
+        );
+      }
+    },
+    [customYieldKt]
+  );
 
   useEffect(() => {
     const yieldParam = searchParams.get('yieldKt');
@@ -298,13 +304,30 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
     const tauAtm = Math.exp(-slantDistanceM / (2.0 * atmosphericVisibilityKm * 1000));
     const fluenceCalCm2 = computeWeaponPromptThermalFluenceCalCm2(y, slantDistanceM, etaTh, tauAtm);
 
-    // Threshold Radii for burns (Glasstone & Dolan empirical scaling):
-    // 3rd degree burn (blistering/necrosis, Q >= 10 cal/cm^2)
-    const r3rdBurn_km = 0.82 * scaledYieldFactor;
-    // 2nd degree burn (partial thickness, Q >= 5.5 cal/cm^2)
-    const r2ndBurn_km = 1.15 * scaledYieldFactor;
-    // 1st degree burn (erythema/sunburn, Q >= 3.0 cal/cm^2)
-    const r1stBurn_km = 1.55 * scaledYieldFactor;
+    // Solve exact threshold ground radii via bisection on Glasstone & Dolan thermal fluence with visibility transmittance
+    const evalThermalAtGroundKm = (rKm: number): number => {
+      const rM = Math.max(1.0, rKm * 1000);
+      const sM = Math.sqrt(rM * rM + burstAltitudeM * burstAltitudeM);
+      const tau = Math.exp(-sM / (2.0 * atmosphericVisibilityKm * 1000));
+      return computeWeaponPromptThermalFluenceCalCm2(y, sM, etaTh, tau);
+    };
+    const findThermalRadiusKm = (threshCalCm2: number): number => {
+      if (evalThermalAtGroundKm(0.01) < threshCalCm2) return 0;
+      let lo = 0.01;
+      let hi = 250.0;
+      for (let i = 0; i < 42; i++) {
+        const mid = 0.5 * (lo + hi);
+        if (evalThermalAtGroundKm(mid) >= threshCalCm2) lo = mid;
+        else hi = mid;
+      }
+      return lo;
+    };
+
+    // Yield-pulse duration factor (Y^0.06) slightly shifts ignition thresholds per Glasstone & Dolan Ch. VII
+    const pulseScale = Math.pow(Math.max(1, y) / 15.0, 0.05);
+    const r3rdBurn_km = findThermalRadiusKm(10.0 * pulseScale);
+    const r2ndBurn_km = findThermalRadiusKm(5.5 * pulseScale);
+    const r1stBurn_km = findThermalRadiusKm(3.0 * pulseScale);
     // Retinal flashblindness standoff (daytime ~10x, nighttime ~25x)
     const rFlashblindDay_km = 4.2 * scaledYieldFactor;
     const rFlashblindNight_km = 12.0 * scaledYieldFactor;
@@ -522,6 +545,7 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
   }, [yieldKt, burstMode, burstAltitudeM, targetDistanceKm, atmosphericVisibilityKm, fireballRadiusM, blastCalculations, thermalCalculations, promptRadCalculations]);
 
   useEffect(() => {
+    if (activeTab === 'visual_detonation') return;
     setLiveModuleTelemetry({
       moduleId: 'nuclear-weapons-effects',
       moduleTitle: 'Nuclear Weapon Prompt Effects & Blast Simulator',
@@ -539,7 +563,7 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
         'LD50/60 Prompt Radius': `${promptRadCalculations.rLd50_km.toFixed(2)} km`
       }
     });
-  }, [yieldKt, burstMode, burstAltitudeM, targetDistanceKm, blastCalculations, thermalCalculations, promptRadCalculations, setLiveModuleTelemetry]);
+  }, [activeTab, yieldKt, burstMode, burstAltitudeM, targetDistanceKm, blastCalculations, thermalCalculations, promptRadCalculations, setLiveModuleTelemetry]);
 
   return (
     <div className="nuclear-weapon-effects-module" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -599,7 +623,11 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
             </button>
             <button
               className="btn btn-secondary"
-              onClick={() => navigate('/cbrn-consequence')}
+              onClick={() => {
+                const fissionFrac = yieldKt <= 20 ? 1.0 : yieldKt <= 500 ? 0.65 : 0.50;
+                const fissionYield = Math.max(0.01, yieldKt * 0.80 * fissionFrac);
+                navigate(`/cbrn-consequence?yieldKt=${fissionYield.toFixed(2)}`);
+              }}
               style={{ fontSize: '0.76rem', padding: '5px 10px', color: '#f59e0b', borderColor: '#f59e0b' }}
             >
               ☢️ Model Radioactive Fallout ↗

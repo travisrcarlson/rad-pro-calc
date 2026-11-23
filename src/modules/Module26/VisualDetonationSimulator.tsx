@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } from 'react';
 import { useRegulatory } from '../../context/RegulatoryContext';
 
 export interface VisualDetonationProps {
@@ -441,11 +441,57 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
     }
   }, [initialCityId, onYieldChange, onBurstModeChange, onBurstAltitudeChange]);
 
-  // Canvas References
+  // Canvas & Wrapper References with ResizeObserver responsive sizing
   const profileCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const mapCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const profileWrapperRef = useRef<HTMLDivElement | null>(null);
+  const mapWrapperRef = useRef<HTMLDivElement | null>(null);
+  const [profileDims, setProfileDims] = useState<{ width: number; height: number }>({ width: 960, height: 520 });
+  const [mapDims, setMapDims] = useState<{ width: number; height: number }>({ width: 960, height: 520 });
   const animationFrameRef = useRef<number | null>(null);
   const lastTimestampRef = useRef<number | null>(null);
+
+  useLayoutEffect(() => {
+    const syncDims = () => {
+      const profileTarget = profileWrapperRef.current || profileCanvasRef.current;
+      if (profileTarget) {
+        const rect = profileTarget.getBoundingClientRect();
+        const w = Math.max(320, Math.round(rect.width));
+        const h = Math.max(360, Math.round(rect.height));
+        setProfileDims((prev) => (prev.width !== w || prev.height !== h ? { width: w, height: h } : prev));
+      }
+      const mapTarget = mapWrapperRef.current || mapCanvasRef.current;
+      if (mapTarget) {
+        const rect = mapTarget.getBoundingClientRect();
+        const w = Math.max(320, Math.round(rect.width));
+        const h = Math.max(360, Math.round(rect.height));
+        setMapDims((prev) => (prev.width !== w || prev.height !== h ? { width: w, height: h } : prev));
+      }
+    };
+    syncDims();
+    const ro = typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver((entries) => {
+          for (const entry of entries) {
+            const w = Math.max(320, Math.round(entry.contentRect.width));
+            const h = Math.max(360, Math.round(entry.contentRect.height));
+            if (entry.target === profileWrapperRef.current || entry.target === profileCanvasRef.current) {
+              setProfileDims((prev) => (prev.width !== w || prev.height !== h ? { width: w, height: h } : prev));
+            } else if (entry.target === mapWrapperRef.current || entry.target === mapCanvasRef.current) {
+              setMapDims((prev) => (prev.width !== w || prev.height !== h ? { width: w, height: h } : prev));
+            }
+          }
+        })
+      : null;
+    if (ro && profileWrapperRef.current) ro.observe(profileWrapperRef.current);
+    if (ro && profileCanvasRef.current) ro.observe(profileCanvasRef.current);
+    if (ro && mapWrapperRef.current) ro.observe(mapWrapperRef.current);
+    if (ro && mapCanvasRef.current) ro.observe(mapCanvasRef.current);
+    window.addEventListener('resize', syncDims);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener('resize', syncDims);
+    };
+  }, [viewMode]);
 
   // Current City
   const currentCity = useMemo(() => {
@@ -693,6 +739,12 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
   }, [yieldKt]);
 
   const { setLiveModuleTelemetry, openPhysicsTutor } = useRegulatory();
+  const onBurstAltRef = useRef(onBurstAltitudeChange);
+  const triggerRef = useRef(triggerDetonation);
+  const yieldRef = useRef(yieldKt);
+  onBurstAltRef.current = onBurstAltitudeChange;
+  triggerRef.current = triggerDetonation;
+  yieldRef.current = yieldKt;
 
   useEffect(() => {
     const regimeDesc = cloudPhysics.isUnderwater
@@ -729,40 +781,40 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
           label: '▶ Optimal Airburst',
           description: 'Set HOB to optimal 5-psi Mach-stem coalescence height',
           run: () => {
-            const optM = Math.max(50, Math.round(140 * Math.pow(Math.max(0.01, yieldKt), 1 / 3)));
-            if (onBurstAltitudeChange) onBurstAltitudeChange(optM, 'air');
-            triggerDetonation();
+            const optM = Math.max(50, Math.round(140 * Math.pow(Math.max(0.01, yieldRef.current), 1 / 3)));
+            onBurstAltRef.current?.(optM, 'air');
+            triggerRef.current();
           }
         },
         {
           label: '▶ Underwater Plume (Baker)',
           description: 'Detonate underwater to observe thermal quenching & radioactive base surge',
           run: () => {
-            const dM = -Math.max(15, Math.min(180, Math.round(10 * Math.pow(Math.max(0.01, yieldKt), 1 / 3))));
-            if (onBurstAltitudeChange) onBurstAltitudeChange(dM, 'underwater');
-            triggerDetonation();
+            const dM = -Math.max(15, Math.min(180, Math.round(10 * Math.pow(Math.max(0.01, yieldRef.current), 1 / 3))));
+            onBurstAltRef.current?.(dM, 'underwater');
+            triggerRef.current();
           }
         },
         {
           label: '▶ High-Altitude HEMP (15 km)',
           description: 'Detonate in upper atmosphere (no ground stem, wide plasma sphere)',
           run: () => {
-            if (onBurstAltitudeChange) onBurstAltitudeChange(15000, 'air');
-            triggerDetonation();
+            onBurstAltRef.current?.(15000, 'air');
+            triggerRef.current();
           }
         },
         {
           label: '▶ Contained Underground',
           description: 'Bury past SDOB = 115 m/kt¹/³ for full lithostatic containment',
           run: () => {
-            const dobM = -Math.max(120, Math.min(2000, Math.round(120 * Math.pow(Math.max(0.01, yieldKt), 1 / 3))));
-            if (onBurstAltitudeChange) onBurstAltitudeChange(dobM, 'underground');
-            triggerDetonation();
+            const dobM = -Math.max(120, Math.min(2000, Math.round(120 * Math.pow(Math.max(0.01, yieldRef.current), 1 / 3))));
+            onBurstAltRef.current?.(dobM, 'underground');
+            triggerRef.current();
           }
         }
       ]
     });
-  }, [yieldKt, burstMode, burstAltitudeM, cloudPhysics, setLiveModuleTelemetry, onBurstAltitudeChange, triggerDetonation]);
+  }, [yieldKt, burstMode, burstAltitudeM, cloudPhysics, setLiveModuleTelemetry]);
 
   // --- GROUNDED CASUALTY & HUMAN IMPACT CALCULATOR (Radial Urban Decay + Coastal Water Mask + Terrain Shadowing) ---
   const casualties = useMemo(() => {
@@ -971,12 +1023,15 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const width = 960;
-    const height = 520;
-    const dpr = Math.min(2.5, Math.max(2.0, typeof window !== 'undefined' ? window.devicePixelRatio || 2.0 : 2.0));
-    if (canvas.width !== Math.round(width * dpr) || canvas.height !== Math.round(height * dpr)) {
-      canvas.width = Math.round(width * dpr);
-      canvas.height = Math.round(height * dpr);
+    const rect = canvas.getBoundingClientRect();
+    const width = Math.max(320, Math.round(rect.width || canvas.clientWidth || profileDims.width));
+    const height = Math.max(320, Math.round(rect.height || canvas.clientHeight || profileDims.height));
+    const dpr = Math.min(2.5, Math.max(1.5, typeof window !== 'undefined' ? window.devicePixelRatio || 1.5 : 1.5));
+    const targetW = Math.round(width * dpr);
+    const targetH = Math.round(height * dpr);
+    if (canvas.width !== targetW || canvas.height !== targetH) {
+      canvas.width = targetW;
+      canvas.height = targetH;
     }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.imageSmoothingEnabled = true;
@@ -1054,7 +1109,8 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
         : isUnderground
         ? Math.max(dCapKm * 2.8, (rFractureM * 6) / 1000.0, 2.4)
         : Math.max(dCapKm * 2.6, 16);
-      return (distKm / visibleWidthKm) * (width * 0.76);
+      const effectiveScaleWidth = Math.min(width, height * 1.85);
+      return (distKm / visibleWidthKm) * (effectiveScaleWidth * 0.76);
     };
 
     // Camera Shake Offset during initial shockwave or seismic arrival
@@ -1284,7 +1340,7 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
     // =========================================================================
     // 7. SUBTERRANEAN GEOLOGICAL STRATA OR BATHYMETRIC OCEAN CROSS-SECTION (y >= groundY)
     // =========================================================================
-    const centerX = width * 0.56;
+    const centerX = width > 1250 ? Math.round(width * 0.52) : Math.round(width * 0.56);
     const subHeight = height - groundY;
 
     if (isUnderwater) {
@@ -2667,7 +2723,7 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
     }
 
     ctx.restore();
-  }, [simTimeSeconds, cloudPhysics, flashIntensity, shakeIntensity, burstMode, burstAltitudeM, smokeLobes, unitMode, yieldKt]);
+  }, [simTimeSeconds, cloudPhysics, flashIntensity, shakeIntensity, burstMode, burstAltitudeM, smokeLobes, unitMode, yieldKt, profileDims]);
 
   // --- CANVAS 2: OUTRIDER REAL-CITY DARK MATTER MAP & BLAST RADIUS SIMULATOR ---
   useEffect(() => {
@@ -2676,12 +2732,15 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const width = 960;
-    const height = 520;
-    const dpr = Math.min(2.5, Math.max(2.0, typeof window !== 'undefined' ? window.devicePixelRatio || 2.0 : 2.0));
-    if (canvas.width !== Math.round(width * dpr) || canvas.height !== Math.round(height * dpr)) {
-      canvas.width = Math.round(width * dpr);
-      canvas.height = Math.round(height * dpr);
+    const rect = canvas.getBoundingClientRect();
+    const width = Math.max(320, Math.round(rect.width || canvas.clientWidth || mapDims.width));
+    const height = Math.max(320, Math.round(rect.height || canvas.clientHeight || mapDims.height));
+    const dpr = Math.min(2.5, Math.max(1.5, typeof window !== 'undefined' ? window.devicePixelRatio || 1.5 : 1.5));
+    const targetW = Math.round(width * dpr);
+    const targetH = Math.round(height * dpr);
+    if (canvas.width !== targetW || canvas.height !== targetH) {
+      canvas.width = targetW;
+      canvas.height = targetH;
     }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.imageSmoothingEnabled = true;
@@ -2937,7 +2996,7 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
       20,
       44
     );
-  }, [simTimeSeconds, cloudPhysics, currentCity, selectedEffect, unitMode]);
+  }, [simTimeSeconds, cloudPhysics, currentCity, selectedEffect, unitMode, mapDims]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -3267,11 +3326,9 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
                   : 'Scale Markers: Mt. Everest (8.85 km) • Airliner (11 km) • SR-71 (24 km) • Tropopause Inversion (12 km)'}
               </span>
             </div>
-            <div style={{ position: 'relative', width: '100%', height: '500px', borderRadius: '8px', overflow: 'hidden', border: '1px solid rgba(56, 189, 248, 0.22)' }}>
+            <div ref={profileWrapperRef} style={{ position: 'relative', width: '100%', height: 'clamp(480px, 54vh, 640px)', borderRadius: '8px', overflow: 'hidden', border: '1px solid rgba(56, 189, 248, 0.22)' }}>
               <canvas
                 ref={profileCanvasRef}
-                width={960}
-                height={520}
                 style={{ width: '100%', height: '100%', display: 'block', background: '#020611' }}
               />
             </div>
@@ -3347,11 +3404,9 @@ export const VisualDetonationSimulator: React.FC<VisualDetonationProps> = ({
                 )}
               </div>
             </div>
-            <div style={{ position: 'relative', width: '100%', height: '500px', borderRadius: '8px', overflow: 'hidden', border: '1px solid rgba(56, 189, 248, 0.22)' }}>
+            <div ref={mapWrapperRef} style={{ position: 'relative', width: '100%', height: 'clamp(480px, 54vh, 640px)', borderRadius: '8px', overflow: 'hidden', border: '1px solid rgba(56, 189, 248, 0.22)' }}>
               <canvas
                 ref={mapCanvasRef}
-                width={960}
-                height={520}
                 style={{ width: '100%', height: '100%', display: 'block', background: '#06090e' }}
               />
             </div>

@@ -4,6 +4,11 @@ import PlotComponent from 'react-plotly.js';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
 import { useRegulatory } from '../../context/RegulatoryContext';
+import {
+  computeTwoGroupInfiniteMultiplication,
+  computeKeepinInhourReactivityCents,
+  computePostScramXenonPeakHours
+} from '../../utils/radiologicalPhysicsKernels';
 
 const Plot = (PlotComponent as any).default || PlotComponent;
 
@@ -535,7 +540,18 @@ const CriticalityModule: React.FC = () => {
     const f = Math.min(0.995, (totalFissionProduction / Math.max(0.01, eta)) / Math.max(0.001, totalAbsorption));
     const p = isFastCore ? 1.0 : moderatorType === 'Heavy Water (D2O)' ? 0.915 : moderatorType === 'Graphite' ? 0.89 : 0.87;
     const epsilon = isFastCore ? 1.04 : 1.032;
-    const kInf = eta * f * p * epsilon;
+    const sigmaS12 = 0.025;
+    const sigmaA1 = sigmaS12 * ((1.0 - p) / Math.max(0.05, p));
+    const sigmaA2 = Math.max(0.001, totalAbsorption / 49.0);
+    const nuSigmaF2 = eta * f * sigmaA2;
+    const nuSigmaF1 = ((epsilon - 1.0) * p * nuSigmaF2 * (sigmaA1 + sigmaS12)) / sigmaA2;
+    const kInf = computeTwoGroupInfiniteMultiplication({
+      nuSigmaF1,
+      nuSigmaF2,
+      sigmaA1,
+      sigmaA2,
+      sigmaS12
+    });
 
     // Geometric Buckling & Leakage (distinguishing bare compact fast-metal sphere vs full reactor lattice)
     const isBareFastMetal = isFastCore && pitchM <= 0.07 && enrichmentPct >= 80;
@@ -791,6 +807,9 @@ const CriticalityModule: React.FC = () => {
     const doublingTimeS = asymptoticPeriodS * Math.LN2;
     const promptJumpRatio = rhoDollars < 0.99 ? 1.0 / (1.0 - rhoDollars) : Infinity;
     const meanDelayedLifetimeS = spec.groups.reduce((acc, g) => acc + g.relYieldAi / g.lambdaSInv, 0);
+    const inhourCheckCents = Number.isFinite(asymptoticPeriodS)
+      ? computeKeepinInhourReactivityCents(asymptoticPeriodS, betaEff, Lambda)
+      : 0;
 
     // Group-by-group partial reactivity contribution at omega0
     const groupRows = spec.groups.map(g => {
@@ -834,6 +853,7 @@ const CriticalityModule: React.FC = () => {
       doublingTimeS,
       promptJumpRatio,
       meanDelayedLifetimeS,
+      inhourCheckCents,
       groupRows,
       superPeriods,
       superDollars,
@@ -874,11 +894,9 @@ const CriticalityModule: React.FC = () => {
     // X(t) / X_0 = exp(-lambda_X * t) + ratioI0ToX0 * (lambda_I / (lambda_I - lambda_X)) * (exp(-lambda_X * t) - exp(-lambda_I * t))
     const kFactor = ratioI0ToX0 * (lambdaI / (lambdaI - lambdaX));
 
-    // Exact post-SCRAM peak time t_max (seconds -> hours):
-    // dX/dt = 0 => exp((lambda_I - lambda_X)*t_max) = (lambda_I / lambda_X) * [ kFactor / (1 + kFactor) ]
-    const argPeak = (lambdaI / lambdaX) * (kFactor / (1.0 + kFactor));
-    const tMaxSec = argPeak > 1.0 ? Math.log(argPeak) / (lambdaI - lambdaX) : 0;
-    const tMaxHours = tMaxSec / 3600.0;
+    // Exact post-SCRAM peak time t_max (seconds -> hours) via canonical kernel:
+    const tMaxHours = computePostScramXenonPeakHours(phi0);
+    const tMaxSec = tMaxHours * 3600.0;
 
     const evalXeWorthPcmAtSec = (tSec: number): number => {
       const term1 = Math.exp(-lambdaX * tSec);

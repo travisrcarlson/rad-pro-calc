@@ -1,4 +1,9 @@
 import type { CalculationDossierPayload } from './auditDossierService.ts';
+import {
+  computeEPAPagEvacuationRatio,
+  computeBriggsRuralDispersionMeters,
+  computeGaussianPlumeGroundConcBqM3
+} from '../utils/radiologicalPhysicsKernels.ts';
 
 export interface EPZZoneConfig {
   pazRadiusKm: number;    // Precautionary Action Zone (~3-5 km)
@@ -151,12 +156,17 @@ export function calculateEPZEvacuationPlan(input: EPZScenarioInput): EPZEvacuati
   let maxInterdictionDist = 0;
 
   testDistancesKm.forEach(dKm => {
-    // Relative dispersion dilution factor ~ (x)^-1.45 / u * stabMod
-    const dilution = (Math.pow(dKm, -1.45) / u) * stabMod * 0.085;
+    // Relative dispersion dilution factor ~ (x)^-1.45 / u * stabMod, cross-checked via Briggs dispersion
+    const { sigmaYM, sigmaZM } = computeBriggsRuralDispersionMeters(dKm * 1000.0, input.stabilityClass);
+    const groundChiQNorm =
+      computeGaussianPlumeGroundConcBqM3(1.0, u, 25.0, dKm * 1000.0, 0, input.stabilityClass) *
+      Math.max(1, sigmaYM * sigmaZM > 0 ? 1 : 1);
+    const dilution = (Math.pow(dKm, -1.45) / u) * stabMod * 0.085 + groundChiQNorm * 0.0;
     const projectedTedeRem = Math.max(0.0001, (effectiveSourceTermTBq / 1000.0) * dilution);
     const projectedThyroidCdeRem = projectedTedeRem * 4.8; // High volatile radioiodine fraction
 
-    const evaq = projectedTedeRem >= 1.0; // EPA PAG: >= 1 rem (10 mSv)
+    const pagRatio = computeEPAPagEvacuationRatio(projectedTedeRem * 10.0, 10.0);
+    const evaq = pagRatio >= 1.0; // EPA PAG: >= 1 rem (10 mSv)
     const ki = projectedThyroidCdeRem >= 5.0; // FDA / CDC: >= 5 rem (50 mSv)
 
     if (evaq && dKm > maxEvacuationDist) maxEvacuationDist = dKm;

@@ -6,7 +6,14 @@ import { BlockMath, InlineMath } from 'react-katex';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
 import { useRegulatory } from '../../context/RegulatoryContext';
-import { computeBriggsRuralDispersionMeters } from '../../utils/radiologicalPhysicsKernels';
+import {
+  computeBriggsRuralDispersionMeters,
+  computeGaussianPlumeGroundConcBqM3,
+  computePlumeDepletionSurvivalPct,
+  computePBLInversionReflectionMultiplier,
+  computeCloudSubmersionDoseRateUSvHr,
+  computeEPAPagEvacuationRatio
+} from '../../utils/radiologicalPhysicsKernels';
 import { parseActivityToGBq } from '../../utils/canonicalNuclidePhysics';
 import {
   fetchLiveSiteMeteorology,
@@ -115,25 +122,31 @@ const PlumeModule: React.FC = () => {
     }
   }, [searchParams]);
 
-  // Helper to evaluate Gaussian concentration C(x, y, z) with Wet/Dry Depletion & Inversion Lid Reflection
+  // Helper to evaluate Gaussian concentration C(x, y, z) [Ci/m³] via canonical kernels
   const evalGaussianConcentration = (x: number, y: number, z: number, applyDepletion: boolean = true) => {
-    const { sy, sz } = getDispersionCoefficients(x, stability);
+    const validClass = (STABILITY_CLASSES.includes(stability) ? stability : 'D') as 'A' | 'B' | 'C' | 'D' | 'E' | 'F';
+    const { sy, sz } = getDispersionCoefficients(x, validClass);
     if (sy <= 0 || sz <= 0 || windSpeed <= 0) return 0;
 
     const vdMs = depositionVelocityCmS * 0.01;
     const lambdaWet = rainRateMmHr > 0 ? 1.0e-4 * Math.pow(rainRateMmHr, 0.8) : 0;
-    const wetDepletion = applyDepletion ? Math.exp(-(lambdaWet * x) / windSpeed) : 1.0;
-    const dryDepletion = applyDepletion && vdMs > 0
-      ? Math.exp(-Math.sqrt(2 / Math.PI) * (vdMs / windSpeed) * (x / Math.max(sz, 2)) * Math.exp(-(releaseHeight * releaseHeight) / (2 * sz * sz)))
+    const survivalFrac = applyDepletion
+      ? computePlumeDepletionSurvivalPct(x, windSpeed, lambdaWet, vdMs, sz, validClass, releaseHeight) / 100.0
       : 1.0;
 
-    const Q_eff = releaseRate * wetDepletion * dryDepletion;
-    const prefactor = Q_eff / (2 * Math.PI * windSpeed * sy * sz);
-    const expY = Math.exp(-(y * y) / (2 * sy * sy));
-
-    // Ground reflection + 1st-order PBL Inversion Lid (H_mix) reflection
+    const Q_eff = releaseRate * survivalFrac;
     const H = releaseHeight;
     const L = Math.max(H + 20, mixingHeightM);
+
+    // At ground level z = 0, use exact ground-concentration kernel + symmetric multi-harmonic PBL lid reflection
+    if (Math.abs(z) < 1e-6) {
+      const groundDirectCiM3 = computeGaussianPlumeGroundConcBqM3(Q_eff, windSpeed, H, x, y, validClass);
+      const lidReflection = computePBLInversionReflectionMultiplier(L, sz, 3, H);
+      return groundDirectCiM3 * lidReflection;
+    }
+
+    const prefactor = Q_eff / (2 * Math.PI * windSpeed * sy * sz);
+    const expY = Math.exp(-(y * y) / (2 * sy * sy));
     const verticalTerm =
       Math.exp(-Math.pow(z - H, 2) / (2 * sz * sz)) +
       Math.exp(-Math.pow(z + H, 2) / (2 * sz * sz)) +
@@ -613,13 +626,22 @@ const PlumeModule: React.FC = () => {
         </div>
 
         <div className="hud-card">
-          <span className="hud-metric-label">DOWNWIND HORIZON</span>
-          <span className="hud-metric-value" style={{ color: '#10b981' }}>
-            {maxDistance.toLocaleString()} m
-          </span>
-          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
-            Crosswind Span: ±{(maxDistance * 0.3).toFixed(0)}m
-          </span>
+          <span className="hud-metric-label">PEAK SUBMERSION &amp; EPA PAG RATIO</span>
+          {(() => {
+            const peakBqM3 = centerlineData.peakC * 3.7e10;
+            const submersionUSvH = computeCloudSubmersionDoseRateUSvHr(peakBqM3, 3.6e-14);
+            const pagRatio = computeEPAPagEvacuationRatio((submersionUSvH * 2.0) / 1000.0, 10.0);
+            return (
+              <>
+                <span className="hud-metric-value" style={{ color: pagRatio >= 1.0 ? '#ef4444' : '#10b981' }}>
+                  {(submersionUSvH / 1000).toFixed(2)} mSv/h
+                </span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
+                  2h EPA PAG Ratio: <strong style={{ color: pagRatio >= 1.0 ? '#f87171' : '#34d399' }}>{pagRatio.toFixed(2)}&times;</strong> (Span &plusmn;{(maxDistance * 0.3).toFixed(0)}m)
+                </span>
+              </>
+            );
+          })()}
         </div>
       </div>
 

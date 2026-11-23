@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { runMonteCarloSimulation, type MonteCarloConfig, type MonteCarloResult } from '../../workers/monteCarloWorker';
 import { useRegulatory } from '../../context/RegulatoryContext';
@@ -22,12 +22,32 @@ const PRESET_SOURCES: PresetSource[] = [
   { name: 'Am-241 Low Energy', energy_MeV: 0.0595, nuclide: 'Am-241' }
 ];
 
+function parseMcMaterialParam(raw: string | null): MonteCarloConfig['materialId'] | null {
+  if (!raw) return null;
+  const norm = raw.trim().toLowerCase();
+  if (norm === 'lead' || norm === 'pb') return 'lead';
+  if (norm === 'iron' || norm === 'steel' || norm === 'fe') return 'iron';
+  if (norm === 'concrete') return 'concrete';
+  if (norm === 'water' || norm === 'h2o') return 'water';
+  if (norm === 'tungsten' || norm === 'w') return 'tungsten';
+  if (norm === 'poly' || norm === 'hdpe' || norm === 'bpe' || norm === 'polyethylene' || norm === 'borated_pe') return 'poly';
+  return null;
+}
+
 export const MonteCarloModule: React.FC = () => {
   const [searchParams] = useSearchParams();
   const { currentFramework, setLiveModuleTelemetry } = useRegulatory();
   const [isDossierOpen, setIsDossierOpen] = useState<boolean>(false);
-  const [materialId, setMaterialId] = useState<MonteCarloConfig['materialId']>('lead');
-  const [thickness_cm, setThickness_cm] = useState<number>(5.0);
+  const [materialId, setMaterialId] = useState<MonteCarloConfig['materialId']>(() => {
+    return parseMcMaterialParam(searchParams.get('material')) || 'lead';
+  });
+  const [thickness_cm, setThickness_cm] = useState<number>(() => {
+    const tParam = searchParams.get('thickness') || searchParams.get('thicknessCm');
+    if (tParam && !isNaN(parseFloat(tParam)) && parseFloat(tParam) > 0) {
+      return Math.max(0.5, Math.min(50.0, parseFloat(tParam)));
+    }
+    return 5.0;
+  });
   const [energy_MeV, setEnergy_MeV] = useState<number>(() => {
     const eParam = searchParams.get('energyMeV');
     if (eParam && !isNaN(parseFloat(eParam)) && parseFloat(eParam) > 0) {
@@ -42,9 +62,47 @@ export const MonteCarloModule: React.FC = () => {
   const [result, setResult] = useState<MonteCarloResult | null>(null);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const canvasWrapperRef = useRef<HTMLDivElement | null>(null);
+  const [canvasDims, setCanvasDims] = useState<{ width: number; height: number }>({ width: 650, height: 320 });
   const workerRef = useRef<Worker | null>(null);
 
+  useLayoutEffect(() => {
+    const syncDims = () => {
+      if (!canvasWrapperRef.current) return;
+      const rect = canvasWrapperRef.current.getBoundingClientRect();
+      const w = Math.max(320, Math.round(rect.width));
+      const h = Math.max(240, Math.round(rect.height));
+      setCanvasDims((prev) => (Math.abs(prev.width - w) > 1 || Math.abs(prev.height - h) > 1 ? { width: w, height: h } : prev));
+    };
+    syncDims();
+    const ro = typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver((entries) => {
+          for (const entry of entries) {
+            if (entry.target === canvasWrapperRef.current) {
+              const w = Math.max(320, Math.round(entry.contentRect.width));
+              const h = Math.max(240, Math.round(entry.contentRect.height));
+              setCanvasDims((prev) => (Math.abs(prev.width - w) > 1 || Math.abs(prev.height - h) > 1 ? { width: w, height: h } : prev));
+            }
+          }
+        })
+      : null;
+    if (ro && canvasWrapperRef.current) ro.observe(canvasWrapperRef.current);
+    window.addEventListener('resize', syncDims);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener('resize', syncDims);
+    };
+  }, []);
+
   useEffect(() => {
+    const matFromUrl = parseMcMaterialParam(searchParams.get('material'));
+    if (matFromUrl) {
+      setMaterialId(matFromUrl);
+    }
+    const tParam = searchParams.get('thickness') || searchParams.get('thicknessCm');
+    if (tParam && !isNaN(parseFloat(tParam)) && parseFloat(tParam) > 0) {
+      setThickness_cm(Math.max(0.5, Math.min(50.0, parseFloat(tParam))));
+    }
     const eParam = searchParams.get('energyMeV');
     if (eParam && !isNaN(parseFloat(eParam)) && parseFloat(eParam) > 0) {
       setEnergy_MeV(Math.max(0.05, Math.min(10.0, parseFloat(eParam))));
@@ -54,7 +112,7 @@ export const MonteCarloModule: React.FC = () => {
     if (nuc) {
       const spec = getCanonicalNuclide(nuc);
       if (spec && spec.principalPhotonMeV > 0) {
-        setEnergy_MeV(Math.max(0.05, Math.min(3.0, spec.principalPhotonMeV)));
+        setEnergy_MeV(Math.max(0.05, Math.min(10.0, spec.principalPhotonMeV)));
       }
     }
   }, [searchParams]);
@@ -142,8 +200,17 @@ export const MonteCarloModule: React.FC = () => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const width = canvas.width;
-    const height = canvas.height;
+    const rect = canvas.getBoundingClientRect();
+    const width = Math.max(320, Math.round(rect.width || canvas.clientWidth || canvasDims.width));
+    const height = Math.max(240, Math.round(rect.height || canvas.clientHeight || canvasDims.height));
+    const dpr = Math.min(2.5, Math.max(1.0, typeof window !== 'undefined' ? window.devicePixelRatio || 1.0 : 1.0));
+    const targetW = Math.round(width * dpr);
+    const targetH = Math.round(height * dpr);
+    if (canvas.width !== targetW || canvas.height !== targetH) {
+      canvas.width = targetW;
+      canvas.height = targetH;
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     ctx.clearRect(0, 0, width, height);
 
@@ -226,7 +293,7 @@ export const MonteCarloModule: React.FC = () => {
       }
     });
 
-  }, [result, materialId, thickness_cm]);
+  }, [result, materialId, thickness_cm, canvasDims]);
 
   const maxBinCount = result ? Math.max(...result.spectrumBins.map(b => b.count), 1) : 1;
 
@@ -311,9 +378,9 @@ export const MonteCarloModule: React.FC = () => {
             <option value="lead">Lead (Pb) — ρ = 11.34 g/cm³, Z = 82</option>
             <option value="iron">Carbon Steel / Iron (Fe) — ρ = 7.87 g/cm³, Z = 26</option>
             <option value="concrete">NIST Standard Concrete — ρ = 2.30 g/cm³, Z = 11</option>
-            <option value="tungsten">Tungsten (W) — ρ = 19.25 g/cm³, Z = 74</option>
+            <option value="tungsten">Tungsten (W) — ρ = 19.30 g/cm³, Z = 74</option>
             <option value="water">Water / Tissue Equivalent — ρ = 1.00 g/cm³, Z = 7.42</option>
-            <option value="poly">Borated Polyethylene — ρ = 0.95 g/cm³, Z = 5.3</option>
+            <option value="poly">Borated Polyethylene (BPE) — ρ = 1.04 g/cm³, Z = 5.4</option>
           </select>
 
           <div style={{ marginTop: '12px' }}>
@@ -496,12 +563,12 @@ export const MonteCarloModule: React.FC = () => {
               <span style={{ color: '#ef4444' }}>● Absorbed</span>
             </div>
           </div>
-          <canvas
-            ref={canvasRef}
-            width={650}
-            height={320}
-            style={{ width: '100%', height: 'auto', background: '#050a12', borderRadius: '6px', border: '1px solid rgba(65, 90, 119, 0.3)' }}
-          />
+          <div ref={canvasWrapperRef} style={{ width: '100%', height: '320px', position: 'relative' }}>
+            <canvas
+              ref={canvasRef}
+              style={{ width: '100%', height: '100%', display: 'block', background: '#050a12', borderRadius: '6px', border: '1px solid rgba(65, 90, 119, 0.3)' }}
+            />
+          </div>
         </div>
 
         {/* Transmitted Photon Energy Spectrum Degradation */}
@@ -519,6 +586,10 @@ export const MonteCarloModule: React.FC = () => {
             <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', gap: '2px', height: '260px', background: '#050a12', padding: '10px 10px 20px 10px', borderRadius: '6px', border: '1px solid rgba(65, 90, 119, 0.3)', position: 'relative' }}>
               {result.spectrumBins.map((bin, idx) => {
                 const heightPercent = (bin.count / maxBinCount) * 100;
+                const binHalfW = result.spectrumBins.length > 1
+                  ? 0.5 * (result.spectrumBins[1].energy_MeV - result.spectrumBins[0].energy_MeV)
+                  : 0.01;
+                const isPrimaryPeakBin = Math.abs(bin.energy_MeV - energy_MeV) <= binHalfW * 1.5 || idx === result.spectrumBins.length - 1;
                 return (
                   <div
                     key={idx}
@@ -526,7 +597,7 @@ export const MonteCarloModule: React.FC = () => {
                     style={{
                       flex: 1,
                       height: `${Math.max(2, heightPercent)}%`,
-                      background: idx === result.spectrumBins.length - 1 ? '#10b981' : 'linear-gradient(to top, #38bdf8, #818cf8)',
+                      background: isPrimaryPeakBin ? '#10b981' : 'linear-gradient(to top, #38bdf8, #818cf8)',
                       borderRadius: '2px 2px 0 0',
                       transition: 'height 0.3s ease'
                     }}

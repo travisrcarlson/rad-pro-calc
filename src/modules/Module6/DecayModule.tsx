@@ -12,6 +12,10 @@ import KarlsruheSvgChart from './KarlsruheChart';
 import allNuclides from '../../data/all_nuclides.json';
 import { parseActivityToGBq } from '../../utils/canonicalNuclidePhysics';
 import {
+  computeBatemanTransientPeak,
+  computeGeneratorDaughterRegrowthMBq
+} from '../../utils/radiologicalPhysicsKernels';
+import {
   REACTOR_ACTIVATION_PRESETS,
   CURATED_BRANCHING_SPLITS,
   simulateGeneralizedDecayDAG,
@@ -1247,26 +1251,33 @@ const DecayModule: React.FC = () => {
       customHover.push(`<b>Cumulative Parent Decayed Fraction</b><br>${decayedPct.toFixed(2)}% of original parent nuclei transmuted`);
     }
 
-    // Equilibrium / Regime Status Badge
+    // Equilibrium / Regime Status Badge with analytical Bateman peak & generator regrowth check
     let equilibriumBadge = 'Parent Decay / Daughter Ingrowth';
     const currentSec = timeValue * timeUnit * (sliderPct / 100);
     if (activationEnabled && currentSec <= irradiationHours * 3600) {
       equilibriumBadge = `⚛️ In-Core Irradiation (Φ = ${neutronFluxNcm2s.toExponential(1)} n/cm²·s)`;
-    } else if (elutionEnabled && simResult.elutionEvents.length > 0) {
-      equilibriumBadge = `🧪 Generator Milking (${simResult.elutionEvents.length} Elutions @ ${elutionIntervalHours}h)`;
     } else if (chainNodes.length >= 2 && yields[0] && yields[1]) {
       const l1 = chainNodes[0].lambda;
       const l2 = chainNodes[1].lambda;
       const a1 = yields[0].activityMBq;
       const a2 = yields[1].activityMBq;
-      if (sliderPct <= 0.2) {
+      const hl1H = l1 > 0 ? Math.LN2 / (l1 * 3600) : 0;
+      const hl2H = l2 > 0 ? Math.LN2 / (l2 * 3600) : 0;
+      if (elutionEnabled && simResult.elutionEvents.length > 0 && hl1H > 0 && hl2H > 0) {
+        const branch = chainEdges[0]?.branchFraction ?? 0.879;
+        const regrowthMBq = computeGeneratorDaughterRegrowthMBq(a1, hl1H, hl2H, branch, elutionIntervalHours);
+        equilibriumBadge = `🧪 Generator Milking (${simResult.elutionEvents.length} Elutions @ ${elutionIntervalHours}h • Next Yield ≈ ${regrowthMBq.toFixed(1)} MBq)`;
+      } else if (sliderPct <= 0.2) {
         equilibriumBadge = 'Pure Parent State (t = 0)';
       } else if (yields[0].atomFractionPct < 0.5) {
         equilibriumBadge = 'Parent Depleted (>99.5% Transmuted)';
       } else if (l2 > 0 && l1 > 0 && l2 / l1 > 100 && Math.abs(a2 - a1) / Math.max(a1, 1e-20) < 0.08) {
         equilibriumBadge = '⚖️ Secular Equilibrium (A₂ ≈ A₁)';
-      } else if (l2 > l1 && a2 >= a1 * 0.85) {
-        equilibriumBadge = '⚡ Transient Equilibrium';
+      } else if (l2 > l1 && l1 > 0) {
+        const peak = computeBatemanTransientPeak(hl1H, hl2H);
+        equilibriumBadge = a2 >= a1 * 0.85
+          ? `⚡ Transient Equilibrium (t_max = ${peak.tMaxHours.toFixed(1)}h)`
+          : `Transient Ingrowth (t_max = ${peak.tMaxHours.toFixed(1)}h)`;
       }
     }
 

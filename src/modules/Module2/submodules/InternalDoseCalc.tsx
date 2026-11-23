@@ -8,6 +8,7 @@ import VerificationBadge from '../../../components/VerificationBadge';
 import { AuditDossierModal } from '../../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../../services/auditDossierService';
 import { getCanonicalNuclide } from '../../../utils/canonicalNuclidePhysics';
+import { computeCommittedEffectiveDoseMSv } from '../../../utils/radiologicalPhysicsKernels';
 
 const getAliInhal = (n: any) => n?.['ALI Inhal. (µCi)'] ?? n?.['ALI Inhal. (μCi)'];
 const getAliIngest = (n: any) => n?.['ALI Ingest. (µCi)'] ?? n?.['ALI Ingest. (μCi)'];
@@ -168,9 +169,14 @@ const InternalDoseCalc: React.FC = () => {
     }
   }, [pathway, lungType, canonicalNuclide, selectedNuclide, aliBq]);
 
-  // E(50) = I * e(50) = intakeBq * e50 (result in Sv, convert to mSv)
-  const doseSv = intakeBq * e50;
-  const dose_mSv = doseSv * 1000;
+  // E(50) = I * e(50) via ICRP-119 canonical kernel when available, else nuclide table fallback
+  const canonCommittedDoseMSv = computeCommittedEffectiveDoseMSv(
+    selectedNuclide?.Symbol || selectedNuclide?.Nuclide || '',
+    intakeBq,
+    pathway,
+    lungType
+  );
+  const dose_mSv = canonicalNuclide && canonCommittedDoseMSv > 0 ? canonCommittedDoseMSv : intakeBq * e50 * 1000;
 
   const occLimit_mSv = currentFramework?.limits?.occupationalAnnualEffective_mSv || 20;
 
