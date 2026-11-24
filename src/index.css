@@ -903,3 +903,93 @@ a:hover {
     color: #0f172a !important;
   }
 }
+
+/* Dedicated Decay Timeline Scrubber Range Input (avoids .form-control padding crush) */
+.decay-time-scrubber,
+body.theme-tactical-hud input.decay-time-scrubber,
+body.theme-night-vision input.decay-time-scrubber {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 26px;
+  padding: 0 !important;
+  margin: 0;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  cursor: ew-resize;
+  touch-action: none;
+  outline: none;
+  --scrub-fill: #38bdf8;
+  --scrub-thumb-bg: #f8fafc;
+}
+
+body.theme-tactical-hud input.decay-time-scrubber {
+  --scrub-fill: #00f0ff;
+}
+
+body.theme-night-vision input.decay-time-scrubber {
+  --scrub-fill: #ef4444;
+  --scrub-thumb-bg: #fecaca;
+}
+
+.decay-time-scrubber::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    var(--scrub-fill) 0%,
+    var(--scrub-fill) var(--scrub-pct, 0%),
+    rgba(148, 163, 184, 0.24) var(--scrub-pct, 0%),
+    rgba(148, 163, 184, 0.24) 100%
+  );
+  border: 1px solid rgba(148, 163, 184, 0.28);
+}
+
+.decay-time-scrubber::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--scrub-thumb-bg);
+  border: 2.5px solid var(--scrub-fill);
+  margin-top: -6px;
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.55);
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.decay-time-scrubber:hover::-webkit-slider-thumb,
+.decay-time-scrubber:active::-webkit-slider-thumb {
+  transform: scale(1.15);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.85);
+}
+
+.decay-time-scrubber::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.24);
+  border: 1px solid rgba(148, 163, 184, 0.28);
+}
+
+.decay-time-scrubber::-moz-range-progress {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--scrub-fill);
+}
+
+.decay-time-scrubber::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--scrub-thumb-bg);
+  border: 2.5px solid var(--scrub-fill);
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.55);
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.decay-time-scrubber:hover::-moz-range-thumb,
+.decay-time-scrubber:active::-moz-range-thumb {
+  transform: scale(1.15);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.85);
+}

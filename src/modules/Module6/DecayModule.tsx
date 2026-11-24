@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import VerificationBadge from '../../components/VerificationBadge';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
@@ -7,7 +7,7 @@ import { useRegulatory } from '../../context/RegulatoryContext';
 import ReactFlow, { Background, Controls, MarkerType, Position, type Node as FlowNode, type Edge as FlowEdge } from 'reactflow';
 import 'reactflow/dist/style.css';
 import Plot from 'react-plotly.js';
-import type { Data, Annotations } from 'plotly.js';
+import type { Data, Annotations, PlotMouseEvent } from 'plotly.js';
 import KarlsruheSvgChart, { type KarlsruheNuclideRow } from './KarlsruheChart';
 import allNuclides from '../../data/all_nuclides.json';
 import { parseActivityToGBq } from '../../utils/canonicalNuclidePhysics';
@@ -19,6 +19,7 @@ import {
   REACTOR_ACTIVATION_PRESETS,
   CURATED_BRANCHING_SPLITS,
   simulateGeneralizedDecayDAG,
+  sampleDecaySimulationAtTime,
   type ChainNuclideNode,
   type DecayBranchEdge,
   type ReactorActivationPreset
@@ -872,14 +873,17 @@ const DecayModule: React.FC = () => {
     return { activePathIds: pathIds, chainNodes: cNodes, chainEdges: cEdges, rawChainNuclides: rawList };
   }, [selectedIsotope, pathViewMode]);
 
-  // --- Run Generalized Decay DAG / Elution / Activation Simulation ---
-  const simResult = useMemo(() => {
-    if (chainNodes.length === 0) return null;
-    const t_sec_max = Math.max(1, timeValue * timeUnit);
-    const t_sec = t_sec_max * (sliderPct / 100);
+  const initialParentAtoms = useMemo(() => {
+    if (chainNodes.length === 0) return 0;
     const A0_Bq = initialActivity * 1e6;
     const l0 = chainNodes[0].lambda;
-    const N1_0 = l0 > 0 ? A0_Bq / l0 : A0_Bq;
+    return l0 > 0 ? A0_Bq / l0 : A0_Bq;
+  }, [chainNodes, initialActivity]);
+
+  // --- Run Generalized Decay DAG / Elution / Activation Simulation (decoupled from scrubber drag) ---
+  const baseSimResult = useMemo(() => {
+    if (chainNodes.length === 0) return null;
+    const t_sec_max = Math.max(1, timeValue * timeUnit);
 
     // Target atoms for neutron activation
     const activePreset = REACTOR_ACTIVATION_PRESETS.find(p => p.id === selectedActivationPresetId) || REACTOR_ACTIVATION_PRESETS[0];
@@ -889,9 +893,9 @@ const DecayModule: React.FC = () => {
     return simulateGeneralizedDecayDAG({
       nodes: chainNodes,
       edges: chainEdges,
-      initialParentAtoms: N1_0,
+      initialParentAtoms,
       maxTimeSeconds: t_sec_max,
-      currentTimeSeconds: t_sec,
+      currentTimeSeconds: 0,
       elutionEnabled,
       elutionIntervalSeconds: elutionIntervalHours * 3600,
       elutionEfficiency: elutionEfficiencyPct / 100,
@@ -906,10 +910,9 @@ const DecayModule: React.FC = () => {
   }, [
     chainNodes,
     chainEdges,
-    initialActivity,
+    initialParentAtoms,
     timeValue,
     timeUnit,
-    sliderPct,
     elutionEnabled,
     elutionIntervalHours,
     elutionEfficiencyPct,
@@ -922,6 +925,26 @@ const DecayModule: React.FC = () => {
     neutronFluxNcm2s,
     irradiationHours
   ]);
+
+  // O(log N) binary-search interpolation at current scrubber timestamp
+  const snapshotAtSlider = useMemo(() => {
+    if (!baseSimResult || chainNodes.length === 0) return null;
+    const t_sec_max = Math.max(1, timeValue * timeUnit);
+    const t_sec = t_sec_max * (sliderPct / 100);
+    return sampleDecaySimulationAtTime(baseSimResult, chainNodes, chainEdges, t_sec, {
+      initialParentAtoms,
+      activationEnabled,
+      elutionEnabled
+    });
+  }, [baseSimResult, chainNodes, chainEdges, timeValue, timeUnit, sliderPct, initialParentAtoms, activationEnabled, elutionEnabled]);
+
+  const simResult = useMemo(() => {
+    if (!baseSimResult || !snapshotAtSlider) return null;
+    return {
+      ...baseSimResult,
+      ...snapshotAtSlider
+    };
+  }, [baseSimResult, snapshotAtSlider]);
 
   const yields = useMemo(() => simResult?.statesAtT || [], [simResult]);
 
@@ -1509,19 +1532,19 @@ const DecayModule: React.FC = () => {
     return { labels, values: rawValues, colors, customHover, centerTitle, equilibriumBadge };
   }, [chainNodes, chainEdges, yields, simResult, pieRatioBasis, includeStableInActivityPie, elutionEnabled, includeHarvestedInPie, activationEnabled, irradiationHours, neutronFluxNcm2s, elutionIntervalHours, timeValue, timeUnit, sliderPct]);
 
-  // --- Continuous Time-Series Ingrowth, Elution Sawtooth & Activation Curves ---
-  const timeSeriesPlotData = useMemo(() => {
-    if (!simResult || chainNodes.length === 0) return { traces: [] as Data[], unitLabel: 'Days', currentT: 0, eobT: null as number | null };
+  // --- Continuous Time-Series Ingrowth, Elution Sawtooth & Activation Curves (traces decoupled from scrubber) ---
+  const timeSeriesBase = useMemo(() => {
+    if (!baseSimResult || chainNodes.length === 0) return { traces: [] as Data[], unitLabel: 'Days', eobT: null as number | null };
 
     const unitLabel = timeUnit === 31557600 ? 'Years' : timeUnit === 86400 ? 'Days' : timeUnit === 60 ? 'Minutes' : 'Seconds';
-    const xGrid = simResult.timeGridSeconds.map(tSec => tSec / timeUnit);
-    const totalInitAtoms = Math.max(1, simResult.seriesAtomsByNuclide[0]?.[0] || 1);
+    const xGrid = baseSimResult.timeGridSeconds.map(tSec => tSec / timeUnit);
+    const totalInitAtoms = Math.max(1, baseSimResult.seriesAtomsByNuclide[0]?.[0] || 1);
 
     const traces: Data[] = chainNodes.map((node, i) => {
       const ySeries =
         pieRatioBasis === 'atoms'
-          ? simResult.seriesAtomsByNuclide[i].map(a => (a / totalInitAtoms) * 100)
-          : simResult.seriesActivityMBqByNuclide[i];
+          ? baseSimResult.seriesAtomsByNuclide[i].map(a => (a / totalInitAtoms) * 100)
+          : baseSimResult.seriesActivityMBqByNuclide[i];
 
       return {
         x: xGrid,
@@ -1542,10 +1565,10 @@ const DecayModule: React.FC = () => {
       };
     });
 
-    if (elutionEnabled && pieRatioBasis !== 'atoms' && simResult.seriesHarvestedVialMBq.some(v => v > 0)) {
+    if (elutionEnabled && pieRatioBasis !== 'atoms' && baseSimResult.seriesHarvestedVialMBq.some(v => v > 0)) {
       traces.push({
         x: xGrid,
-        y: simResult.seriesHarvestedVialMBq,
+        y: baseSimResult.seriesHarvestedVialMBq,
         type: 'scatter' as const,
         mode: 'lines' as const,
         name: `🧪 Harvested ${chainNodes[1]?.nuclide || 'Daughter'} Eluate Vial`,
@@ -1559,10 +1582,151 @@ const DecayModule: React.FC = () => {
     return {
       traces,
       unitLabel,
-      currentT: timeValue * (sliderPct / 100),
       eobT
     };
-  }, [simResult, chainNodes, timeUnit, timeValue, pieRatioBasis, sliderPct, elutionEnabled, activationEnabled, irradiationHours]);
+  }, [baseSimResult, chainNodes, timeUnit, pieRatioBasis, elutionEnabled, activationEnabled, irradiationHours]);
+
+  const currentScrubT = timeValue * (sliderPct / 100);
+
+  const timeSeriesLayout = useMemo(() => ({
+    autosize: true,
+    uirevision: 'decay-ts',
+    transition: { duration: 0, easing: 'linear' as const },
+    margin: { t: 28, l: 55, r: 18, b: 38 },
+    paper_bgcolor: 'transparent',
+    plot_bgcolor: 'transparent',
+    yaxis: {
+      title: { text: pieRatioBasis === 'atoms' ? 'Atomic Share (%)' : 'Activity (MBq)' },
+      color: '#aaa',
+      gridcolor: '#262b36',
+      zeroline: false
+    },
+    xaxis: {
+      title: { text: `Elapsed Time (${timeSeriesBase.unitLabel})` },
+      color: '#aaa',
+      gridcolor: '#262b36',
+      zeroline: false
+    },
+    font: { color: '#E0E1DD', size: 11 },
+    legend: { orientation: 'h' as const, y: 1.14, x: 0, font: { size: 10 } },
+    shapes: [
+      {
+        type: 'line' as const,
+        x0: currentScrubT,
+        x1: currentScrubT,
+        y0: 0,
+        y1: 1,
+        yref: 'paper' as const,
+        line: { color: '#facc15', width: 2, dash: 'dash' as const }
+      },
+      ...(timeSeriesBase.eobT !== null
+        ? [
+            {
+              type: 'line' as const,
+              x0: timeSeriesBase.eobT,
+              x1: timeSeriesBase.eobT,
+              y0: 0,
+              y1: 1,
+              yref: 'paper' as const,
+              line: { color: '#ef4444', width: 1.8, dash: 'dot' as const }
+            }
+          ]
+        : [])
+    ],
+    annotations: [
+      {
+        x: currentScrubT,
+        y: 0.95,
+        yref: 'paper' as const,
+        text: `t = ${currentScrubT.toFixed(2)} ${timeSeriesBase.unitLabel}`,
+        showarrow: false,
+        bgcolor: 'rgba(250, 204, 21, 0.18)',
+        bordercolor: '#facc15',
+        borderwidth: 1,
+        font: { color: '#fde047', size: 10 }
+      },
+      ...(timeSeriesBase.eobT !== null
+        ? [
+            {
+              x: timeSeriesBase.eobT,
+              y: 0.15,
+              yref: 'paper' as const,
+              text: 'EOB (Reactor Discharge)',
+              showarrow: false,
+              bgcolor: 'rgba(239, 68, 68, 0.2)',
+              bordercolor: '#ef4444',
+              borderwidth: 1,
+              font: { color: '#fca5a5', size: 9.5 }
+            }
+          ]
+        : [])
+    ]
+  }), [pieRatioBasis, timeSeriesBase.unitLabel, timeSeriesBase.eobT, currentScrubT]);
+
+  const handleTimeSeriesClick = useCallback(
+    (evt: Readonly<PlotMouseEvent>) => {
+      const clickedX = evt?.points?.[0]?.x;
+      if (typeof clickedX !== 'number' || !Number.isFinite(clickedX) || timeValue <= 0) return;
+      setIsAnimating(false);
+      setSliderPct(Math.max(0, Math.min(100, Number(((clickedX / timeValue) * 100).toFixed(2)))));
+    },
+    [timeValue]
+  );
+
+  const piePlotTraces = useMemo<Data[]>(
+    () =>
+      pieChartData.values.length > 0
+        ? [
+            {
+              type: 'pie' as const,
+              labels: pieChartData.labels,
+              values: pieChartData.values,
+              hole: 0.46,
+              marker: {
+                colors: pieChartData.colors,
+                line: { color: '#0a0d14', width: 2 }
+              },
+              textinfo: 'percent' as const,
+              textposition: 'inside' as const,
+              insidetextorientation: 'horizontal' as const,
+              hovertemplate: '%{customdata}<extra></extra>',
+              customdata: pieChartData.customHover,
+              sort: false
+            } as Data
+          ]
+        : [],
+    [pieChartData]
+  );
+
+  const piePlotLayout = useMemo(
+    () => ({
+      autosize: true,
+      uirevision: 'decay-pie',
+      transition: { duration: 0, easing: 'linear' as const },
+      margin: { t: 8, b: 8, l: 8, r: 8 },
+      paper_bgcolor: 'transparent',
+      plot_bgcolor: 'transparent',
+      showlegend: true,
+      legend: {
+        orientation: (q4ViewMode === 'pie_only' ? 'v' : 'h') as 'v' | 'h',
+        x: q4ViewMode === 'pie_only' ? 1.02 : 0,
+        y: q4ViewMode === 'pie_only' ? 0.5 : -0.05,
+        font: { color: '#cbd5e1', size: 9 }
+      },
+      annotations: [
+        {
+          text: `<b>${pieChartData.centerTitle}</b>`,
+          showarrow: false,
+          font: { size: 10.5, color: '#f8fafc' },
+          x: 0.5,
+          y: 0.5
+        }
+      ]
+    }),
+    [q4ViewMode, pieChartData.centerTitle]
+  );
+
+  const decayPlotConfig = useMemo(() => ({ displayModeBar: false, responsive: true }), []);
 
   // --- Display spectrum data for Quadrant 2 ---
   const spectrumPlotData = useMemo(() => {
@@ -2240,80 +2404,10 @@ const DecayModule: React.FC = () => {
               </div>
             ) : q2Tab === 'time_series' ? (
               <Plot
-                data={timeSeriesPlotData.traces}
-                layout={{
-                  autosize: true,
-                  margin: { t: 28, l: 55, r: 18, b: 38 },
-                  paper_bgcolor: 'transparent',
-                  plot_bgcolor: 'transparent',
-                  yaxis: {
-                    title: { text: pieRatioBasis === 'atoms' ? 'Atomic Share (%)' : 'Activity (MBq)' },
-                    color: '#aaa',
-                    gridcolor: '#262b36',
-                    zeroline: false
-                  },
-                  xaxis: {
-                    title: { text: `Elapsed Time (${timeSeriesPlotData.unitLabel})` },
-                    color: '#aaa',
-                    gridcolor: '#262b36',
-                    zeroline: false
-                  },
-                  font: { color: '#E0E1DD', size: 11 },
-                  legend: { orientation: 'h', y: 1.14, x: 0, font: { size: 10 } },
-                  shapes: [
-                    {
-                      type: 'line',
-                      x0: timeSeriesPlotData.currentT,
-                      x1: timeSeriesPlotData.currentT,
-                      y0: 0,
-                      y1: 1,
-                      yref: 'paper',
-                      line: { color: '#facc15', width: 2, dash: 'dash' }
-                    },
-                    ...(timeSeriesPlotData.eobT !== null
-                      ? [
-                          {
-                            type: 'line' as const,
-                            x0: timeSeriesPlotData.eobT,
-                            x1: timeSeriesPlotData.eobT,
-                            y0: 0,
-                            y1: 1,
-                            yref: 'paper' as const,
-                            line: { color: '#ef4444', width: 1.8, dash: 'dot' as const }
-                          }
-                        ]
-                      : [])
-                  ],
-                  annotations: [
-                    {
-                      x: timeSeriesPlotData.currentT,
-                      y: 0.95,
-                      yref: 'paper',
-                      text: `t = ${timeSeriesPlotData.currentT.toFixed(2)} ${timeSeriesPlotData.unitLabel}`,
-                      showarrow: false,
-                      bgcolor: 'rgba(250, 204, 21, 0.18)',
-                      bordercolor: '#facc15',
-                      borderwidth: 1,
-                      font: { color: '#fde047', size: 10 }
-                    },
-                    ...(timeSeriesPlotData.eobT !== null
-                      ? [
-                          {
-                            x: timeSeriesPlotData.eobT,
-                            y: 0.15,
-                            yref: 'paper' as const,
-                            text: 'EOB (Reactor Discharge)',
-                            showarrow: false,
-                            bgcolor: 'rgba(239, 68, 68, 0.2)',
-                            bordercolor: '#ef4444',
-                            borderwidth: 1,
-                            font: { color: '#fca5a5', size: 9.5 }
-                          }
-                        ]
-                      : [])
-                  ]
-                }}
-                config={{ displayModeBar: false, responsive: true }}
+                data={timeSeriesBase.traces}
+                layout={timeSeriesLayout}
+                config={decayPlotConfig}
+                onClick={handleTimeSeriesClick}
                 useResizeHandler
                 style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}
               />
@@ -2677,14 +2771,50 @@ const DecayModule: React.FC = () => {
 
             <input
               type="range"
-              className="form-control"
-              style={{ width: '100%', cursor: 'ew-resize', height: '5px', accentColor: '#38bdf8' }}
-              min="0"
-              max="100"
-              step="0.1"
+              aria-label="Elapsed decay time scrubber"
+              className="decay-time-scrubber"
+              style={{ '--scrub-pct': `${sliderPct}%` } as React.CSSProperties}
+              min={0}
+              max={100}
+              step={0.1}
               value={sliderPct}
+              onPointerDown={() => setIsAnimating(false)}
               onChange={e => setSliderPct(Number(e.target.value))}
             />
+
+            {pieChartData.values.length > 0 && (() => {
+              const sumVal = pieChartData.values.reduce((acc, v) => acc + Math.max(0, v), 0) || 1;
+              return (
+                <div
+                  title="Live composition shares at current scrubbed time"
+                  style={{
+                    height: '8px',
+                    width: '100%',
+                    borderRadius: '4px',
+                    overflow: 'hidden',
+                    display: 'flex',
+                    backgroundColor: 'rgba(15, 23, 42, 0.75)',
+                    border: '1px solid rgba(148, 163, 184, 0.2)'
+                  }}
+                >
+                  {pieChartData.values.map((val, idx) => {
+                    const share = (Math.max(0, val) / sumVal) * 100;
+                    if (share <= 0.05) return null;
+                    return (
+                      <div
+                        key={pieChartData.labels[idx] || idx}
+                        title={`${pieChartData.labels[idx]}: ${share.toFixed(1)}%`}
+                        style={{
+                          width: `${share}%`,
+                          height: '100%',
+                          backgroundColor: pieChartData.colors[idx]
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </div>
 
           {/* Main Q4 Content Area: Pie Chart + Yield Table */}
@@ -2694,49 +2824,11 @@ const DecayModule: React.FC = () => {
             {q4ViewMode !== 'table_only' && (
               <div style={{ border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px', background: '#0a0d14', position: 'relative', display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
                 <div style={{ flex: 1, position: 'relative', minHeight: '165px' }}>
-                  {pieChartData.values.length > 0 ? (
+                  {piePlotTraces.length > 0 ? (
                     <Plot
-                      data={[
-                        {
-                          type: 'pie',
-                          labels: pieChartData.labels,
-                          values: pieChartData.values,
-                          hole: 0.46,
-                          marker: {
-                            colors: pieChartData.colors,
-                            line: { color: '#0a0d14', width: 2 }
-                          },
-                          textinfo: 'percent',
-                          textposition: 'inside',
-                          insidetextorientation: 'horizontal',
-                          hovertemplate: '%{customdata}<extra></extra>',
-                          customdata: pieChartData.customHover,
-                          sort: false
-                        } as Data
-                      ]}
-                      layout={{
-                        autosize: true,
-                        margin: { t: 8, b: 8, l: 8, r: 8 },
-                        paper_bgcolor: 'transparent',
-                        plot_bgcolor: 'transparent',
-                        showlegend: true,
-                        legend: {
-                          orientation: q4ViewMode === 'pie_only' ? 'v' : 'h',
-                          x: q4ViewMode === 'pie_only' ? 1.02 : 0,
-                          y: q4ViewMode === 'pie_only' ? 0.5 : -0.05,
-                          font: { color: '#cbd5e1', size: 9 }
-                        },
-                        annotations: [
-                          {
-                            text: `<b>${pieChartData.centerTitle}</b>`,
-                            showarrow: false,
-                            font: { size: 10.5, color: '#f8fafc' },
-                            x: 0.5,
-                            y: 0.5
-                          }
-                        ]
-                      }}
-                      config={{ displayModeBar: false, responsive: true }}
+                      data={piePlotTraces}
+                      layout={piePlotLayout}
+                      config={decayPlotConfig}
                       useResizeHandler
                       style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}
                     />

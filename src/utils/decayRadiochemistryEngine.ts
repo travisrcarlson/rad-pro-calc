@@ -414,24 +414,222 @@ export interface NuclideStateAtTime {
   totalHeatWatts: number;
 }
 
-export interface DecaySimulationResult {
+export interface DecaySnapshotAtTime {
   statesAtT: NuclideStateAtTime[];
   harvestedDaughterAtomsCumulative: number;
   harvestedDaughterVialAtomsCurrent: number;
   harvestedDaughterVialActivityMBq: number;
-  elutionEvents: GeneratorElutionEvent[];
-  timeGridSeconds: number[];
-  seriesAtomsByNuclide: number[][];
-  seriesActivityMBqByNuclide: number[][];
-  seriesHarvestedVialMBq: number[];
   modalityPowerWatts: {
     alphaWatts: number;
     betaWatts: number;
     gammaWatts: number;
     totalWatts: number;
   };
+}
+
+export interface DecaySimulationResult extends DecaySnapshotAtTime {
+  elutionEvents: GeneratorElutionEvent[];
+  timeGridSeconds: number[];
+  seriesAtomsByNuclide: number[][];
+  seriesActivityMBqByNuclide: number[][];
+  seriesHarvestedVialMBq: number[];
+  seriesHarvestedVialAtoms: number[];
+  seriesHarvestedCumAtoms: number[];
   saturationActivityMBq?: number;
   eobActivityMBq?: number;
+}
+
+function computeSnapshotFromAtoms(
+  nodes: ChainNuclideNode[],
+  edges: DecayBranchEdge[],
+  atomsByNode: number[],
+  harvestedVialAtoms: number,
+  harvestedCumAtoms: number,
+  options: {
+    initialParentAtoms: number;
+    activationEnabled: boolean;
+    elutionEnabled: boolean;
+  }
+): DecaySnapshotAtTime {
+  const { initialParentAtoms, activationEnabled, elutionEnabled } = options;
+  const m = nodes.length;
+  const daughterLambda = m >= 2 ? nodes[1].lambda : 0;
+
+  const modeledAtoms = atomsByNode.reduce((a, b) => a + b, 0);
+  const stableSink =
+    !activationEnabled && !elutionEnabled ? Math.max(0, initialParentAtoms - modeledAtoms) : 0;
+  const totalCurrentAtoms =
+    modeledAtoms + (elutionEnabled ? harvestedCumAtoms : stableSink) || 1;
+
+  const outEdgesByNuclide = new Map<string, DecayBranchEdge[]>();
+  edges.forEach(e => {
+    const arr = outEdgesByNuclide.get(e.fromNuclide) || [];
+    arr.push(e);
+    outEdgesByNuclide.set(e.fromNuclide, arr);
+  });
+
+  let totalAlphaW = 0;
+  let totalBetaW = 0;
+  let totalGammaW = 0;
+
+  const statesAtT: NuclideStateAtTime[] = nodes.map((n, i) => {
+    const atoms = atomsByNode[i] ?? 0;
+    const activityBq = atoms * n.lambda;
+    const activityMBq = activityBq / 1e6;
+
+    // Partition emitted power into Alpha, Beta, and Gamma/IT/EC weighted by outgoing branch fractions
+    const outEdges = outEdgesByNuclide.get(n.nuclide) || [];
+    let alphaMeV = n.qAlphaMeV;
+    let betaMeV = n.qBetaMeV * 0.40; // Average beta kinetic energy ~ 0.40 * Q_beta (Fermi spectrum)
+    let ecGammaFrac = 1.0;
+
+    if (outEdges.length > 0) {
+      let weightedAlpha = 0;
+      let weightedBeta = 0;
+      let ecGammaSum = 0;
+      let hasAlphaEdge = false;
+      let hasBetaEdge = false;
+      for (const e of outEdges) {
+        if (e.modality === 'alpha') {
+          hasAlphaEdge = true;
+          weightedAlpha += e.branchFraction * (n.qAlphaMeV > 0 ? n.qAlphaMeV : e.qMeV);
+        } else if (e.modality === 'beta') {
+          hasBetaEdge = true;
+          weightedBeta += e.branchFraction * 0.40 * (e.qMeV > 0 ? e.qMeV : n.qBetaMeV);
+        } else {
+          ecGammaSum += e.branchFraction;
+        }
+      }
+      alphaMeV = hasAlphaEdge ? weightedAlpha : 0;
+      betaMeV = hasBetaEdge ? weightedBeta : 0;
+      ecGammaFrac = ecGammaSum > 0 ? Math.min(1.0, ecGammaSum) : 1.0;
+    }
+
+    const gammaMeV =
+      n.principalGammaMeV > 0
+        ? n.principalGammaMeV * (n.gammaYieldPct / 100)
+        : n.qGammaOrEcMeV > 0
+        ? n.qGammaOrEcMeV * ecGammaFrac
+        : 0;
+
+    const alphaPowerWatts = activityBq * alphaMeV * 1.60217663e-13;
+    const betaPowerWatts = activityBq * betaMeV * 1.60217663e-13;
+    const gammaPowerWatts = activityBq * gammaMeV * 1.60217663e-13;
+    const totalHeatWatts = alphaPowerWatts + betaPowerWatts + gammaPowerWatts;
+
+    totalAlphaW += alphaPowerWatts;
+    totalBetaW += betaPowerWatts;
+    totalGammaW += gammaPowerWatts;
+
+    return {
+      nuclide: n.nuclide,
+      atoms,
+      atomFractionPct: (atoms / totalCurrentAtoms) * 100,
+      activityBq,
+      activityMBq,
+      alphaPowerWatts,
+      betaPowerWatts,
+      gammaPowerWatts,
+      totalHeatWatts
+    };
+  });
+
+  return {
+    statesAtT,
+    harvestedDaughterAtomsCumulative: harvestedCumAtoms,
+    harvestedDaughterVialAtomsCurrent: harvestedVialAtoms,
+    harvestedDaughterVialActivityMBq: (harvestedVialAtoms * daughterLambda) / 1e6,
+    modalityPowerWatts: {
+      alphaWatts: totalAlphaW,
+      betaWatts: totalBetaW,
+      gammaWatts: totalGammaW,
+      totalWatts: totalAlphaW + totalBetaW + totalGammaW
+    }
+  };
+}
+
+/**
+ * O(log N) binary-search interpolation along an already integrated TR-BDF2 decay trajectory.
+ * Enables 60fps scrubber dragging without re-running the stiff ODE solver on every drag event.
+ */
+export function sampleDecaySimulationAtTime(
+  sim: DecaySimulationResult,
+  nodes: ChainNuclideNode[],
+  edges: DecayBranchEdge[],
+  timeSeconds: number,
+  options: {
+    initialParentAtoms: number;
+    activationEnabled: boolean;
+    elutionEnabled: boolean;
+  }
+): DecaySnapshotAtTime {
+  const grid = sim.timeGridSeconds;
+  const nPts = grid.length;
+  const m = nodes.length;
+
+  if (nPts === 0 || m === 0) {
+    return computeSnapshotFromAtoms(nodes, edges, new Array(m).fill(0), 0, 0, options);
+  }
+
+  const tClamped = Math.max(0, Math.min(grid[nPts - 1], Number.isFinite(timeSeconds) ? timeSeconds : 0));
+
+  if (tClamped <= grid[0]) {
+    const atoms0 = nodes.map((_, i) => sim.seriesAtomsByNuclide[i]?.[0] ?? 0);
+    return computeSnapshotFromAtoms(
+      nodes,
+      edges,
+      atoms0,
+      sim.seriesHarvestedVialAtoms[0] ?? 0,
+      sim.seriesHarvestedCumAtoms[0] ?? 0,
+      options
+    );
+  }
+
+  const lastIdx = nPts - 1;
+  if (tClamped >= grid[lastIdx]) {
+    const atomsEnd = nodes.map((_, i) => sim.seriesAtomsByNuclide[i]?.[lastIdx] ?? 0);
+    return computeSnapshotFromAtoms(
+      nodes,
+      edges,
+      atomsEnd,
+      sim.seriesHarvestedVialAtoms[lastIdx] ?? 0,
+      sim.seriesHarvestedCumAtoms[lastIdx] ?? 0,
+      options
+    );
+  }
+
+  // Binary search for largest lo such that grid[lo] <= tClamped < grid[hi]
+  let lo = 0;
+  let hi = lastIdx;
+  while (lo + 1 < hi) {
+    const mid = (lo + hi) >> 1;
+    if (grid[mid] <= tClamped) lo = mid;
+    else hi = mid;
+  }
+
+  const tLo = grid[lo];
+  const tHi = grid[hi];
+  const frac = tHi > tLo ? Math.max(0, Math.min(1, (tClamped - tLo) / (tHi - tLo))) : 0;
+
+  const interpAtoms = nodes.map((_, i) => {
+    const aLo = sim.seriesAtomsByNuclide[i]?.[lo] ?? 0;
+    const aHi = sim.seriesAtomsByNuclide[i]?.[hi] ?? aLo;
+    return aLo + frac * (aHi - aLo);
+  });
+
+  const vialLo = sim.seriesHarvestedVialAtoms[lo] ?? 0;
+  const vialHi = sim.seriesHarvestedVialAtoms[hi] ?? vialLo;
+  const cumLo = sim.seriesHarvestedCumAtoms[lo] ?? 0;
+  const cumHi = sim.seriesHarvestedCumAtoms[hi] ?? cumLo;
+
+  return computeSnapshotFromAtoms(
+    nodes,
+    edges,
+    interpAtoms,
+    vialLo + frac * (vialHi - vialLo),
+    cumLo + frac * (cumHi - cumLo),
+    options
+  );
 }
 
 export function simulateGeneralizedDecayDAG(config: DecaySimulationConfig): DecaySimulationResult {
@@ -465,6 +663,8 @@ export function simulateGeneralizedDecayDAG(config: DecaySimulationConfig): Deca
       seriesAtomsByNuclide: [],
       seriesActivityMBqByNuclide: [],
       seriesHarvestedVialMBq: [],
+      seriesHarvestedVialAtoms: [],
+      seriesHarvestedCumAtoms: [],
       modalityPowerWatts: { alphaWatts: 0, betaWatts: 0, gammaWatts: 0, totalWatts: 0 }
     };
   }
@@ -629,6 +829,8 @@ export function simulateGeneralizedDecayDAG(config: DecaySimulationConfig): Deca
   for (let i = 1; i < m; i++) seriesAtomsByNuclide[i][0] = 0;
   const seriesActivityMBqByNuclide: number[][] = nodes.map((n, i) => [(currentAtoms[i] * n.lambda) / 1e6]);
   const seriesHarvestedVialMBq: number[] = [0];
+  const seriesHarvestedVialAtoms: number[] = [0];
+  const seriesHarvestedCumAtoms: number[] = [0];
   const timeGridSeconds: number[] = [0];
   const elutionEvents: GeneratorElutionEvent[] = [];
 
@@ -679,6 +881,8 @@ export function simulateGeneralizedDecayDAG(config: DecaySimulationConfig): Deca
       seriesActivityMBqByNuclide[i].push((currentAtoms[i] * nodes[i].lambda) / 1e6);
     }
     seriesHarvestedVialMBq.push((harvestedVialAtoms * daughterLambda) / 1e6);
+    seriesHarvestedVialAtoms.push(harvestedVialAtoms);
+    seriesHarvestedCumAtoms.push(harvestedCumulativeAtoms);
 
     if (Math.abs(nextT - currentTimeSeconds) < 1e-5 || (prevT < currentTimeSeconds && nextT >= currentTimeSeconds)) {
       snapshotAtCurrentT = [...currentAtoms];
@@ -696,84 +900,14 @@ export function simulateGeneralizedDecayDAG(config: DecaySimulationConfig): Deca
     harvestedCumAtCurrentT = 0;
   }
 
-  const modeledAtomsAtCurrentT = snapshotAtCurrentT.reduce((a, b) => a + b, 0);
-  const stableSinkAtCurrentT =
-    !activationEnabled && !elutionEnabled ? Math.max(0, initialParentAtoms - modeledAtomsAtCurrentT) : 0;
-  const totalCurrentAtoms =
-    modeledAtomsAtCurrentT + (elutionEnabled ? harvestedCumAtCurrentT : stableSinkAtCurrentT) || 1;
-
-  const outEdgesByNuclide = new Map<string, DecayBranchEdge[]>();
-  edges.forEach(e => {
-    const arr = outEdgesByNuclide.get(e.fromNuclide) || [];
-    arr.push(e);
-    outEdgesByNuclide.set(e.fromNuclide, arr);
-  });
-
-  let totalAlphaW = 0;
-  let totalBetaW = 0;
-  let totalGammaW = 0;
-
-  const statesAtT: NuclideStateAtTime[] = nodes.map((n, i) => {
-    const atoms = snapshotAtCurrentT[i];
-    const activityBq = atoms * n.lambda;
-    const activityMBq = activityBq / 1e6;
-
-    // Partition emitted power into Alpha, Beta, and Gamma/IT/EC weighted by outgoing branch fractions
-    const outEdges = outEdgesByNuclide.get(n.nuclide) || [];
-    let alphaMeV = n.qAlphaMeV;
-    let betaMeV = n.qBetaMeV * 0.40; // Average beta kinetic energy ~ 0.40 * Q_beta (Fermi spectrum)
-    let ecGammaFrac = 1.0;
-
-    if (outEdges.length > 0) {
-      let weightedAlpha = 0;
-      let weightedBeta = 0;
-      let ecGammaSum = 0;
-      let hasAlphaEdge = false;
-      let hasBetaEdge = false;
-      for (const e of outEdges) {
-        if (e.modality === 'alpha') {
-          hasAlphaEdge = true;
-          weightedAlpha += e.branchFraction * (n.qAlphaMeV > 0 ? n.qAlphaMeV : e.qMeV);
-        } else if (e.modality === 'beta') {
-          hasBetaEdge = true;
-          weightedBeta += e.branchFraction * 0.40 * (e.qMeV > 0 ? e.qMeV : n.qBetaMeV);
-        } else {
-          ecGammaSum += e.branchFraction;
-        }
-      }
-      alphaMeV = hasAlphaEdge ? weightedAlpha : 0;
-      betaMeV = hasBetaEdge ? weightedBeta : 0;
-      ecGammaFrac = ecGammaSum > 0 ? Math.min(1.0, ecGammaSum) : 1.0;
-    }
-
-    const gammaMeV =
-      n.principalGammaMeV > 0
-        ? n.principalGammaMeV * (n.gammaYieldPct / 100)
-        : n.qGammaOrEcMeV > 0
-        ? n.qGammaOrEcMeV * ecGammaFrac
-        : 0;
-
-    const alphaPowerWatts = activityBq * alphaMeV * 1.60217663e-13;
-    const betaPowerWatts = activityBq * betaMeV * 1.60217663e-13;
-    const gammaPowerWatts = activityBq * gammaMeV * 1.60217663e-13;
-    const totalHeatWatts = alphaPowerWatts + betaPowerWatts + gammaPowerWatts;
-
-    totalAlphaW += alphaPowerWatts;
-    totalBetaW += betaPowerWatts;
-    totalGammaW += gammaPowerWatts;
-
-    return {
-      nuclide: n.nuclide,
-      atoms,
-      atomFractionPct: (atoms / totalCurrentAtoms) * 100,
-      activityBq,
-      activityMBq,
-      alphaPowerWatts,
-      betaPowerWatts,
-      gammaPowerWatts,
-      totalHeatWatts
-    };
-  });
+  const snapshot = computeSnapshotFromAtoms(
+    nodes,
+    edges,
+    snapshotAtCurrentT,
+    harvestedVialAtCurrentT,
+    harvestedCumAtCurrentT,
+    { initialParentAtoms, activationEnabled, elutionEnabled }
+  );
 
   // Compute saturation & EOB activity if activation mode is active
   let saturationActivityMBq: number | undefined;
@@ -786,21 +920,14 @@ export function simulateGeneralizedDecayDAG(config: DecaySimulationConfig): Deca
   }
 
   return {
-    statesAtT,
-    harvestedDaughterAtomsCumulative: harvestedCumAtCurrentT,
-    harvestedDaughterVialAtomsCurrent: harvestedVialAtCurrentT,
-    harvestedDaughterVialActivityMBq: (harvestedVialAtCurrentT * daughterLambda) / 1e6,
+    ...snapshot,
     elutionEvents,
     timeGridSeconds,
     seriesAtomsByNuclide,
     seriesActivityMBqByNuclide,
     seriesHarvestedVialMBq,
-    modalityPowerWatts: {
-      alphaWatts: totalAlphaW,
-      betaWatts: totalBetaW,
-      gammaWatts: totalGammaW,
-      totalWatts: totalAlphaW + totalBetaW + totalGammaW
-    },
+    seriesHarvestedVialAtoms,
+    seriesHarvestedCumAtoms,
     saturationActivityMBq,
     eobActivityMBq
   };
