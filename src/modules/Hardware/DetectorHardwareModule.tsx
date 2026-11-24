@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import VerificationBadge from '../../components/VerificationBadge';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
@@ -49,7 +49,7 @@ export const DetectorHardwareModule: React.FC = () => {
     return new AudioCtxCtor();
   };
 
-  const playClick = () => {
+  const playClick = useCallback(() => {
     if (!audioClicksEnabled) return;
     try {
       if (!clickAudioCtxRef.current) {
@@ -70,15 +70,15 @@ export const DetectorHardwareModule: React.FC = () => {
     } catch {
       // Audio autoplay restrictions
     }
-  };
+  }, [audioClicksEnabled]);
 
   // Register a pulse
-  const recordPulse = () => {
+  const recordPulse = useCallback(() => {
     const now = performance.now();
     pulseTimestampsRef.current.push(now);
     setTotalCounts(prev => prev + 1);
     playClick();
-  };
+  }, [playClick]);
   const recordPulseRef = useRef(recordPulse);
 
   useEffect(() => {
@@ -157,7 +157,7 @@ export const DetectorHardwareModule: React.FC = () => {
     }, intervalMs);
 
     return () => clearInterval(simTimer);
-  }, [connectionMode, isConnected, simPreset]);
+  }, [connectionMode, isConnected, simPreset, recordPulse]);
 
   // Connect Audio Ingestion
   const startAudioIngestion = async () => {

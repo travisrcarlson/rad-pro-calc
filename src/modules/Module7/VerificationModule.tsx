@@ -9,6 +9,7 @@ import {
   type VerificationCategory
 } from '../../utils/vvBenchmarkSuite';
 import { sha256Hex } from '../../utils/cryptoHash';
+import { APP_NAME, APP_VERSION, VV_TOTAL_COUNT } from '../../config/appMetadata';
 
 type TestCategory = 'All' | VerificationCategory;
 type VerificationTab = 'benchmarks' | 'stress' | 'traceability' | 'iso_matrix' | 'certificate';
@@ -18,37 +19,37 @@ const ISO_STANDARDS_REGISTER = [
     standard: 'ISO 11929-1:2019',
     title: 'Determination of the characteristic limits (decision threshold y*, detection limit y#, coverage interval) for ionizing radiation measurements',
     domain: 'Radiation Metrology & Counting Statistics',
-    modules: 'Module 27 (MARSSIM), Module 25 (Gamma Spectroscopy), Module 11 (Equipment Library)',
+    modules: 'Module 27 (MARSSIM), Module 25 (Gamma Spectroscopy), Module 29 (Equipment Library)',
     verificationId: 'VTEST-15, VTEST-57',
     implementation: 'Implements both classical Currie (1968) L_C / L_D and ISO 11929-1:2019 Bayesian Decision Threshold (y*) and Detection Limit (y#) incorporating relative conversion factor uncertainty u_rel(w).',
-    status: 'COMPLIANT'
+    status: 'BENCHMARKED'
   },
   {
     standard: 'ISO 7503-1:2016',
     title: 'Measurement and evaluation of surface contamination — Part 1: General principles',
     domain: 'Surface & Removable Contamination',
-    modules: 'Module 27 (MARSSIM Decommissioning), Module 9 (Worker Dosimetry & Bioassay)',
+    modules: 'Module 27 (MARSSIM Decommissioning), Module 2 (Worker Dosimetry & Bioassay)',
     verificationId: 'VTEST-58',
     implementation: 'Evaluates direct and smear surface activity concentration A_s = (R_g - R_b) / (ε_i · ε_s · W · F) with ISO 7503-1 surface efficiencies (ε_s = 0.50 for β > 0.4 MeV; ε_s = 0.25 for α and low-E β).',
-    status: 'COMPLIANT'
+    status: 'BENCHMARKED'
   },
   {
     standard: 'ISO 4037-3:2019 & ISO 8529-1',
     title: 'Radiological protection — X, gamma, and neutron reference radiations for calibrating dosemeters and doserate meters (H*(10), Hp(10))',
     domain: 'External Dosimetry & Instrument Calibration',
-    modules: 'Module 1A (Dose Calculator), Module 11 (Equipment Library), Module 17 (X-Ray Tube)',
+    modules: 'Module 1A (Dose Calculator), Module 29 (Equipment Library), Module 17 (X-Ray Tube)',
     verificationId: 'VTEST-01, VTEST-02, VTEST-59',
     implementation: 'Implements ICRU/ISO operational dose equivalent conversion coefficients h*_K(10) and Am-Be / Cf-252 reference neutron/gamma calibration fields.',
-    status: 'COMPLIANT'
+    status: 'BENCHMARKED'
   },
   {
     standard: 'ISO 7753 / ISO 17070 & IEC 60860',
     title: 'Nuclear energy — Performance and testing requirements for Criticality Accident Alarm Systems (CAAS)',
     domain: 'Nuclear Criticality Safety',
-    modules: 'Module 21 (Criticality & Reactor Core), Module 28 (CAAS Criticality Placement)',
+    modules: 'Module 21 (Criticality & Reactor Core), Module 22 (CAAS Criticality Placement)',
     verificationId: 'VTEST-13, VTEST-42',
     implementation: 'Models minimum accident of concern (20 rad/min combined neutron+gamma at 2 m unshielded) and multi-detector 2-of-N voting alarm coverage.',
-    status: 'COMPLIANT'
+    status: 'BENCHMARKED'
   },
   {
     standard: 'ISO 2919:2012 & ISO 9978:2020',
@@ -57,16 +58,16 @@ const ISO_STANDARDS_REGISTER = [
     modules: 'Module 15 (Transport Packaging), Module 28 (Nuclide Database)',
     verificationId: 'VTEST-05',
     implementation: 'Enforces IAEA SSR-6 / ISO 2919 special form capsule integrity, A1/A2 limits, and 185 Bq (5 nCi) removable wipe leak-test thresholds.',
-    status: 'COMPLIANT'
+    status: 'ALIGNED'
   },
   {
     standard: 'ISO/IEC 17025:2017 (Cl. 7.6 & 7.11)',
     title: 'General requirements for the competence of testing and calibration laboratories (Control of Data & Measurement Uncertainty)',
     domain: 'Laboratory QA & Software Validation',
     modules: 'Module 34 (V&V Engine), Audit Dossier Service (All Modules)',
-    verificationId: 'VTEST-01 to VTEST-60, STRESS-01 to STRESS-08',
-    implementation: '68 automated deterministic verification vectors executing real production solvers plus tamper-evident SHA-256 calculation dossiers with GUM uncertainty budgets.',
-    status: 'COMPLIANT'
+    verificationId: 'VTEST-01 to VTEST-61, STRESS-01 to STRESS-08',
+    implementation: `${VV_TOTAL_COUNT} automated deterministic verification vectors executing real production solvers plus tamper-evident SHA-256 calculation dossiers with GUM uncertainty budgets.`,
+    status: 'ALIGNED'
   },
   {
     standard: 'ISO/IEC Guide 98-3:2008 (GUM)',
@@ -75,16 +76,16 @@ const ISO_STANDARDS_REGISTER = [
     modules: 'Audit Dossier Service (src/services/auditDossierService.ts) & Module 34',
     verificationId: 'VTEST-60',
     implementation: 'Propagates combined standard uncertainty u_c and reports expanded uncertainty U = k · u_c at k = 2 (95.45% confidence interval) on exported technical dossiers.',
-    status: 'COMPLIANT'
+    status: 'BENCHMARKED'
   },
   {
     standard: 'ISO 80000-10:2019',
     title: 'Quantities and units — Part 10: Atomic and nuclear physics',
     domain: 'SI Metrology & Unit Traceability',
     modules: 'Global Regulatory Context & All 35 Calculation Modules',
-    verificationId: 'VTEST-01 to VTEST-60',
+    verificationId: 'VTEST-01 to VTEST-61',
     implementation: 'Standardized SI nomenclature (Bq, Gy, Sv, keV, MeV, barns, n·cm⁻²·s⁻¹) with traceable dual SI / US Customary conversion factors.',
-    status: 'COMPLIANT'
+    status: 'ALIGNED'
   },
   {
     standard: 'ISO 19443:2018 & ASME NQA-1',
@@ -93,16 +94,16 @@ const ISO_STANDARDS_REGISTER = [
     modules: 'Platform-Wide Architecture & V&V Traceability Register',
     verificationId: 'STRESS-01 to STRESS-08',
     implementation: 'Full requirement-to-benchmark traceability matrix, IEEE 754-2019 Binary64 FPU verification, and configuration build stamps on exported records.',
-    status: 'COMPLIANT'
+    status: 'ALIGNED'
   },
   {
     standard: 'ISO 14971:2019 & IEC 62304',
     title: 'Medical devices — Application of risk management & Medical device software life cycle processes',
     domain: 'Clinical Dosimetry & Medical Physics Safety',
-    modules: 'Module 23 (Brachytherapy TG-43), Module 3 (Internal Dosimetry), Module 27 (Medical Countermeasures)',
+    modules: 'Module 26 (Brachytherapy TG-43), Module 3 (Internal Dosimetry), Module 9 (Medical Countermeasures)',
     verificationId: 'VTEST-16, VTEST-35',
-    implementation: 'Enforces boundary clamps, singularity protection, and explicit ISO 14971 clinical verification & CHP/QMP counter-signature attestations in all exported dossiers.',
-    status: 'COMPLIANT'
+    implementation: 'Enforces boundary clamps, singularity protection, and explicit ISO 14971 clinical verification & CHP/QMP/SBD counter-signature attestations in all exported dossiers.',
+    status: 'ALIGNED'
   },
   {
     standard: 'ISO 7010:2019 & ISO 21482:2007',
@@ -110,8 +111,8 @@ const ISO_STANDARDS_REGISTER = [
     domain: 'Hazard Signage & Control Room Ergonomics (ISO 11064-5)',
     modules: 'UI Hazard Badges, Module 15 (Transport Labels), Module 19 (Laser), Module 20 (EMR)',
     verificationId: 'VTEST-05, VTEST-10, VTEST-12',
-    implementation: 'High-contrast multi-modal status indicators ([PASS]/[EXCEEDED] text + color + hazard iconography) compliant with control-room ergonomics.',
-    status: 'COMPLIANT'
+    implementation: 'High-contrast multi-modal status indicators ([PASS]/[EXCEEDED] text + color + hazard iconography) aligned with control-room ergonomics.',
+    status: 'ALIGNED'
   },
   {
     standard: 'ISO/IEC 27001:2022 & 21 CFR Part 11',
@@ -120,7 +121,7 @@ const ISO_STANDARDS_REGISTER = [
     modules: 'Client-Side Sandbox & Web Crypto SHA-256 Audit Dossier Service',
     verificationId: 'STRESS-08',
     implementation: '100% local browser execution (zero sensitive facility/source telemetry exfiltration) with Web Crypto API SHA-256 digital audit signatures.',
-    status: 'COMPLIANT'
+    status: 'ALIGNED'
   }
 ];
 
@@ -145,9 +146,9 @@ const VerificationModule: React.FC = () => {
   const [lastRunTimestamp, setLastRunTimestamp] = useState<string>(() => new Date().toISOString());
 
   // Formal Certificate Sign-off info
-  const [chpName, setChpName] = useState<string>('Dr. T. Carlson, CHP, DABHP');
-  const [rsoName, setRsoName] = useState<string>('Senior Radiation Safety Officer (RSO)');
-  const [facilityName, setFacilityName] = useState<string>('RadPro Analytical Dosimetry & Verification Laboratory');
+  const [chpName, setChpName] = useState<string>('Qualified Health Physicist (CHP / SBD)');
+  const [rsoName, setRsoName] = useState<string>('Radiation Safety Officer (RSO / TMS)');
+  const [facilityName, setFacilityName] = useState<string>('Radiological Dosimetry & Engineering Facility');
 
   const searchKey = searchParams.toString();
   const [prevSearchKey, setPrevSearchKey] = useState<string | null>(null);
@@ -257,19 +258,20 @@ const VerificationModule: React.FC = () => {
   // Export JSON Certificate
   const handleExportJSON = async () => {
     const certPayload = {
-      verificationTitle: 'RadPro Calc Scientific Verification & Validation Suite',
+      verificationTitle: `${APP_NAME} v${APP_VERSION} Scientific Verification & Validation Suite`,
       executionEngine: 'Production TypeScript Solvers (src/utils/* & src/services/*)',
-      standardCompliance: [
+      standardAlignment: [
         'IEEE 730-2014 Software Quality Assurance',
         'IAEA TRS-398 Absorbed Dose Determinations',
         'NCRP Report 151 Structural Shielding',
         'ICRP Publication 107 / 119 Nuclear Decay & Internal Dosimetry',
+        'NL ANVS / Bbs (Stb. 2017, 404) & Rbs Radiotoxicity Re_inh',
         'EPA Federal Guidance Report No. 12 / 15',
         'ANSI Z136.1 Laser Hazard Assessment',
         'IEEE C95.1 / FCC OET-65 EMR Safety',
         'NUREG-1575 MARSSIM Release Criteria',
         'AAPM TG-43U1 Brachytherapy Seed Dosimetry',
-        'ISO/IEC 17025 General Requirements for Testing & Calibration'
+        'ISO/IEC 17025:2017 & GUM Verification Methodology'
       ],
       executionTimestamp: lastRunTimestamp,
       fpuEnvironment: {
@@ -375,7 +377,7 @@ const VerificationModule: React.FC = () => {
             <span className="hud-badge hud-badge-primary">IEEE 730-2014 SQA</span>
             <span className="hud-badge hud-badge-success">IAEA TRS-398 / NCRP-151</span>
             <span className="hud-badge" style={{ backgroundColor: 'rgba(255, 159, 28, 0.15)', color: 'var(--color-accent)', border: '1px solid rgba(255, 159, 28, 0.4)' }}>
-              ISO/IEC 17025 LIVE ENGINE V&amp;V
+              LIVE PRODUCTION SOLVER V&amp;V
             </span>
           </div>
           <h2 style={{ margin: '6px 0 0 0', fontSize: '1.4rem', letterSpacing: '0.03em' }}>
@@ -413,7 +415,7 @@ const VerificationModule: React.FC = () => {
             className="btn btn-secondary"
             onClick={handlePrint}
             style={{ fontSize: '0.82rem', padding: '8px 12px' }}
-            title="Print Official QA Audit Report"
+            title="Print QA Verification Report"
           >
             Print Report
           </button>
@@ -462,7 +464,7 @@ const VerificationModule: React.FC = () => {
             ε = 2.2204 × 10⁻¹⁶
           </span>
           <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
-            64-Bit Binary64 IEEE 754 Certified
+            64-Bit Binary64 IEEE 754 Arithmetic
           </span>
         </div>
       </div>
@@ -495,14 +497,14 @@ const VerificationModule: React.FC = () => {
           onClick={() => setActiveTab('iso_matrix')}
           style={{ fontWeight: 600, padding: '6px 14px' }}
         >
-          🌐 ISO Standards Compliance ({ISO_STANDARDS_REGISTER.length})
+          ISO Standards Alignment ({ISO_STANDARDS_REGISTER.length})
         </button>
         <button
           className={`btn btn-sm ${activeTab === 'certificate' ? 'btn-primary' : 'btn-outline-secondary'}`}
           onClick={() => setActiveTab('certificate')}
           style={{ fontWeight: 600, padding: '6px 14px' }}
         >
-          Formal SQA Audit Certificate &amp; Sign-Off
+          SQA Verification Report &amp; Sign-Off
         </button>
       </div>
 
@@ -855,20 +857,20 @@ const VerificationModule: React.FC = () => {
         </div>
       )}
 
-      {/* TAB 4: ISO Standards Compliance Register */}
+      {/* TAB 4: ISO Standards Alignment Register */}
       {activeTab === 'iso_matrix' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1, minHeight: 0 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(16, 185, 129, 0.06)', padding: '12px 16px', borderRadius: '8px', border: '1px solid rgba(16, 185, 129, 0.3)', flexShrink: 0, flexWrap: 'wrap', gap: '10px' }}>
             <div>
               <h3 style={{ margin: 0, fontSize: '0.98rem', color: '#34d399' }}>
-                🌐 Whole-Platform ISO / IEC / ASME NQA-1 Compliance Register (12 Standards Verified)
+                Whole-Platform ISO / IEC / ASME NQA-1 Standards Alignment Register ({ISO_STANDARDS_REGISTER.length} Standards Mapped)
               </h3>
               <span style={{ fontSize: '0.78rem', color: '#cbd5e1' }}>
                 Comprehensive mapping of international ISO radiological protection, laboratory metrology, uncertainty propagation, nuclear QA, and clinical risk management standards across all 35 calculation modules.
               </span>
             </div>
             <span className="hud-badge hud-badge-success" style={{ fontSize: '0.8rem', padding: '5px 12px', fontWeight: 700 }}>
-              12 / 12 ISO STANDARDS COMPLIANT
+              12 / 12 STANDARDS ALIGNED
             </span>
           </div>
 
@@ -926,7 +928,7 @@ const VerificationModule: React.FC = () => {
         </div>
       )}
 
-      {/* TAB 5: Formal QA Audit Certificate & Sign-Off Report */}
+      {/* TAB 5: Formal QA Audit Report & Sign-Off */}
       {activeTab === 'certificate' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', flex: 1, minHeight: 0, overflowY: 'auto' }}>
           <div
@@ -942,29 +944,29 @@ const VerificationModule: React.FC = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '2px solid rgba(0, 229, 255, 0.3)', paddingBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
               <div>
                 <span className="hud-badge hud-badge-primary" style={{ fontSize: '0.8rem', letterSpacing: '1px' }}>
-                  OFFICIAL SQA CERTIFICATION RECORD
+                  SQA VERIFICATION &amp; BENCHMARK RECORD
                 </span>
                 <h2 style={{ margin: '8px 0 2px 0', fontSize: '1.5rem', color: '#fff', letterSpacing: '0.04em' }}>
-                  CERTIFICATE OF SCIENTIFIC ALGORITHM VERIFICATION &amp; VALIDATION
+                  SCIENTIFIC ALGORITHM VERIFICATION &amp; VALIDATION REPORT
                 </h2>
                 <div style={{ color: '#94a3b8', fontSize: '0.84rem' }}>
-                  Document Code: <strong>RADPRO-SQA-2026-VERIFY</strong> &nbsp;|&nbsp; Compliance Tier: <strong>IEEE 730-2014 &amp; IAEA TRS-398</strong>
+                  Document Code: <strong>RADPRO-SQA-V460-VERIFY</strong> &nbsp;|&nbsp; Reference Tier: <strong>IEEE 730-2014 &amp; IAEA TRS-398</strong>
                 </div>
               </div>
 
               <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
                 <span className="hud-badge hud-badge-success" style={{ fontSize: '0.9rem', padding: '6px 14px', fontWeight: 'bold' }}>
-                  {analytics.grandFailed === 0 ? '100.0% VERIFIED' : 'DEFECTS DETECTED'}
+                  {analytics.grandFailed === 0 ? '100.0% BENCHMARKS PASSING' : 'DEFECTS DETECTED'}
                 </span>
                 <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
-                  Engine: Live Production Solvers
+                  Engine: Live Production Solvers ({APP_NAME} v{APP_VERSION})
                 </span>
               </div>
             </div>
 
             <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <p style={{ fontSize: '0.90rem', color: '#e2e8f0', lineHeight: '1.6', margin: 0 }}>
-                This document certifies that the production TypeScript computational kernels, mathematical formulations, and boundary condition safeguards implemented within <strong>RadPro Calc (Modules 1 through 35)</strong> have been directly executed and verified against peer-reviewed analytical literature, NIST XCOM / ANSI/ANS-6.4.3 GP tables, ICRP/NCRP recommendations, IAEA technical reports, and ISO/IEEE consensus standards.
+                This record verifies that the production TypeScript computational kernels, mathematical formulations, and boundary condition safeguards implemented within <strong>{APP_NAME} v{APP_VERSION} (Modules 1 through 35)</strong> have been directly executed and benchmarked against peer-reviewed analytical literature, NIST XCOM / ANSI/ANS-6.4.3 GP tables, ICRP/NCRP recommendations, Dutch ANVS / Bbs radiotoxicity definitions, IAEA technical reports, and ISO/IEEE consensus standards.
               </p>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px', background: 'rgba(0,0,0,0.4)', padding: '14px 18px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)' }}>
@@ -996,7 +998,7 @@ const VerificationModule: React.FC = () => {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' }}>
                   <div style={{ background: 'rgba(0,0,0,0.3)', padding: '12px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.06)' }}>
                     <label style={{ fontSize: '0.72rem', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>
-                      CERTIFIED HEALTH PHYSICIST (CHP / DABHP)
+                      HEALTH PHYSICIST / QUALIFIED EXPERT (CHP / SBD)
                     </label>
                     <input
                       type="text"
@@ -1006,13 +1008,13 @@ const VerificationModule: React.FC = () => {
                       style={{ fontSize: '0.85rem', padding: '6px 10px', width: '100%' }}
                     />
                     <span style={{ fontSize: '0.70rem', color: '#64748b', marginTop: '4px', display: 'block' }}>
-                      Authorized Peer-Review Examiner
+                      Peer-Review Examiner
                     </span>
                   </div>
 
                   <div style={{ background: 'rgba(0,0,0,0.3)', padding: '12px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.06)' }}>
                     <label style={{ fontSize: '0.72rem', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>
-                      RADIATION SAFETY OFFICER (RSO)
+                      RADIATION SAFETY OFFICER (RSO / TMS)
                     </label>
                     <input
                       type="text"
@@ -1038,14 +1040,14 @@ const VerificationModule: React.FC = () => {
                       style={{ fontSize: '0.85rem', padding: '6px 10px', width: '100%' }}
                     />
                     <span style={{ fontSize: '0.70rem', color: '#64748b', marginTop: '4px', display: 'block' }}>
-                      Licensed Dosimetry Entity
+                      Evaluating Engineering Entity
                     </span>
                   </div>
                 </div>
 
                 <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
                   <div style={{ fontSize: '0.78rem', color: '#94a3b8' }}>
-                    Digital Integrity Verification: <span style={{ fontFamily: 'monospace', color: 'var(--color-primary)' }}>SHA-256 / DETERMINISTIC ZERO-DRIFT CERTIFIED</span>
+                    Digital Integrity Verification: <span style={{ fontFamily: 'monospace', color: 'var(--color-primary)' }}>SHA-256 / DETERMINISTIC ZERO-DRIFT VERIFIED</span>
                   </div>
 
                   <div style={{ display: 'flex', gap: '10px' }}>

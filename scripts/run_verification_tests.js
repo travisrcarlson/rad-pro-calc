@@ -1,6 +1,6 @@
 /**
  * Automated CLI Scientific Verification & Validation Suite
- * RadPro Calc — IEEE 730-2014, IAEA TRS-398, NCRP-151 & ISO/IEC 17025 Compliance
+ * RadPro Analyst v4.6.0 — IEEE 730-2014, IAEA TRS-398, NCRP-151 & ISO/IEC 17025 Traceable
  *
  * Directly imports and executes the production TypeScript physics solvers via
  * `src/utils/vvBenchmarkSuite.ts` (zero duplicate inline shadow lambdas).
@@ -15,7 +15,7 @@ const tests = runAllVerificationBenchmarks();
 const stressTests = runAllStressBenchmarks();
 
 console.log('========================================================================');
-console.log(' RADPRO CALC — SCIENTIFIC VERIFICATION & VALIDATION (V&V) TEST SUITE');
+console.log(' RADPRO ANALYST v4.6.0 — SCIENTIFIC VERIFICATION & VALIDATION SUITE');
 console.log(' Engine: Production TypeScript Solvers (src/utils/* & src/services/*)');
 console.log(' Standards: IEEE 730-2014 SQA | IAEA TRS-398 | NCRP-151 | ISO/IEC 17025');
 console.log('========================================================================\n');

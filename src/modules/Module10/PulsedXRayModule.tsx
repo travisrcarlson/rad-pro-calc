@@ -153,7 +153,9 @@ const PulsedXRayModule: React.FC = () => {
     results.instantaneousRate_Sv_H,
     isSaturated,
     unitSystem,
-    setLiveModuleTelemetry
+    setLiveModuleTelemetry,
+    formatDoseMSv,
+    formatDoseRateMSvHr
   ]);
 
   // Generate 2D Heatmap Grid

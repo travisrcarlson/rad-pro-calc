@@ -15,11 +15,31 @@ interface KarlsruheChartProps {
   onIsotopeClick: (isotopeData: KarlsruheNuclideRow) => void;
   onClearSelection?: () => void;
   activePathIds?: string[];
-  activeEdges?: Array<{ fromNuclide: string; toNuclide: string; modality?: string }>;
+  activeEdges?: Array<{ fromNuclide: string; toNuclide: string; modality?: string; branchFraction?: number }>;
 }
 
 const BOX_SIZE = 100;
 const GAP = 2;
+
+function getSvgMetrics(rect: DOMRect, vb: { x: number; y: number; w: number; h: number }) {
+  const safeW = Math.max(1, vb.w);
+  const safeH = Math.max(1, vb.h);
+  const scale = Math.min(rect.width / safeW, rect.height / safeH) || 1;
+  const renderedW = safeW * scale;
+  const renderedH = safeH * scale;
+  const offsetX = (rect.width - renderedW) / 2;
+  const offsetY = (rect.height - renderedH) / 2;
+  return { scale, offsetX, offsetY };
+}
+
+function clampViewBox(vb: { x: number; y: number; w: number; h: number }) {
+  return {
+    x: Math.max(-2000, Math.min(20000, vb.x)),
+    y: Math.max(-1500, Math.min(14000, vb.y)),
+    w: vb.w,
+    h: vb.h
+  };
+}
 
 function computeChainViewBox(
   activePathIds: string[] | undefined,
@@ -78,7 +98,7 @@ function computeChainViewBox(
   };
 }
 
-const KarlsruheSvgChart: React.FC<KarlsruheChartProps> = ({ onIsotopeClick, onClearSelection, activePathIds, activeEdges }) => {
+const KarlsruheSvgChart: React.FC<KarlsruheChartProps> = ({ onIsotopeClick, activePathIds, activeEdges }) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const [viewBox, setViewBox] = useState({ x: 8000, y: 2000, w: 6000, h: 4000 });
@@ -86,8 +106,16 @@ const KarlsruheSvgChart: React.FC<KarlsruheChartProps> = ({ onIsotopeClick, onCl
   useEffect(() => {
     viewBoxRef.current = viewBox;
   }, [viewBox]);
+
+  const [wheelZoomEnabled, setWheelZoomEnabled] = useState<boolean>(false);
+  const wheelZoomRef = useRef<boolean>(false);
+  useEffect(() => {
+    wheelZoomRef.current = wheelZoomEnabled;
+  }, [wheelZoomEnabled]);
+
   const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0, vx: 0, vy: 0 });
+  const dragStartRef = useRef({ x: 0, y: 0, vx: 0, vy: 0, scale: 1 });
+  const dragDistanceRef = useRef<number>(0);
 
   const [hoveredIsotope, setHoveredIsotope] = useState<KarlsruheNuclideRow | null>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
@@ -114,15 +142,18 @@ const KarlsruheSvgChart: React.FC<KarlsruheChartProps> = ({ onIsotopeClick, onCl
   }
 
   const zoomBy = (factor: number) => {
-    const cx = viewBox.x + viewBox.w / 2;
-    const cy = viewBox.y + viewBox.h / 2;
-    const newW = Math.min(Math.max(viewBox.w * factor, 500), 30000);
-    const newH = Math.min(Math.max(viewBox.h * factor, 400), 22000);
-    setViewBox({
-      x: cx - newW / 2,
-      y: cy - newH / 2,
-      w: newW,
-      h: newH
+    setViewBox(vb => {
+      const cx = vb.x + vb.w / 2;
+      const cy = vb.y + vb.h / 2;
+      const clampedW = Math.min(Math.max(vb.w * factor, 500), 22000);
+      const scaleRatio = clampedW / vb.w;
+      const newH = vb.h * scaleRatio;
+      return clampViewBox({
+        x: cx - clampedW / 2,
+        y: cy - newH / 2,
+        w: clampedW,
+        h: newH
+      });
     });
   };
 
@@ -130,51 +161,68 @@ const KarlsruheSvgChart: React.FC<KarlsruheChartProps> = ({ onIsotopeClick, onCl
     const el = containerRef.current;
     if (!el) return;
     const onNativeWheel = (e: WheelEvent) => {
+      // Allow normal page scrolling unless wheel zoom is explicitly unlocked or Ctrl/Cmd is held
+      const shouldZoom = wheelZoomRef.current || e.ctrlKey || e.metaKey;
+      if (!shouldZoom) return;
+
       e.preventDefault();
-      const zoomFactor = 1.12;
-      const direction = e.deltaY > 0 ? zoomFactor : 1 / zoomFactor;
       const rect = el.getBoundingClientRect();
       if (!rect || rect.width <= 0 || rect.height <= 0) return;
 
-      const vb = viewBoxRef.current;
-      const mouseX = e.clientX - rect.left;
-      const mouseY = e.clientY - rect.top;
-      const svgX = vb.x + (mouseX / rect.width) * vb.w;
-      const svgY = vb.y + (mouseY / rect.height) * vb.h;
-      const newW = vb.w * direction;
-      const newH = vb.h * direction;
-      const newX = svgX - (mouseX / rect.width) * newW;
-      const newY = svgY - (mouseY / rect.height) * newH;
+      const rawDelta =
+        e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * 100 : e.deltaY;
+      const clampedDelta = Math.max(-120, Math.min(120, rawDelta));
+      const factor = Math.exp(clampedDelta * 0.0022);
 
-      if (newW > 500 && newW < 30000) {
-        setViewBox({ x: newX, y: newY, w: newW, h: newH });
-      }
+      setViewBox(vb => {
+        const { scale, offsetX, offsetY } = getSvgMetrics(rect, vb);
+        const newW = Math.min(Math.max(vb.w * factor, 500), 22000);
+        const actualRatio = newW / vb.w;
+        if (Math.abs(actualRatio - 1) < 1e-4) return vb;
+        const newH = vb.h * actualRatio;
+
+        const svgX = vb.x + (e.clientX - rect.left - offsetX) / scale;
+        const svgY = vb.y + (e.clientY - rect.top - offsetY) / scale;
+
+        return clampViewBox({
+          x: svgX - (svgX - vb.x) * actualRatio,
+          y: svgY - (svgY - vb.y) * actualRatio,
+          w: newW,
+          h: newH
+        });
+      });
     };
     el.addEventListener('wheel', onNativeWheel, { passive: false });
     return () => el.removeEventListener('wheel', onNativeWheel);
   }, []);
 
   const handleMouseDown = (e: React.MouseEvent) => {
+    if (e.button !== 0) return;
+    const rect = containerRef.current?.getBoundingClientRect();
+    const vb = viewBoxRef.current;
+    const scale = rect ? getSvgMetrics(rect, vb).scale : 1;
     setIsDragging(true);
-    setDragStart({ x: e.clientX, y: e.clientY, vx: viewBox.x, vy: viewBox.y });
+    dragDistanceRef.current = 0;
+    dragStartRef.current = { x: e.clientX, y: e.clientY, vx: vb.x, vy: vb.y, scale };
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!isDragging) return;
-    const rect = containerRef.current?.getBoundingClientRect();
-    if (!rect) return;
+    const start = dragStartRef.current;
+    const dx = e.clientX - start.x;
+    const dy = e.clientY - start.y;
+    dragDistanceRef.current = Math.max(dragDistanceRef.current, Math.hypot(dx, dy));
 
-    const dx = e.clientX - dragStart.x;
-    const dy = e.clientY - dragStart.y;
+    const svgDx = dx / start.scale;
+    const svgDy = dy / start.scale;
 
-    const svgDx = (dx / rect.width) * viewBox.w;
-    const svgDy = (dy / rect.height) * viewBox.h;
-
-    setViewBox({
-      ...viewBox,
-      x: dragStart.vx - svgDx,
-      y: dragStart.vy - svgDy,
-    });
+    setViewBox(vb =>
+      clampViewBox({
+        ...vb,
+        x: start.vx - svgDx,
+        y: start.vy - svgDy
+      })
+    );
   };
 
   const handleMouseUp = () => {
@@ -222,6 +270,7 @@ const KarlsruheSvgChart: React.FC<KarlsruheChartProps> = ({ onIsotopeClick, onCl
           key={n.Nuclide}
           transform={`translate(${x}, ${y})`}
           onClick={(e) => {
+            if (dragDistanceRef.current > 5) return;
             e.stopPropagation();
             onIsotopeClick(n);
           }}
@@ -304,37 +353,78 @@ const KarlsruheSvgChart: React.FC<KarlsruheChartProps> = ({ onIsotopeClick, onCl
     });
   }, [onIsotopeClick, normalizedActiveSet, activePathIds]);
 
-  // Draw true DAG parent -> daughter vector connectors from activeEdges (avoiding false zig-zags across parallel branches)
+  // Draw true DAG parent -> daughter vector connectors from activeEdges (deduplicated, trimmed & arrow-tipped)
   const activeChainVectors = useMemo(() => {
+    const markerIdForModality = (mod?: string) => {
+      if (mod === 'alpha') return 'url(#karl-arrow-alpha)';
+      if (mod === 'ec_positron') return 'url(#karl-arrow-ec)';
+      if (mod === 'gamma_it') return 'url(#karl-arrow-it)';
+      return 'url(#karl-arrow-beta)';
+    };
+    const strokeForModality = (mod?: string) => {
+      if (mod === 'alpha') return '#facc15';
+      if (mod === 'ec_positron') return '#f87171';
+      if (mod === 'gamma_it') return '#a855f7';
+      return '#38bdf8';
+    };
+
     if (activeEdges && activeEdges.length > 0) {
-      return activeEdges.map((edge, i) => {
+      const grouped = new Map<
+        string,
+        { x1: number; y1: number; x2: number; y2: number; totalFrac: number; bestFrac: number; modality?: string }
+      >();
+
+      activeEdges.forEach(edge => {
         const fromStripped = edge.fromNuclide.replace(/m\d*$/i, '');
         const toStripped = edge.toNuclide.replace(/m\d*$/i, '');
         const fromN = nuclideMap.get(edge.fromNuclide) || nuclideMap.get(fromStripped);
         const toN = nuclideMap.get(edge.toNuclide) || nuclideMap.get(toStripped);
-        if (!fromN || !toN) return null;
+        if (!fromN || !toN) return;
         const x1 = fromN.N * BOX_SIZE + BOX_SIZE / 2;
         const y1 = (120 - fromN.Z) * BOX_SIZE + BOX_SIZE / 2;
         const x2 = toN.N * BOX_SIZE + BOX_SIZE / 2;
         const y2 = (120 - toN.Z) * BOX_SIZE + BOX_SIZE / 2;
-        if (x1 === x2 && y1 === y2) return null;
-        const strokeColor =
-          edge.modality === 'alpha'
-            ? '#facc15'
-            : edge.modality === 'ec_positron'
-            ? '#f87171'
-            : '#38bdf8';
+        if (x1 === x2 && y1 === y2) return;
+
+        const key = `${fromN.Z},${fromN.N}->${toN.Z},${toN.N}`;
+        const frac = edge.branchFraction ?? 1.0;
+        const existing = grouped.get(key);
+        if (existing) {
+          existing.totalFrac += frac;
+          if (frac > existing.bestFrac) {
+            existing.bestFrac = frac;
+            existing.modality = edge.modality;
+          }
+        } else {
+          grouped.set(key, { x1, y1, x2, y2, totalFrac: frac, bestFrac: frac, modality: edge.modality });
+        }
+      });
+
+      return Array.from(grouped.entries()).map(([key, g]) => {
+        const dx = g.x2 - g.x1;
+        const dy = g.y2 - g.y1;
+        const len = Math.hypot(dx, dy);
+        if (len < 1) return null;
+        const trim = Math.min(26, len * 0.22);
+        const ux = dx / len;
+        const uy = dy / len;
+        const sx = g.x1 + ux * trim;
+        const sy = g.y1 + uy * trim;
+        const ex = g.x2 - ux * trim;
+        const ey = g.y2 - uy * trim;
+        const isPrimary = g.totalFrac >= 0.5;
         return (
           <line
-            key={`${edge.fromNuclide}-${edge.toNuclide}-${i}`}
-            x1={x1}
-            y1={y1}
-            x2={x2}
-            y2={y2}
-            stroke={strokeColor}
-            strokeWidth="6"
-            strokeDasharray="12,8"
-            opacity={0.9}
+            key={key}
+            x1={sx}
+            y1={sy}
+            x2={ex}
+            y2={ey}
+            stroke={strokeForModality(g.modality)}
+            strokeWidth={isPrimary ? '7' : '4.5'}
+            strokeDasharray={isPrimary ? undefined : '12,8'}
+            markerEnd={markerIdForModality(g.modality)}
+            opacity={isPrimary ? 0.95 : 0.78}
             pointerEvents="none"
           />
         );
@@ -358,18 +448,24 @@ const KarlsruheSvgChart: React.FC<KarlsruheChartProps> = ({ onIsotopeClick, onCl
 
     return coords.slice(0, -1).map((from, i) => {
       const to = coords[i + 1];
-      if (from.cx === to.cx && from.cy === to.cy) return null;
+      const dx = to.cx - from.cx;
+      const dy = to.cy - from.cy;
+      const len = Math.hypot(dx, dy);
+      if (len < 1) return null;
+      const trim = Math.min(26, len * 0.22);
+      const ux = dx / len;
+      const uy = dy / len;
       return (
         <line
           key={`${from.id}-${to.id}-${i}`}
-          x1={from.cx}
-          y1={from.cy}
-          x2={to.cx}
-          y2={to.cy}
+          x1={from.cx + ux * trim}
+          y1={from.cy + uy * trim}
+          x2={to.cx - ux * trim}
+          y2={to.cy - uy * trim}
           stroke="#38bdf8"
-          strokeWidth="6"
-          strokeDasharray="12,8"
-          opacity={0.85}
+          strokeWidth="6.5"
+          markerEnd="url(#karl-arrow-beta)"
+          opacity={0.9}
           pointerEvents="none"
         />
       );
@@ -404,7 +500,7 @@ const KarlsruheSvgChart: React.FC<KarlsruheChartProps> = ({ onIsotopeClick, onCl
           boxShadow: '0 4px 12px rgba(0,0,0,0.45)'
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
           <button
             type="button"
             onClick={centerOnActiveChain}
@@ -424,6 +520,14 @@ const KarlsruheSvgChart: React.FC<KarlsruheChartProps> = ({ onIsotopeClick, onCl
           </button>
           <button
             type="button"
+            onClick={() => setViewBox({ x: -200, y: -200, w: 18500, h: 12600 })}
+            title="Zoom out to inspect the full Chart of the Nuclides"
+            style={{ background: '#1e293b', border: '1px solid #334155', color: '#e2e8f0', borderRadius: '5px', padding: '4px 7px', fontSize: '0.72rem', fontWeight: 600, cursor: 'pointer' }}
+          >
+            🌐 Full
+          </button>
+          <button
+            type="button"
             onClick={() => zoomBy(0.75)}
             title="Zoom In"
             style={{ background: '#1e293b', border: '1px solid #334155', color: '#e2e8f0', borderRadius: '5px', padding: '4px 8px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}
@@ -438,9 +542,29 @@ const KarlsruheSvgChart: React.FC<KarlsruheChartProps> = ({ onIsotopeClick, onCl
           >
             －
           </button>
+          <button
+            type="button"
+            className={wheelZoomEnabled ? 'active' : ''}
+            onClick={() => setWheelZoomEnabled(v => !v)}
+            title="Hold Ctrl+Wheel or Pinch to zoom anytime; toggle this to lock bare mouse-wheel zoom onto this chart instead of scrolling the page"
+            style={{
+              background: wheelZoomEnabled ? 'rgba(56, 189, 248, 0.22)' : '#1e293b',
+              border: `1px solid ${wheelZoomEnabled ? '#38bdf8' : '#334155'}`,
+              color: wheelZoomEnabled ? '#38bdf8' : '#94a3b8',
+              borderRadius: '5px',
+              padding: '4px 7px',
+              fontSize: '0.71rem',
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}
+          >
+            {wheelZoomEnabled ? '🔍 Wheel: Zoom' : '🔒 Wheel: Page'}
+          </button>
         </div>
         <div style={{ fontSize: '0.68rem', color: '#94a3b8', lineHeight: 1.35 }}>
-          Wheel: Zoom &nbsp;|&nbsp; Drag: Pan &nbsp;|&nbsp; Click Nuclide: Trace
+          {wheelZoomEnabled
+            ? 'Wheel: Zoom | Drag: Pan | Click Nuclide: Trace'
+            : 'Ctrl+Wheel / Pinch: Zoom | Drag: Pan | Click Nuclide: Trace'}
         </div>
       </div>
 
@@ -484,8 +608,21 @@ const KarlsruheSvgChart: React.FC<KarlsruheChartProps> = ({ onIsotopeClick, onCl
         viewBox={`${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`}
         xmlns="http://www.w3.org/2000/svg"
         style={{ userSelect: 'none' }}
-        onClick={onClearSelection}
       >
+        <defs>
+          <marker id="karl-arrow-alpha" markerWidth="4.5" markerHeight="4.5" refX="3.5" refY="2.25" orient="auto">
+            <path d="M0,0 L4.5,2.25 L0,4.5 Z" fill="#facc15" />
+          </marker>
+          <marker id="karl-arrow-beta" markerWidth="4.5" markerHeight="4.5" refX="3.5" refY="2.25" orient="auto">
+            <path d="M0,0 L4.5,2.25 L0,4.5 Z" fill="#38bdf8" />
+          </marker>
+          <marker id="karl-arrow-ec" markerWidth="4.5" markerHeight="4.5" refX="3.5" refY="2.25" orient="auto">
+            <path d="M0,0 L4.5,2.25 L0,4.5 Z" fill="#f87171" />
+          </marker>
+          <marker id="karl-arrow-it" markerWidth="4.5" markerHeight="4.5" refX="3.5" refY="2.25" orient="auto">
+            <path d="M0,0 L4.5,2.25 L0,4.5 Z" fill="#a855f7" />
+          </marker>
+        </defs>
         {renderBlocks}
         {activeChainVectors}
       </svg>

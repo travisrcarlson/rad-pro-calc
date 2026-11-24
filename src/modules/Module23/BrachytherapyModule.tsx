@@ -355,7 +355,7 @@ const BrachytherapyModule: React.FC = () => {
     }
 
     return { xVals, yVals, zDoseGy };
-  }, [seeds, currentModel, gridSize]);
+  }, [seeds, currentModel, gridSize, xMin, xMax, yMin, yMax]);
 
   // 2. CALCULATE DOSE-VOLUME HISTOGRAM (DVH) VIA DETERMINISTIC HALTON QUASI-MONTE CARLO
   const dvhMetrics = useMemo(() => {

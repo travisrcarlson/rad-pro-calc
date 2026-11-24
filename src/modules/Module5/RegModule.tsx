@@ -3,6 +3,8 @@ import { useRegulatory } from '../../context/RegulatoryContext';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
 import VerificationBadge from '../../components/VerificationBadge';
+import { CANONICAL_NUCLIDE_REGISTRY } from '../../utils/canonicalNuclidePhysics';
+import { computeDutchBbsRadiotoxicity } from '../../utils/radiologicalPhysicsKernels';
 
 interface WorkerRecord {
   id: string;
@@ -14,12 +16,21 @@ interface WorkerRecord {
 }
 
 const INITIAL_WORKERS: WorkerRecord[] = [
-  { id: 'W001', name: 'Dr. Arthur Vance', department: 'Industrial Radiography', doseTEDE: 3.5, doseLDE: 4.0, doseSDE: 12.0 },
-  { id: 'W002', name: 'Sarah Jenkins', department: 'Medical / Hot Cell', doseTEDE: 14.8, doseLDE: 22.0, doseSDE: 135.0 },
-  { id: 'W003', name: 'James Holden', department: 'Waste Logistics', doseTEDE: 0.1, doseLDE: 0.1, doseSDE: 0.5 },
+  { id: 'W001', name: 'Operator A-01', department: 'Industrial Radiography', doseTEDE: 3.5, doseLDE: 4.0, doseSDE: 12.0 },
+  { id: 'W002', name: 'Operator B-02', department: 'Hot Cell / Radiochemistry', doseTEDE: 14.8, doseLDE: 22.0, doseSDE: 135.0 },
+  { id: 'W003', name: 'Operator C-03', department: 'Waste Conditioning', doseTEDE: 0.1, doseLDE: 0.1, doseSDE: 0.5 },
 ];
 
-type WorkspaceTab = 'roster' | 'injector' | 'standards';
+type WorkspaceTab = 'roster' | 'injector' | 'standards' | 'bbs_lab';
+
+function formatBqReadable(bq: number): string {
+  if (!Number.isFinite(bq) || bq <= 0) return '0 Bq';
+  if (bq >= 1e12) return `${+(bq / 1e12).toPrecision(4)} TBq`;
+  if (bq >= 1e9) return `${+(bq / 1e9).toPrecision(4)} GBq`;
+  if (bq >= 1e6) return `${+(bq / 1e6).toPrecision(4)} MBq`;
+  if (bq >= 1e3) return `${+(bq / 1e3).toPrecision(4)} kBq`;
+  return `${+bq.toPrecision(4)} Bq`;
+}
 
 const RegModule: React.FC = () => {
   const { currentFramework, setFrameworkId, allFrameworks, frameworkId } = useRegulatory();
@@ -33,18 +44,41 @@ const RegModule: React.FC = () => {
   const [doseType, setDoseType] = useState<'TEDE' | 'LDE' | 'SDE'>('TEDE');
 
   // Emergency Turn-Back, PSE & Declared Pregnant Worker Calculator State
-  const [calcFieldRateMSvHr, setCalcFieldRateMSvHr] = useState<number>(25.0); // 25 mSv/h (2.5 rem/h)
+  const [calcFieldRateMSvHr, setCalcFieldRateMSvHr] = useState<number>(25.0);
   const [calcPriorAnnualMSv, setCalcPriorAnnualMSv] = useState<number>(4.5);
-  const [calcPriorLifetimePSE_mSv, setCalcPriorLifetimePSE_mSv] = useState<number>(30.0); // 10 CFR 20.1206 max 250 mSv lifetime PSE
+  const [calcPriorLifetimePSE_mSv, setCalcPriorLifetimePSE_mSv] = useState<number>(30.0);
   const [calcFetalPriorMSv, setCalcFetalPriorMSv] = useState<number>(0.4);
   const [calcFetalMonthsLeft, setCalcFetalMonthsLeft] = useState<number>(6);
 
+  // Dutch Bbs / Rbs Re_inh & D/C/B Radionuclide Lab Classification State
+  const [bbsNuclide, setBbsNuclide] = useState<string>('I-131');
+  const [bbsActivity, setBbsActivity] = useState<number>(50);
+  const [bbsActivityUnit, setBbsActivityUnit] = useState<'kBq' | 'MBq' | 'GBq'>('MBq');
+  const [bbsLungClass, setBbsLungClass] = useState<'F' | 'M' | 'S'>('F');
+  const [bbsHandlingFactor, setBbsHandlingFactor] = useState<number>(1.0);
+
+  const bbsNuclidesList = useMemo(
+    () => Object.values(CANONICAL_NUCLIDE_REGISTRY).sort((a, b) => a.symbol.localeCompare(b.symbol)),
+    []
+  );
+
+  const selectedBbsSpec = CANONICAL_NUCLIDE_REGISTRY[bbsNuclide] || bbsNuclidesList[0];
+  const bbsActivityBq =
+    bbsActivity * (bbsActivityUnit === 'GBq' ? 1e9 : bbsActivityUnit === 'MBq' ? 1e6 : 1e3);
+  const selectedEInh50 = selectedBbsSpec
+    ? selectedBbsSpec.e50InhalByClass_Sv_Bq[bbsLungClass]
+    : 1e-8;
+  const bbsLabResult = useMemo(
+    () => computeDutchBbsRadiotoxicity(bbsActivityBq, selectedEInh50, bbsHandlingFactor),
+    [bbsActivityBq, selectedEInh50, bbsHandlingFactor]
+  );
+
   // Dynamic Framework Limits
-  const activeLimits = {
+  const activeLimits = useMemo(() => ({
     TEDE: currentFramework.limits.occupationalAnnualEffective_mSv,
     LDE: currentFramework.limits.lensOfEyeAnnual_mSv,
     SDE: currentFramework.limits.skinAndExtremitiesAnnual_mSv
-  };
+  }), [currentFramework]);
 
   const getALARAStatus = (dose: number, limit: number) => {
     const ratio = dose / limit;
@@ -96,30 +130,32 @@ const RegModule: React.FC = () => {
   });
 
   const dossierPayload: CalculationDossierPayload = useMemo(() => ({
-    reportTitle: `Annual Regulatory Dose Compliance Dossier — ${currentFramework.name}`,
-    moduleName: 'Module 33: Regulatory Compliance & ALARA Administration',
+    reportTitle: `Regulatory Dose Compliance & Lab Classification Dossier — ${currentFramework.name}`,
+    moduleName: 'Module 33: Regulatory Compliance, ALARA & NL Bbs Classification',
     statuteCitation: `${currentFramework.name} (${currentFramework.citation})`,
-    verificationTestId: 'VTEST-01 / ICRP-103 / 21 CFR Part 11',
-    operatorName: 'Radiation Safety Officer (RSO)',
-    operatorCredentials: 'CHP, MS Health Physics',
-    facility: 'Central Nuclear Operations',
-    notes: `Workforce compliance assessment across ${workers.length} radiation workers against statutory limits: Whole Body (${activeLimits.TEDE} mSv), Lens of Eye (${activeLimits.LDE} mSv), Shallow Extremities (${activeLimits.SDE} mSv).`,
-    formulaDescription: 'R_{\\text{ALARA}} = \\max\\left(\\frac{\\text{TEDE}}{\\text{Limit}_{\\text{WB}}}, \\frac{\\text{LDE}}{\\text{Limit}_{\\text{Eye}}}, \\frac{\\text{SDE}}{\\text{Limit}_{\\text{Ext}}}\\right)',
+    verificationTestId: 'VTEST-01 / VTEST-61',
+    operatorName: '',
+    operatorCredentials: '',
+    facility: '',
+    notes: `Workforce ALARA & statutory evaluation (${workers.length} illustrative records): Whole Body (${activeLimits.TEDE} mSv), Lens of Eye (${activeLimits.LDE} mSv), Shallow Extremities (${activeLimits.SDE} mSv). NL Bbs lab check: ${bbsActivity} ${bbsActivityUnit} ${bbsNuclide} (${bbsLabResult.reInhEffective.toPrecision(3)} Re_inh eff., ${bbsLabResult.labClass}).`,
+    formulaDescription: 'R_{\\text{ALARA}} = \\max\\left(\\frac{\\text{TEDE}}{\\text{Limit}_{\\text{WB}}}, \\frac{\\text{LDE}}{\\text{Limit}_{\\text{Eye}}}, \\frac{\\text{SDE}}{\\text{Limit}_{\\text{Ext}}}\\right), \\quad N_{\\text{Re,inh}} = \\frac{A \\cdot e_{\\text{inh}}(50)}{f_{\\text{hand}}}',
     inputs: [
       { label: 'Regulatory Framework', value: `${currentFramework.governingBody} (${currentFramework.name})` },
       { label: 'Statute / Directive', value: currentFramework.citation },
-      { label: 'Total Monitored Workers', value: `${workers.length} individuals` },
+      { label: 'Total Monitored Personnel (Illustrative)', value: `${workers.length} individuals` },
       { label: 'Whole Body (TEDE) Limit', value: activeLimits.TEDE, unit: 'mSv/yr' },
       { label: 'Lens of Eye (LDE) Limit', value: activeLimits.LDE, unit: 'mSv/yr' },
-      { label: 'Extremity (SDE) Limit', value: activeLimits.SDE, unit: 'mSv/yr' }
+      { label: 'Extremity (SDE) Limit', value: activeLimits.SDE, unit: 'mSv/yr' },
+      { label: 'Bbs Re_inh Source Evaluation', value: `${bbsActivity} ${bbsActivityUnit} ${bbsNuclide} (Class ${bbsLungClass})`, unit: `e_inh=${selectedEInh50.toExponential(2)} Sv/Bq` }
     ],
     outputs: [
       { label: 'Regulatory Violations', value: violationCount, status: violationCount > 0 ? 'EXCEEDED' : 'PASS' },
       { label: 'ALARA Action Triggers', value: alaraCount, status: alaraCount > 0 ? 'WARNING' : 'PASS' },
       { label: 'Peak Whole Body Accumulation', value: highestTEDE.toFixed(1), unit: 'mSv', status: highestTEDE > activeLimits.TEDE ? 'EXCEEDED' : 'PASS' },
-      { label: 'Peak Dose Recipient', value: highestWorker || 'None', status: 'PASS' }
+      { label: 'Peak Dose Recipient', value: highestWorker || 'None', status: 'PASS' },
+      { label: 'NL Bbs / Rbs Lab Tier', value: `${bbsLabResult.labClass} (${bbsLabResult.reInhEffective.toPrecision(3)} Re_inh)`, status: bbsLabResult.reInhEffective > 2000 ? 'WARNING' : 'PASS' }
     ]
-  }), [currentFramework, workers, activeLimits, violationCount, alaraCount, highestTEDE, highestWorker]);
+  }), [currentFramework, workers, activeLimits, violationCount, alaraCount, highestTEDE, highestWorker, bbsActivity, bbsActivityUnit, bbsNuclide, bbsLungClass, selectedEInh50, bbsLabResult]);
 
   return (
     <div className="panel" style={{ height: '100%', display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -128,15 +164,16 @@ const RegModule: React.FC = () => {
       <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-            <span className="hud-badge hud-badge-primary">RADIATION SAFETY OFFICER (RSO) HUD</span>
+            <span className="hud-badge hud-badge-primary">RADIATION PROTECTION OFFICER / SBD</span>
             <span className="hud-badge hud-badge-accent">{currentFramework.flagEmoji} {currentFramework.name} ({currentFramework.shortCode})</span>
-            <VerificationBadge testId="VTEST-01" label="ICRP 103 / 10 CFR 20" />
+            <VerificationBadge testId="VTEST-01" label="ICRP 103 / Bbs / 10 CFR 20" />
+            <VerificationBadge testId="VTEST-61" label="NL Bbs Re_inh" />
           </div>
           <h2 style={{ margin: '6px 0 0 0', fontSize: '1.4rem', letterSpacing: '0.03em' }}>
             Module 33 — Regulatory Dose Compliance &amp; ALARA Administration Dashboard
           </h2>
           <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
-            Track occupational exposure records against Federal annual limits and internal ALARA investigation levels across Whole Body (TEDE), Lens of Eye (LDE), and Shallow Extremities (SDE).
+            Compare occupational dose limits across 7 statutory regimes, evaluate Dutch ANVS / Bbs radiotoxicity equivalents (Re_inh), and audit illustrative ALARA exposure records.
           </p>
         </div>
 
@@ -163,7 +200,6 @@ const RegModule: React.FC = () => {
             onClick={() => setIsDossierOpen(true)}
             style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 600, padding: '7px 14px' }}
           >
-            <span>🖨️</span>
             <span>Export Compliance Dossier</span>
           </button>
         </div>
@@ -227,6 +263,12 @@ const RegModule: React.FC = () => {
           Personnel Dosimetry Roster ({workers.length})
         </button>
         <button
+          className={`tab-btn ${activeTab === 'bbs_lab' ? 'active' : ''}`}
+          onClick={() => setActiveTab('bbs_lab')}
+        >
+          NL Bbs / Rbs Lab Classification (Re_inh)
+        </button>
+        <button
           className={`tab-btn ${activeTab === 'injector' ? 'active' : ''}`}
           onClick={() => setActiveTab('injector')}
         >
@@ -245,7 +287,19 @@ const RegModule: React.FC = () => {
         
         {/* TAB 1: Personnel Dosimetry Roster */}
         {activeTab === 'roster' && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: '16px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div style={{
+              background: 'rgba(56, 189, 248, 0.08)',
+              border: '1px solid rgba(56, 189, 248, 0.25)',
+              borderRadius: '6px',
+              padding: '9px 14px',
+              fontSize: '0.79rem',
+              color: '#cbd5e1'
+            }}>
+              <strong style={{ color: 'var(--color-primary)' }}>Illustrative Sample Dosimetry Roster:</strong>{' '}
+              Non-operational demonstration records for evaluating ALARA &amp; statutory thresholds across jurisdictions. Use the Dose Record Injector tab to simulate exposure scenarios.
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: '16px' }}>
             {workers.map(w => {
               const statusT = getALARAStatus(w.doseTEDE, activeLimits.TEDE);
               const statusL = getALARAStatus(w.doseLDE, activeLimits.LDE);
@@ -349,6 +403,227 @@ const RegModule: React.FC = () => {
                 </div>
               );
             })}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 2: NL ANVS / Bbs & Rbs Radiotoxicity Equivalent (Re_inh) & Lab Classification */}
+        {activeTab === 'bbs_lab' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{
+              background: 'rgba(249, 115, 22, 0.08)',
+              border: '1px solid rgba(249, 115, 22, 0.3)',
+              borderRadius: '8px',
+              padding: '12px 16px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '10px'
+            }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', color: '#fb923c' }}>
+                  Netherlands ANVS / Bbs Radiotoxicity Equivalent (Re_inh) &amp; Radionuclide Lab Classifier
+                </h3>
+                <p style={{ margin: '4px 0 0 0', fontSize: '0.80rem', color: '#cbd5e1' }}>
+                  Computes 1 Re_inh = 1 Sv / e_inh(50) from ICRP inhalation dose coefficients and assigns Dutch Bbs/Rbs open-source laboratory tiers (D-Lab &le; 0.2, C-Lab &le; 20, B-Lab &le; 2,000 Re_inh).
+                </p>
+              </div>
+              <VerificationBadge testId="VTEST-61" label="NL Bbs / Rbs Re_inh" />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '16px' }}>
+              {/* Controls */}
+              <div style={{
+                background: 'rgba(5, 10, 18, 0.72)',
+                border: '1px solid var(--color-border)',
+                borderRadius: '8px',
+                padding: '18px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px'
+              }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <div>
+                    <label className="form-label" style={{ fontSize: '0.76rem' }}>Radionuclide</label>
+                    <select
+                      className="form-control"
+                      value={bbsNuclide}
+                      onChange={e => setBbsNuclide(e.target.value)}
+                    >
+                      {bbsNuclidesList.map(n => (
+                        <option key={n.symbol} value={n.symbol}>
+                          {n.symbol} ({n.name})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="form-label" style={{ fontSize: '0.76rem' }}>Respiratory Type (ICRP)</label>
+                    <select
+                      className="form-control"
+                      value={bbsLungClass}
+                      onChange={e => setBbsLungClass(e.target.value as 'F' | 'M' | 'S')}
+                    >
+                      <option value="F">Type F (Fast — e_inh={selectedBbsSpec.e50InhalByClass_Sv_Bq.F.toExponential(2)} Sv/Bq)</option>
+                      <option value="M">Type M (Moderate — e_inh={selectedBbsSpec.e50InhalByClass_Sv_Bq.M.toExponential(2)} Sv/Bq)</option>
+                      <option value="S">Type S (Slow — e_inh={selectedBbsSpec.e50InhalByClass_Sv_Bq.S.toExponential(2)} Sv/Bq)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 110px', gap: '10px' }}>
+                  <div>
+                    <label className="form-label" style={{ fontSize: '0.76rem' }}>Handled Activity</label>
+                    <input
+                      type="number"
+                      min="0.001"
+                      step="1"
+                      className="form-control"
+                      value={bbsActivity}
+                      onChange={e => setBbsActivity(Math.max(0.0001, parseFloat(e.target.value) || 0.0001))}
+                    />
+                  </div>
+                  <div>
+                    <label className="form-label" style={{ fontSize: '0.76rem' }}>Unit</label>
+                    <select
+                      className="form-control"
+                      value={bbsActivityUnit}
+                      onChange={e => setBbsActivityUnit(e.target.value as 'kBq' | 'MBq' | 'GBq')}
+                    >
+                      <option value="kBq">kBq</option>
+                      <option value="MBq">MBq</option>
+                      <option value="GBq">GBq</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="form-label" style={{ fontSize: '0.76rem' }}>
+                    Operation / Containment Factor (f_hand)
+                  </label>
+                  <select
+                    className="form-control"
+                    value={bbsHandlingFactor}
+                    onChange={e => setBbsHandlingFactor(parseFloat(e.target.value) || 1.0)}
+                  >
+                    <option value={0.1}>0.1 — Volatile / Dusty / Dry Powder Dispersion</option>
+                    <option value={1}>1.0 — Standard Open Wet Radiochemistry (Reference)</option>
+                    <option value={10}>10 — Simple Liquid Handling / Fume Hood Dilution</option>
+                    <option value={100}>100 — Enclosed Vial Storage (Reference Only)</option>
+                  </select>
+                </div>
+
+                <div style={{
+                  fontSize: '0.76rem',
+                  color: '#94a3b8',
+                  background: 'rgba(0,0,0,0.35)',
+                  padding: '9px 12px',
+                  borderRadius: '6px',
+                  fontFamily: 'var(--font-mono)'
+                }}>
+                  e_inh(50) [Type {bbsLungClass}]: <strong style={{ color: '#e2e8f0' }}>{selectedEInh50.toExponential(3)} Sv/Bq</strong><br />
+                  Total Activity A: <strong style={{ color: '#e2e8f0' }}>{bbsActivityBq.toExponential(3)} Bq</strong>
+                </div>
+              </div>
+
+              {/* Computed Re_inh & Lab Tier */}
+              <div style={{
+                background: 'rgba(5, 10, 18, 0.72)',
+                border: '1px solid var(--color-border)',
+                borderRadius: '8px',
+                padding: '18px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px'
+              }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <div className="hud-card" style={{ padding: '10px 12px' }}>
+                    <span className="hud-metric-label">1 Re_inh EQUIVALENT</span>
+                    <span className="hud-metric-value" style={{ fontSize: '1.25rem', color: 'var(--color-primary)' }}>
+                      {formatBqReadable(bbsLabResult.oneReInh_Bq)}
+                    </span>
+                    <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                      {bbsLabResult.oneReInh_Bq.toExponential(2)} Bq = 1 Sv inh.
+                    </span>
+                  </div>
+
+                  <div className="hud-card" style={{ padding: '10px 12px' }}>
+                    <span className="hud-metric-label">EFFECTIVE DEMAND (Re_inh)</span>
+                    <span className="hud-metric-value" style={{ fontSize: '1.25rem', color: '#fb923c' }}>
+                      {bbsLabResult.reInhEffective >= 0.01
+                        ? bbsLabResult.reInhEffective.toFixed(3)
+                        : bbsLabResult.reInhEffective.toExponential(2)} Re_inh
+                    </span>
+                    <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                      Nominal: {bbsLabResult.reInhNominal >= 0.01 ? bbsLabResult.reInhNominal.toFixed(3) : bbsLabResult.reInhNominal.toExponential(2)} Re_inh
+                    </span>
+                  </div>
+                </div>
+
+                <div style={{
+                  background: 'rgba(0,0,0,0.4)',
+                  border: `1px solid ${bbsLabResult.reInhEffective > 2000 ? '#ef4444' : bbsLabResult.reInhEffective > 20 ? '#f59e0b' : '#10b981'}`,
+                  borderRadius: '6px',
+                  padding: '12px 14px'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                    <div>
+                      <span style={{ fontSize: '0.70rem', color: '#94a3b8', textTransform: 'uppercase', display: 'block' }}>
+                        REQUIRED DUTCH BBS / RBS LABORATORY TIER
+                      </span>
+                      <strong style={{ fontSize: '1.1rem', color: '#fff' }}>
+                        {bbsLabResult.labClass}
+                      </strong>
+                    </div>
+                    <span className={`hud-badge ${bbsLabResult.reInhEffective > 2000 ? 'hud-badge-danger' : bbsLabResult.reInhEffective > 20 ? 'hud-badge-warning' : 'hud-badge-success'}`}>
+                      {bbsLabResult.zoneClassification}
+                    </span>
+                  </div>
+
+                  <div style={{ marginTop: '10px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.73rem', color: '#cbd5e1', marginBottom: '4px' }}>
+                      <span>Tier Ceiling Utilization ({bbsLabResult.maxLabLimitReInh} Re_inh max)</span>
+                      <span style={{ fontFamily: 'var(--font-mono)' }}>{Math.min(999, bbsLabResult.utilizationPct).toFixed(1)}%</span>
+                    </div>
+                    <div style={{ height: '6px', width: '100%', background: '#1e293b', borderRadius: '3px', overflow: 'hidden' }}>
+                      <div style={{
+                        height: '100%',
+                        width: `${Math.min(100, bbsLabResult.utilizationPct)}%`,
+                        background: bbsLabResult.reInhEffective > 2000 ? '#ef4444' : bbsLabResult.reInhEffective > 20 ? '#f59e0b' : '#10b981'
+                      }} />
+                    </div>
+                  </div>
+                </div>
+
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid #334155', color: '#94a3b8', textAlign: 'left' }}>
+                      <th style={{ padding: '5px 8px' }}>Lab Tier</th>
+                      <th style={{ padding: '5px 8px' }}>Effective Ceiling</th>
+                      <th style={{ padding: '5px 8px' }}>Zone (Bbs)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                      <td style={{ padding: '5px 8px', color: '#e2e8f0', fontWeight: 600 }}>D-Laboratory</td>
+                      <td style={{ padding: '5px 8px', fontFamily: 'monospace' }}>&le; 0.2 Re_inh</td>
+                      <td style={{ padding: '5px 8px', color: '#94a3b8' }}>Bewaakte zone</td>
+                    </tr>
+                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                      <td style={{ padding: '5px 8px', color: '#e2e8f0', fontWeight: 600 }}>C-Laboratory</td>
+                      <td style={{ padding: '5px 8px', fontFamily: 'monospace' }}>&le; 20 Re_inh</td>
+                      <td style={{ padding: '5px 8px', color: '#94a3b8' }}>Bewaakte zone</td>
+                    </tr>
+                    <tr>
+                      <td style={{ padding: '5px 8px', color: '#e2e8f0', fontWeight: 600 }}>B-Laboratory</td>
+                      <td style={{ padding: '5px 8px', fontFamily: 'monospace' }}>&le; 2,000 Re_inh</td>
+                      <td style={{ padding: '5px 8px', color: '#94a3b8' }}>Gecontroleerde zone</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         )}
 
@@ -410,7 +685,7 @@ const RegModule: React.FC = () => {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
                 <div>
                   <h3 style={{ margin: 0, color: 'var(--color-primary)', fontSize: '1.15rem' }}>
-                    🌐 6-Regime International &amp; Federal Radiation Protection Concordance Matrix
+                    {allFrameworks.length}-Regime International &amp; Federal Radiation Protection Concordance Matrix
                   </h3>
                   <p style={{ margin: '4px 0 0 0', fontSize: '0.82rem', color: '#94a3b8' }}>
                     Click any regime header or use the top selector to switch the active enforcement framework across the application.
@@ -510,10 +785,10 @@ const RegModule: React.FC = () => {
 
             {/* Interactive Emergency Turn-Back, Planned Special Exposure (PSE) & Fetal Budget Calculators */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: '16px' }}>
-              {/* Card 1: Emergency Turn-Back Stay-Time & 10 CFR 20.1206 Planned Special Exposure */}
+              {/* Card 1: Emergency Turn-Back Stay-Time & Special Exposure */}
               <div style={{ background: 'rgba(5, 10, 18, 0.7)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '18px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <h4 style={{ margin: 0, color: '#00e5ff', fontSize: '1rem' }}>
-                  ⏱️ Emergency Turn-Back Stay-Time &amp; Planned Special Exposure (10 CFR § 20.1206)
+                  Emergency Turn-Back Stay-Time &amp; Special Exposure Budget
                 </h4>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
                   <div>
@@ -559,9 +834,9 @@ const RegModule: React.FC = () => {
                   const stayRoutineMin = (remAnnual / calcFieldRateMSvHr) * 60.0;
                   const stayPropertyMin = (currentFramework.limits.emergencyProperty_mSv / calcFieldRateMSvHr) * 60.0;
                   const stayLifeMin = (currentFramework.limits.emergencyLifeSaving_mSv / calcFieldRateMSvHr) * 60.0;
-                  // 10 CFR 20.1206: Annual PSE <= 50 mSv AND Lifetime PSE <= 250 mSv (5x annual limit)
                   const pseRemLifetime = Math.max(0, 250.0 - calcPriorLifetimePSE_mSv);
                   const pseAllowedYear = Math.min(50.0, pseRemLifetime);
+                  const isUsFramework = frameworkId === 'US_NRC' || frameworkId === 'DOE_835';
 
                   return (
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
@@ -578,7 +853,9 @@ const RegModule: React.FC = () => {
                         <strong style={{ color: '#ef4444', fontSize: '0.95rem', fontFamily: 'monospace' }}>{stayLifeMin.toFixed(1)} min ({(stayLifeMin / 60).toFixed(2)} h)</strong>
                       </div>
                       <div style={{ background: 'rgba(0,0,0,0.35)', padding: '8px 10px', borderRadius: '6px', borderLeft: '3px solid #38bdf8' }}>
-                        <span style={{ fontSize: '0.7rem', color: '#94a3b8', display: 'block' }}>10 CFR 20.1206 PSE Remaining</span>
+                        <span style={{ fontSize: '0.7rem', color: '#94a3b8', display: 'block' }}>
+                          {isUsFramework ? '10 CFR 20.1206 PSE Remaining' : 'US 10 CFR 20.1206 PSE Ref.'}
+                        </span>
                         <strong style={{ color: '#38bdf8', fontSize: '0.95rem', fontFamily: 'monospace' }}>{pseAllowedYear.toFixed(1)} mSv/yr ({pseRemLifetime.toFixed(0)} mSv life)</strong>
                       </div>
                     </div>
@@ -586,13 +863,17 @@ const RegModule: React.FC = () => {
                 })()}
               </div>
 
-              {/* Card 2: Declared Pregnant Worker / Embryo-Fetus Monthly Dose Budget (10 CFR 20.1208 / Reg Guide 8.13) */}
+              {/* Card 2: Declared Pregnant Worker / Embryo-Fetus Monthly Dose Budget */}
               <div style={{ background: 'rgba(5, 10, 18, 0.7)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '18px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <h4 style={{ margin: 0, color: '#00e5ff', fontSize: '1rem' }}>
-                  🤰 Declared Pregnant Worker / Embryo-Fetus Dose Budget ({currentFramework.shortCode})
+                  Declared Pregnant Worker / Unborn Child Dose Budget ({currentFramework.shortCode})
                 </h4>
                 <p style={{ margin: 0, fontSize: '0.78rem', color: '#94a3b8' }}>
-                  Evaluates uniform monthly exposure rate limits under {currentFramework.shortCode} (Cap: {currentFramework.limits.embryoFetusDeclared_mSv} mSv; NRC Reg Guide 8.13 uniform monthly constraint ≤ 0.5 mSv/mo).
+                  {frameworkId === 'NL_ANVS_BBS' || frameworkId === 'EURATOM_IRR'
+                    ? `Bbs Art. 7.36 / EU 2013/59/Euratom statutory limit: ≤ ${currentFramework.limits.embryoFetusDeclared_mSv} mSv effective dose to the unborn child for the remainder of pregnancy after declaration.`
+                    : frameworkId === 'IAEA_GSR3'
+                      ? `IAEA GSR Part 3 / ICRP 103 protection principle: ≤ ${currentFramework.limits.embryoFetusDeclared_mSv} mSv equivalent to embryo/fetus after declaration (comparable to public ceiling).`
+                      : `Evaluates uniform monthly exposure rate limits under ${currentFramework.shortCode} (Cap: ${currentFramework.limits.embryoFetusDeclared_mSv} mSv; NRC Reg Guide 8.13 uniform monthly constraint ≤ 0.5 mSv/mo).`}
                 </p>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>

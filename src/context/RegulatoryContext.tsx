@@ -1,6 +1,7 @@
 import { createContext, useContext } from 'react';
 
 export type RegulatoryFrameworkId = 
+  | 'NL_ANVS_BBS'  // Netherlands Bbs / ANVS (EU 2013/59/Euratom)
   | 'US_NRC'       // 10 CFR 20, EPA PAG 2017
   | 'DOE_835'      // US DOE 10 CFR Part 835 (20 mSv ACL / 50 mSv Statutory)
   | 'IAEA_GSR3'    // IAEA Safety Standards GSR Part 3 / ICRP 103
@@ -36,6 +37,30 @@ export interface RegulatoryFramework {
 }
 
 export const REGULATORY_FRAMEWORKS: Record<RegulatoryFrameworkId, RegulatoryFramework> = {
+  NL_ANVS_BBS: {
+    id: 'NL_ANVS_BBS',
+    name: 'Netherlands ANVS / Bbs (EU 2013/59/Euratom)',
+    shortCode: 'NL-ANVS / Bbs',
+    governingBody: 'Autoriteit Nucleaire Veiligheid en Stralingsbescherming (ANVS)',
+    keyStatutes: ['Bbs (Stb. 2017, 404)', 'Rbs / ANVS-Verordening (Vbs)', 'EU 2013/59/Euratom'],
+    region: 'Netherlands (European Union)',
+    flagEmoji: '🇳🇱',
+    accentColor: '#f97316',
+    limits: {
+      occupationalAnnualEffective_mSv: 20.0, // Exposed worker Category A ceiling (Category B <= 6 mSv/yr)
+      occupational5YearCumulative_mSv: 100.0,
+      occupationalMaxSingleYear_mSv: 20.0,
+      lensOfEyeAnnual_mSv: 20.0,             // Bbs Art. 7.34 / EU 2013/59
+      skinAndExtremitiesAnnual_mSv: 500.0,
+      publicAnnualEffective_mSv: 1.0,        // Public limit 1.0 mSv/yr (site MID 0.1 mSv/yr; triviality 10 uSv/yr)
+      embryoFetusDeclared_mSv: 1.0,          // Bbs Art. 7.36 unborn child remainder of pregnancy
+      emergencyGeneralWorker_mSv: 100.0,
+      emergencyProperty_mSv: 100.0,
+      emergencyLifeSaving_mSv: 500.0
+    },
+    turnBackGuidanceNotes: 'Dutch Bbs (Stb. 2017, 404) & Rbs: Exposed workers Cat. A ≤ 20 mSv/yr (Cat. B ≤ 6 mSv/yr); Lens of eye ≤ 20 mSv/yr; Public ≤ 1.0 mSv/yr (site-boundary dose constraint MID: 0.1 mSv/yr; triviality 10 µSv/yr). Open-source radionuclide labs: D-lab ≤ 0.2 Re_inh, C-lab ≤ 20 Re_inh (Bewaakte zone), B-lab ≤ 2,000 Re_inh (Gecontroleerde zone). Emergency reference levels: 100 mSv urgent / 500 mSv life-saving.',
+    citation: 'Besluit basisveiligheidsnormen stralingsbescherming (Bbs, Stb. 2017, 404), Regeling basisveiligheidsnormen stralingsbescherming (Rbs) & EU Council Directive 2013/59/Euratom.'
+  },
   US_NRC: {
     id: 'US_NRC',
     name: 'US Nuclear Regulatory Commission / DOE',

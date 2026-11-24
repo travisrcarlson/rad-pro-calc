@@ -556,6 +556,7 @@ export const GlobalNuclearMapModule: React.FC = () => {
     selectedReactorType,
     timelineMode,
     currentYear,
+    detonationColorMode,
   ]);
 
   // Filtered Proving Grounds for Tab 4 Atlas
@@ -1165,7 +1166,7 @@ export const GlobalNuclearMapModule: React.FC = () => {
     }
 
     return traces;
-  }, [pins, timelineMode, currentYear, distancePinA, distancePinB, isEPZOverlayActive, epzPlan, selectedReactorForEPZ]);
+  }, [pins, timelineMode, currentYear, detonationColorMode, distancePinA, distancePinB, isEPZOverlayActive, epzPlan, selectedReactorForEPZ]);
 
   const plotLayout = useMemo(() => ({
     autosize: true,

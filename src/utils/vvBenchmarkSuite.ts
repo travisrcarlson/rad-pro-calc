@@ -6,7 +6,7 @@
  *   2. Interactive QA Verification Engine (`Module 34` -> `src/modules/Module7/VerificationModule.tsx`)
  *   3. Inline Module Verification Badges (`src/components/VerificationBadge.tsx`)
  *
- * Every analytical vector (`VTEST-01`..`VTEST-60`) and numerical boundary check (`STRESS-01`..`STRESS-08`)
+ * Every analytical vector (`VTEST-01`..`VTEST-61`) and numerical boundary check (`STRESS-01`..`STRESS-08`)
  * executes REAL production TypeScript exports from `src/utils/*` and `src/services/*` — zero constant
  * shadow lambdas or self-comparing tautologies.
  */
@@ -77,7 +77,8 @@ import {
   computeISO11929CharacteristicLimits,
   computeISO7503SurfaceActivityBqCm2,
   computeISO4037AirKermaToHStar10MSvHr,
-  computeGUMUncertaintyBudget
+  computeGUMUncertaintyBudget,
+  computeDutchBbsRadiotoxicity
 } from './radiologicalPhysicsKernels.ts';
 
 export type VerificationCategory =
@@ -1670,7 +1671,7 @@ export function runAllVerificationBenchmarks(): VerificationTestRecord[] {
       buildRecord({
         id: 'VTEST-58',
         name: 'ISO 7503-1:2016 Surface Contamination Activity Concentration (A_s)',
-        module: 'Module 27 / 9 (MARSSIM & Worker Contamination Surveys)',
+        module: 'Module 27 / 2 (MARSSIM & Worker Contamination Surveys)',
         category: 'Radiometry',
         standard: 'ISO 7503-1:2016 Measurement and Evaluation of Surface Contamination',
         standardDoc: 'ISO 7503-1:2016 Clause 6.2 (Direct Surface Contamination Evaluation)',
@@ -1695,7 +1696,7 @@ export function runAllVerificationBenchmarks(): VerificationTestRecord[] {
       buildRecord({
         id: 'VTEST-59',
         name: 'ISO 4037-3:2019 S-Cs Reference Field Air Kerma to H*(10) Conversion',
-        module: 'Module 1A / 11 (External Dose & Instrument Calibration)',
+        module: 'Module 1A / 29 (External Dose & Instrument Calibration)',
         category: 'Radiometry',
         standard: 'ISO 4037-3:2019 Radiological Protection — X and Gamma Reference Radiation',
         standardDoc: 'ISO 4037-3:2019 Table 25 (Monoenergetic S-Cs 661.7 keV Conversion Coefficient)',
@@ -1734,6 +1735,34 @@ export function runAllVerificationBenchmarks(): VerificationTestRecord[] {
         computedDisplay: `±${expandedPct.toFixed(4)}% (u_c = ${ucPct.toFixed(2)}%)`,
         tolerancePct: 0.001,
         notes: 'Validates root-sum-square GUM propagation via computeGUMUncertaintyBudget.'
+      })
+    );
+  }
+
+  // VTEST-61: Dutch ANVS / Bbs & Rbs Radiotoxicity Equivalent (Re_inh) & Lab Classification
+  {
+    const bbsRes = computeDutchBbsRadiotoxicity(1.0e9, 1.0e-8, 1.0);
+    const tierValid =
+      bbsRes.labClass === 'C-Laboratory' &&
+      Math.abs(bbsRes.oneReInh_Bq - 1.0e8) < 1.0;
+    tests.push(
+      buildRecord({
+        id: 'VTEST-61',
+        name: 'Netherlands Bbs/Rbs Inhalation Radiotoxicity Equivalent (Re_inh) & Lab Tier',
+        module: 'Module 33 (NL ANVS / Bbs Regulatory & Lab Classification)',
+        category: 'Decay & Internal',
+        standard: 'Besluit basisveiligheidsnormen stralingsbescherming (Bbs, Stb. 2017, 404) & Rbs',
+        standardDoc: 'ANVS Bbs / Rbs Open-Source Radionuclide Laboratory Classification (D <= 0.2, C <= 20, B <= 2,000 Re_inh)',
+        formulaKatex:
+          '1\\,\\text{Re}_{\\text{inh}} = \\frac{1\\,\\text{Sv}}{e_{\\text{inh}}(50)} = 10^8\\,\\text{Bq}, \\quad N_{\\text{Re,inh}} = A \\cdot e_{\\text{inh}}(50) = 10.0000',
+        inputsDesc: 'A = 1.0 GBq (10^9 Bq), e_inh(50) = 1.0e-8 Sv/Bq, Handling factor f = 1.0',
+        expectedValue: 10.0,
+        expectedUnits: 'Re_inh',
+        expectedDisplay: '10.0000 Re_inh (1 Re_inh = 100 MBq, C-Laboratory)',
+        computedValue: tierValid ? bbsRes.reInhEffective : Number.NaN,
+        computedDisplay: `${bbsRes.reInhEffective.toFixed(4)} Re_inh (1 Re_inh = ${(bbsRes.oneReInh_Bq / 1e6).toFixed(0)} MBq, ${bbsRes.labClass})`,
+        tolerancePct: 0.001,
+        notes: 'Verifies Dutch Bbs/Rbs Re_inh activity equivalence and D/C/B laboratory classification via computeDutchBbsRadiotoxicity.'
       })
     );
   }

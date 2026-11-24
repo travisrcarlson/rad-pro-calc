@@ -1271,3 +1271,66 @@ export function computeGUMUncertaintyBudget(
   const ucPct = Math.sqrt(sumSq);
   return { ucPct, expandedPct: coverageFactorK * ucPct };
 }
+
+export interface DutchBbsRadiotoxicityResult {
+  oneReInh_Bq: number;
+  reInhNominal: number;
+  reInhEffective: number;
+  labClass: 'D-Laboratory' | 'C-Laboratory' | 'B-Laboratory' | 'A-Class / Special ANVS License';
+  zoneClassification: 'Supervised Zone (Bewaakte zone)' | 'Controlled Zone (Gecontroleerde zone)' | 'Hot-Cell / Special Containment';
+  maxLabLimitReInh: number;
+  utilizationPct: number;
+}
+
+/**
+ * Netherlands ANVS / Bbs (Stb. 2017, 404) & Rbs Radiotoxicity Equivalent (Re_inh)
+ * and open-source radionuclide laboratory tier classifier (D <= 0.2, C <= 20, B <= 2,000 Re_inh).
+ * 1 Re_inh = 1 Sv / e_inh(50).
+ */
+export function computeDutchBbsRadiotoxicity(
+  activityBq: number,
+  eInh50_Sv_Bq: number,
+  handlingFactor = 1.0
+): DutchBbsRadiotoxicityResult {
+  const aSafe = Math.max(0, Number.isFinite(activityBq) ? activityBq : 0);
+  const eSafe = Math.max(1e-20, Number.isFinite(eInh50_Sv_Bq) ? eInh50_Sv_Bq : 1e-20);
+  const fSafe = Math.max(1e-6, Number.isFinite(handlingFactor) ? handlingFactor : 1.0);
+
+  const oneReInh_Bq = 1.0 / eSafe;
+  const reInhNominal = aSafe * eSafe;
+  const reInhEffective = reInhNominal / fSafe;
+
+  let labClass: DutchBbsRadiotoxicityResult['labClass'];
+  let zoneClassification: DutchBbsRadiotoxicityResult['zoneClassification'];
+  let maxLabLimitReInh: number;
+
+  if (reInhEffective <= 0.2) {
+    labClass = 'D-Laboratory';
+    zoneClassification = 'Supervised Zone (Bewaakte zone)';
+    maxLabLimitReInh = 0.2;
+  } else if (reInhEffective <= 20.0) {
+    labClass = 'C-Laboratory';
+    zoneClassification = 'Supervised Zone (Bewaakte zone)';
+    maxLabLimitReInh = 20.0;
+  } else if (reInhEffective <= 2000.0) {
+    labClass = 'B-Laboratory';
+    zoneClassification = 'Controlled Zone (Gecontroleerde zone)';
+    maxLabLimitReInh = 2000.0;
+  } else {
+    labClass = 'A-Class / Special ANVS License';
+    zoneClassification = 'Hot-Cell / Special Containment';
+    maxLabLimitReInh = 2000.0;
+  }
+
+  const utilizationPct = (reInhEffective / maxLabLimitReInh) * 100.0;
+
+  return {
+    oneReInh_Bq,
+    reInhNominal,
+    reInhEffective,
+    labClass,
+    zoneClassification,
+    maxLabLimitReInh,
+    utilizationPct
+  };
+}

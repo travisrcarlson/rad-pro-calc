@@ -1,9 +1,11 @@
-import React, { useState, useEffect, useMemo, Suspense } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, NavLink, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import Login from './Login';
 import 'katex/dist/katex.min.css';
 import './index.css';
 import { lazyWithRetry } from './utils/lazyWithRetry';
+import { APP_NAME, APP_VERSION, VV_SUMMARY_BADGE, VV_PASS_BADGE } from './config/appMetadata';
+import AboutStandardsModal from './components/AboutStandardsModal';
 
 // Lazy-loaded computational micro-kernels & modules with auto-retry on stale deployments
 const NuclideTableModule = lazyWithRetry(() => import('./modules/Module1/NuclideTableModule'), 'NuclideTableModule');
@@ -216,7 +218,7 @@ const NAV_CATEGORIES: NavCategory[] = [
       { moduleNumber: 30, path: '/incidents', label: 'Historical Incidents DB', badge: 'INES 1-7', keywords: ['module 30', 'm30', 'historical', 'incident', 'accident', 'chernobyl', 'fukushima', 'goiania', 'tokaimura', 'sl-1', 'forensics', 'case'] },
       { moduleNumber: 31, path: '/global-map', label: 'Global 3D Earth Hub', badge: 'Reactors & Tests', keywords: ['module 31', 'm31', 'globe', 'map', 'earth', 'reactor', 'detonation', 'test site', 'nuclear', 'geospatial', '3d', 'coordinates', 'orbit', 'polygon'] },
       { moduleNumber: 32, path: '/hardware', label: 'Hardware Pulse Counter', badge: 'WebSerial/Audio', keywords: ['module 32', 'm32', 'hardware', 'serial', 'audio', 'pulse', 'cpm', 'cps', 'currie', 'dead-time', 'geiger'] },
-      { moduleNumber: 33, path: '/reg', label: 'Regulatory Dashboard', badge: '10 CFR 20', keywords: ['module 33', 'm33', 'regulatory', 'nrc', 'agreement state', 'compliance', 'limits'] }
+      { moduleNumber: 33, path: '/reg', label: 'Regulatory Dashboard', badge: 'Bbs / 10 CFR 20', keywords: ['module 33', 'm33', 'regulatory', 'anvs', 'bbs', 'rbs', 'nrc', 'euratom', 'compliance', 'limits', 're_inh'] }
     ]
   },
   {
@@ -225,7 +227,7 @@ const NAV_CATEGORIES: NavCategory[] = [
     color: '#94a3b8',
     iconSymbol: '✓',
     items: [
-      { moduleNumber: 34, path: '/verify', label: 'Verification Tests', badge: '68/68 Pass', keywords: ['module 34', 'm34', 'verify', 'test', 'sqa', 'validation', 'benchmark', 'qa'] },
+      { moduleNumber: 34, path: '/verify', label: 'Verification Tests', badge: VV_PASS_BADGE, keywords: ['module 34', 'm34', 'verify', 'test', 'sqa', 'validation', 'benchmark', 'qa'] },
       { moduleNumber: 35, path: '/literature', label: 'Core Literature & Physics', badge: 'Derivations', keywords: ['module 35', 'm35', 'literature', 'citations', 'physics', 'equations', 'formulations', 'references'] }
     ]
   }
@@ -367,24 +369,30 @@ const Sidebar: React.FC<SidebarProps> = ({
           }}
         >
           <div
-            title="RadPro Analyst Suite v4.5 — Click to Expand Sidebar (Ctrl+B)"
+            title={`${APP_NAME} v${APP_VERSION} — Click to Expand Sidebar (Ctrl+B)`}
             onClick={onToggleCollapse}
             style={{
               width: '34px',
               height: '34px',
               borderRadius: '8px',
-              background: 'rgba(0, 229, 255, 0.14)',
-              border: '1px solid rgba(0, 229, 255, 0.4)',
+              background: 'rgba(56, 189, 248, 0.14)',
+              border: '1px solid rgba(56, 189, 248, 0.4)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               color: 'var(--color-primary)',
-              fontSize: '1.1rem',
               cursor: 'pointer',
-              boxShadow: '0 0 10px rgba(0, 229, 255, 0.25)'
+              boxShadow: '0 0 10px rgba(56, 189, 248, 0.25)'
             }}
           >
-            ☢
+            <svg width="20" height="20" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+              <circle cx="32" cy="32" r="28" stroke="#38bdf8" strokeWidth="2.5" strokeOpacity="0.45" />
+              <path d="M32 32 L18.5 8.6 A27 27 0 0 1 45.5 8.6 Z" fill="#38bdf8" opacity="0.92" />
+              <path d="M32 32 L59 32 A27 27 0 0 1 45.5 55.4 Z" fill="#38bdf8" opacity="0.92" />
+              <path d="M32 32 L18.5 55.4 A27 27 0 0 1 5 32 Z" fill="#38bdf8" opacity="0.92" />
+              <circle cx="32" cy="32" r="8.5" fill="#0b1220" />
+              <circle cx="32" cy="32" r="5.0" fill="#38bdf8" />
+            </svg>
           </div>
           <button
             type="button"
@@ -490,21 +498,27 @@ const Sidebar: React.FC<SidebarProps> = ({
             width: '32px',
             height: '32px',
             borderRadius: '8px',
-            background: 'rgba(0, 229, 255, 0.12)',
-            border: '1px solid rgba(0, 229, 255, 0.35)',
+            background: 'rgba(56, 189, 248, 0.12)',
+            border: '1px solid rgba(56, 189, 248, 0.35)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             color: 'var(--color-primary)',
-            fontSize: '1.1rem',
-            boxShadow: '0 0 10px rgba(0, 229, 255, 0.25)'
+            boxShadow: '0 0 10px rgba(56, 189, 248, 0.22)'
           }}>
-            ☢
+            <svg width="18" height="18" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+              <circle cx="32" cy="32" r="28" stroke="#38bdf8" strokeWidth="2.5" strokeOpacity="0.45" />
+              <path d="M32 32 L18.5 8.6 A27 27 0 0 1 45.5 8.6 Z" fill="#38bdf8" opacity="0.92" />
+              <path d="M32 32 L59 32 A27 27 0 0 1 45.5 55.4 Z" fill="#38bdf8" opacity="0.92" />
+              <path d="M32 32 L18.5 55.4 A27 27 0 0 1 5 32 Z" fill="#38bdf8" opacity="0.92" />
+              <circle cx="32" cy="32" r="8.5" fill="#0b1220" />
+              <circle cx="32" cy="32" r="5.0" fill="#38bdf8" />
+            </svg>
           </div>
           <div>
-            <h1 style={{ fontSize: '1.05rem', margin: 0, lineHeight: 1.2 }}>RadPro Analyst</h1>
-            <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', letterSpacing: '0.5px' }}>
-              SUITE v4.6 // 68/68 V&amp;V
+            <h1 style={{ fontSize: '1.05rem', margin: 0, lineHeight: 1.2 }}>{APP_NAME}</h1>
+            <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', letterSpacing: '0.5px', fontFamily: 'var(--font-mono)' }}>
+              v{APP_VERSION} // {VV_SUMMARY_BADGE}
             </div>
           </div>
         </div>
@@ -892,15 +906,16 @@ const AppShell: React.FC<{
   const [isInspectorOpen, setIsInspectorOpen] = useState<boolean>(false);
   const [inspectorTab, setInspectorTab] = useState<InspectorTabId>('tutor');
   const [copiedShareLink, setCopiedShareLink] = useState<boolean>(false);
+  const [isAboutModalOpen, setIsAboutModalOpen] = useState<boolean>(false);
 
-  const toggleInspectorTab = (tab: InspectorTabId) => {
+  const toggleInspectorTab = useCallback((tab: InspectorTabId) => {
     setIsInspectorOpen(prevOpen => {
       const nextOpen = prevOpen && inspectorTab === tab ? false : true;
       setInspectorTab(tab);
       setTimeout(() => window.dispatchEvent(new Event('resize')), 60);
       return nextOpen;
     });
-  };
+  }, [inspectorTab]);
 
   useEffect(() => {
     const handleOpenInspector = (e: Event) => {
@@ -988,12 +1003,12 @@ const AppShell: React.FC<{
     return MODULE_USER_GUIDES[activeModuleInfo.moduleNumber] || null;
   }, [activeModuleInfo]);
 
-  const handleStepModule = (direction: -1 | 1) => {
+  const handleStepModule = useCallback((direction: -1 | 1) => {
     const idx = ALL_FLAT_NAV_ITEMS.findIndex(item => item.path === location.pathname);
     const currentIdx = idx >= 0 ? idx : 0;
     const nextIdx = (currentIdx + direction + ALL_FLAT_NAV_ITEMS.length) % ALL_FLAT_NAV_ITEMS.length;
     navigate(ALL_FLAT_NAV_ITEMS[nextIdx].path);
-  };
+  }, [location.pathname, navigate]);
 
   // Global keyboard shortcuts: Ctrl+B (Sidebar), Alt+Left/Right (Module Stepper), Alt+I (Guide), Alt+T (Physics Tutor), Esc (Close Drawer)
   useEffect(() => {
@@ -1020,7 +1035,7 @@ const AppShell: React.FC<{
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [location.pathname, isInspectorOpen, inspectorTab]);
+  }, [location.pathname, isInspectorOpen, inspectorTab, toggleInspectorTab, handleStepModule]);
 
   return (
     <div className="app-container">
@@ -1034,17 +1049,28 @@ const AppShell: React.FC<{
         onClearRecent={handleClearRecent}
       />
       <main className="main-content" style={{ padding: 0, display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
-        <RegulatorySelectorBar
-          onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
-          isSidebarCollapsed={isSidebarCollapsed}
-          onToggleSidebar={toggleSidebarCollapse}
-          activeModuleInfo={activeModuleInfo}
-          onStepModule={handleStepModule}
-          isActivePinned={activeModuleInfo ? pinnedPaths.includes(activeModuleInfo.path) : false}
-          onTogglePinActive={activeModuleInfo ? () => handleTogglePin(activeModuleInfo.path) : undefined}
-          onLockSession={onLockSession}
-        />
+        <div className="no-print">
+          <RegulatorySelectorBar
+            onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
+            isSidebarCollapsed={isSidebarCollapsed}
+            onToggleSidebar={toggleSidebarCollapse}
+            activeModuleInfo={activeModuleInfo}
+            onStepModule={handleStepModule}
+            isActivePinned={activeModuleInfo ? pinnedPaths.includes(activeModuleInfo.path) : false}
+            onTogglePinActive={activeModuleInfo ? () => handleTogglePin(activeModuleInfo.path) : undefined}
+            onLockSession={onLockSession}
+            onOpenAbout={() => setIsAboutModalOpen(true)}
+          />
+        </div>
         <CommandPalette isOpen={isCommandPaletteOpen} onClose={() => setIsCommandPaletteOpen(false)} />
+        <AboutStandardsModal
+          isOpen={isAboutModalOpen}
+          onClose={() => setIsAboutModalOpen(false)}
+          onOpenVerification={() => {
+            setIsAboutModalOpen(false);
+            navigate('/verify');
+          }}
+        />
 
         {/* Split Workspace Stage: [ Center Active Module Canvas ] + [ Docked Right-Hand Inspector Drawer ] */}
         <div style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden' }}>
@@ -1052,6 +1078,7 @@ const AppShell: React.FC<{
             {/* Single Consolidated Compact Workspace Ribbon (Reclaims ~190 px of vertical height) */}
             {activeModuleInfo && (
               <div
+                className="no-print"
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -1113,7 +1140,7 @@ const AppShell: React.FC<{
                     title="Open Global Reference Source, Smart Unit Converter & Cross-Module Pipeline"
                     style={{ padding: '4px 9px', borderRadius: '5px', fontSize: '0.73rem', fontWeight: 600, cursor: 'pointer' }}
                   >
-                    ☢️ Source ({activeSource.isotope})
+                    Source ({activeSource.isotope})
                   </button>
 
                   <button
@@ -1123,7 +1150,7 @@ const AppShell: React.FC<{
                     title="Inspect Physical Pellet Mass, Real Survey Meter Dead-Time Response, GUM ±2σ Uncertainty & NIST XCOM Provenance"
                     style={{ padding: '4px 9px', borderRadius: '5px', fontSize: '0.73rem', fontWeight: 600, cursor: 'pointer' }}
                   >
-                    🔬 Reality
+                    Physical Grounding
                   </button>
 
                   <button
@@ -1133,7 +1160,7 @@ const AppShell: React.FC<{
                     title="Open Calculation Pinboard, .radproj Save/Load & Multi-Module Master Dossier"
                     style={{ padding: '4px 9px', borderRadius: '5px', fontSize: '0.73rem', fontWeight: 600, cursor: 'pointer' }}
                   >
-                    📌 Pins ({pinnedResults.length})
+                    Pins ({pinnedResults.length})
                   </button>
 
                   <button
@@ -1143,7 +1170,7 @@ const AppShell: React.FC<{
                     title="Open Tool Info, Worked Benchmark & Mathematical Reference (Shortcut: Alt+I)"
                     style={{ padding: '4px 9px', borderRadius: '5px', fontSize: '0.73rem', fontWeight: 600, cursor: 'pointer' }}
                   >
-                    📖 Guide
+                    Guide
                   </button>
 
                   <button
@@ -1153,7 +1180,7 @@ const AppShell: React.FC<{
                     title="Open Side-by-Side Interactive 'Why Does This Happen?' Physics Tutor (Shortcut: Alt+T)"
                     style={{ padding: '4px 9px', borderRadius: '5px', fontSize: '0.73rem', fontWeight: 600, cursor: 'pointer' }}
                   >
-                    🧠 Physics Tutor{telemetryDeltaSummary ? ' • Δ' : ''}
+                    Physics Tutor{telemetryDeltaSummary ? ' • Δ' : ''}
                   </button>
 
                   <button
@@ -1162,7 +1189,7 @@ const AppShell: React.FC<{
                     title="Copy shareable scenario permalink URL to clipboard"
                     style={{ padding: '4px 9px', borderRadius: '5px', fontSize: '0.73rem', fontWeight: 600, cursor: 'pointer' }}
                   >
-                    {copiedShareLink ? '✓ Link Copied' : '🔗 Share'}
+                    {copiedShareLink ? '✓ Link Copied' : 'Share Link'}
                   </button>
                 </div>
               </div>

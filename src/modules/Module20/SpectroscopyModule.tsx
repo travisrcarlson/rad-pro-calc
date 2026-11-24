@@ -648,7 +648,7 @@ const SpectroscopyModule: React.FC = () => {
         }
       ]
     });
-  }, [detector, isotope, identifiedPeaks, hasShielding, setLiveModuleTelemetry]);
+  }, [detector, isotope, activityKBq, identifiedPeaks, hasShielding, setLiveModuleTelemetry]);
 
   return (
     <div className="spectroscopy-module">

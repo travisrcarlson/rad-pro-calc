@@ -243,7 +243,7 @@ export function generateEPZKML(scenario: EPZScenarioInput, plan: EPZEvacuationPl
     <name>EPZ Evacuation Plan - ${safePlantNameXml}</name>
     <open>1</open>
     <description><![CDATA[
-      <h2>Rad Pro Calc: Emergency Planning Zone (EPZ) Consequence Map</h2>
+      <h2>RadPro Analyst: Emergency Planning Zone (EPZ) Consequence Map</h2>
       <p><strong>Standard:</strong> EPA-400-R-92-001 (EPA PAG 2017) / IAEA GSR Part 7</p>
       <p><strong>Facility:</strong> ${safePlantNameCdata}</p>
       <p><strong>Wind Direction:</strong> Blowing from ${scenario.windOriginDegrees}° towards ${plan.plumeCenterlineBearingDeg}° (${safeKeyholeSector})</p>

@@ -273,7 +273,7 @@ const LiteratureModule: React.FC = () => {
                   {activeDoc.moduleId} — {activeDoc.domain}
                 </span>
                 <span style={{ fontSize: '0.75rem', padding: '2px 8px', background: activeDoc.isExpansion ? 'rgba(245, 158, 11, 0.15)' : 'rgba(0, 229, 255, 0.1)', color: activeDoc.isExpansion ? '#f59e0b' : 'var(--color-primary)', borderRadius: '4px', border: `1px solid ${activeDoc.isExpansion ? '#f59e0b' : 'rgba(0,229,255,0.3)'}` }}>
-                  {activeDoc.isExpansion ? 'Expansion Specification' : 'Certified Peer-Reviewed Formulation'}
+                  {activeDoc.isExpansion ? 'Expansion Specification' : 'Peer-Reviewed Reference Formulation'}
                 </span>
               </div>
               <h3 style={{ margin: '0 0 6px 0', fontSize: '1.4rem', color: '#fff' }}>{activeDoc.title}</h3>
@@ -938,7 +938,7 @@ const LiteratureModule: React.FC = () => {
         <div className="panel" style={{ marginTop: activeTab === 'current' ? '15px' : '0' }}>
           <h3>Master Scientific Bibliography &amp; International Standards Register</h3>
           <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', marginBottom: '15px' }}>
-            The mathematical and physical models in RadPro Analyst are certified against the following international regulatory authorities, technical consensus reports, and academic treatises.
+            The mathematical and physical models in RadPro Analyst are implemented and benchmarked against the following international regulatory authorities, technical consensus reports, and academic treatises.
           </p>
 
           <div style={{ overflowX: 'auto' }}>

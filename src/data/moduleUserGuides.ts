@@ -591,7 +591,7 @@ export const MODULE_USER_GUIDES: Record<number, ModuleUserGuide> = {
       'Presents a forensic database and quantitative reconstruction workbench for major historical nuclear and radiological incidents (INES Levels 1–7, including Chernobyl, Fukushima, Tokaimura, Goiânia, SL-1, Three Mile Island, Kyshtym, Windscale, and Castle Bravo).',
     whenToUse: [
       'Studying historical source terms, isotopic release inventories, radiological timelines, and lessons learned across INES 1–7 events.',
-      'Comparing empirical historical dose measurements against RadPro Calc’s analytical plume, fallout, and criticality solvers.',
+      'Comparing empirical historical dose measurements against RadPro Analyst’s analytical plume, fallout, and criticality solvers.',
       'Loading historical incident source terms directly into the Plume, Fallout, or Criticality modules for forensic replay.'
     ],
     howToUseSteps: [
@@ -648,42 +648,42 @@ export const MODULE_USER_GUIDES: Record<number, ModuleUserGuide> = {
   },
   33: {
     whatItDoes:
-      'Provides a multi-jurisdictional regulatory compliance and ALARA dashboard cross-referencing statutory dose limits across US NRC (10 CFR 20), US DOE (10 CFR 835), IAEA GSR Part 3 / ICRP 103, EURATOM 2013/59 / UK IRR17, NATO STANAG 2083, and Canadian CNSC SOR/2000-203.',
+      'Provides a multi-jurisdictional regulatory compliance, ALARA, and radionuclide lab classification dashboard cross-referencing Netherlands ANVS / Bbs (Stb. 2017, 404), EURATOM 2013/59 / UK IRR17, IAEA GSR Part 3 / ICRP 103, US NRC (10 CFR 20), US DOE (10 CFR 835), NATO STANAG 2083, and Canadian CNSC SOR/2000-203.',
     whenToUse: [
-      'Comparing occupational, lens-of-eye (150 mSv US NRC vs. 20 mSv ICRP 118/EURATOM), extremity, embryo/fetus, and public dose limits across international jurisdictions.',
-      'Auditing a worker’s external DDE and internal CEDE against annual and 5-year cumulative statutory ceilings.',
-      'Evaluating ALARA value-of-averted-dose ($/person-rem) cost-benefit shielding justifications.'
+      'Comparing occupational, lens-of-eye (150 mSv US NRC vs. 20 mSv Bbs/ICRP 118/EURATOM), extremity, embryo/fetus, and public dose limits across 7 jurisdictions.',
+      'Computing Dutch Bbs/Rbs inhalation radiotoxicity equivalents (Re_inh) and open-source radionuclide laboratory tier classifications (D, C, B-Lab).',
+      'Auditing illustrative worker dose accumulations against annual ALARA and statutory ceilings and exporting evaluation dossiers.'
     ],
     howToUseSteps: [
-      'Select the active regulatory jurisdiction (or compare all 6 frameworks side by side in the harmonization matrix).',
-      'Enter worker external deep dose, lens dose, extremity dose, and internal intake to audit statutory compliance margins.',
-      'Export a signed Regulatory Compliance Dossier for radiation safety committee records.'
+      'Select the active regulatory jurisdiction (or compare all 7 frameworks side by side in the concordance matrix).',
+      'Use the Bbs / Rbs Lab Classification tab to compute 1 Re_inh and classify open-source radionuclide laboratory tiers.',
+      'Export a signed Regulatory Compliance Dossier for radiation protection committee evaluation.'
     ],
     keyCapabilities: [
-      '6-Jurisdiction Statutory Dose Limit Harmonization Matrix',
-      'ICRP 118 Eye Lens (20 mSv) vs. 10 CFR 20 (150 mSv) Audit',
-      'Declared Pregnant Worker & 5-Year Cumulative Tracking',
-      'ALARA Cost-Benefit ($/person-Sv) Optimization Calculator'
+      '7-Jurisdiction Statutory Dose Limit Concordance Matrix',
+      'NL ANVS / Bbs Re_inh & D/C/B Radionuclide Lab Classifier',
+      'Declared Pregnant Worker & Emergency Turn-Back Stay-Time Calculators',
+      'Illustrative ALARA Exposure Injector & Audit Dossier Export'
     ]
   },
   34: {
     whatItDoes:
-      'Executes the automated IEEE 730-2014 / ASME NQA-1 / ISO 17025 Software Quality Assurance (SQA) Verification & Validation test suite across 68 gold-standard vectors (60 analytical benchmarks VTEST-01–VTEST-60 + 8 numerical boundary stress tests STRESS-01–STRESS-08).',
+      'Executes the automated IEEE 730-2014 / ASME NQA-1 / ISO 17025-aligned Software Quality Assurance (SQA) Verification & Validation benchmark suite across 69 deterministic vectors (61 analytical benchmarks VTEST-01–VTEST-61 + 8 numerical boundary stress tests STRESS-01–STRESS-08).',
     whenToUse: [
-      'Auditing the mathematical accuracy of every physics engine in RadPro Calc against peer-reviewed ICRP, NCRP, IAEA, ANSI, and NIST reference values.',
+      'Auditing the mathematical accuracy of every physics engine in RadPro Analyst against peer-reviewed ICRP, NCRP, IAEA, ANVS Bbs, ANSI, and NIST reference values.',
       'Verifying host CPU/FPU 64-bit IEEE 754 floating-point precision (ε = 2⁻⁵²) and singularity boundary clamps.',
-      'Generating and printing a formal, signed QA Verification Certificate or NQA-1 Traceability Matrix (JSON / CSV / PDF).'
+      'Generating and printing a formal Verification & Validation report or traceability matrix (JSON / CSV / PDF).'
     ],
     howToUseSteps: [
-      'Click "Re-Run Verification Suite" to execute all 68 analytical and stress vectors in real time on your machine.',
-      'Filter by physics domain or click any benchmark card (VTEST-01 to VTEST-60 / STRESS-01 to STRESS-08) to expand its KaTeX proof, inputs, citation, and relative error δ.',
-      'Use the Traceability Matrix or Formal SQA Audit Certificate tabs to export JSON/CSV records or print an official sign-off report.'
+      'Click "Re-Run Verification Suite" to execute all 69 analytical and stress vectors in real time on your machine.',
+      'Filter by physics domain or click any benchmark card (VTEST-01 to VTEST-61 / STRESS-01 to STRESS-08) to expand its KaTeX proof, inputs, citation, and relative error δ.',
+      'Use the Traceability Matrix or Formal SQA Report tabs to export JSON/CSV records or print an audit report.'
     ],
     keyCapabilities: [
-      '60 Analytical Benchmarks (VTEST-01 through VTEST-60)',
+      '61 Analytical Benchmarks (VTEST-01 through VTEST-61)',
       '8 Singularity & Asymptotic Boundary Stress Tests',
-      'ASME NQA-1 & ISO/IEC 17025 Traceability Register',
-      'Exportable QA Certificate (JSON, CSV & Print Sign-Off)'
+      'ASME NQA-1 & ISO/IEC 17025-Aligned Traceability Register',
+      'Exportable SQA Verification Report (JSON, CSV & Print Sign-Off)'
     ]
   },
   35: {

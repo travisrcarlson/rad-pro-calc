@@ -155,6 +155,15 @@ const CHEMICAL_DATABASE: ToxicChemical[] = [
   }
 ];
 
+const MATERIAL_HVL: Record<string, { hvlCm: number; densityGcm3: number; xcomKey: string; xcomBaseDensity: number; name: string }> = {
+  'Concrete': { hvlCm: 6.4, densityGcm3: 2.35, xcomKey: 'CONCRETE', xcomBaseDensity: 2.35, name: 'Normal Density Concrete' },
+  'Earth/Soil': { hvlCm: 9.4, densityGcm3: 1.60, xcomKey: 'SOIL_EARTH', xcomBaseDensity: 1.80, name: 'Compacted Earth / Soil' },
+  'Brick': { hvlCm: 7.9, densityGcm3: 1.90, xcomKey: 'CONCRETE', xcomBaseDensity: 2.35, name: 'Common Red Clay Brick' },
+  'Steel': { hvlCm: 1.8, densityGcm3: 7.85, xcomKey: 'STEEL', xcomBaseDensity: 7.86, name: 'Structural Carbon Steel' },
+  'Wood': { hvlCm: 25.0, densityGcm3: 0.60, xcomKey: 'WATER', xcomBaseDensity: 1.00, name: 'Construction Lumber / Plywood' },
+  'Lead': { hvlCm: 1.1, densityGcm3: 11.34, xcomKey: 'LEAD', xcomBaseDensity: 11.34, name: 'Chemical Lead Sheeting' }
+};
+
 export const CBRNConsequenceModule: React.FC = () => {
   const [searchParams] = useSearchParams();
   const { setLiveModuleTelemetry } = useRegulatory();
@@ -253,15 +262,6 @@ export const CBRNConsequenceModule: React.FC = () => {
     { material: 'Concrete', thicknessCm: 25 },
     { material: 'Earth/Soil', thicknessCm: 30 }
   ]);
-
-  const MATERIAL_HVL: Record<string, { hvlCm: number; densityGcm3: number; xcomKey: string; xcomBaseDensity: number; name: string }> = {
-    'Concrete': { hvlCm: 6.4, densityGcm3: 2.35, xcomKey: 'CONCRETE', xcomBaseDensity: 2.35, name: 'Normal Density Concrete' },
-    'Earth/Soil': { hvlCm: 9.4, densityGcm3: 1.60, xcomKey: 'SOIL_EARTH', xcomBaseDensity: 1.80, name: 'Compacted Earth / Soil' },
-    'Brick': { hvlCm: 7.9, densityGcm3: 1.90, xcomKey: 'CONCRETE', xcomBaseDensity: 2.35, name: 'Common Red Clay Brick' },
-    'Steel': { hvlCm: 1.8, densityGcm3: 7.85, xcomKey: 'STEEL', xcomBaseDensity: 7.86, name: 'Structural Carbon Steel' },
-    'Wood': { hvlCm: 25.0, densityGcm3: 0.60, xcomKey: 'WATER', xcomBaseDensity: 1.00, name: 'Construction Lumber / Plywood' },
-    'Lead': { hvlCm: 1.1, densityGcm3: 11.34, xcomKey: 'LEAD', xcomBaseDensity: 11.34, name: 'Chemical Lead Sheeting' }
-  };
 
   const customShieldingMetrics = useMemo(() => {
     let totalMassAreal = 0; // g/cm^2

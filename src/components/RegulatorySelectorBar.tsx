@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useRegulatory, type UnitSystemMode } from '../context/RegulatoryContext';
+import { VV_SUMMARY_BADGE, VV_TOTAL_COUNT } from '../config/appMetadata';
 
 export interface ActiveModuleBreadcrumbInfo {
   moduleNumber: number;
@@ -21,6 +22,7 @@ interface RegulatorySelectorBarProps {
   isActivePinned?: boolean;
   onTogglePinActive?: () => void;
   onLockSession?: () => void;
+  onOpenAbout?: () => void;
 }
 
 export const RegulatorySelectorBar: React.FC<RegulatorySelectorBarProps> = ({
@@ -31,7 +33,8 @@ export const RegulatorySelectorBar: React.FC<RegulatorySelectorBarProps> = ({
   onStepModule,
   isActivePinned = false,
   onTogglePinActive,
-  onLockSession
+  onLockSession,
+  onOpenAbout
 }) => {
   const { currentFramework, frameworkId, setFrameworkId, allFrameworks, unitSystem, setUnitSystem, formatDoseMSv } = useRegulatory();
   const location = useLocation();
@@ -293,6 +296,25 @@ export const RegulatorySelectorBar: React.FC<RegulatorySelectorBarProps> = ({
           }}>
             {currentFramework.keyStatutes[0]}
           </span>
+          {onOpenAbout && (
+            <button
+              type="button"
+              onClick={onOpenAbout}
+              title="View Technical Specifications, Reference Standards & Validation Scope"
+              style={{
+                padding: '2px 8px',
+                fontSize: '0.68rem',
+                borderRadius: '4px',
+                border: '1px solid rgba(56, 189, 248, 0.35)',
+                background: 'rgba(56, 189, 248, 0.10)',
+                color: '#7dd3fc',
+                cursor: 'pointer',
+                fontWeight: 600
+              }}
+            >
+              Specs &amp; Scope
+            </button>
+          )}
           {onLockSession && (
             <button
               type="button"
@@ -306,10 +328,17 @@ export const RegulatorySelectorBar: React.FC<RegulatorySelectorBarProps> = ({
                 background: 'rgba(239, 68, 68, 0.12)',
                 color: '#fca5a5',
                 cursor: 'pointer',
-                fontWeight: 600
+                fontWeight: 600,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px'
               }}
             >
-              🔒 Lock
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+              <span>Lock</span>
             </button>
           )}
         </div>
@@ -452,7 +481,7 @@ export const RegulatorySelectorBar: React.FC<RegulatorySelectorBarProps> = ({
             <button
               type="button"
               onClick={() => navigate('/verify')}
-              title="Open Module 34 Institutional 68/68 V&V Test Suite"
+              title={`Open Module 34 Scientific Verification & Validation Suite (${VV_TOTAL_COUNT}/${VV_TOTAL_COUNT})`}
               style={{
                 border: '1px solid rgba(148, 163, 184, 0.22)',
                 borderRadius: '4px',
@@ -462,7 +491,7 @@ export const RegulatorySelectorBar: React.FC<RegulatorySelectorBarProps> = ({
                 cursor: 'pointer'
               }}
             >
-              ✓ 68/68 V&amp;V
+              ✓ {VV_SUMMARY_BADGE}
             </button>
           </div>
         </div>

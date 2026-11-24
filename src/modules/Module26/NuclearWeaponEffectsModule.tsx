@@ -61,25 +61,28 @@ export const NuclearWeaponEffectsModule: React.FC = () => {
   const [isFetchingTerrain, setIsFetchingTerrain] = useState<boolean>(false);
   const [isDossierOpen, setIsDossierOpen] = useState<boolean>(false);
 
-  const handleComputeTerrainTransect = async (
-    lat = terrainLat,
-    lon = terrainLon,
-    brg = terrainBearingDeg,
-    hob = burstAltitudeM
-  ) => {
-    setIsFetchingTerrain(true);
-    try {
-      const maxDist = Math.max(5.0, Math.min(40.0, targetDistanceKm * 3.0));
-      const res = await fetchAndComputeTerrainShadowing(lat, lon, brg, maxDist, hob);
-      setTerrainTransect(res);
-    } finally {
-      setIsFetchingTerrain(false);
-    }
-  };
+  const handleComputeTerrainTransect = useCallback(
+    async (
+      lat = terrainLat,
+      lon = terrainLon,
+      brg = terrainBearingDeg,
+      hob = burstAltitudeM
+    ) => {
+      setIsFetchingTerrain(true);
+      try {
+        const maxDist = Math.max(5.0, Math.min(40.0, targetDistanceKm * 3.0));
+        const res = await fetchAndComputeTerrainShadowing(lat, lon, brg, maxDist, hob);
+        setTerrainTransect(res);
+      } finally {
+        setIsFetchingTerrain(false);
+      }
+    },
+    [terrainLat, terrainLon, terrainBearingDeg, burstAltitudeM, targetDistanceKm]
+  );
 
   useEffect(() => {
     handleComputeTerrainTransect(terrainLat, terrainLon, terrainBearingDeg, burstAltitudeM);
-  }, [terrainLat, terrainLon, terrainBearingDeg, burstAltitudeM, targetDistanceKm]);
+  }, [terrainLat, terrainLon, terrainBearingDeg, burstAltitudeM, handleComputeTerrainTransect]);
   const initialCityPresetId = useMemo(() => {
     return searchParams.get('city') || searchParams.get('preset') || undefined;
   }, [searchParams]);

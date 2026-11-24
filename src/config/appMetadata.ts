@@ -1,0 +1,13 @@
+export const APP_NAME = 'RadPro Analyst';
+export const APP_SHORT_NAME = 'RadPro Analyst';
+export const APP_VERSION = '4.6.0';
+export const APP_SUBTITLE = 'Radiological, Nuclear & CBRN Engineering Suite';
+export const MODULE_COUNT = 35;
+export const PHYSICS_KERNEL_COUNT = 55;
+export const REGULATORY_REGIME_COUNT = 7;
+export const VV_ANALYTICAL_COUNT = 61;
+export const VV_STRESS_COUNT = 8;
+export const VV_TOTAL_COUNT = VV_ANALYTICAL_COUNT + VV_STRESS_COUNT;
+export const VV_SUMMARY_BADGE = `${VV_TOTAL_COUNT}/${VV_TOTAL_COUNT} V&V`;
+export const VV_PASS_BADGE = `${VV_TOTAL_COUNT}/${VV_TOTAL_COUNT} Pass`;
+export const VV_MAX_DRIFT_PCT = 0.05;

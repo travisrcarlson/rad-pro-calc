@@ -1,7 +1,7 @@
 {
-  "name": "RadPro Calc — Radiological & Nuclear Engineering Suite",
-  "short_name": "RadPro Calc",
-  "description": "ISO/IEC 17025 & IEEE 730 Verified Health Physics, Shielding, Criticality, Decay & CBRN Consequence Suite",
+  "name": "RadPro Analyst — Radiological & Nuclear Engineering Suite",
+  "short_name": "RadPro Analyst",
+  "description": "Deterministic Health Physics, Shielding, Criticality, Decay & CBRN Engineering Suite (69/69 V&V Benchmarked)",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#090f1a",

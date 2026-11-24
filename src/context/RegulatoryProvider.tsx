@@ -20,7 +20,7 @@ export const RegulatoryProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     if (saved && saved in REGULATORY_FRAMEWORKS) {
       return saved as RegulatoryFrameworkId;
     }
-    return 'US_NRC';
+    return 'NL_ANVS_BBS';
   });
 
   const [unitSystem, setUnitSystemState] = useState<UnitSystemMode>(() => {
@@ -232,7 +232,7 @@ export const RegulatoryProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     safeStorageSet('radpro_unit_system', mode);
   };
 
-  const formatDoseMSv = (mSv: number, suffix = ''): string => {
+  const formatDoseMSv = useCallback((mSv: number, suffix = ''): string => {
     if (!Number.isFinite(mSv)) return `0 mSv${suffix}`;
     const absMSv = Math.abs(mSv);
     const siStr =
@@ -262,11 +262,11 @@ export const RegulatoryProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     if (unitSystem === 'SI') return siStr;
     if (unitSystem === 'TRADITIONAL') return tradStr;
     return `${siStr} (${tradStr})`;
-  };
+  }, [unitSystem]);
 
-  const formatDoseRateMSvHr = (mSvHr: number): string => formatDoseMSv(mSvHr, '/h');
+  const formatDoseRateMSvHr = useCallback((mSvHr: number): string => formatDoseMSv(mSvHr, '/h'), [formatDoseMSv]);
 
-  const formatActivityGBq = (gBq: number): string => {
+  const formatActivityGBq = useCallback((gBq: number): string => {
     if (!Number.isFinite(gBq)) return '0 GBq';
     const absGBq = Math.abs(gBq);
     const siStr =
@@ -296,7 +296,7 @@ export const RegulatoryProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     if (unitSystem === 'SI') return siStr;
     if (unitSystem === 'TRADITIONAL') return tradStr;
     return `${siStr} (${tradStr})`;
-  };
+  }, [unitSystem]);
 
   const currentFramework = REGULATORY_FRAMEWORKS[frameworkId];
   const allFrameworks = Object.values(REGULATORY_FRAMEWORKS);

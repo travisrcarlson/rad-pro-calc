@@ -500,6 +500,8 @@ const DecayModule: React.FC = () => {
   // Added 4th basis: 'modality' for Alpha / Beta / Gamma Dose Power Breakdown
   const [pieRatioBasis, setPieRatioBasis] = useState<'atoms' | 'activity' | 'heat' | 'modality'>('atoms');
   const [includeStableInActivityPie, setIncludeStableInActivityPie] = useState<boolean>(false);
+  const [pathViewMode, setPathViewMode] = useState<'all_branches' | 'primary_only'>('all_branches');
+  const [topologyWheelZoom, setTopologyWheelZoom] = useState<boolean>(false);
 
   // Simulated Detector State
   const [exposureTime, setExposureTime] = useState<number>(30);
@@ -544,6 +546,9 @@ const DecayModule: React.FC = () => {
     if (!selectedIsotope) {
       return { activePathIds: [], chainNodes: [] as ChainNuclideNode[], chainEdges: [] as DecayBranchEdge[], rawChainNuclides: [] as RawDecayNuclide[] };
     }
+
+    const BETA_DELAYED_SUBMODES = new Set(['B-N', 'B-2N', 'B-A']);
+    const EC_DELAYED_SUBMODES = new Set(['ECP', 'B+P', 'ECA', 'B+A']);
 
     const rawByName = new Map<string, RawDecayNuclide>();
     const preferredLane = new Map<string, number>();
@@ -616,16 +621,37 @@ const DecayModule: React.FC = () => {
 
       // 1. Check Curated Bifurcating & Metastable Split Table first
       const splitSpec = CURATED_BRANCHING_SPLITS[nuc.Nuclide];
-      if (splitSpec) {
-        for (let idx = 0; idx < splitSpec.daughters.length; idx++) {
-          const dSpec = splitSpec.daughters[idx];
-          const dRaw = findNuclideRecord(dSpec.nuclide);
+      if (splitSpec && splitSpec.daughters.length > 0) {
+        if (pathViewMode === 'primary_only') {
+          const primarySpec = splitSpec.daughters.reduce(
+            (best, cur) => (cur.branchFraction > best.branchFraction ? cur : best),
+            splitSpec.daughters[0]
+          );
+          const dRaw = findNuclideRecord(primarySpec.nuclide);
           if (dRaw && !canReach(dRaw.Nuclide, nuc.Nuclide)) {
-            const childLane = dSpec.laneOffset ?? (idx === 0 ? item.lane : Math.max(1, item.lane));
-            addNode(dRaw, childLane);
-            addEdge(nuc.Nuclide, dRaw.Nuclide, dSpec.branchFraction, dSpec.modeLabel, dSpec.qMeV, dSpec.modality);
+            const label =
+              primarySpec.branchFraction < 0.999
+                ? `${primarySpec.modeLabel.replace(/\s*\(\d+(?:\.\d+)?%\)/, '').trim()} [Primary]`
+                : primarySpec.modeLabel;
+            addNode(dRaw, item.lane);
+            addEdge(nuc.Nuclide, dRaw.Nuclide, 1.0, label, primarySpec.qMeV, primarySpec.modality);
             if (!expanded.has(dRaw.Nuclide)) {
-              queue.push({ raw: dRaw, lane: childLane });
+              queue.push({ raw: dRaw, lane: item.lane });
+            }
+          }
+        } else {
+          const sumCurated = splitSpec.daughters.reduce((acc, d) => acc + d.branchFraction, 0) || 1.0;
+          for (let idx = 0; idx < splitSpec.daughters.length; idx++) {
+            const dSpec = splitSpec.daughters[idx];
+            const dRaw = findNuclideRecord(dSpec.nuclide);
+            if (dRaw && !canReach(dRaw.Nuclide, nuc.Nuclide)) {
+              const childLane = dSpec.laneOffset ?? (idx === 0 ? item.lane : Math.max(1, item.lane));
+              const normFrac = dSpec.branchFraction / sumCurated;
+              addNode(dRaw, childLane);
+              addEdge(nuc.Nuclide, dRaw.Nuclide, normFrac, dSpec.modeLabel, dSpec.qMeV, dSpec.modality);
+              if (!expanded.has(dRaw.Nuclide)) {
+                queue.push({ raw: dRaw, lane: childLane });
+              }
             }
           }
         }
@@ -639,22 +665,62 @@ const DecayModule: React.FC = () => {
       }
 
       const d1 = resolvePrimaryWithFallback(nuc, ancestors);
-      const b1Pct = parseFloat(nuc['Decay %'] || '100');
-      const b1Frac = isNaN(b1Pct) ? 1.0 : Math.min(1.0, Math.max(0.01, b1Pct / 100));
+      const rawB1Pct = parseFloat(String(nuc['Decay %'] || '100'));
+      const b1Pct = isNaN(rawB1Pct) ? 100 : Math.max(0.01, Math.min(100, rawB1Pct));
 
       const mode2 = String(nuc['Decay 2'] || '').trim();
-      const b2Pct = parseFloat(nuc['Decay 2 %'] || '0');
-      const allowSecondaryBranch = (item.lane === 0 && b2Pct >= 5.0) || b2Pct >= 25.0;
+      const rawB2Pct = parseFloat(String(nuc['Decay 2 %'] || '0'));
+      const b2Pct = isNaN(rawB2Pct) ? 0 : Math.max(0, rawB2Pct);
+      const allowSecondaryBranch = pathViewMode === 'all_branches' && ((item.lane === 0 && b2Pct >= 5.0) || b2Pct >= 25.0);
       const d2 = mode2 && allowSecondaryBranch ? resolveModeTarget(nuc, mode2) : null;
-      const validD2 =
+      const validD2Candidate =
         d2 &&
         (!d1 || d2.target.Nuclide !== d1.target.Nuclide) &&
         !canReach(d2.target.Nuclide, nuc.Nuclide)
           ? d2
           : null;
 
-      if (d1 && !canReach(d1.target.Nuclide, nuc.Nuclide)) {
-        const effFrac1 = validD2 ? b1Frac : 1.0;
+      const m1Upper = String(d1?.modeCode || nuc['Decay Mode'] || '').trim().toUpperCase();
+      const m2Upper = mode2.toUpperCase();
+      const isDelayedSubset =
+        (m1Upper === 'B-' && BETA_DELAYED_SUBMODES.has(m2Upper)) ||
+        ((m1Upper === 'EC' || m1Upper === 'B+' || m1Upper === 'EC+B+') && EC_DELAYED_SUBMODES.has(m2Upper));
+
+      let emitD1 = Boolean(d1 && !canReach(d1.target.Nuclide, nuc.Nuclide));
+      let validD2 = validD2Candidate;
+      let effFrac1 = 1.0;
+      let effFrac2 = 0.0;
+
+      if (emitD1 && validD2) {
+        if (b1Pct >= 99.5 && b2Pct >= 99.5) {
+          // Redundant 100% compound vs base mode listing (e.g. Li-8, B-8, Be-6) — keep single primary cascade
+          validD2 = null;
+          effFrac1 = 1.0;
+        } else if (isDelayedSubset && b1Pct + b2Pct > 100.5) {
+          // Delayed-particle mode is reported as a sub-channel of a 100% beta/EC decay
+          if (b2Pct >= 99.0) {
+            emitD1 = false;
+            effFrac2 = 1.0;
+          } else {
+            effFrac2 = Math.min(0.99, Math.max(0.01, b2Pct / 100));
+            effFrac1 = 1.0 - effFrac2;
+          }
+        } else if (b1Pct + b2Pct > 100.5) {
+          // Non-subset over-reporting (>100%) — suppress phantom 1% secondary branch
+          validD2 = null;
+          effFrac1 = 1.0;
+        } else {
+          const raw1 = Math.max(0.001, b1Pct / 100);
+          const raw2 = Math.max(0.001, b2Pct / 100);
+          const totalRaw = raw1 + raw2;
+          effFrac1 = raw1 / totalRaw;
+          effFrac2 = raw2 / totalRaw;
+        }
+      } else if (!emitD1 && validD2) {
+        effFrac2 = 1.0;
+      }
+
+      if (emitD1 && d1) {
         const pMode1 = prettyDecayMode(d1.modeCode);
         addNode(d1.target, item.lane);
         addEdge(
@@ -671,9 +737,8 @@ const DecayModule: React.FC = () => {
       }
 
       if (validD2) {
-        const effFrac2 = Math.max(0.01, Math.min(1.0 - b1Frac, b2Pct / 100));
         const pMode2 = prettyDecayMode(validD2.modeCode);
-        const childLane2 = item.lane === 0 ? 1 : item.lane;
+        const childLane2 = !emitD1 ? item.lane : item.lane === 0 ? 1 : item.lane;
         addNode(validD2.target, childLane2);
         addEdge(
           nuc.Nuclide,
@@ -805,7 +870,7 @@ const DecayModule: React.FC = () => {
     }
 
     return { activePathIds: pathIds, chainNodes: cNodes, chainEdges: cEdges, rawChainNuclides: rawList };
-  }, [selectedIsotope]);
+  }, [selectedIsotope, pathViewMode]);
 
   // --- Run Generalized Decay DAG / Elution / Activation Simulation ---
   const simResult = useMemo(() => {
@@ -858,26 +923,43 @@ const DecayModule: React.FC = () => {
     irradiationHours
   ]);
 
-  const yields = simResult?.statesAtT || [];
+  const yields = useMemo(() => simResult?.statesAtT || [], [simResult]);
 
-  // Build ReactFlow nodes & edges (topological left-to-right layout with symmetric diamond bifurcations & STABLE end badges)
-  const { nodes, edges } = useMemo(() => {
-    if (chainNodes.length === 0) return { nodes: [] as FlowNode[], edges: [] as FlowEdge[] };
+  // Build ReactFlow nodes & edges (bottleneck-aware serpentine layout so long chains turn cleanly without crisscrossing)
+  const { nodes, edges, hasBranches, branchPointCount } = useMemo(() => {
+    if (chainNodes.length === 0) {
+      return { nodes: [] as FlowNode[], edges: [] as FlowEdge[], hasBranches: false, branchPointCount: 0 };
+    }
     const ns: FlowNode[] = [];
     const es: FlowEdge[] = [];
 
     const maxGen = Math.max(...chainNodes.map(n => n.generation), 0);
-    // Keep chains up to 9 generations in a single horizontal flow; wrap longer 11-15 generation series at 8 columns
-    const maxPerRow = maxGen < 9 ? 9 : 8;
 
-    const genCounts = new Map<number, number>();
+    const outDegree = new Map<string, number>();
+    const inDegree = new Map<string, number>();
     for (const n of chainNodes) {
-      genCounts.set(n.generation, (genCounts.get(n.generation) || 0) + 1);
+      outDegree.set(n.nuclide, 0);
+      inDegree.set(n.nuclide, 0);
+    }
+    for (const e of chainEdges) {
+      outDegree.set(e.fromNuclide, (outDegree.get(e.fromNuclide) || 0) + 1);
+      inDegree.set(e.toNuclide, (inDegree.get(e.toNuclide) || 0) + 1);
     }
 
-    // Detect edges that skip over an intermediate generation (e.g. Mo-99 -> Tc-99 bypassing Tc-99m, Cs-137 -> Ba-137 bypassing Ba-137m)
+    const branchCount = chainNodes.filter(n => (outDegree.get(n.nuclide) || 0) > 1).length;
+    const anyBranches = branchCount > 0;
+
+    const genCounts = new Map<number, number>();
+    const byGenNames = new Map<number, string[]>();
     const genMap = new Map<string, number>();
-    chainNodes.forEach(n => genMap.set(n.nuclide, n.generation));
+    for (const n of chainNodes) {
+      genCounts.set(n.generation, (genCounts.get(n.generation) || 0) + 1);
+      genMap.set(n.nuclide, n.generation);
+      if (!byGenNames.has(n.generation)) byGenNames.set(n.generation, []);
+      byGenNames.get(n.generation)!.push(n.nuclide);
+    }
+
+    // Detect edges that skip over an intermediate generation (e.g. Mo-99 -> Tc-99 bypassing Tc-99m)
     const bypassedGens = new Set<number>();
     for (const e of chainEdges) {
       const gFrom = genMap.get(e.fromNuclide) ?? 0;
@@ -889,6 +971,101 @@ const DecayModule: React.FC = () => {
       }
     }
 
+    const isCleanBottleneckAfter = (g: number): boolean => {
+      const curr = byGenNames.get(g);
+      const next = byGenNames.get(g + 1);
+      if (!curr || !next || curr.length !== 1 || next.length !== 1) return false;
+      if ((outDegree.get(curr[0]) || 0) !== 1) return false;
+      if ((inDegree.get(next[0]) || 0) !== 1) return false;
+      // Do not split if any skip edge spans across generation g -> g + 1
+      for (const e of chainEdges) {
+        const gf = genMap.get(e.fromNuclide) ?? 0;
+        const gt = genMap.get(e.toNuclide) ?? 0;
+        if (gf <= g && gt > g + 1) return false;
+      }
+      return true;
+    };
+
+    // Build generation rows split only at clean 1:1 bottleneck transitions
+    const genRows: number[][] = [];
+    if (maxGen <= 7) {
+      const singleRow: number[] = [];
+      for (let g = 0; g <= maxGen; g++) singleRow.push(g);
+      genRows.push(singleRow);
+    } else {
+      let start = 0;
+      while (start <= maxGen) {
+        if (maxGen - start + 1 <= 7) {
+          const tail: number[] = [];
+          for (let g = start; g <= maxGen; g++) tail.push(g);
+          genRows.push(tail);
+          break;
+        }
+        const idealSplit = start + 5;
+        let chosenSplit: number | null = null;
+        for (const offset of [0, -1, 1, -2, 2, 3]) {
+          const cand = idealSplit + offset;
+          if (cand >= start + 3 && cand < maxGen && isCleanBottleneckAfter(cand)) {
+            chosenSplit = cand;
+            break;
+          }
+        }
+        if (chosenSplit === null) {
+          // Search further up to 10 columns ahead if a diamond spans across idealSplit
+          for (let cand = start + 3; cand < Math.min(maxGen, start + 10); cand++) {
+            if (isCleanBottleneckAfter(cand)) {
+              chosenSplit = cand;
+              break;
+            }
+          }
+        }
+        if (chosenSplit === null) {
+          const rest: number[] = [];
+          for (let g = start; g <= maxGen; g++) rest.push(g);
+          genRows.push(rest);
+          break;
+        }
+        const rowGens: number[] = [];
+        for (let g = start; g <= chosenSplit; g++) rowGens.push(g);
+        genRows.push(rowGens);
+        start = chosenSplit + 1;
+      }
+    }
+
+    // Assign serpentine column coordinates so row turns drop vertically aligned
+    const rowOfGen = new Map<number, number>();
+    const xColOfGen = new Map<number, number>();
+    let currentXCol = 0;
+    let minXCol = 0;
+    genRows.forEach((rowGens, rIdx) => {
+      const dir = rIdx % 2 === 0 ? 1 : -1;
+      rowGens.forEach((g, idxInRow) => {
+        rowOfGen.set(g, rIdx);
+        if (rIdx === 0 && idxInRow === 0) {
+          currentXCol = 0;
+        } else if (idxInRow > 0) {
+          currentXCol += dir;
+        }
+        xColOfGen.set(g, currentXCol);
+        if (currentXCol < minXCol) minXCol = currentXCol;
+      });
+    });
+
+    // Dynamic vertical center per row (compact single-lane rows, generous diamond rows)
+    const rowCenterY: number[] = [];
+    let yCursor = 62;
+    genRows.forEach((rowGens, rIdx) => {
+      const maxSiblings = Math.max(...rowGens.map(g => genCounts.get(g) || 1), 1);
+      const hasRowBypass = rowGens.some(g => bypassedGens.has(g));
+      const halfBand = maxSiblings >= 3 ? 170 : maxSiblings === 2 || hasRowBypass ? 115 : 58;
+      rowCenterY[rIdx] = yCursor + halfBand;
+      yCursor += halfBand * 2 + 48;
+    });
+
+    const rowEndGen = genRows.map(rg => rg[rg.length - 1]);
+    const rowStartGen = genRows.map(rg => rg[0]);
+    const COL_STEP = 236;
+
     chainNodes.forEach((cNode, idx) => {
       const y = yields[idx];
       const atomPct = y ? y.atomFractionPct : idx === 0 ? 100 : 0;
@@ -897,12 +1074,12 @@ const DecayModule: React.FC = () => {
       const color = isStable ? '#10b981' : getColor(cNode.primaryMode, cNode.halfLifeLabel);
       const sliceColor = isStable ? '#10b981' : CHAIN_PALETTE[idx % CHAIN_PALETTE.length];
 
-      const row = Math.floor(cNode.generation / maxPerRow);
-      const col = cNode.generation % maxPerRow;
+      const rIdx = rowOfGen.get(cNode.generation) ?? 0;
+      const xCol = (xColOfGen.get(cNode.generation) ?? 0) - minXCol;
       const siblingsInCol = genCounts.get(cNode.generation) || 1;
 
-      const currentX = col * 228;
-      const rowBaseY = row * 285 + 88;
+      const currentX = xCol * COL_STEP;
+      const rowBaseY = rowCenterY[rIdx] ?? 120;
 
       let currentY = rowBaseY;
       if (siblingsInCol === 1) {
@@ -911,14 +1088,21 @@ const DecayModule: React.FC = () => {
       } else if (siblingsInCol === 2) {
         currentY = rowBaseY + (cNode.branchLane === 0 ? -68 : 68);
       } else {
-        currentY = rowBaseY + (cNode.branchLane - (siblingsInCol - 1) / 2) * 120;
+        currentY = rowBaseY + (cNode.branchLane - (siblingsInCol - 1) / 2) * 116;
       }
+
+      const isReverseRow = rIdx % 2 === 1;
+      const isTurnExit = rIdx < genRows.length - 1 && cNode.generation === rowEndGen[rIdx] && siblingsInCol === 1;
+      const isTurnEntry = rIdx > 0 && cNode.generation === rowStartGen[rIdx] && siblingsInCol === 1;
+
+      const targetPosition = isTurnEntry ? Position.Top : isReverseRow ? Position.Right : Position.Left;
+      const sourcePosition = isTurnExit ? Position.Bottom : isReverseRow ? Position.Left : Position.Right;
 
       ns.push({
         id: cNode.nuclide,
         position: { x: currentX, y: currentY },
-        sourcePosition: Position.Right,
-        targetPosition: Position.Left,
+        sourcePosition,
+        targetPosition,
         data: {
           label: (
             <div style={{ padding: '5px 8px', textAlign: 'center', fontSize: '0.76rem' }}>
@@ -977,6 +1161,7 @@ const DecayModule: React.FC = () => {
           : edge.modality === 'ec_positron'
           ? '#E74C3C'
           : '#5DADE2';
+      const isSecondary = edge.branchFraction < 0.5;
 
       es.push({
         id: `edge-${eIdx}-${edge.fromNuclide}-${edge.toNuclide}`,
@@ -991,13 +1176,13 @@ const DecayModule: React.FC = () => {
         markerEnd: { type: MarkerType.ArrowClosed, color: edgeColor },
         style: {
           stroke: edgeColor,
-          strokeWidth: Math.max(1.6, edge.branchFraction * 2.8),
-          strokeDasharray: edge.branchFraction < 0.15 ? '5 3' : undefined
+          strokeWidth: isSecondary ? 1.8 : 2.6,
+          strokeDasharray: isSecondary ? '6 4' : undefined
         }
       });
     });
 
-    return { nodes: ns, edges: es };
+    return { nodes: ns, edges: es, hasBranches: anyBranches, branchPointCount: branchCount };
   }, [chainNodes, chainEdges, yields]);
 
   const handleIsotopeClick = (isotopeData: KarlsruheNuclideRow) => {
@@ -1650,7 +1835,7 @@ const DecayModule: React.FC = () => {
   }, [selectedIsotope, chainNodes, initialActivity, setLiveModuleTelemetry]);
 
   return (
-    <div className="panel" style={{ height: '100%', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+    <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
       {/* HEADER + SEARCH + BENCHMARK CHAINS + RADIOCHEMICAL MODES */}
       <div className="panel-header" style={{ display: 'flex', flexDirection: 'column', gap: '7px', paddingBottom: '8px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
@@ -1948,7 +2133,7 @@ const DecayModule: React.FC = () => {
       </div>
 
       {/* FULL VIEWPORT 4-QUADRANT GRID */}
-      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1.15fr', gridTemplateRows: '1fr 1.15fr', gap: '12px', paddingBottom: '8px', minHeight: 0, overflow: 'hidden' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1.15fr)', gridTemplateRows: 'minmax(430px, 46vh) minmax(430px, 46vh)', gap: '12px', paddingBottom: '12px' }}>
 
         {/* Q1: Top Left - Karlsruhe Chart */}
         <div style={{ border: '1px solid var(--color-border)', borderRadius: '8px', overflow: 'hidden', backgroundColor: '#0a0a0a', minHeight: 0, display: 'flex' }}>
@@ -2154,36 +2339,114 @@ const DecayModule: React.FC = () => {
           </div>
         </div>
 
-        {/* Q3: Bottom Left - React Flow Pathway with Bifurcating Split Branches & Live % Bars */}
+        {/* Q3: Bottom Left - React Flow Pathway with Serpentine Layout, Branch Toggle & Scroll Lock */}
         <div style={{ border: '1px solid var(--color-border)', borderRadius: '8px', position: 'relative', backgroundColor: '#0a0a0a', minHeight: 0, overflow: 'hidden', display: 'flex' }}>
           {selectedIsotope ? (
             <div style={{ flex: 1, height: '100%' }}>
               <ReactFlow
+                key={`${selectedIsotope.Nuclide}-${pathViewMode}`}
                 nodes={nodes}
                 edges={edges}
                 fitView
-                fitViewOptions={{ padding: 0.18 }}
+                fitViewOptions={{ padding: 0.2 }}
+                zoomOnScroll={topologyWheelZoom}
+                preventScrolling={topologyWheelZoom}
+                zoomOnPinch={true}
+                panOnDrag={true}
+                nodesDraggable={false}
+                nodesConnectable={false}
+                elementsSelectable={false}
+                minZoom={0.25}
+                maxZoom={2.2}
                 attributionPosition="bottom-right"
-                key={selectedIsotope.Nuclide}
               >
                 <Background color="#444" gap={16} />
-                <Controls />
-                <div style={{ position: 'absolute', top: 8, left: 10, right: 10, zIndex: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px', pointerEvents: 'none' }}>
-                  <div style={{ background: 'rgba(10, 15, 25, 0.9)', border: '1px solid rgba(56, 189, 248, 0.35)', padding: '4px 10px', borderRadius: '5px', color: '#fff', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Controls showInteractive={false} />
+                <div style={{ position: 'absolute', top: 8, left: 10, right: 10, zIndex: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '6px', pointerEvents: 'none' }}>
+                  <div style={{ background: 'rgba(10, 15, 25, 0.92)', border: '1px solid rgba(56, 189, 248, 0.35)', padding: '4px 10px', borderRadius: '5px', color: '#fff', fontSize: '0.73rem', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '7px' }}>
                     <span>
                       <strong>🔗 Decay Topology: {selectedIsotope.Nuclide}</strong> ({chainNodes.length} Nuclides, {chainEdges.length} Transitions)
                     </span>
-                    <span style={{ color: '#34d399', fontWeight: 700, background: 'rgba(16, 185, 129, 0.14)', border: '1px solid rgba(16, 185, 129, 0.45)', borderRadius: '4px', padding: '1px 6px', fontSize: '0.70rem' }}>
+                    <span style={{ color: '#34d399', fontWeight: 700, background: 'rgba(16, 185, 129, 0.14)', border: '1px solid rgba(16, 185, 129, 0.45)', borderRadius: '4px', padding: '1px 6px', fontSize: '0.68rem' }}>
                       ★ Terminates at Stable: {chainNodes.filter(n => n.halfLifeLabel === 'STABLE').map(n => n.nuclide).join(', ') || 'Stable'}
                     </span>
+                    {hasBranches && pathViewMode === 'all_branches' && (
+                      <span
+                        title={`Competing nuclear decay modes (such as β⁻ vs α or isomeric splits) occur at ${branchPointCount} branch point${branchPointCount > 1 ? 's' : ''} in this chain. Switch to "Primary Only" to isolate the dominant path.`}
+                        style={{ color: '#fbbf24', fontWeight: 700, background: 'rgba(245, 158, 11, 0.14)', border: '1px solid rgba(245, 158, 11, 0.4)', borderRadius: '4px', padding: '1px 6px', fontSize: '0.67rem', cursor: 'help', pointerEvents: 'auto' }}
+                      >
+                        ⑂ Branched Decay ({branchPointCount})
+                      </span>
+                    )}
                   </div>
-                  <div style={{ background: 'rgba(10, 15, 25, 0.88)', border: '1px solid rgba(255,255,255,0.12)', padding: '3px 8px', borderRadius: '5px', fontSize: '0.68rem', display: 'flex', gap: '8px', color: '#cbd5e1' }}>
-                    <span><strong style={{ color: '#F4D03F' }}>●</strong> α</span>
-                    <span><strong style={{ color: '#5DADE2' }}>●</strong> β⁻</span>
-                    <span><strong style={{ color: '#E74C3C' }}>●</strong> EC/β⁺</span>
-                    <span><strong style={{ color: '#a855f7' }}>●</strong> IT</span>
-                    <span><strong style={{ color: '#10b981' }}>★</strong> Stable</span>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                    <div
+                      style={{ display: 'flex', gap: '2px', background: 'rgba(10, 15, 25, 0.92)', padding: '2px', borderRadius: '5px', border: '1px solid rgba(148, 163, 184, 0.24)', pointerEvents: 'auto' }}
+                      title="Show competing nuclear decay branches or collapse every step to the single dominant decay pathway"
+                    >
+                      <button
+                        type="button"
+                        className={pathViewMode === 'all_branches' ? 'active' : ''}
+                        onClick={() => setPathViewMode('all_branches')}
+                        style={{ fontSize: '0.67rem', padding: '2px 7px', borderRadius: '4px', cursor: 'pointer', border: '1px solid transparent', fontWeight: pathViewMode === 'all_branches' ? 700 : 500 }}
+                      >
+                        All Branches
+                      </button>
+                      <button
+                        type="button"
+                        className={pathViewMode === 'primary_only' ? 'active' : ''}
+                        onClick={() => setPathViewMode('primary_only')}
+                        style={{ fontSize: '0.67rem', padding: '2px 7px', borderRadius: '4px', cursor: 'pointer', border: '1px solid transparent', fontWeight: pathViewMode === 'primary_only' ? 700 : 500 }}
+                      >
+                        Primary Only
+                      </button>
+                    </div>
+
+                    <button
+                      type="button"
+                      className={topologyWheelZoom ? 'active' : ''}
+                      onClick={() => setTopologyWheelZoom(v => !v)}
+                      title="Hold Ctrl+Wheel or Pinch to zoom anytime; toggle this to lock bare mouse-wheel zoom on this diagram instead of scrolling the page"
+                      style={{
+                        pointerEvents: 'auto',
+                        fontSize: '0.67rem',
+                        padding: '3px 8px',
+                        borderRadius: '5px',
+                        cursor: 'pointer',
+                        fontWeight: 600,
+                        border: '1px solid rgba(148, 163, 184, 0.25)'
+                      }}
+                    >
+                      {topologyWheelZoom ? '🔍 Wheel: Zoom' : '🔒 Wheel: Page Scroll'}
+                    </button>
+
+                    <div style={{ background: 'rgba(10, 15, 25, 0.88)', border: '1px solid rgba(255,255,255,0.12)', padding: '3px 8px', borderRadius: '5px', fontSize: '0.68rem', display: 'flex', gap: '8px', color: '#cbd5e1' }}>
+                      <span><strong style={{ color: '#F4D03F' }}>●</strong> α</span>
+                      <span><strong style={{ color: '#5DADE2' }}>●</strong> β⁻</span>
+                      <span><strong style={{ color: '#E74C3C' }}>●</strong> EC/β⁺</span>
+                      <span><strong style={{ color: '#a855f7' }}>●</strong> IT</span>
+                      <span><strong style={{ color: '#10b981' }}>★</strong> Stable</span>
+                    </div>
                   </div>
+                </div>
+
+                <div
+                  style={{
+                    position: 'absolute',
+                    bottom: 10,
+                    left: 50,
+                    zIndex: 10,
+                    pointerEvents: 'none',
+                    background: 'rgba(10, 15, 25, 0.85)',
+                    border: '1px solid rgba(148, 163, 184, 0.22)',
+                    borderRadius: '4px',
+                    padding: '2px 7px',
+                    fontSize: '0.66rem',
+                    color: '#94a3b8'
+                  }}
+                >
+                  {topologyWheelZoom ? 'Wheel: Zoom • Drag: Pan' : 'Ctrl+Wheel / Pinch: Zoom • Drag: Pan'}
                 </div>
               </ReactFlow>
             </div>

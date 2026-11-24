@@ -1,7 +1,8 @@
 /**
- * Cryptographic Audit Dossier Service (21 CFR Part 11 & ISO 17025 Compliant)
- * Generates tamper-evident calculation reports with SHA-256 digital verification hashes.
+ * Cryptographic Audit Dossier Service (SHA-256 Tamper-Evident Calculation Ledger)
+ * Generates structured calculation reports with FIPS 180-4 digital verification hashes.
  */
+import { APP_NAME, APP_VERSION, VV_TOTAL_COUNT } from '../config/appMetadata.ts';
 import { computeGUMUncertaintyBudget } from '../utils/radiologicalPhysicsKernels.ts';
 import { sha256Hex } from '../utils/cryptoHash.ts';
 
@@ -237,10 +238,10 @@ export async function openPrintableAuditDossier(
   <div class="meta-grid">
     <div class="meta-item"><strong>Facility / Site:</strong> ${safeFacility}</div>
     <div class="meta-item"><strong>Evaluator / Operator:</strong> ${safeOperator}${safeCredentials}</div>
-    <div class="meta-item"><strong>Verification Traceability:</strong> ${safeVerificationId} (ISO/IEC 17025 Cl. 7.11)</div>
-    <div class="meta-item"><strong>Integrity &amp; QA Protocol:</strong> 21 CFR Part 11 / ISO 19443 / ASME NQA-1</div>
+    <div class="meta-item"><strong>Verification Traceability:</strong> ${safeVerificationId} (ISO/IEC 17025 Cl. 7.11 format)</div>
+    <div class="meta-item"><strong>Integrity &amp; QA Structure:</strong> SHA-256 Audit Trail (ISO/IEC 17025 &amp; 21 CFR Part 11 aligned format)</div>
     <div class="meta-item"><strong>Metrology &amp; Units:</strong> ISO 80000-10:2019 &amp; ISO/IEC Guide 98-3 (GUM)</div>
-    <div class="meta-item"><strong>Engine Build &amp; FPU:</strong> RadPro v2026.10 (IEEE 754-2019 Binary64)</div>
+    <div class="meta-item"><strong>Engine Build &amp; FPU:</strong> ${APP_NAME} v${APP_VERSION} (IEEE 754-2019 Binary64)</div>
   </div>
 
   <div class="section-title">1. Governing Mathematical Methodology & Formulation</div>
@@ -248,7 +249,7 @@ export async function openPrintableAuditDossier(
     ${safeFormula}
   </p>
 
-  <div class="section-title">2. Certified Input Parameters & Geometric Constraints (ISO 80000-10)</div>
+  <div class="section-title">2. Evaluated Input Parameters & Geometric Constraints (ISO 80000-10)</div>
   <table class="data-table">
     <thead>
       <tr>
@@ -315,24 +316,24 @@ export async function openPrintableAuditDossier(
     <p style="font-size: 9.5pt; color: #475569;">${safeNotes}</p>
   ` : ''}
 
-  <div class="section-title">5. ISO 19443 / ISO 14971 Regulatory &amp; Risk Management Attestation</div>
+  <div class="section-title">5. ISO 19443 / ISO 14971 Traceability &amp; Intended-Use Notice</div>
   <p style="font-size: 8.5pt; color: #475569; margin-bottom: 10px;">
-    <strong>ISO/IEC 17025:2017 &amp; ISO 19443:2018 Traceability:</strong> Analytical formulations verified against 68 deterministic benchmark vectors (δ_max &le; 0.05%). Expanded uncertainties evaluated via ISO/IEC Guide 98-3 (GUM) coverage factor <em>k = 2</em> (95.45% confidence interval).<br>
-    <strong>ISO 14971:2019 &amp; IEC 62304 Intended-Use Notice:</strong> This dossier provides independent health physics, shielding, and dosimetric verification. For clinical patient administration or nuclear safety-class actuation, outputs must be counter-signed by a licensed Certified Health Physicist (CHP), Qualified Medical Physicist (QMP), or Radiation Safety Officer (RSO).
+    <strong>ISO/IEC 17025:2017 &amp; ISO 19443:2018 Traceability:</strong> Analytical formulations benchmarked against ${VV_TOTAL_COUNT} deterministic verification vectors (δ_max &le; 0.05%). Expanded uncertainties evaluated via ISO/IEC Guide 98-3 (GUM) coverage factor <em>k = 2</em> (95.45% confidence interval).<br>
+    <strong>ISO 14971:2019 &amp; IEC 62304 Intended-Use Notice:</strong> This dossier provides independent health physics, shielding, and dosimetric decision-support verification. For clinical patient administration, statutory licensing, or nuclear safety-class actuation, outputs must be counter-signed by a qualified Certified Health Physicist (CHP), Qualified Medical Physicist (QMP), Radiation Protection Expert (SBD / Co&ouml;rdinerend Deskundige), or Radiation Safety Officer (RSO).
   </p>
 
-  <div class="section-title">6. Cryptographic Fingerprint &amp; Tamper-Evident Hash (ISO/IEC 27001 &amp; 21 CFR Part 11)</div>
+  <div class="section-title">6. Cryptographic Fingerprint &amp; Tamper-Evident Hash (ISO/IEC 27001 / FIPS 180-4)</div>
   <div class="checksum-box">
     <strong>SHA-256 DIGITAL AUDIT SIGNATURE:</strong><br>
     ${sha256Checksum}<br><br>
-    <em>This cryptographic hash binds the input parameters, mathematical formulation, evaluator identity, and output results. Any post-generation modification invalidates this record under 21 CFR § 11.10(e) audit trail provisions.</em>
+    <em>This cryptographic hash binds the input parameters, mathematical formulation, evaluator identity, and output results so any post-generation modification can be detected.</em>
   </div>
 
   <div class="signature-block">
     <div>
       <div style="height: 35px;"></div>
       <div class="sig-line">
-        <strong>Certified Health Physicist (CHP) / RSO Signature</strong><br>
+        <strong>Certified Health Physicist (CHP) / RSO / SBD Signature</strong><br>
         Date: ${dateFormatted.split(',')[0]}
       </div>
     </div>
@@ -346,7 +347,7 @@ export async function openPrintableAuditDossier(
   </div>
 
   <div class="watermark">
-    GENERATED VIA RADPRO ANALYST SQA SUITE // ISO/IEC 17025 & NQA-1 VERIFIED // HASH: ${sha256Checksum.slice(0, 16)}...
+    GENERATED VIA ${APP_NAME.toUpperCase()} v${APP_VERSION} // ${VV_TOTAL_COUNT}/${VV_TOTAL_COUNT} V&amp;V BENCHMARKED // DECISION-SUPPORT RECORD // HASH: ${sha256Checksum.slice(0, 16)}...
   </div>
 
   <script>

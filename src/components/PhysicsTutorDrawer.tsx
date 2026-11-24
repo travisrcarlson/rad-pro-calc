@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { BlockMath, InlineMath } from 'react-katex';
 import {
   useRegulatory,
@@ -721,7 +721,7 @@ export const PhysicsTutorDrawer: React.FC<PhysicsTutorDrawerProps> = ({
           : 'Use rigorous Certified Health Physicist (CHP) / nuclear engineering terminology.';
 
       const systemPrompt = [
-        `You are the RadPro Calc Interactive Physics Tutor (ISO/IEC 17025 Compliant). ${audienceNote}`,
+        `You are the RadPro Analyst Interactive Physics Tutor (Benchmark-Grounded). ${audienceNote}`,
         `CRITICAL RULE: Never guess math. Lock every number strictly to the verified simulator telemetry below:`,
         `- Active Module: ${activeModuleInfo ? `M${activeModuleInfo.moduleNumber}: ${activeModuleInfo.label}` : 'Workspace'}`,
         `- Global Source: ${activeSource.isotope}, ${activeSource.activityGBq} GBq at ${activeSource.distanceM} m, Shield: ${activeSource.shieldThicknessCm} cm ${activeSource.shieldMaterial}`,
@@ -851,26 +851,33 @@ export const PhysicsTutorDrawer: React.FC<PhysicsTutorDrawerProps> = ({
     setIsGenerating(false);
   };
 
+  const askTutorRef = useRef(askTutorQuestion);
+  const suggestedQuestionsRef = useRef(suggestedQuestions);
+  useEffect(() => {
+    askTutorRef.current = askTutorQuestion;
+    suggestedQuestionsRef.current = suggestedQuestions;
+  });
+
   useEffect(() => {
     const handleOpenEvent = (e: Event) => {
       const customEvt = e as CustomEvent<{ promptQuestion?: string; customTelemetry?: LiveModuleTelemetry }>;
       setIsOpen(true);
-      const q = customEvt.detail?.promptQuestion || suggestedQuestions[0];
-      askTutorQuestion(q, customEvt.detail?.customTelemetry);
+      const q = customEvt.detail?.promptQuestion || suggestedQuestionsRef.current[0];
+      void askTutorRef.current(q, customEvt.detail?.customTelemetry);
     };
     window.addEventListener('radpro:open-physics-tutor', handleOpenEvent);
     return () => window.removeEventListener('radpro:open-physics-tutor', handleOpenEvent);
-  });
+  }, []);
 
   // Auto-generate explanation when opened or when switching modules while open
   useEffect(() => {
     if (!(isOpen || embeddedInInspector) || messages.length > 0) return;
-    const initialQuestion = suggestedQuestions[0];
+    const initialQuestion = suggestedQuestionsRef.current[0];
     const timer = window.setTimeout(() => {
-      void askTutorQuestion(initialQuestion);
+      void askTutorRef.current(initialQuestion);
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [isOpen, embeddedInInspector]);
+  }, [isOpen, embeddedInInspector, messages.length]);
 
   const currentExplanation = messages[0] || null;
   const previousHistory = messages.slice(1);

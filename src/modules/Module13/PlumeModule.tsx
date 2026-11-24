@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import VerificationBadge from '../../components/VerificationBadge';
 import Plot from 'react-plotly.js';
@@ -122,7 +122,7 @@ const PlumeModule: React.FC = () => {
   }, [searchParams]);
 
   // Helper to evaluate Gaussian concentration C(x, y, z) [Ci/m³] via canonical kernels
-  const evalGaussianConcentration = (x: number, y: number, z: number, applyDepletion: boolean = true) => {
+  const evalGaussianConcentration = useCallback((x: number, y: number, z: number, applyDepletion: boolean = true) => {
     const validClass = (STABILITY_CLASSES.includes(stability) ? stability : 'D') as 'A' | 'B' | 'C' | 'D' | 'E' | 'F';
     const { sy, sz } = getDispersionCoefficients(x, validClass);
     if (sy <= 0 || sz <= 0 || windSpeed <= 0) return 0;
@@ -153,7 +153,7 @@ const PlumeModule: React.FC = () => {
       Math.exp(-Math.pow(z + (2 * L - H), 2) / (2 * sz * sz));
 
     return prefactor * expY * verticalTerm;
-  };
+  }, [stability, windSpeed, depositionVelocityCmS, rainRateMmHr, releaseHeight, releaseRate, mixingHeightM]);
 
   // 2D Contour Grid
   const { xVals, yVals, zVals } = useMemo(() => {
@@ -182,7 +182,7 @@ const PlumeModule: React.FC = () => {
     }
 
     return { xVals: xArr, yVals: yArr, zVals: zArr };
-  }, [releaseRate, windSpeed, releaseHeight, stability, maxDistance, depositionVelocityCmS, rainRateMmHr, mixingHeightM]);
+  }, [maxDistance, evalGaussianConcentration]);
 
   // Centerline Profile + Crosswind C(y) & Vertical C(z) Slice Profiles
   const centerlineData = useMemo(() => {
@@ -228,7 +228,7 @@ const PlumeModule: React.FC = () => {
     }
 
     return { xLine, cLine, cUndepletedLine, peakC, peakX, x0, sy, sz, crossY, crossC, vertZ, vertC };
-  }, [releaseRate, windSpeed, releaseHeight, stability, maxDistance, depositionVelocityCmS, rainRateMmHr, mixingHeightM, sliceDistanceM]);
+  }, [maxDistance, sliceDistanceM, stability, mixingHeightM, releaseHeight, evalGaussianConcentration]);
 
   const dossierPayload: CalculationDossierPayload = useMemo(() => ({
     reportTitle: 'EPA-400 Atmospheric Radioactive Plume Dispersion Dossier',
@@ -408,7 +408,7 @@ const PlumeModule: React.FC = () => {
         }
       ]
     });
-  }, [stability, windSpeed, releaseHeight, releaseRate, mixingHeightM, rainRateMmHr, setLiveModuleTelemetry]);
+  }, [stability, windSpeed, releaseHeight, releaseRate, mixingHeightM, rainRateMmHr, centerlineData.peakC, centerlineData.peakX, searchParams, setLiveModuleTelemetry]);
 
   return (
     <div className="panel" style={{ height: '100%', display: 'flex', flexDirection: 'column', gap: '16px' }}>

@@ -744,6 +744,7 @@ a:hover {
   font-weight: 800;
   color: #fff;
   line-height: 1.2;
+  font-variant-numeric: tabular-nums;
 }
 
 .hud-badge {
@@ -868,5 +869,37 @@ a:hover {
   }
   .main-content [style*="grid-template-columns"] {
     grid-template-columns: 1fr !important;
+  }
+}
+
+/* Direct Browser Print Formatting for Technical & V&V Reports */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+  }
+  .sidebar,
+  .inspector-drawer,
+  .no-print {
+    display: none !important;
+  }
+  .main-content {
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+  .panel {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    overflow: visible !important;
+  }
+  .panel h1,
+  .panel h2,
+  .panel h3,
+  .panel h4,
+  .panel strong {
+    color: #0f172a !important;
   }
 }

@@ -8,10 +8,10 @@ interface AuditDossierModalProps {
 }
 
 export const AuditDossierModal: React.FC<AuditDossierModalProps> = ({ payload, isOpen, onClose }) => {
-  const [operatorName, setOperatorName] = useState(payload.operatorName || 'T. Carlson');
-  const [operatorCredentials, setOperatorCredentials] = useState(payload.operatorCredentials || 'CHP, RRPT');
-  const [facility, setFacility] = useState(payload.facility || 'Radiological Physics Center - Sector 4');
-  const [notes, setNotes] = useState(payload.notes || 'Routine health physics evaluation compliant with ALARA procedures.');
+  const [operatorName, setOperatorName] = useState(payload.operatorName || '');
+  const [operatorCredentials, setOperatorCredentials] = useState(payload.operatorCredentials || '');
+  const [facility, setFacility] = useState(payload.facility || '');
+  const [notes, setNotes] = useState(payload.notes || 'Decision-support evaluation documented under ALARA review procedures.');
   const [previewHash, setPreviewHash] = useState<string>('');
   const [dossierTimestampIso, setDossierTimestampIso] = useState<string>(() => new Date().toISOString());
 
@@ -21,14 +21,24 @@ export const AuditDossierModal: React.FC<AuditDossierModalProps> = ({ payload, i
     }
   }, [isOpen]);
 
+  const effectiveOperator = operatorName.trim() || 'Unassigned Evaluator';
+  const effectiveCredentials = operatorCredentials.trim() || 'CHP / RSO / SBD';
+  const effectiveFacility = facility.trim() || 'Radiological Engineering Evaluation';
+
   React.useEffect(() => {
     if (isOpen) {
       generateDossierHash(
-        { ...payload, operatorName, operatorCredentials, facility, notes },
+        {
+          ...payload,
+          operatorName: effectiveOperator,
+          operatorCredentials: effectiveCredentials,
+          facility: effectiveFacility,
+          notes
+        },
         dossierTimestampIso
       ).then(hash => setPreviewHash(hash));
     }
-  }, [isOpen, payload, operatorName, operatorCredentials, facility, notes, dossierTimestampIso]);
+  }, [isOpen, payload, effectiveOperator, effectiveCredentials, effectiveFacility, notes, dossierTimestampIso]);
 
   if (!isOpen) return null;
 
@@ -36,9 +46,9 @@ export const AuditDossierModal: React.FC<AuditDossierModalProps> = ({ payload, i
     openPrintableAuditDossier(
       {
         ...payload,
-        operatorName,
-        operatorCredentials,
-        facility,
+        operatorName: effectiveOperator,
+        operatorCredentials: effectiveCredentials,
+        facility: effectiveFacility,
         notes
       },
       dossierTimestampIso
@@ -72,10 +82,10 @@ export const AuditDossierModal: React.FC<AuditDossierModalProps> = ({ payload, i
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(65, 90, 119, 0.3)', paddingBottom: '12px' }}>
           <div>
             <h3 style={{ margin: 0, color: 'var(--color-primary)', fontSize: '1.15rem' }}>
-              🖨️ Generate 21 CFR Part 11 Audit Dossier
+              Generate Technical Audit Dossier (SHA-256 Sealed)
             </h3>
             <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
-              Official Health Physics Technical Evaluation Record with SHA-256 Checksum
+              Structured Health Physics Technical Evaluation Record with Cryptographic Integrity Checksum
             </div>
           </div>
           <button
@@ -93,21 +103,23 @@ export const AuditDossierModal: React.FC<AuditDossierModalProps> = ({ payload, i
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
           <div>
-            <label style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>Evaluator / CHP Name</label>
+            <label style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>Evaluator / Health Physicist Name</label>
             <input
               type="text"
               className="form-control"
               value={operatorName}
+              placeholder="Evaluator / Health Physicist Name"
               onChange={(e) => setOperatorName(e.target.value)}
               style={{ width: '100%', padding: '6px', background: '#000', color: '#fff', border: '1px solid var(--color-border)', borderRadius: '4px' }}
             />
           </div>
           <div>
-            <label style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>Credentials / License</label>
+            <label style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>Credentials / Qualification</label>
             <input
               type="text"
               className="form-control"
               value={operatorCredentials}
+              placeholder="CHP / RSO / SBD (Level 4A / TMS)"
               onChange={(e) => setOperatorCredentials(e.target.value)}
               style={{ width: '100%', padding: '6px', background: '#000', color: '#fff', border: '1px solid var(--color-border)', borderRadius: '4px' }}
             />
@@ -120,13 +132,14 @@ export const AuditDossierModal: React.FC<AuditDossierModalProps> = ({ payload, i
             type="text"
             className="form-control"
             value={facility}
+            placeholder="Facility / Organization / Site"
             onChange={(e) => setFacility(e.target.value)}
             style={{ width: '100%', padding: '6px', background: '#000', color: '#fff', border: '1px solid var(--color-border)', borderRadius: '4px' }}
           />
         </div>
 
         <div>
-          <label style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>Operational Notes & Justification</label>
+          <label style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>Operational Notes &amp; Justification</label>
           <textarea
             rows={2}
             className="form-control"
@@ -171,7 +184,7 @@ export const AuditDossierModal: React.FC<AuditDossierModalProps> = ({ payload, i
               boxShadow: '0 0 12px rgba(0, 229, 255, 0.4)'
             }}
           >
-            🖨️ Export PDF & Print Dossier
+            Export PDF &amp; Print Dossier
           </button>
         </div>
       </div>
