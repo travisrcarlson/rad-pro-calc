@@ -5,6 +5,8 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const rawBasePath = process.env.VITE_BASE_PATH || '/'
+const normalizedBase = rawBasePath.endsWith('/') ? rawBasePath : `${rawBasePath}/`
 
 /**
  * Generates dist/precache-manifest.json at build completion so public/sw.js
@@ -20,7 +22,7 @@ function radproOfflineManifestPlugin(): Plugin {
       const assets: string[] = []
       for (const fileName of Object.keys(bundle)) {
         if (/\.(js|css|woff2)$/i.test(fileName)) {
-          assets.push(`/${fileName.replace(/\\/g, '/')}`)
+          assets.push(`${normalizedBase}${fileName.replace(/\\/g, '/')}`)
         }
       }
       fs.writeFileSync(
@@ -37,12 +39,17 @@ function radproOfflineManifestPlugin(): Plugin {
           'utf8'
         )
       }
+      const builtIndexPath = path.join(outDir, 'index.html')
+      if (fs.existsSync(builtIndexPath)) {
+        fs.copyFileSync(builtIndexPath, path.join(outDir, '404.html'))
+      }
     }
   }
 }
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: normalizedBase,
   plugins: [react(), radproOfflineManifestPlugin()],
   resolve: {
     alias: [

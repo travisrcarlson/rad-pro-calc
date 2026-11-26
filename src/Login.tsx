@@ -11,7 +11,7 @@ import {
 } from './config/appMetadata';
 
 interface LoginProps {
-  onLogin: () => void;
+  onLogin: (mode?: 'operator' | 'demo') => void;
 }
 
 const AUTHORIZED_PASSPHRASE_SHA256 = '88D21BA4C7AE623F17B4C53F2F1A060AD58FA38CFDA381D34799AC1AB8801225';
@@ -296,6 +296,38 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
               }}
             >
               Authenticate &amp; Launch
+            </button>
+
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              margin: '2px 0',
+              fontSize: '0.70rem',
+              color: '#64748b',
+              fontFamily: 'var(--font-mono)'
+            }}>
+              <span style={{ flex: 1, height: '1px', background: 'rgba(148, 163, 184, 0.18)' }} />
+              <span>or for external peer review</span>
+              <span style={{ flex: 1, height: '1px', background: 'rgba(148, 163, 184, 0.18)' }} />
+            </div>
+
+            <button
+              type="button"
+              onClick={() => onLogin('demo')}
+              style={{
+                padding: '9px 14px',
+                borderRadius: '8px',
+                border: '1px solid rgba(148, 163, 184, 0.3)',
+                background: 'rgba(15, 23, 42, 0.72)',
+                color: '#cbd5e1',
+                fontWeight: 600,
+                fontSize: '0.84rem',
+                cursor: 'pointer',
+                transition: 'border-color 0.15s ease, background 0.15s ease'
+              }}
+            >
+              Open Peer-Review / Demo Session
             </button>
           </form>
 

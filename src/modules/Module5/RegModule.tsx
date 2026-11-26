@@ -1,10 +1,110 @@
 import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useRegulatory } from '../../context/RegulatoryContext';
 import { AuditDossierModal } from '../../components/AuditDossierModal';
 import { type CalculationDossierPayload } from '../../services/auditDossierService';
 import VerificationBadge from '../../components/VerificationBadge';
 import { CANONICAL_NUCLIDE_REGISTRY } from '../../utils/canonicalNuclidePhysics';
-import { computeDutchBbsRadiotoxicity } from '../../utils/radiologicalPhysicsKernels';
+import {
+  computeDutchBbsRadiotoxicity,
+  evaluateDutchBbsExemption,
+  NL_BBS_BIJLAGE3_EXEMPTION_TABLE
+} from '../../utils/radiologicalPhysicsKernels';
+
+interface Level4AScenarioPreset {
+  id: string;
+  title: string;
+  subtitle: string;
+  nuclide: string;
+  activity: number;
+  activityUnit: 'kBq' | 'MBq' | 'GBq';
+  activityGBq: number;
+  lungClass: 'F' | 'M' | 'S';
+  handlingFactor: number;
+  sampleMassG: number;
+  notes: string;
+  pipelines: {
+    label: string;
+    route: string;
+    distanceM?: number;
+    shieldMaterial?: 'Lead' | 'Steel' | 'Concrete' | 'Tungsten' | 'Water' | 'Depleted Uranium';
+    shieldThicknessCm?: number;
+  }[];
+}
+
+const LEVEL_4A_SCENARIOS: Level4AScenarioPreset[] = [
+  {
+    id: 'l4a-i131',
+    title: 'C-Lab I-131 Radiochemistry',
+    subtitle: '50 MBq I-131 • Type F • f_hand = 1.0 • 100 g',
+    nuclide: 'I-131',
+    activity: 50,
+    activityUnit: 'MBq',
+    activityGBq: 0.05,
+    lungClass: 'F',
+    handlingFactor: 1.0,
+    sampleMassG: 100,
+    notes: 'Volatile thyroid tracer synthesis in fume hood; evaluate Re_inh lab tier, decay-in-storage hold time, and 1 cm Pb shielding.',
+    pipelines: [
+      { label: 'M24 Decay Hold Time', route: '/decay?isotope=I-131&activity=0.05&unit=GBq' },
+      { label: 'M14 Lead Shielding', route: '/shielding?isotope=I-131&activity=0.05&unit=GBq&material=Lead&thickness=1.0', shieldMaterial: 'Lead', shieldThicknessCm: 1.0 },
+      { label: 'M03 Internal e(50)', route: '/internal-dose?isotope=I-131&activity=0.00005' }
+    ]
+  },
+  {
+    id: 'l4a-p32',
+    title: 'D-Lab Beta Bench Assay',
+    subtitle: '10 MBq P-32 • Type M • f_hand = 1.0 • 50 g',
+    nuclide: 'P-32',
+    activity: 10,
+    activityUnit: 'MBq',
+    activityGBq: 0.01,
+    lungClass: 'M',
+    handlingFactor: 1.0,
+    sampleMassG: 50,
+    notes: 'High-energy pure β⁻ (1.71 MeV max) labeling bench check for D/C-Lab boundary, Lucite/PMMA bremsstrahlung control, and storage decay.',
+    pipelines: [
+      { label: 'M24 Decay Hold Time', route: '/decay?isotope=P-32&activity=0.01&unit=GBq' },
+      { label: 'M01 External Check', route: '/dose?isotope=P-32&activity=0.01&unit=GBq&distance=0.5', distanceM: 0.5 }
+    ]
+  },
+  {
+    id: 'l4a-tc99m',
+    title: 'B-Lab Mo-99 / Tc-99m Elution & Shipment',
+    subtitle: '3.7 GBq Tc-99m • Type F • f_hand = 10 • 20 g',
+    nuclide: 'Tc-99m',
+    activity: 3.7,
+    activityUnit: 'GBq',
+    activityGBq: 3.7,
+    lungClass: 'F',
+    handlingFactor: 10,
+    sampleMassG: 20,
+    notes: 'Hospital / university generator elution workflow coupling transient parent-daughter milking with ADR / IAEA SSR-6 Type A dispatch.',
+    pipelines: [
+      { label: 'M24 Mo-99/Tc-99m Milking', route: '/decay?isotope=Mo-99&activity=3.7&unit=GBq' },
+      { label: 'M15 ADR/SSR-6 Dispatch', route: '/transport?isotope=Tc-99m&activity=3.7&unit=GBq' },
+      { label: 'M14 0.5 cm Pb Shield', route: '/shielding?isotope=Tc-99m&activity=3.7&unit=GBq&material=Lead&thickness=0.5', shieldMaterial: 'Lead', shieldThicknessCm: 0.5 }
+    ]
+  },
+  {
+    id: 'l4a-cs137',
+    title: 'Sealed Calibration & NDT Source Check',
+    subtitle: '185 GBq Cs-137 • Type F • f_hand = 100 • 500 g',
+    nuclide: 'Cs-137',
+    activity: 185,
+    activityUnit: 'GBq',
+    activityGBq: 185,
+    lungClass: 'F',
+    handlingFactor: 100,
+    sampleMassG: 500,
+    notes: 'Closed-source reference scenario comparing unshielded H*(10) at 1 m, 2.5 cm Lead attenuation, and SSR-6 Category II/III-YELLOW labeling.',
+    pipelines: [
+      { label: 'M01 H*(10) @ 1 m', route: '/dose?isotope=Cs-137&activity=185&unit=GBq&distance=1.0', distanceM: 1.0 },
+      { label: 'M14 2.5 cm Pb Shield', route: '/shielding?isotope=Cs-137&activity=185&unit=GBq&material=Lead&thickness=2.5', shieldMaterial: 'Lead', shieldThicknessCm: 2.5 },
+      { label: 'M15 SSR-6 Package', route: '/transport?isotope=Cs-137&activity=185&unit=GBq' }
+    ]
+  }
+];
 
 interface WorkerRecord {
   id: string;
@@ -33,7 +133,8 @@ function formatBqReadable(bq: number): string {
 }
 
 const RegModule: React.FC = () => {
-  const { currentFramework, setFrameworkId, allFrameworks, frameworkId } = useRegulatory();
+  const navigate = useNavigate();
+  const { currentFramework, setFrameworkId, allFrameworks, frameworkId, setActiveSource } = useRegulatory();
   const [activeTab, setActiveTab] = useState<WorkspaceTab>('roster');
   const [workers, setWorkers] = useState<WorkerRecord[]>(INITIAL_WORKERS);
   const [isDossierOpen, setIsDossierOpen] = useState(false);
@@ -56,6 +157,7 @@ const RegModule: React.FC = () => {
   const [bbsActivityUnit, setBbsActivityUnit] = useState<'kBq' | 'MBq' | 'GBq'>('MBq');
   const [bbsLungClass, setBbsLungClass] = useState<'F' | 'M' | 'S'>('F');
   const [bbsHandlingFactor, setBbsHandlingFactor] = useState<number>(1.0);
+  const [bbsSampleMassG, setBbsSampleMassG] = useState<number>(100);
 
   const bbsNuclidesList = useMemo(
     () => Object.values(CANONICAL_NUCLIDE_REGISTRY).sort((a, b) => a.symbol.localeCompare(b.symbol)),
@@ -71,6 +173,10 @@ const RegModule: React.FC = () => {
   const bbsLabResult = useMemo(
     () => computeDutchBbsRadiotoxicity(bbsActivityBq, selectedEInh50, bbsHandlingFactor),
     [bbsActivityBq, selectedEInh50, bbsHandlingFactor]
+  );
+  const bbsExemption = useMemo(
+    () => evaluateDutchBbsExemption(bbsNuclide, bbsActivityBq, bbsSampleMassG),
+    [bbsNuclide, bbsActivityBq, bbsSampleMassG]
   );
 
   // Dynamic Framework Limits
@@ -133,11 +239,11 @@ const RegModule: React.FC = () => {
     reportTitle: `Regulatory Dose Compliance & Lab Classification Dossier — ${currentFramework.name}`,
     moduleName: 'Module 33: Regulatory Compliance, ALARA & NL Bbs Classification',
     statuteCitation: `${currentFramework.name} (${currentFramework.citation})`,
-    verificationTestId: 'VTEST-01 / VTEST-61',
+    verificationTestId: 'VTEST-01 / VTEST-61 / VTEST-62',
     operatorName: '',
     operatorCredentials: '',
     facility: '',
-    notes: `Workforce ALARA & statutory evaluation (${workers.length} illustrative records): Whole Body (${activeLimits.TEDE} mSv), Lens of Eye (${activeLimits.LDE} mSv), Shallow Extremities (${activeLimits.SDE} mSv). NL Bbs lab check: ${bbsActivity} ${bbsActivityUnit} ${bbsNuclide} (${bbsLabResult.reInhEffective.toPrecision(3)} Re_inh eff., ${bbsLabResult.labClass}).`,
+    notes: `Workforce ALARA & statutory evaluation (${workers.length} illustrative records): Whole Body (${activeLimits.TEDE} mSv), Lens of Eye (${activeLimits.LDE} mSv), Shallow Extremities (${activeLimits.SDE} mSv). NL Bbs lab check: ${bbsActivity} ${bbsActivityUnit} ${bbsNuclide} (${bbsLabResult.reInhEffective.toPrecision(3)} Re_inh eff., ${bbsLabResult.labClass}; Bijlage 3 in ${bbsSampleMassG} g: ${bbsExemption.regulatoryStatus}).`,
     formulaDescription: 'R_{\\text{ALARA}} = \\max\\left(\\frac{\\text{TEDE}}{\\text{Limit}_{\\text{WB}}}, \\frac{\\text{LDE}}{\\text{Limit}_{\\text{Eye}}}, \\frac{\\text{SDE}}{\\text{Limit}_{\\text{Ext}}}\\right), \\quad N_{\\text{Re,inh}} = \\frac{A \\cdot e_{\\text{inh}}(50)}{f_{\\text{hand}}}',
     inputs: [
       { label: 'Regulatory Framework', value: `${currentFramework.governingBody} (${currentFramework.name})` },
@@ -146,16 +252,17 @@ const RegModule: React.FC = () => {
       { label: 'Whole Body (TEDE) Limit', value: activeLimits.TEDE, unit: 'mSv/yr' },
       { label: 'Lens of Eye (LDE) Limit', value: activeLimits.LDE, unit: 'mSv/yr' },
       { label: 'Extremity (SDE) Limit', value: activeLimits.SDE, unit: 'mSv/yr' },
-      { label: 'Bbs Re_inh Source Evaluation', value: `${bbsActivity} ${bbsActivityUnit} ${bbsNuclide} (Class ${bbsLungClass})`, unit: `e_inh=${selectedEInh50.toExponential(2)} Sv/Bq` }
+      { label: 'Bbs Re_inh & Bijlage 3 Evaluation', value: `${bbsActivity} ${bbsActivityUnit} ${bbsNuclide} in ${bbsSampleMassG} g (Class ${bbsLungClass})`, unit: `e_inh=${selectedEInh50.toExponential(2)} Sv/Bq` }
     ],
     outputs: [
       { label: 'Regulatory Violations', value: violationCount, status: violationCount > 0 ? 'EXCEEDED' : 'PASS' },
       { label: 'ALARA Action Triggers', value: alaraCount, status: alaraCount > 0 ? 'WARNING' : 'PASS' },
       { label: 'Peak Whole Body Accumulation', value: highestTEDE.toFixed(1), unit: 'mSv', status: highestTEDE > activeLimits.TEDE ? 'EXCEEDED' : 'PASS' },
       { label: 'Peak Dose Recipient', value: highestWorker || 'None', status: 'PASS' },
-      { label: 'NL Bbs / Rbs Lab Tier', value: `${bbsLabResult.labClass} (${bbsLabResult.reInhEffective.toPrecision(3)} Re_inh)`, status: bbsLabResult.reInhEffective > 2000 ? 'WARNING' : 'PASS' }
+      { label: 'NL Bbs / Rbs Lab Tier', value: `${bbsLabResult.labClass} (${bbsLabResult.reInhEffective.toPrecision(3)} Re_inh)`, status: bbsLabResult.reInhEffective > 2000 ? 'WARNING' : 'PASS' },
+      { label: 'NL Bbs Bijlage 3 Exemption', value: bbsExemption.regulatoryStatus, status: bbsExemption.isExempt ? 'PASS' : 'WARNING' }
     ]
-  }), [currentFramework, workers, activeLimits, violationCount, alaraCount, highestTEDE, highestWorker, bbsActivity, bbsActivityUnit, bbsNuclide, bbsLungClass, selectedEInh50, bbsLabResult]);
+  }), [currentFramework, workers, activeLimits, violationCount, alaraCount, highestTEDE, highestWorker, bbsActivity, bbsActivityUnit, bbsNuclide, bbsLungClass, selectedEInh50, bbsLabResult, bbsSampleMassG, bbsExemption]);
 
   return (
     <div className="panel" style={{ height: '100%', display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -168,6 +275,7 @@ const RegModule: React.FC = () => {
             <span className="hud-badge hud-badge-accent">{currentFramework.flagEmoji} {currentFramework.name} ({currentFramework.shortCode})</span>
             <VerificationBadge testId="VTEST-01" label="ICRP 103 / Bbs / 10 CFR 20" />
             <VerificationBadge testId="VTEST-61" label="NL Bbs Re_inh" />
+            <VerificationBadge testId="VTEST-62" label="NL Bbs Bijlage 3" />
           </div>
           <h2 style={{ margin: '6px 0 0 0', fontSize: '1.4rem', letterSpacing: '0.03em' }}>
             Module 33 — Regulatory Dose Compliance &amp; ALARA Administration Dashboard
@@ -622,6 +730,214 @@ const RegModule: React.FC = () => {
                     </tr>
                   </tbody>
                 </table>
+              </div>
+            </div>
+
+            {/* Bbs Bijlage 3 Exemption & Decay-in-Storage Panel */}
+            <div style={{
+              background: 'rgba(5, 10, 18, 0.72)',
+              border: '1px solid var(--color-border)',
+              borderRadius: '8px',
+              padding: '18px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '14px'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                <div>
+                  <h4 style={{ margin: 0, fontSize: '1.0rem', color: '#38bdf8' }}>
+                    NL Bbs Bijlage 3 / EU Euratom Annex VII Exemption &amp; Decay-in-Storage Check
+                  </h4>
+                  <p style={{ margin: '3px 0 0 0', fontSize: '0.78rem', color: '#94a3b8' }}>
+                    Evaluates statutory moderate-quantity exemption when A &le; A_ex OR C &le; C_ex (VTEST-62) and estimates hold time for waste release.
+                  </p>
+                </div>
+                <VerificationBadge testId="VTEST-62" label="NL Bbs Bijlage 3" />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(175px, 1fr))', gap: '12px', alignItems: 'end' }}>
+                <div>
+                  <label className="form-label" style={{ fontSize: '0.75rem' }}>Sample / Waste Mass (g)</label>
+                  <input
+                    type="number"
+                    min="0.01"
+                    step="10"
+                    className="form-control"
+                    value={bbsSampleMassG}
+                    onChange={e => setBbsSampleMassG(Math.max(0.001, parseFloat(e.target.value) || 0.001))}
+                  />
+                </div>
+                <div className="hud-card" style={{ padding: '10px 12px' }}>
+                  <span className="hud-metric-label">ACTIVITY RATIO (A / A_ex)</span>
+                  <span className="hud-metric-value" style={{ fontSize: '1.05rem', color: bbsExemption.known && bbsExemption.activityRatio <= 1 ? '#10b981' : '#f59e0b' }}>
+                    {bbsExemption.known ? `${bbsExemption.activityRatio >= 0.01 ? bbsExemption.activityRatio.toFixed(2) : bbsExemption.activityRatio.toExponential(2)}×` : 'N/A'}
+                  </span>
+                  <span style={{ fontSize: '0.70rem', color: '#94a3b8' }}>
+                    {bbsExemption.known ? `Limit: ${formatBqReadable(bbsExemption.exemptionActivityBq)}` : 'Not in quick table'}
+                  </span>
+                </div>
+                <div className="hud-card" style={{ padding: '10px 12px' }}>
+                  <span className="hud-metric-label">CONC. RATIO (C / C_ex)</span>
+                  <span className="hud-metric-value" style={{ fontSize: '1.05rem', color: bbsExemption.known && bbsExemption.concentrationRatio <= 1 ? '#10b981' : '#f59e0b' }}>
+                    {bbsExemption.known ? `${bbsExemption.concentrationRatio >= 0.01 ? bbsExemption.concentrationRatio.toFixed(2) : bbsExemption.concentrationRatio.toExponential(2)}×` : 'N/A'}
+                  </span>
+                  <span style={{ fontSize: '0.70rem', color: '#94a3b8' }}>
+                    {bbsExemption.known ? `${bbsExemption.activityConcentrationBqPerG.toExponential(2)} / ${bbsExemption.exemptionConcBqPerG} Bq/g` : `${bbsExemption.activityConcentrationBqPerG.toExponential(2)} Bq/g`}
+                  </span>
+                </div>
+                <div className="hud-card" style={{ padding: '10px 12px' }}>
+                  <span className="hud-metric-label">DECAY-IN-STORAGE HOLD</span>
+                  <span className="hud-metric-value" style={{ fontSize: '1.05rem', color: '#38bdf8' }}>
+                    {bbsExemption.decayTimeToExemptDays === null
+                      ? 'Long-lived / N/A'
+                      : bbsExemption.decayTimeToExemptDays === 0
+                        ? '0.0 d (Exempt)'
+                        : `${bbsExemption.decayTimeToExemptDays >= 3650 ? `${(bbsExemption.decayTimeToExemptDays / 365.25).toFixed(1)} yr` : `${bbsExemption.decayTimeToExemptDays.toFixed(1)} d`}`}
+                  </span>
+                  <span style={{ fontSize: '0.70rem', color: '#94a3b8' }}>
+                    Time to reach A_ex or C_ex
+                  </span>
+                </div>
+              </div>
+
+              <div style={{
+                padding: '10px 14px',
+                borderRadius: '6px',
+                background: 'rgba(0,0,0,0.38)',
+                border: `1px solid ${bbsExemption.isExempt ? '#10b981' : '#f59e0b'}`,
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '8px'
+              }}>
+                <div>
+                  <span style={{ fontSize: '0.72rem', color: '#94a3b8', display: 'block' }}>BIJLAGE 3 DISPOSITION ({bbsNuclide})</span>
+                  <strong style={{ color: '#fff', fontSize: '0.94rem' }}>{bbsExemption.regulatoryStatus}</strong>
+                </div>
+                <span className={`hud-badge ${bbsExemption.isExempt ? 'hud-badge-success' : 'hud-badge-warning'}`}>
+                  {bbsExemption.isExempt ? 'EXEMPT' : 'ANVS CONTROLLED'}
+                </span>
+              </div>
+
+              <div style={{ overflowX: 'auto' }}>
+                <div style={{ fontSize: '0.73rem', color: '#94a3b8', marginBottom: '6px' }}>
+                  Click any nuclide row to load its Bijlage 3 thresholds into the evaluator:
+                </div>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.74rem' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid #334155', color: '#94a3b8', textAlign: 'left' }}>
+                      <th style={{ padding: '5px 8px' }}>Nuclide</th>
+                      <th style={{ padding: '5px 8px' }}>A_ex (Total)</th>
+                      <th style={{ padding: '5px 8px' }}>C_ex (Conc.)</th>
+                      <th style={{ padding: '5px 8px' }}>Notes</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.values(NL_BBS_BIJLAGE3_EXEMPTION_TABLE).map(rec => (
+                      <tr
+                        key={rec.symbol}
+                        onClick={() => setBbsNuclide(rec.symbol)}
+                        style={{
+                          cursor: 'pointer',
+                          borderBottom: '1px solid rgba(255,255,255,0.05)',
+                          background: bbsNuclide === rec.symbol ? 'rgba(56, 189, 248, 0.14)' : 'transparent'
+                        }}
+                      >
+                        <td style={{ padding: '5px 8px', fontWeight: 700, color: bbsNuclide === rec.symbol ? '#38bdf8' : '#e2e8f0' }}>{rec.symbol}</td>
+                        <td style={{ padding: '5px 8px', fontFamily: 'var(--font-mono)' }}>{formatBqReadable(rec.exemptionActivityBq)}</td>
+                        <td style={{ padding: '5px 8px', fontFamily: 'var(--font-mono)' }}>{rec.exemptionConcBqPerG.toExponential(0)} Bq/g</td>
+                        <td style={{ padding: '5px 8px', color: '#94a3b8' }}>{rec.note}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* TU Delft Level 4A / Coordinator Stralingsbescherming Worked Scenarios */}
+            <div style={{
+              background: 'rgba(5, 10, 18, 0.72)',
+              border: '1px solid var(--color-border)',
+              borderRadius: '8px',
+              padding: '18px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px'
+            }}>
+              <div>
+                <h4 style={{ margin: 0, fontSize: '1.0rem', color: '#fb923c' }}>
+                  TU Delft Level 4A / Co&ouml;rdinator Stralingsbescherming Worked Scenarios
+                </h4>
+                <p style={{ margin: '3px 0 0 0', fontSize: '0.78rem', color: '#94a3b8' }}>
+                  Load a benchmark teaching scenario to populate Re_inh &amp; Bijlage 3 compliance above, or pipeline directly into decay, shielding, internal dose, or transport modules.
+                </p>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '12px' }}>
+                {LEVEL_4A_SCENARIOS.map(sc => (
+                  <div
+                    key={sc.id}
+                    style={{
+                      background: 'rgba(15, 23, 42, 0.58)',
+                      border: '1px solid rgba(148, 163, 184, 0.2)',
+                      borderRadius: '7px',
+                      padding: '12px 14px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                      gap: '10px'
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: '0.90rem', color: '#f8fafc' }}>{sc.title}</div>
+                      <div style={{ fontSize: '0.73rem', fontFamily: 'var(--font-mono)', color: '#38bdf8', marginTop: '2px' }}>{sc.subtitle}</div>
+                      <p style={{ margin: '6px 0 0 0', fontSize: '0.76rem', color: '#94a3b8', lineHeight: 1.45 }}>{sc.notes}</p>
+                    </div>
+
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                      <button
+                        type="button"
+                        className="btn btn-primary"
+                        style={{ padding: '4px 10px', fontSize: '0.74rem' }}
+                        onClick={() => {
+                          setBbsNuclide(sc.nuclide);
+                          setBbsActivity(sc.activity);
+                          setBbsActivityUnit(sc.activityUnit);
+                          setBbsLungClass(sc.lungClass);
+                          setBbsHandlingFactor(sc.handlingFactor);
+                          setBbsSampleMassG(sc.sampleMassG);
+                          setActiveSource({
+                            isotope: sc.nuclide,
+                            activityGBq: sc.activityGBq
+                          });
+                        }}
+                      >
+                        Apply Preset
+                      </button>
+                      {sc.pipelines.map(p => (
+                        <button
+                          key={p.label}
+                          type="button"
+                          className="btn btn-secondary"
+                          style={{ padding: '4px 9px', fontSize: '0.73rem' }}
+                          onClick={() => {
+                            setActiveSource({
+                              isotope: sc.nuclide,
+                              activityGBq: sc.activityGBq,
+                              ...(p.distanceM ? { distanceM: p.distanceM } : {}),
+                              ...(p.shieldMaterial ? { shieldMaterial: p.shieldMaterial } : {}),
+                              ...(p.shieldThicknessCm !== undefined ? { shieldThicknessCm: p.shieldThicknessCm } : {})
+                            });
+                            navigate(p.route);
+                          }}
+                        >
+                          {p.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>

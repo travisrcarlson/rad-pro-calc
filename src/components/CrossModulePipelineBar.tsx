@@ -21,6 +21,12 @@ const MODULE_PIPELINE_MAP: Record<string, PipelineTarget[]> = {
     { label: 'M14 Shielding & PAGs', targetPath: '/shielding', reason: 'Design shielding for daughter gamma ingrowth' },
     { label: 'M15 Transport Packaging', targetPath: '/transport', reason: 'Verify IAEA SSR-6 Type A/B & TI limits' }
   ],
+  '/reg': [
+    { label: 'M24 Decay Chains', targetPath: '/decay', reason: 'Model decay-in-storage clearance to Bbs Bijlage 3 exemption' },
+    { label: 'M14 Shielding & PAGs', targetPath: '/shielding', reason: 'Size lab bench shielding for ALARA & dose constraint' },
+    { label: 'M03 Internal Dosimetry', targetPath: '/internal-dose', reason: 'Cross-check ICRP-119 e(50) committed effective dose' },
+    { label: 'M15 Transport Packaging', targetPath: '/transport', reason: 'Verify IAEA SSR-6 Type A/B & ADR transport limits' }
+  ],
   '/dose': [
     { label: 'M14 Shielding & PAGs', targetPath: '/shielding', reason: 'Calculate HVL/TVL slab to meet ALARA target' },
     { label: 'M02 Worker Dosimetry', targetPath: '/worker', reason: 'Compute RCA stay-time & turn-back alarms' },

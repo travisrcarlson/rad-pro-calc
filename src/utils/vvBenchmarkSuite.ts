@@ -6,7 +6,7 @@
  *   2. Interactive QA Verification Engine (`Module 34` -> `src/modules/Module7/VerificationModule.tsx`)
  *   3. Inline Module Verification Badges (`src/components/VerificationBadge.tsx`)
  *
- * Every analytical vector (`VTEST-01`..`VTEST-61`) and numerical boundary check (`STRESS-01`..`STRESS-08`)
+ * Every analytical vector (`VTEST-01`..`VTEST-62`) and numerical boundary check (`STRESS-01`..`STRESS-08`)
  * executes REAL production TypeScript exports from `src/utils/*` and `src/services/*` — zero constant
  * shadow lambdas or self-comparing tautologies.
  */
@@ -78,7 +78,8 @@ import {
   computeISO7503SurfaceActivityBqCm2,
   computeISO4037AirKermaToHStar10MSvHr,
   computeGUMUncertaintyBudget,
-  computeDutchBbsRadiotoxicity
+  computeDutchBbsRadiotoxicity,
+  evaluateDutchBbsExemption
 } from './radiologicalPhysicsKernels.ts';
 
 export type VerificationCategory =
@@ -1763,6 +1764,41 @@ export function runAllVerificationBenchmarks(): VerificationTestRecord[] {
         computedDisplay: `${bbsRes.reInhEffective.toFixed(4)} Re_inh (1 Re_inh = ${(bbsRes.oneReInh_Bq / 1e6).toFixed(0)} MBq, ${bbsRes.labClass})`,
         tolerancePct: 0.001,
         notes: 'Verifies Dutch Bbs/Rbs Re_inh activity equivalence and D/C/B laboratory classification via computeDutchBbsRadiotoxicity.'
+      })
+    );
+  }
+
+  // VTEST-62: Netherlands Bbs Bijlage 3 Exemption & Decay-in-Storage Hold Time
+  {
+    const i131Res = evaluateDutchBbsExemption('I-131', 5.0e7, 100, 8.0252 * 86400);
+    const csRes = evaluateDutchBbsExemption('Cs-137', 5.0e3, 100);
+    const expectedHoldDays = (8.0252 / Math.LN2) * Math.log(50.0);
+    const gatesValid =
+      i131Res.known &&
+      !i131Res.isExempt &&
+      Math.abs(i131Res.activityRatio - 50.0) < 1e-6 &&
+      csRes.known &&
+      csRes.isExempt &&
+      i131Res.decayTimeToExemptDays !== null;
+
+    tests.push(
+      buildRecord({
+        id: 'VTEST-62',
+        name: 'Netherlands Bbs Bijlage 3 Exemption & Decay-in-Storage Hold Time',
+        module: 'Module 33 (NL ANVS / Bbs Bijlage 3 Exemption)',
+        category: 'Decay & Internal',
+        standard: 'EU 2013/59/Euratom Annex VII Table B / NL Bbs (Stb. 2017, 404) Bijlage 3',
+        standardDoc: 'I-131 Exemption (1 MBq, 100 Bq/g) & Cs-137 Exemption (10 kBq, 10 Bq/g)',
+        formulaKatex:
+          't_{\\text{hold}} = \\frac{T_{1/2}}{\\ln 2}\\ln\\left(\\min\\left(\\frac{A}{A_{\\text{ex}}}, \\frac{C}{C_{\\text{ex}}}\\right)\\right) = 45.2869\\,\\text{d}',
+        inputsDesc: 'I-131: 50 MBq in 100 g (T½ = 8.0252 d); Cs-137 control: 5 kBq in 100 g',
+        expectedValue: expectedHoldDays,
+        expectedUnits: 'days',
+        expectedDisplay: `${expectedHoldDays.toFixed(4)} d (I-131 50× over A_ex; Cs-137 5 kBq exempt)`,
+        computedValue: gatesValid && i131Res.decayTimeToExemptDays !== null ? i131Res.decayTimeToExemptDays : Number.NaN,
+        computedDisplay: `${(i131Res.decayTimeToExemptDays ?? 0).toFixed(4)} d (A/A_ex=${i131Res.activityRatio.toFixed(1)}×, Cs-137=${csRes.isExempt ? 'EXEMPT' : 'LICENSED'})`,
+        tolerancePct: 0.01,
+        notes: 'Verifies NL Bbs Bijlage 3 moderate-quantity exemption thresholds and decay-in-storage hold-time kinetics via evaluateDutchBbsExemption.'
       })
     );
   }

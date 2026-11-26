@@ -1281,7 +1281,8 @@ const AppShell: React.FC<{
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     try {
-      return sessionStorage.getItem('radpro_auth') === 'true';
+      const auth = sessionStorage.getItem('radpro_auth');
+      return auth === 'true' || auth === 'demo';
     } catch {
       return false;
     }
@@ -1306,9 +1307,9 @@ const App: React.FC = () => {
     };
   }, []);
 
-  const handleLogin = () => {
+  const handleLogin = (mode: 'operator' | 'demo' = 'operator') => {
     try {
-      sessionStorage.setItem('radpro_auth', 'true');
+      sessionStorage.setItem('radpro_auth', mode === 'demo' ? 'demo' : 'true');
       localStorage.removeItem('radpro_auth');
     } catch {
       // Ignore storage quota errors in private mode
@@ -1333,7 +1334,7 @@ const App: React.FC = () => {
   return (
     <ErrorBoundary>
       <RegulatoryProvider>
-        <Router>
+        <Router basename={import.meta.env.BASE_URL}>
           <AppShell
             isCommandPaletteOpen={isCommandPaletteOpen}
             setIsCommandPaletteOpen={setIsCommandPaletteOpen}

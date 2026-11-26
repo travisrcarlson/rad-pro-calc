@@ -729,25 +729,45 @@ const PlumeModule: React.FC = () => {
         {activeTab === 'footprint' && (
           <div style={{ height: '100%', minHeight: '480px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {renderQuickControls()}
-            <div style={{ flex: 1, border: '1px solid var(--color-border)', borderRadius: '8px', overflow: 'hidden', minHeight: '440px', backgroundColor: 'rgba(5, 10, 18, 0.6)' }}>
+            <div style={{ width: '100%', height: '460px', border: '1px solid var(--color-border)', borderRadius: '8px', overflow: 'hidden', backgroundColor: 'rgba(5, 10, 18, 0.6)' }}>
               <Plot
-                data={[
-                  {
-                    z: zVals,
-                    x: xVals,
-                    y: yVals,
-                    type: 'contour',
-                    colorscale: 'Jet',
-                    contours: { showlines: false },
-                    colorbar: {
-                      title: { text: 'Activity (Ci/m³)' },
-                      len: 0.8,
-                      x: 0.98
+                data={(() => {
+                  const zPeak = Math.max(1e-12, centerlineData.peakC, ...zVals.map(row => Math.max(...row)));
+                  return [
+                    {
+                      z: zVals,
+                      x: xVals,
+                      y: yVals,
+                      type: 'contour',
+                      autocontour: false,
+                      zauto: false,
+                      zmin: 0,
+                      zmax: zPeak,
+                      colorscale: [
+                        [0.0, '#070b14'],
+                        [0.15, '#1e3a8a'],
+                        [0.35, '#0284c7'],
+                        [0.55, '#10b981'],
+                        [0.78, '#f59e0b'],
+                        [1.0, '#ef4444']
+                      ],
+                      contours: {
+                        coloring: 'heatmap',
+                        showlines: false,
+                        start: zPeak * 0.04,
+                        end: zPeak * 0.96,
+                        size: (zPeak * 0.92) / 14
+                      },
+                      colorbar: {
+                        title: { text: 'Activity (Ci/m³)' },
+                        len: 0.85
+                      }
                     }
-                  }
-                ]}
+                  ];
+                })()}
                 layout={{
                   autosize: true,
+                  height: 455,
                   title: { text: `Ground Concentration Footprint (Class ${stability}, u = ${windSpeed} m/s, H = ${releaseHeight}m)`, font: { color: '#E0E1DD', size: 14 } },
                   xaxis: { title: { text: 'Downwind Distance x (meters)' }, gridcolor: '#1e293b' },
                   yaxis: { title: { text: 'Crosswind Distance y (meters)' }, gridcolor: '#1e293b' },

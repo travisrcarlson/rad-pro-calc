@@ -3,16 +3,19 @@ const CACHE_NAME = 'radpro-cache-v5';
 const TILE_CACHE_NAME = 'radpro-map-tiles-v1';
 const MAX_CACHED_TILES = 350;
 
+const BASE_PATH = new URL('./', self.location.href).pathname.replace(/\/$/, '');
+const withBase = (p) => `${BASE_PATH}${p}`;
+
 const STATIC_ASSETS = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/favicon.svg'
+  withBase('/'),
+  withBase('/index.html'),
+  withBase('/manifest.json'),
+  withBase('/favicon.svg')
 ];
 
 async function warmLazyChunksInBackground(cache) {
   try {
-    const res = await fetch('/precache-manifest.json', { cache: 'no-cache' });
+    const res = await fetch(withBase('/precache-manifest.json'), { cache: 'no-cache' });
     if (!res.ok) return;
     const manifest = await res.json();
     if (!manifest || !Array.isArray(manifest.assets)) return;
@@ -119,9 +122,9 @@ self.addEventListener('fetch', (event) => {
 
   // Never intercept or cache Vite dev server module/HMR requests
   if (
-    url.pathname.startsWith('/src/') ||
-    url.pathname.startsWith('/@') ||
-    url.pathname.startsWith('/node_modules/')
+    url.pathname.startsWith(withBase('/src/')) ||
+    url.pathname.startsWith(withBase('/@')) ||
+    url.pathname.startsWith(withBase('/node_modules/'))
   ) {
     return;
   }
@@ -137,12 +140,12 @@ self.addEventListener('fetch', (event) => {
         .then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {
             const copy = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put('/index.html', copy));
+            caches.open(CACHE_NAME).then((cache) => cache.put(withBase('/index.html'), copy));
           }
           return networkResponse;
         })
         .catch(() =>
-          caches.match('/index.html').then((cached) => cached || caches.match('/'))
+          caches.match(withBase('/index.html')).then((cached) => cached || caches.match(withBase('/')))
         )
     );
     return;
@@ -150,7 +153,7 @@ self.addEventListener('fetch', (event) => {
 
   // Strategy 2: Cache-first only for hashed immutable bundles/fonts/icons; network-first for other assets
   const isImmutableAsset =
-    url.pathname.startsWith('/assets/') ||
+    url.pathname.startsWith(withBase('/assets/')) ||
     /\.(woff2|svg|png|ico)$/i.test(url.pathname);
 
   if (isImmutableAsset) {

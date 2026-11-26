@@ -668,19 +668,19 @@ export const MODULE_USER_GUIDES: Record<number, ModuleUserGuide> = {
   },
   34: {
     whatItDoes:
-      'Executes the automated IEEE 730-2014 / ASME NQA-1 / ISO 17025-aligned Software Quality Assurance (SQA) Verification & Validation benchmark suite across 69 deterministic vectors (61 analytical benchmarks VTEST-01–VTEST-61 + 8 numerical boundary stress tests STRESS-01–STRESS-08).',
+      'Executes the automated IEEE 730-2014 / ASME NQA-1 / ISO 17025-aligned Software Quality Assurance (SQA) Verification & Validation benchmark suite across 70 deterministic vectors (62 analytical benchmarks VTEST-01–VTEST-62 + 8 numerical boundary stress tests STRESS-01–STRESS-08).',
     whenToUse: [
       'Auditing the mathematical accuracy of every physics engine in RadPro Analyst against peer-reviewed ICRP, NCRP, IAEA, ANVS Bbs, ANSI, and NIST reference values.',
       'Verifying host CPU/FPU 64-bit IEEE 754 floating-point precision (ε = 2⁻⁵²) and singularity boundary clamps.',
       'Generating and printing a formal Verification & Validation report or traceability matrix (JSON / CSV / PDF).'
     ],
     howToUseSteps: [
-      'Click "Re-Run Verification Suite" to execute all 69 analytical and stress vectors in real time on your machine.',
-      'Filter by physics domain or click any benchmark card (VTEST-01 to VTEST-61 / STRESS-01 to STRESS-08) to expand its KaTeX proof, inputs, citation, and relative error δ.',
+      'Click "Re-Run Verification Suite" to execute all 70 analytical and stress vectors in real time on your machine.',
+      'Filter by physics domain or click any benchmark card (VTEST-01 to VTEST-62 / STRESS-01 to STRESS-08) to expand its KaTeX proof, inputs, citation, and relative error δ.',
       'Use the Traceability Matrix or Formal SQA Report tabs to export JSON/CSV records or print an audit report.'
     ],
     keyCapabilities: [
-      '61 Analytical Benchmarks (VTEST-01 through VTEST-61)',
+      '62 Analytical Benchmarks (VTEST-01 through VTEST-62)',
       '8 Singularity & Asymptotic Boundary Stress Tests',
       'ASME NQA-1 & ISO/IEC 17025-Aligned Traceability Register',
       'Exportable SQA Verification Report (JSON, CSV & Print Sign-Off)'

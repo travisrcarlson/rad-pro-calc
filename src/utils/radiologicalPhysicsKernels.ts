@@ -1334,3 +1334,117 @@ export function computeDutchBbsRadiotoxicity(
     utilizationPct
   };
 }
+
+export interface DutchBbsExemptionRecord {
+  symbol: string;
+  exemptionActivityBq: number;
+  exemptionConcBqPerG: number;
+  note: string;
+}
+
+export interface DutchBbsExemptionEvaluation {
+  known: boolean;
+  symbol: string;
+  exemptionActivityBq: number;
+  exemptionConcBqPerG: number;
+  activityConcentrationBqPerG: number;
+  activityRatio: number;
+  concentrationRatio: number;
+  isExempt: boolean;
+  regulatoryStatus: string;
+  decayTimeToExemptDays: number | null;
+  note: string;
+}
+
+/**
+ * EU 2013/59/Euratom Annex VII Table B / Netherlands Bbs (Stb. 2017, 404) Bijlage 3
+ * moderate-quantity exemption thresholds for activity (Bq) and activity concentration (Bq/g).
+ */
+export const NL_BBS_BIJLAGE3_EXEMPTION_TABLE: Record<string, DutchBbsExemptionRecord> = {
+  'H-3': { symbol: 'H-3', exemptionActivityBq: 1e9, exemptionConcBqPerG: 1e6, note: 'Tritiated water / organic' },
+  'C-14': { symbol: 'C-14', exemptionActivityBq: 1e7, exemptionConcBqPerG: 1e4, note: 'Pure β⁻ tracer' },
+  'F-18': { symbol: 'F-18', exemptionActivityBq: 1e6, exemptionConcBqPerG: 1e1, note: 'PET cyclotron tracer' },
+  'P-32': { symbol: 'P-32', exemptionActivityBq: 1e5, exemptionConcBqPerG: 1e3, note: 'High-energy β⁻' },
+  'S-35': { symbol: 'S-35', exemptionActivityBq: 1e8, exemptionConcBqPerG: 1e5, note: 'Low-energy β⁻' },
+  'Co-60': { symbol: 'Co-60', exemptionActivityBq: 1e5, exemptionConcBqPerG: 1e1, note: 'Industrial / hot-cell γ' },
+  'Tc-99m': { symbol: 'Tc-99m', exemptionActivityBq: 1e7, exemptionConcBqPerG: 1e2, note: 'Nuclear medicine SPECT' },
+  'I-125': { symbol: 'I-125', exemptionActivityBq: 1e6, exemptionConcBqPerG: 1e3, note: 'RIA / low-energy X/γ' },
+  'I-131': { symbol: 'I-131', exemptionActivityBq: 1e6, exemptionConcBqPerG: 1e2, note: 'Thyroid therapy / tracer' },
+  'Cs-137': { symbol: 'Cs-137', exemptionActivityBq: 1e4, exemptionConcBqPerG: 1e1, note: 'incl. Ba-137m secular progeny' },
+  'Lu-177': { symbol: 'Lu-177', exemptionActivityBq: 1e7, exemptionConcBqPerG: 1e3, note: 'Targeted radionuclide therapy' },
+  'Ir-192': { symbol: 'Ir-192', exemptionActivityBq: 1e4, exemptionConcBqPerG: 1e1, note: 'NDT radiography / brachy' },
+  'Ra-226': { symbol: 'Ra-226', exemptionActivityBq: 1e4, exemptionConcBqPerG: 1e1, note: 'incl. short-lived progeny' },
+  'U-238': { symbol: 'U-238', exemptionActivityBq: 1e4, exemptionConcBqPerG: 1e1, note: 'sec. equilibrium' },
+  'Pu-239': { symbol: 'Pu-239', exemptionActivityBq: 1e4, exemptionConcBqPerG: 1e0, note: 'Actinide α emitter' },
+  'Am-241': { symbol: 'Am-241', exemptionActivityBq: 1e4, exemptionConcBqPerG: 1e0, note: 'Smoke / industrial gauge' }
+};
+
+/**
+ * Evaluates Netherlands Bbs Bijlage 3 / EU Euratom Annex VII Table B exemption status
+ * and estimates single-nuclide decay-in-storage hold time until exemption criteria are met.
+ */
+export function evaluateDutchBbsExemption(
+  nuclideSymbol: string,
+  totalActivityBq: number,
+  sampleMassGrams: number,
+  halfLifeSecondsOverride?: number
+): DutchBbsExemptionEvaluation {
+  const aSafe = Math.max(0, Number.isFinite(totalActivityBq) ? totalActivityBq : 0);
+  const mSafe = Math.max(1e-6, Number.isFinite(sampleMassGrams) ? sampleMassGrams : 1);
+  const activityConcentrationBqPerG = aSafe / mSafe;
+
+  const rec = NL_BBS_BIJLAGE3_EXEMPTION_TABLE[nuclideSymbol];
+  if (!rec) {
+    return {
+      known: false,
+      symbol: nuclideSymbol,
+      exemptionActivityBq: 0,
+      exemptionConcBqPerG: 0,
+      activityConcentrationBqPerG,
+      activityRatio: Number.NaN,
+      concentrationRatio: Number.NaN,
+      isExempt: false,
+      regulatoryStatus: 'Not in Bijlage 3 quick-table — consult ANVS Bbs Annex 3',
+      decayTimeToExemptDays: null,
+      note: 'Standard exemption threshold lookup covers common TU Delft / medical / industrial nuclides.'
+    };
+  }
+
+  const activityRatio = aSafe / rec.exemptionActivityBq;
+  const concentrationRatio = activityConcentrationBqPerG / rec.exemptionConcBqPerG;
+  const isExempt = activityRatio <= 1.0 || concentrationRatio <= 1.0;
+
+  let regulatoryStatus: string;
+  if (isExempt) {
+    regulatoryStatus = 'Exempt (Vrijgesteld — Bbs Art. 3.17 / Bijlage 3)';
+  } else if (activityRatio <= 10.0) {
+    regulatoryStatus = 'ANVS Registration / Notification Check (Registratieplicht)';
+  } else {
+    regulatoryStatus = 'ANVS License Required (Vergunningplicht)';
+  }
+
+  let decayTimeToExemptDays: number | null = 0;
+  if (!isExempt) {
+    const tHalfSec = halfLifeSecondsOverride ?? getCanonicalNuclide(nuclideSymbol)?.halfLifeSeconds ?? 0;
+    if (tHalfSec > 0 && Number.isFinite(tHalfSec)) {
+      const governingRatio = Math.min(activityRatio, concentrationRatio);
+      decayTimeToExemptDays = ((tHalfSec / 86400.0) / Math.LN2) * Math.log(governingRatio);
+    } else {
+      decayTimeToExemptDays = null;
+    }
+  }
+
+  return {
+    known: true,
+    symbol: rec.symbol,
+    exemptionActivityBq: rec.exemptionActivityBq,
+    exemptionConcBqPerG: rec.exemptionConcBqPerG,
+    activityConcentrationBqPerG,
+    activityRatio,
+    concentrationRatio,
+    isExempt,
+    regulatoryStatus,
+    decayTimeToExemptDays,
+    note: rec.note
+  };
+}

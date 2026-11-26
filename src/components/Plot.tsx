@@ -47,6 +47,63 @@ Plotly.register([
   unwrapTrace(volume)
 ]);
 
+type PlotlyEl = HTMLElement & {
+  _context?: { _scrollZoom?: Record<string, number>; __radproGuard?: boolean };
+};
+
+type PlotlyRuntime = typeof PlotlyImport & {
+  purge: (root: string | HTMLElement) => void;
+  react: (...args: unknown[]) => Promise<unknown>;
+  Plots?: {
+    resize?: (root: string | HTMLElement) => Promise<unknown> | unknown;
+  };
+  __radproPatched?: boolean;
+};
+
+const plotlyRuntime = Plotly as unknown as PlotlyRuntime;
+
+// Guard Plotly unmount/resize lifecycle races on the genuine singleton without cloning it:
+// - Attach a sentinel _context._scrollZoom stub synchronously after purge so in-flight async
+//   scattergeo promises don't crash on `_scrollZoom`, then strip the sentinel on the next
+//   Plotly.react call so StrictMode double-mounts re-initialize a full genuine _context.
+// - Skip Plots.resize on detached or zero-sized containers during rapid route transitions.
+if (!plotlyRuntime.__radproPatched) {
+  plotlyRuntime.__radproPatched = true;
+  const originalPurge = plotlyRuntime.purge.bind(plotlyRuntime);
+  const originalReact = plotlyRuntime.react.bind(plotlyRuntime);
+
+  plotlyRuntime.purge = (root: string | HTMLElement) => {
+    originalPurge(root);
+    if (typeof document === 'undefined') return;
+    const el = (typeof root === 'string' ? document.getElementById(root) : root) as PlotlyEl | null;
+    if (el && typeof el === 'object' && !el._context) {
+      el._context = { _scrollZoom: {}, __radproGuard: true };
+    }
+  };
+
+  plotlyRuntime.react = (root: unknown, ...rest: unknown[]) => {
+    if (typeof document !== 'undefined') {
+      const el = (typeof root === 'string' ? document.getElementById(root) : root) as PlotlyEl | null;
+      if (el && el._context?.__radproGuard) {
+        delete el._context;
+      }
+    }
+    return originalReact(root, ...rest);
+  };
+
+  if (plotlyRuntime.Plots && typeof plotlyRuntime.Plots.resize === 'function') {
+    const originalResize = plotlyRuntime.Plots.resize.bind(plotlyRuntime.Plots);
+    plotlyRuntime.Plots.resize = (root: string | HTMLElement) => {
+      if (typeof document === 'undefined') return Promise.resolve(root);
+      const el = typeof root === 'string' ? document.getElementById(root) : root;
+      if (!el || !el.isConnected || el.clientWidth <= 0 || el.clientHeight <= 0) {
+        return Promise.resolve(el);
+      }
+      return originalResize(el);
+    };
+  }
+}
+
 const Plot = createPlotlyComponent(Plotly);
 
 export default Plot;

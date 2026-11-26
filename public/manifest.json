@@ -1,14 +1,14 @@
 {
   "name": "RadPro Analyst — Radiological & Nuclear Engineering Suite",
   "short_name": "RadPro Analyst",
-  "description": "Deterministic Health Physics, Shielding, Criticality, Decay & CBRN Engineering Suite (69/69 V&V Benchmarked)",
-  "start_url": "/",
+  "description": "Deterministic Health Physics, Shielding, Criticality, Decay & CBRN Engineering Suite (70/70 V&V Benchmarked)",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#090f1a",
   "theme_color": "#0f172a",
   "icons": [
     {
-      "src": "/favicon.svg",
+      "src": "./favicon.svg",
       "sizes": "192x192 512x512",
       "type": "image/svg+xml",
       "purpose": "any maskable"
